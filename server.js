@@ -1,0 +1,199 @@
+// =====================================================================
+//  LE SALON — serveur du portail (monolithe)
+//  Express 5 + Socket.io + auth scrypt + Upstash Redis (repli JSON)
+//  Une seule connexion partagée pour toutes les mini-apps (même origine).
+// =====================================================================
+const express = require('express');
+const http = require('http');
+const crypto = require('crypto');
+const fs = require('fs');
+const { Server } = require('socket.io');
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+app.use(express.json({ limit: '1mb' }));
+
+// ---------------------------------------------------------------------
+//  Secret de session (cookie signé). À définir en prod via une variable.
+// ---------------------------------------------------------------------
+const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-secret-a-changer';
+if (SESSION_SECRET === 'dev-secret-a-changer') {
+    console.log('⚠️  SESSION_SECRET non défini : secret de dev utilisé. Définis-le en production.');
+}
+const SESSION_DAYS = 30;
+const IS_PROD = process.env.NODE_ENV === 'production';
+
+// ---------------------------------------------------------------------
+//  Persistance : Upstash Redis en prod, repli fichier JSON en local.
+//  (Même principe que le projet Perudo.)
+// ---------------------------------------------------------------------
+const USERS_FILE = './users.json';
+let registeredUsers = {};
+let redis = null;
+
+if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+    try {
+        const { Redis } = require('@upstash/redis');
+        redis = Redis.fromEnv();
+        console.log('🔌 Upstash Redis activé.');
+    } catch (e) {
+        console.log('⚠️  @upstash/redis introuvable, repli sur le fichier local.');
+    }
+}
+
+async function loadUsers() {
+    if (redis) {
+        try {
+            const data = await redis.get('portail_users');
+            if (data) registeredUsers = data;
+            console.log(`✅ ${Object.keys(registeredUsers).length} compte(s) chargé(s) depuis Redis.`);
+            return;
+        } catch (e) { console.log('⚠️  Lecture Redis échouée :', e.message); }
+    }
+    try {
+        registeredUsers = JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8')) || {};
+    } catch (e) { registeredUsers = {}; }
+}
+
+let _saveTimer = null;
+function saveUsers(immediate = false) {
+    const write = () => {
+        if (redis) redis.set('portail_users', registeredUsers).catch(e => console.log('⚠️  Écriture Redis :', e.message));
+        else { try { fs.writeFileSync(USERS_FILE, JSON.stringify(registeredUsers, null, 2)); } catch (e) {} }
+    };
+    if (immediate) return write();
+    clearTimeout(_saveTimer);
+    _saveTimer = setTimeout(write, 1500);
+}
+
+// ---------------------------------------------------------------------
+//  Mots de passe (scrypt) — jamais stockés en clair.
+// ---------------------------------------------------------------------
+function hashPassword(password) {
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+    return `${salt}:${hash}`;
+}
+function verifyPassword(password, stored) {
+    if (!stored || !stored.includes(':')) return false;
+    const [salt, hash] = stored.split(':');
+    const test = crypto.scryptSync(password, salt, 64).toString('hex');
+    const a = Buffer.from(hash, 'hex'); const b = Buffer.from(test, 'hex');
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+const PSEUDO_REGEX = /^[a-zA-Z0-9_ -]{3,20}$/;
+
+// ---------------------------------------------------------------------
+//  Session sans store : cookie signé (HMAC). Survit aux redéploiements.
+// ---------------------------------------------------------------------
+function signSession(pseudo) {
+    const exp = Date.now() + SESSION_DAYS * 864e5;
+    const payload = Buffer.from(JSON.stringify({ u: pseudo, exp })).toString('base64url');
+    const sig = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('base64url');
+    return `${payload}.${sig}`;
+}
+function readSession(token) {
+    if (!token || !token.includes('.')) return null;
+    const [payload, sig] = token.split('.');
+    const expected = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('base64url');
+    if (sig.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null;
+    try {
+        const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
+        if (!data.exp || data.exp < Date.now()) return null;
+        if (!registeredUsers[data.u]) return null;
+        return data.u;
+    } catch (e) { return null; }
+}
+function parseCookies(req) {
+    const out = {};
+    (req.headers.cookie || '').split(';').forEach(c => {
+        const i = c.indexOf('='); if (i < 0) return;
+        out[c.slice(0, i).trim()] = decodeURIComponent(c.slice(i + 1).trim());
+    });
+    return out;
+}
+function currentUser(req) { return readSession(parseCookies(req).salon_session); }
+function setSessionCookie(res, pseudo) {
+    res.cookie('salon_session', signSession(pseudo), {
+        httpOnly: true, sameSite: 'lax', secure: IS_PROD,
+        maxAge: SESSION_DAYS * 864e5, path: '/'
+    });
+}
+
+// Middleware : protège les pages d'apps (redirige vers le salon si non connecté)
+function requireAuth(req, res, next) {
+    if (currentUser(req)) return next();
+    return res.redirect('/');
+}
+
+// ---------------------------------------------------------------------
+//  API d'authentification (partagée par tout le portail)
+// ---------------------------------------------------------------------
+app.post('/api/register', (req, res) => {
+    const pseudo = (req.body.pseudo || '').trim();
+    const password = req.body.password || '';
+    if (!PSEUDO_REGEX.test(pseudo)) return res.status(400).json({ error: 'Nom invalide (3 à 20 caractères).' });
+    if (password.length < 3) return res.status(400).json({ error: 'Mot de passe trop court (3 minimum).' });
+    if (registeredUsers[pseudo]) return res.status(409).json({ error: 'Ce nom est déjà pris. Connecte-toi.' });
+    registeredUsers[pseudo] = { pseudo, passwordHash: hashPassword(password), created: Date.now() };
+    saveUsers(true);
+    setSessionCookie(res, pseudo);
+    res.json({ ok: true, user: { pseudo } });
+});
+
+app.post('/api/login', (req, res) => {
+    const pseudo = (req.body.pseudo || '').trim();
+    const password = req.body.password || '';
+    const user = registeredUsers[pseudo];
+    if (!user || !verifyPassword(password, user.passwordHash)) {
+        return res.status(401).json({ error: 'Nom ou mot de passe incorrect.' });
+    }
+    setSessionCookie(res, pseudo);
+    res.json({ ok: true, user: { pseudo } });
+});
+
+app.post('/api/logout', (req, res) => {
+    res.clearCookie('salon_session', { path: '/' });
+    res.json({ ok: true });
+});
+
+app.get('/api/me', (req, res) => {
+    const pseudo = currentUser(req);
+    if (!pseudo) return res.status(401).json({ error: 'Non connecté.' });
+    res.json({ user: { pseudo } });
+});
+
+// ---------------------------------------------------------------------
+//  Pages d'apps (protégées). Placeholder tant que l'app n'est pas branchée.
+//  Chaque future mini-app aura son dossier dans public/ + sa route ici.
+// ---------------------------------------------------------------------
+function placeholder(name, emoji) {
+    return `<!doctype html><html lang="fr"><head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>${name}</title><link rel="stylesheet" href="/style.css"></head>
+    <body class="app-placeholder"><main class="ph-card">
+    <div class="ph-emoji">${emoji}</div><h1>${name}</h1>
+    <p>Cet espace est prêt à être construit. La connexion est déjà partagée avec le salon.</p>
+    <a class="btn-ghost" href="/">← Retour au salon</a></main></body></html>`;
+}
+app.get('/perudo', requireAuth, (req, res) => res.send(placeholder('Perudo — La Taverne', '🎲')));
+app.get('/recettes', requireAuth, (req, res) => res.send(placeholder('Les Recettes', '🍽️')));
+app.get('/media', requireAuth, (req, res) => res.send(placeholder('Espace Média', '🎞️')));
+app.get('/mots-fleches', requireAuth, (req, res) => res.send(placeholder('Mots Fléchés du jour', '🧩')));
+
+// ---------------------------------------------------------------------
+//  Statique (le salon) + Socket.io prêt pour les apps temps réel.
+// ---------------------------------------------------------------------
+app.use(express.static('public'));
+
+io.on('connection', (socket) => {
+    // Prêt pour Perudo & co. Le salon lui-même n'a pas besoin de temps réel.
+});
+
+const PORT = process.env.PORT || 3000;
+loadUsers().then(() => {
+    server.listen(PORT, () => console.log(`🏛️  Le Salon tourne sur le port ${PORT}`));
+});
