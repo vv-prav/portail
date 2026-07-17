@@ -1814,6 +1814,24 @@ function updateVoiceRoomList(roomId) {
 // =====================================================================
 //  SOCKETS
 // =====================================================================
+// ===== Pont avec le salon : identité fournie par le cookie signé du portail =====
+const SALON_SECRET = process.env.SESSION_SECRET || 'dev-secret-a-changer';
+function salonPseudoFromCookie(cookieHeader) {
+    const m = /(?:^|;\s*)salon_session=([^;]+)/.exec(cookieHeader || '');
+    if (!m) return null;
+    const token = decodeURIComponent(m[1]);
+    const i = token.indexOf('.');
+    if (i < 0) return null;
+    const payload = token.slice(0, i), sig = token.slice(i + 1);
+    const expected = crypto.createHmac('sha256', SALON_SECRET).update(payload).digest('base64url');
+    if (sig.length !== expected.length) return null;
+    try { if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return null; } catch (e) { return null; }
+    let data = null;
+    try { data = JSON.parse(Buffer.from(payload, 'base64url').toString()); } catch (e) { return null; }
+    if (!data || !data.u || !data.exp || data.exp < Date.now()) return null;
+    return String(data.u);
+}
+
 io.on('connection', (socket) => {
 
     socket.on('register', ({ pseudo, password }) => {
@@ -1865,6 +1883,28 @@ io.on('connection', (socket) => {
 
         if (!ok) return socket.emit('auth_error', "Mauvais mot de passe, marin d'eau douce !");
 
+        if (!user.style || !user.style.faceType) { user.style = DEFAULT_STYLE; saveUsers(); }
+        ensureUserFields(user);
+        socket.emit('auth_success', { pseudo: user.pseudo, style: user.style, profile: profilePayload(user) });
+        sendCampaignData(socket);
+    });
+
+    // Connexion automatique depuis le salon (aucun mot de passe : l'identité vient du cookie signé)
+    socket.on('salon_login', () => {
+        const pseudo = salonPseudoFromCookie(socket.handshake.headers.cookie);
+        if (!pseudo) return socket.emit('auth_error', "Session du salon introuvable. Retourne au salon pour te reconnecter.");
+        if (isBanned(pseudo)) return socket.emit('auth_error', "Ce compte a été banni de la taverne.");
+        let user = registeredUsers[pseudo];
+        if (!user) {
+            // Première venue : on crée le profil de jeu à partir de l'identité du salon
+            registeredUsers[pseudo] = {
+                pseudo, played: 0, wins: 0, achievements: [], title: '',
+                stats: { dudosWon: 0, calzasWon: 0, diceLost: 0 },
+                style: DEFAULT_STYLE, fromSalon: true, created: Date.now()
+            };
+            user = registeredUsers[pseudo];
+            saveUsers(true);
+        }
         if (!user.style || !user.style.faceType) { user.style = DEFAULT_STYLE; saveUsers(); }
         ensureUserFields(user);
         socket.emit('auth_success', { pseudo: user.pseudo, style: user.style, profile: profilePayload(user) });

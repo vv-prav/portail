@@ -1,4 +1,20 @@
 const socket = io();
+
+// ===== Pont avec le salon : entrée déjà identifié (pas de double login) =====
+(function salonBridge() {
+    const style = document.createElement('style');
+    style.textContent = '#salon-bridge{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#1a1109;color:#e8c56a;font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:20px}#salon-bridge .sbr{width:38px;height:38px;border-radius:50%;border:3px solid rgba(232,197,106,.25);border-top-color:#e8c56a;animation:sbspin .8s linear infinite}@keyframes sbspin{to{transform:rotate(360deg)}}';
+    (document.head || document.documentElement).appendChild(style);
+    const ov = document.createElement('div');
+    ov.id = 'salon-bridge';
+    ov.innerHTML = '<div class="sbr"></div><p>Entrée dans la taverne…</p>';
+    const mount = () => (document.body || document.documentElement).appendChild(ov);
+    if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
+    const remove = () => { const e = document.getElementById('salon-bridge'); if (e) e.remove(); };
+    socket.emit('salon_login');                         // le cookie du salon est envoyé automatiquement
+    socket.on('auth_success', remove);
+    socket.on('auth_error', () => { location.href = '/'; }); // session salon invalide → retour au salon
+})();
 let myPseudo = "";
 let myId = "";
 let myStyle = { bgColor: '#ffffff', dotColor: '#000000', shape: 'square', faceType: 'classic' };
