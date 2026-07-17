@@ -179,10 +179,16 @@ function placeholder(name, emoji) {
     <p>Cet espace est prêt à être construit. La connexion est déjà partagée avec le salon.</p>
     <a class="btn btn-ghost" href="/">← Retour au salon</a></main></body></html>`;
 }
-app.get('/perudo', requireAuth, (req, res) => require('./perudo/game')(app, io));
 app.get('/recettes', requireAuth, (req, res) => res.send(placeholder('Les Recettes', '🍽️')));
 app.get('/media', requireAuth, (req, res) => res.send(placeholder('Espace Média', '🎞️')));
 app.get('/mots-fleches', requireAuth, (req, res) => res.send(placeholder('Mots Fléchés du jour', '🧩')));
+
+// ---------------------------------------------------------------------
+//  PERUDO — jeu temps réel, intégré au monolithe sous /perudo.
+//  Le front est protégé par le login du salon ; /perudo/healthz reste public.
+// ---------------------------------------------------------------------
+require('./perudo/game')(app, io);
+app.use('/perudo', requireAuth, express.static(__dirname + '/public/perudo'));
 
 // ---------------------------------------------------------------------
 //  Statique (le salon) + Socket.io prêt pour les apps temps réel.
