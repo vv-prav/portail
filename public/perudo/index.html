@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Perudo Online 🏴‍☠️</title>
+    <link rel="stylesheet" href="style.css">
+
+    <meta name="theme-color" content="#d4af37">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <!-- Plein écran type application native sur iOS / Android -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Perudo">
+    <!-- Évite que Safari transforme des nombres (mises) en numéros de téléphone -->
+    <meta name="format-detection" content="telephone=no">
+</head>
+<body data-lobby-tab="tavern">
+    <!-- INTRO / SPLASH ANIMÉ (logo Perudo) -->
+    <div id="intro-splash" class="intro-splash" aria-hidden="true">
+        <canvas class="intro-confetti"></canvas>
+        <div class="intro-rays"></div>
+        <div class="intro-stage">
+            <div class="intro-die">
+                <svg viewBox="0 0 100 100" width="150" height="150" aria-hidden="true">
+                    <defs>
+                        <linearGradient id="introGold" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0" stop-color="#fff3c4"/><stop offset="0.45" stop-color="#ffd24a"/><stop offset="1" stop-color="#c9852a"/>
+                        </linearGradient>
+                    </defs>
+                    <path fill="url(#introGold)" fill-rule="nonzero" stroke="#5a3a18" stroke-width="0.7" d="M50.966,39.492L50.966,70.069C58.34,70.041 65.721,69.728 73.086,70.075C73.839,70.182 74.23,71.143 73.686,71.741L50.68,94.747C50.094,95.281 49.051,94.932 49.009,94.055L49.009,72.013C34.963,71.55 21.744,61.442 17.803,47.887C17.01,45.159 16.594,42.333 16.537,39.496C34.085,39.728 48.954,53.457 49.009,70.071C49.009,70.071 50.628,70.07 50.948,70.069C50.325,51.752 33.945,37.757 16.553,37.538C16.858,29.392 20.074,21.322 25.728,15.391C31.969,8.846 40.89,5.029 49.985,5L50.065,5.006C50.11,5.002 50.157,5.001 50.204,5.001C67.408,5.164 83.269,19.911 83.499,38.081C83.508,38.78 83.255,39.451 82.523,39.492L50.966,39.492ZM50.966,6.972L50.966,37.535L81.529,37.535C81.086,21.983 67.841,7.77 51.411,6.989C51.263,6.983 51.115,6.977 50.966,6.972ZM41.007,19.479C40.31,18.302 39.028,17.512 37.562,17.512C37.042,17.512 36.544,17.612 36.088,17.793L36.085,17.792C34.606,18.379 33.558,19.824 33.558,21.512C33.558,23.634 35.215,25.373 37.304,25.504C37.39,25.509 37.476,25.512 37.562,25.512C39.77,25.512 41.562,23.72 41.562,21.512C41.562,20.775 41.363,20.085 41.015,19.492L41.045,19.492L41.007,19.479ZM37.561,19.514C38.665,19.514 39.561,20.41 39.561,21.514C39.561,22.618 38.665,23.514 37.561,23.514C36.457,23.514 35.561,22.618 35.561,21.514C35.561,20.41 36.457,19.514 37.561,19.514Z"/>
+                </svg>
+            </div>
+            <div class="intro-title" aria-label="Perudo"><span>P</span><span>E</span><span>R</span><span>U</span><span>D</span><span>O</span></div>
+            <div class="intro-sub">La Taverne d'Erquy</div>
+        </div>
+    </div>
+
+
+    <div id="reco-overlay" class="reco-overlay" style="display:none;">
+        <div class="reco-box">
+            <div class="reco-spinner"></div>
+            <div class="reco-text">Connexion perdue…<br>Reconnexion en cours</div>
+        </div>
+    </div>
+
+    <div id="campaign-result-modal" class="cr-modal" style="display:none;">
+        <div id="cr-card" class="cr-card"></div>
+    </div>
+
+    <div id="relic-modal" class="cr-modal" style="display:none;">
+        <div class="relic-box">
+            <div class="relic-title">Un trésor ! Choisis ta relique</div>
+            <div id="relic-choices" class="relic-choices"></div>
+        </div>
+    </div>
+
+    <div id="confirm-overlay" class="confirm-overlay" style="display:none;" onclick="if(event.target===this)closeConfirm()">
+        <div class="confirm-box">
+            <div class="confirm-msg" id="confirm-msg"></div>
+            <div class="confirm-actions">
+                <button class="confirm-no" onclick="closeConfirm()">Annuler</button>
+                <button class="confirm-yes" id="confirm-yes">Confirmer</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="cr-modal" style="display:none;">
+        <div class="settings-box">
+            <div class="settings-head">
+                <div class="settings-title">⚙️ Réglages</div>
+                <button class="settings-close" onclick="closeSettings()" aria-label="Fermer">✕</button>
+            </div>
+            <div id="settings-body" class="settings-body"></div>
+        </div>
+    </div>
+
+    <div id="tourney-wait-modal" class="cr-modal" style="display:none;">
+        <div class="tw-box">
+            <div class="tw-spinner"></div>
+            <div class="tw-title">En attente de l'adversaire</div>
+            <div class="tw-opp" id="tw-opp"></div>
+            <div class="tw-count" id="tw-count"></div>
+            <button class="tw-claim" id="tw-claim" style="display:none;" onclick="claimTournamentMatch()">🏆 Réclamer la victoire</button>
+            <button class="tw-cancel" onclick="cancelTournamentWait()">Retour</button>
+        </div>
+    </div>
+
+    <div id="tourney-create-modal" class="cr-modal" style="display:none;">
+        <div class="tc-box">
+            <div class="tc-title">Nouveau tournoi</div>
+            <input id="tc-name" class="tc-input" maxlength="30" placeholder="Nom du tournoi">
+
+            <div class="tc-field">
+                <div class="tc-label">Taille des poules <span class="tc-hint">dès 6 joueurs</span></div>
+                <div class="tc-seg" id="tc-gs">
+                    <button type="button" data-val="3" onclick="tcPick(this)">3 / poule</button>
+                    <button type="button" data-val="4" class="active" onclick="tcPick(this)">4 / poule</button>
+                </div>
+            </div>
+
+            <div class="tc-field">
+                <div class="tc-label">Qualifiés par poule</div>
+                <div class="tc-seg" id="tc-q">
+                    <button type="button" data-val="1" onclick="tcPick(this)">1<sup>er</sup></button>
+                    <button type="button" data-val="2" class="active" onclick="tcPick(this)">2 premiers</button>
+                </div>
+            </div>
+
+            <div class="tc-field">
+                <div class="tc-label">Élimination</div>
+                <div class="tc-seg" id="tc-elim">
+                    <button type="button" data-val="single" class="active" onclick="tcPick(this)">Simple</button>
+                    <button type="button" data-val="double" onclick="tcPick(this)">Double</button>
+                </div>
+            </div>
+
+            <div class="tc-switch-row">
+                <div><div class="tc-switch-label">Petite finale</div><div class="tc-hint">match pour la 3<sup>e</sup> place</div></div>
+                <button type="button" id="tc-third" class="set-switch on" onclick="this.classList.toggle('on')" aria-label="Petite finale"><span></span></button>
+            </div>
+
+            <div class="tc-actions">
+                <button class="cr-btn" onclick="closeTournamentCreate()">Annuler</button>
+                <button class="cr-btn primary" onclick="submitTournament()">Créer</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="palifico-popup" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2 style="color: #ff3d00; font-family: 'Pirata One', cursive; font-size: 2.5rem; margin-top:0;">⚠️ PALIFICO ! ⚠️</h2>
+            <p id="palifico-popup-text" style="font-size: 1.2rem;"></p>
+            <button class="btn-primary" onclick="document.getElementById('palifico-popup').style.display='none'">J'ai compris, Capitaine !</button>
+        </div>
+    </div>
+
+    <div id="profile-modal" class="modal" style="display: none;"></div>
+
+    <div id="player-card-modal" class="modal" style="display: none;" onclick="if(event.target===this) closePlayerCard()">
+        <div class="modal-content">
+            <div id="player-card-body"></div>
+            <button class="btn-primary" onclick="closePlayerCard()" style="margin-top:14px; width:100%;">Fermer</button>
+        </div>
+    </div>
+
+    <div id="create-mode-modal" class="modal" style="display: none;" onclick="if(event.target===this) closeCreateModal()">
+        <div class="modal-content">
+            <h2 style="color: var(--gold); font-family: 'Pirata One', cursive; margin-top:0;">Créer</h2>
+            <p style="color:#ccc; font-size:0.9rem; margin-top:0;">Que veux-tu lancer ?</p>
+            <div class="create-choices">
+                <button class="create-choice" onclick="chooseCreate('solo')">
+                    <span class="cc-title">Classique</span>
+                    <span class="cc-desc">Chacun pour soi (2 à 10 joueurs)</span>
+                </button>
+                <button class="create-choice" onclick="chooseCreate('duo')">
+                    <span class="cc-title">Duo</span>
+                    <span class="cc-desc">Équipes de 2 — tu vois les dés de ton équipier (nombre pair, min 4)</span>
+                </button>
+                <button class="create-choice" onclick="chooseCreate('bot')">
+                    <span class="cc-title">Contre un bot</span>
+                    <span class="cc-desc">Duel 1v1 contre l'IA (entraînement, hors classement)</span>
+                </button>
+                <button class="create-choice create-choice-tourney" onclick="chooseCreate('tourney')">
+                    <span class="cc-title">Tournoi</span>
+                    <span class="cc-desc">Poules + tableau à élimination, plusieurs joueurs</span>
+                </button>
+            </div>
+            <button class="btn-secondary" onclick="closeCreateModal()" style="margin-top:14px; width:100%;">Annuler</button>
+        </div>
+    </div>
+
+    <div id="game-options-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2 style="color: var(--gold); font-family: 'Pirata One', cursive; margin-top:0;" data-i18n="o_title">Réglages de la table</h2>
+            <div class="opt-grid">
+                <label><span data-i18n="o_start_dice">Dés de départ</span>
+                    <select id="opt-startDice" onchange="pushGameOptions()">
+                        <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5" selected>5</option><option value="6">6</option>
+                    </select>
+                </label>
+                <label><span data-i18n="o_max_players">Joueurs max</span>
+                    <select id="opt-maxPlayers" onchange="pushGameOptions()">
+                        <option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option>
+                    </select>
+                </label>
+                <label><span data-i18n="o_first_player">Premier joueur</span>
+                    <select id="opt-firstPlayer" onchange="pushGameOptions()">
+                        <option value="random" selected data-i18n="o_random">Aléatoire</option>
+                    </select>
+                </label>
+                <label class="opt-check"><input type="checkbox" id="opt-palifico" checked onchange="pushGameOptions()"> <span data-i18n="o_palifico">Palifico</span></label>
+                <label class="opt-check"><input type="checkbox" id="opt-calza" checked onchange="pushGameOptions()"> <span data-i18n="o_calza">Calza</span></label>
+                <label class="opt-check"><input type="checkbox" id="opt-autoTimer" onchange="pushGameOptions()"> <span data-i18n="o_autotimer">Temps limité par tour (action auto si trop long)</span></label>
+            </div>
+            <p id="opt-mode-line" style="color:#9fd6ff; font-size:0.82rem; margin:8px 0 0;"></p>
+            <p id="opt-summary" class="opt-summary"></p>
+            <button class="btn-primary" onclick="closeGameOptions()" style="margin-top:14px; width:100%;">Fermer</button>
+        </div>
+    </div>
+
+    <div id="login-screen" class="screen active">
+        <h1 data-i18n="login_title">Perudo Online 🏴‍☠️</h1>
+        <p style="text-align: center; margin-bottom: 25px;" data-i18n="login_sub">Identifie-toi avant d'entrer dans la taverne !</p>
+        <div style="display: flex; flex-direction: column; gap: 10px; max-width: 300px; margin: 0 auto;">
+            <input type="text" id="pseudo-input" placeholder="Ton nom de pirate..." data-i18n-ph="ph_pseudo" autocomplete="username" autocapitalize="off" autocorrect="off">
+            <div class="password-wrapper">
+                <input type="password" id="password-input" placeholder="Ton mot de passe..." data-i18n-ph="ph_pw" autocomplete="current-password" autocapitalize="off" autocorrect="off">
+                <button type="button" id="pw-toggle" class="pw-toggle" onclick="togglePassword()" aria-label="Afficher le mot de passe">👁️</button>
+            </div>
+            
+            <!-- NOUVEAU : Message de prévention -->
+            <p style="font-size: 0.85rem; color: #ffca28; text-align: center; margin: 0; font-weight: bold;" data-i18n="pw_warn">
+                ⚠️ Ne mets pas un mot de passe que tu utilises déjà ! Mets par exemple "123" ou "mdp".
+            </p>
+
+            <div style="display: flex; gap: 10px; margin-top: 5px;">
+                <button class="btn-primary" style="flex:1;" onclick="handleAuth('login')" data-i18n="btn_login">Se connecter</button>
+                <button class="btn-calza" style="flex:1;" onclick="handleAuth('register')" data-i18n="btn_register">S'inscrire</button>
+            </div>
+            <div id="auth-error" class="error-msg"></div>
+        </div>
+    </div>
+
+    <div id="lobby-screen" class="screen">
+        <header class="lobby-header">
+            <button id="mute-btn" class="hdr-medallion" onclick="toggleMute()" title="Son" aria-label="Son"></button>
+            <div class="hdr-center">
+                <span id="header-avatar" class="header-avatar" onclick="openCosmetics()"></span>
+                <h1>La Taverne d'Erquy</h1>
+                <span id="my-pseudo-display" class="gold-text"></span>
+            </div>
+            <button id="settings-btn" class="hdr-medallion" onclick="openSettings()" title="Réglages" aria-label="Réglages">
+                <svg viewBox="0 0 100 100" fill="currentColor" aria-hidden="true"><path d="M98.44,43.73c-0.8-.51-7.11-4.28-9.61-5.43l-3.1-7.5c0.92-2.48,2.69-9.43,3-10.64a3.34,3.34,0,0,0-.9-3.1L82.94,12.2a3.32,3.32,0,0,0-3.1-.9c-0.92.21-8,2-10.64,3l-7.5-3.1c-1.09-2.4-4.76-8.55-5.43-9.61A3.32,3.32,0,0,0,53.44,0H46.56a3.35,3.35,0,0,0-2.83,1.56c-0.51.8-4.28,7.11-5.43,9.61l-7.5,3.1c-2.48-.92-9.43-2.69-10.64-3a3.34,3.34,0,0,0-3.1.9L12.2,17.06a3.32,3.32,0,0,0-.9,3.1c0.21,0.92,2,8,3,10.64l-3.1,7.5c-2.4,1.09-8.55,4.76-9.61,5.43A3.32,3.32,0,0,0,0,46.56v6.87a3.35,3.35,0,0,0,1.56,2.83c0.8,0.51,7.11,4.28,9.61,5.43l3.1,7.5c-0.92,2.48-2.69,9.43-3,10.64a3.34,3.34,0,0,0,.9,3.1l4.86,4.86a3.32,3.32,0,0,0,3.1.9c0.92-.21,8-2,10.64-3l7.5,3.1c1.09,2.4,4.76,8.55,5.43,9.61A3.32,3.32,0,0,0,46.56,100h6.87a3.35,3.35,0,0,0,2.83-1.56c0.51-.8,4.28-7.11,5.43-9.61l7.5-3.1c2.48,0.92,9.43,2.69,10.64,3a3.34,3.34,0,0,0,3.1-.9l4.86-4.86a3.32,3.32,0,0,0,.9-3.1c-0.21-.92-2-8-3-10.64l3.1-7.5c2.4-1.09,8.55-4.76,9.61-5.43A3.32,3.32,0,0,0,100,53.44V46.56A3.3,3.3,0,0,0,98.44,43.73ZM50,71.77A21.79,21.79,0,1,1,71.81,50,21.82,21.82,0,0,1,50,71.77Z"/></svg>
+            </button>
+        </header>
+
+        <div id="my-dice-lobby" class="my-dice-lobby"></div>
+
+        <div class="lobby-nav">
+            <button id="tab-btn-tavern" class="btn-tab active" onclick="switchLobbyTab('tavern')" data-i18n="nav_tables">Les Tables</button>
+            <button id="tab-btn-campagne" class="btn-tab" onclick="switchLobbyTab('campagne')" data-i18n="nav_campaign">Campagne</button>
+            <button id="tab-btn-style" class="btn-tab" onclick="switchLobbyTab('style')" data-i18n="nav_style">Ton Style</button>
+            <button id="tab-btn-leaderboard" class="btn-tab" onclick="switchLobbyTab('leaderboard')" data-i18n="nav_leaderboard">Le Classement</button>
+            <button id="tab-btn-profil" class="btn-tab" onclick="switchLobbyTab('profil')" data-i18n="nav_profile">Profil</button>
+        </div>
+
+        <div id="view-tavern" class="lobby-container">
+            <div class="side-panel">
+                <div class="players-list">
+                    <h3 data-i18n="lob_sailors">Marins présents</h3>
+                    <ul id="players-ul"></ul>
+                </div>
+            </div>
+            <div class="main-panel">
+                <h3 data-i18n="lob_tournaments">🏆 Tournois</h3>
+                <div id="tournaments-list" class="tournaments-list"></div>
+                <button class="create-btn" onclick="createGame()" data-i18n="lob_create">➕ Créer une partie / un tournoi</button>
+                <h3 data-i18n="lob_tables">🎲 Tables en cours</h3>
+                <div id="games-list" class="games-grid"></div>
+            </div>
+        </div>
+
+        <div id="view-campagne" class="lobby-container" style="display: none; flex-direction: column;">
+            <div class="camp-mode-nav">
+                <button id="campmode-classic" class="camp-mode-btn active" onclick="switchCampMode('classic')">Carte</button>
+                <button id="campmode-expedition" class="camp-mode-btn" onclick="switchCampMode('expedition')">Expédition</button>
+            </div>
+
+            <div id="camp-classic">
+                <div class="campaign-box">
+                    <h2 style="color: var(--gold); font-family: 'Pirata One', cursive; text-align:center; margin:0 0 4px;">Campagne</h2>
+                    <p id="campaign-intro" style="text-align:center; color:#ccc; font-size:0.85rem; margin:0 0 14px;">Affronte des pirates de plus en plus redoutables, de la taverne d'Erquy jusqu'à l'abîme de Cthulhu. Gagne des titres et des dés de collection.</p>
+                    <div id="campaign-progress-bar" class="campaign-progress"><div id="campaign-progress-fill" class="campaign-progress-fill"></div></div>
+                    <p id="campaign-progress-label" style="text-align:center; color:#9fd6ff; font-size:0.8rem; margin:6px 0 16px;"></p>
+                    <div id="campaign-map"></div>
+                </div>
+            </div>
+
+            <div id="camp-expedition" style="display:none;">
+                <div class="campaign-box">
+                    <h2 style="color: var(--gold); font-family: 'Pirata One', cursive; text-align:center; margin:0 0 4px;">Expédition</h2>
+                    <div id="run-intro" style="text-align:center;">
+                        <p style="color:#ccc; font-size:0.85rem; margin:0 0 14px; line-height:1.5;">Un <b>voyage roguelite</b> : trace ta route à travers une carte qui se dévoile au fil de l'eau. Combats, élites, trésors et reliques qui <b>plient les règles du Perudo</b>. Perds 3 fois et l'expédition sombre — mais chaque départ est unique.</p>
+                        <button class="create-btn" onclick="startExpedition()">Lever l'ancre</button>
+                    </div>
+                    <div id="run-board" style="display:none;">
+                        <div class="run-topbar">
+                            <div id="run-hp" class="run-hp"></div>
+                            <button class="run-abandon" onclick="abandonRun()">Abandonner</button>
+                        </div>
+                        <div id="run-relics" class="run-relics"></div>
+                        <div id="run-map" class="run-map"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-style" class="lobby-container" style="display: none; justify-content: center;">
+            <div class="style-box">
+                <h2 style="color: var(--gold); text-align: center; margin-top: 0;">L'Atelier du Pirate</h2>
+                <p style="text-align: center; color: #ccc;">Forge les dés qui te mèneront à la victoire !</p>
+
+                <!-- Aperçu : 5 dés dans le style choisi -->
+                <div class="style-preview">
+                    <div id="preview-dice-container" class="dice-container" style="margin: 18px 0; transform: scale(1.1);"></div>
+                </div>
+
+                <!-- Sous-menu Collections / Personnalisé -->
+                <div class="style-nav">
+                    <button id="style-tab-collections" class="btn-tab active" onclick="switchStyleTab('collections')">Collections</button>
+                    <button id="style-tab-tapis" class="btn-tab" onclick="switchStyleTab('tapis')">Tapis</button>
+                    <button id="style-tab-custom" class="btn-tab" onclick="switchStyleTab('custom')">Personnalisé</button>
+                </div>
+
+                <!-- Vue Collections -->
+                <div id="style-view-collections">
+                    <div id="skin-gallery" class="skin-gallery"></div>
+                    <p id="skin-hint" style="text-align:center; color:#ffca28; font-size:0.85rem; min-height:1.2em; margin:10px 0 0;"></p>
+                </div>
+
+                <!-- Vue Tapis (arrière-plans de table) -->
+                <div id="style-view-tapis" style="display:none;">
+                    <p style="text-align:center; color:#ccc; margin-top:0;">Choisis l'ambiance de ta table.</p>
+                    <div id="table-gallery" class="table-gallery"></div>
+                    <div class="cos-sec" style="margin-top:18px;">🎲 Gobelet (animation de lancer)</div>
+                    <div id="cup-gallery" class="cup-gallery"></div>
+                </div>
+
+                <!-- Vue Personnalisé -->
+                <div id="style-view-custom" style="display:none;">
+                <div class="style-controls">
+                    <div class="control-group">
+                        <label>Couleur du fond :</label>
+                        <input type="color" id="style-bg" value="#ffffff" oninput="updateStylePreview()" onchange="updateStylePreview()">
+                    </div>
+                    <div class="control-group">
+                        <label>Couleur des points :</label>
+                        <input type="color" id="style-dot" value="#000000" oninput="updateStylePreview()" onchange="updateStylePreview()">
+                    </div>
+                    <div class="control-group">
+                        <label>Dégradé :</label>
+                        <input type="checkbox" id="style-gradient" onchange="updateStylePreview()">
+                        <input type="color" id="style-bg2" value="#8a5a2a" oninput="updateStylePreview()" onchange="updateStylePreview()">
+                    </div>
+                    <div class="control-group">
+                        <label>Lueur :</label>
+                        <input type="checkbox" id="style-glow-on" onchange="updateStylePreview()">
+                        <input type="color" id="style-glow" value="#ffd24a" oninput="updateStylePreview()" onchange="updateStylePreview()">
+                    </div>
+                    
+                    <div class="control-group" style="flex-direction: column; align-items: stretch; gap: 10px;">
+                        <label style="text-align: center;">Motif des faces :</label>
+                        <div class="shape-selector" id="face-type-selector">
+                            <div class="shape-option selected" data-type="classic" onclick="selectFaceType('classic')">
+                                <span style="font-size: 1.2rem;">⚃</span>
+                                <span>Classique</span>
+                            </div>
+                            <div class="shape-option" data-type="number" onclick="selectFaceType('number')">
+                                <span style="font-size: 1.2rem; font-family: 'Pirata One', cursive;">4</span>
+                                <span>Chiffres</span>
+                            </div>
+                            <div class="shape-option" data-type="roman" onclick="selectFaceType('roman')">
+                                <span style="font-size: 1.2rem; font-family: 'Pirata One', cursive;">IV</span>
+                                <span>Romains</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="control-group" style="flex-direction: column; align-items: stretch; gap: 10px;">
+                        <label style="text-align: center;">Forme du dé :</label>
+                        <div class="shape-selector" id="shape-selector">
+                            <div class="shape-option selected" data-shape="square" onclick="selectShape('square')">
+                                <div class="shape-preview-icon" style="border-radius: 4px;"></div>
+                                <span>Carré</span>
+                            </div>
+                            <div class="shape-option" data-shape="circle" onclick="selectShape('circle')">
+                                <div class="shape-preview-icon" style="border-radius: 50%;"></div>
+                                <span>Rond</span>
+                            </div>
+                            <div class="shape-option" data-shape="hexagon" onclick="selectShape('hexagon')">
+                                <div class="shape-preview-icon" style="clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); border:none; background:var(--ink);"></div>
+                                <span>Hexagone</span>
+                            </div>
+                            <div class="shape-option" data-shape="octagon" onclick="selectShape('octagon')">
+                                <div class="shape-preview-icon" style="clip-path: polygon(30% 0%, 70% 0%, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0% 70%, 0% 30%); border:none; background:var(--ink);"></div>
+                                <span>Octogone</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="control-group" style="flex-direction: column; align-items: stretch; gap: 10px;">
+                        <label style="text-align: center;">Image sur la face Paco :</label>
+                        <p style="text-align:center; color:#aaa; font-size:0.78rem; margin:0;">Ajoute ton logo/photo : il remplacera le symbole Paco (la face « 1 »). Carré conseillé.</p>
+                        <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; align-items:center;">
+                            <label class="btn-tab" style="flex:0 0 auto; min-width:0; cursor:pointer; font-size:0.9rem; padding:9px 14px;">
+                                📷 Choisir une image
+                                <input type="file" accept="image/*" onchange="handleDiceImage(this)" style="display:none;">
+                            </label>
+                            <button id="dice-image-remove" class="btn-danger" style="display:none; padding:9px 14px;" onclick="removeDiceImage()">Retirer</button>
+                        </div>
+                        <p id="dice-image-status" style="text-align:center; color:#7ed957; font-size:0.8rem; min-height:1.1em; margin:0;"></p>
+                    </div>
+                </div>
+                </div><!-- /style-view-custom -->
+
+                <div id="style-success" class="success-msg" style="display: none; margin-top: 15px;"></div>
+            </div>
+        </div>
+
+        <div id="view-leaderboard" class="lobby-container" style="display: none; flex-direction: column;">
+            <div class="leaderboard-box">
+                <h2 style="color: var(--gold); text-align: center;" data-i18n="lb_title">Les Légendes des Caraïbes</h2>
+                <div class="lb-tabs">
+                    <button id="lb-tab-all" class="btn-tab active" onclick="setLeaderboardScope('all')" data-i18n="lb_all">Général</button>
+                    <button id="lb-tab-week" class="btn-tab" onclick="setLeaderboardScope('week')" data-i18n="lb_week">Semaine</button>
+                    <button id="lb-tab-month" class="btn-tab" onclick="setLeaderboardScope('month')" data-i18n="lb_month">Mois</button>
+                </div>
+                <table class="leaderboard-table">
+                    <thead><tr><th data-i18n="lb_h_rank">Rang</th><th data-i18n="lb_h_pirate">Pirate</th><th data-i18n="lb_h_pts">Points</th><th data-i18n="lb_h_w">V</th><th data-i18n="lb_h_games">Parties</th><th data-i18n="lb_h_rate">Taux</th></tr></thead>
+                    <tbody id="leaderboard-body"></tbody>
+                </table>
+                <p class="lb-hint" data-i18n="lb_hint">Touche un pirate pour voir le détail de son palmarès.</p>
+            </div>
+        </div>
+
+        <div id="view-profil" class="lobby-container" style="display: none; flex-direction: column;">
+            <div class="profile-card">
+                <h2 style="color: var(--gold); font-family: 'Pirata One', cursive; margin-top:0;"><span id="prof-pseudo"></span></h2>
+                <div id="prof-stats-card"></div>
+                <h3 class="prof-section-title">🏅 Titres</h3>
+                <p class="badge-hint">Débloque un haut fait pour pouvoir l'équiper comme titre sous ton pseudo.</p>
+                <div id="prof-achievements"></div>
+                <div id="badge-info" class="badge-info"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="game-screen" class="screen">
+        <!-- HAUT : menu + total des dés -->
+        <div class="g-top">
+            <button class="g-menu-btn" onclick="openGameMenu()" aria-label="Menu de la table"><span></span><span></span><span></span></button>
+            <div class="g-total" id="total-dice-display"><span data-i18n="g_total">Total des dés en jeu :</span> <span id="total-dice-count">0</span></div>
+            <button class="g-hist-btn" onclick="openBidHistory()" aria-label="Historique de la manche">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l3 2"/></svg>
+            </button>
+        </div>
+
+        <div id="palifico-alert" class="palifico-alert">PALIFICO — les règles changent !</div>
+        <div id="mods-banner" class="mods-banner" style="display:none;"></div>
+        <div id="spectator-banner" class="spectator-banner" style="display:none;">Mode spectateur — tu regardes la partie</div>
+
+        <!-- MILIEU : la table -->
+        <div class="g-table" id="g-table">
+            <div class="g-mine">
+                <div class="g-mine-label">Tes dés · <span id="player-count">0</span></div>
+                <div class="dice-container" id="player-dice"></div>
+            </div>
+            <div class="bid-display" id="current-bid">En attente de la première mise...</div>
+
+            <div id="team-setup" class="team-setup" style="display:none;">
+                <h3 class="team-setup-title">Équipes</h3>
+                <div id="team-setup-list"></div>
+                <button id="team-shuffle-btn" class="btn-secondary" onclick="shuffleTeams()" style="width:100%; margin-top:8px;">Mélanger les équipes</button>
+                <p class="team-setup-hint">L'hôte forme les équipes (flèches) ou les tire au sort. Chaque équipe = 2 joueurs.</p>
+            </div>
+
+            <div id="teammate-zone" class="teammate-zone" style="display:none;">
+                <div class="teammate-label">Ton équipier : <b id="teammate-name"></b> — <span id="teammate-count">0</span> dés</div>
+                <div class="dice-container" id="teammate-dice"></div>
+            </div>
+
+            <div id="opponents-viewport" class="opponents-viewport">
+                <div id="opponents-zone" class="opponents-container"></div>
+            </div>
+
+            <div id="emote-bar" class="emote-bar" style="display:none;"></div>
+            <div id="bid-history" class="bid-history"><div id="bid-history-list" class="bh-list"></div></div>
+        </div>
+
+        <!-- BAS : barre d'action fixe (zone du pouce) -->
+        <div class="g-actions" id="g-actions">
+            <div class="controls" id="game-controls" style="display: none;">
+                <div class="bid-inputs">
+                    <div class="qty-stepper">
+                        <button type="button" class="qty-btn" id="qty-minus" aria-label="Diminuer">−</button>
+                        <input type="number" id="bid-qty" min="1" value="1" inputmode="numeric" pattern="[0-9]*" readonly>
+                        <button type="button" class="qty-btn" id="qty-plus" aria-label="Augmenter">+</button>
+                    </div>
+                    <div id="face-selector" class="dice-selector"></div>
+                </div>
+                <div id="bid-error" class="error-msg" style="white-space: pre-line;"></div>
+                <div class="action-buttons">
+                    <button class="btn-calza" id="btn-calza" onclick="callCalza()" data-i18n="g_true">Vrai</button>
+                    <button class="btn-bid" id="btn-bid" onclick="makeBid()" data-i18n="g_bet">Parier</button>
+                    <button class="btn-dudo" id="btn-dudo" onclick="callDudo()" data-i18n="g_liar">Menteur</button>
+                </div>
+            </div>
+            <button id="btn-start" class="btn-primary" onclick="startGame()" style="display: none;">Démarrer la partie</button>
+            <div id="spec-reactions" class="spec-reactions" style="display:none;">
+                <button class="rx-btn" onclick="sendReaction('👏')">👏</button>
+                <button class="rx-btn" onclick="sendReaction('😂')">😂</button>
+                <button class="rx-btn" onclick="sendReaction('😮')">😮</button>
+                <button class="rx-btn" onclick="sendReaction('🔥')">🔥</button>
+                <button class="rx-btn" onclick="sendReaction('💀')">💀</button>
+                <button class="rx-btn" onclick="sendReaction('🏴‍☠️')">🏴‍☠️</button>
+                <button class="rx-switch" onclick="openWatchSheet()">Autre table</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MENU DE LA TABLE (feuille du bas) -->
+    <div id="game-menu" class="gm-overlay" style="display:none;" onclick="if(event.target===this)closeGameMenu()">
+        <div class="gm-sheet">
+            <div class="gm-grab"></div>
+            <div class="gm-title">Table : <span id="current-room"></span></div>
+            <button class="gm-item" onclick="openRulesHelp(); closeGameMenu();" data-i18n="m_rules">Règles &amp; aide</button>
+            <button class="gm-item" onclick="copyInviteLink()" data-i18n="m_invite">Inviter des amis (lien)</button>
+            <button class="gm-item" id="btn-options" onclick="openGameOptions(); closeGameMenu();" style="display:none;" data-i18n="m_table_settings">Réglages de la table</button>
+            <button class="gm-item" onclick="openSettings(); closeGameMenu();" data-i18n="m_anim_sound">Animations &amp; son</button>
+            <button class="gm-item gm-danger" onclick="confirmLeaveGame()" data-i18n="m_leave">Quitter la table</button>
+            <button class="gm-item gm-cancel" onclick="closeGameMenu()">Fermer</button>
+        </div>
+    </div>
+
+    <!-- Couche des réactions flottantes -->
+    <div id="reaction-layer" class="reaction-layer"></div>
+
+    <!-- AIDE / RÈGLES EN JEU -->
+    <div id="rules-modal" class="modal" style="display:none;" onclick="if(event.target===this)closeRulesHelp()">
+        <div class="modal-content rules-content">
+            <h2 class="rules-title" data-i18n="rules_title">Règles &amp; aide</h2>
+            <div class="rules-body" data-i18n-html="rules_body">
+                <h3>But du jeu</h3>
+                <p>Chacun cache ses dés. À tour de rôle, on annonce une <b>mise</b> : un nombre de dés montrant une <b>face</b>, en comptant TOUS les dés de la table. Le dernier joueur avec des dés gagne.</p>
+                <h3>Monter la mise</h3>
+                <p>À ton tour tu dois soit monter la mise, soit contester. Pour monter : <b>même face</b> avec une quantité plus grande, ou <b>une face plus haute</b> à quantité égale (ou plus).</p>
+                <h3>Pacos (les 1)</h3>
+                <p>Les <b>1</b> sont des jokers : ils comptent comme n'importe quelle face. Passer aux Pacos : <b>moitié</b> de la quantité (arrondi au-dessus). Revenir des Pacos vers une face : <b>le double</b>.</p>
+                <h3>Menteur (Dudo)</h3>
+                <p>Tu penses que la mise est trop haute ? Annonce <b>Menteur</b>. On compte les dés : si la mise n'y est pas, celui qui a misé perd un dé ; sinon c'est toi qui en perds un.</p>
+                <h3>Vrai (Calza)</h3>
+                <p>Tu penses que la mise est <b>exactement</b> juste ? Annonce <b>Vrai</b>. Si le compte est pile la mise annoncée, tu es récompensé ; sinon tu perds un dé.</p>
+                <h3>Palifico</h3>
+                <p>Quand un joueur tombe à <b>1 dé</b>, il déclenche une manche <b>Palifico</b> : les Pacos ne sont plus des jokers, et la première face annoncée est <b>verrouillée</b> pour tout le tour. Chaque joueur n'a son Palifico qu'une fois.</p>
+                <h3>Qui commence ?</h3>
+                <p>Le premier joueur est <b>tiré au sort</b> à chaque partie. L'hôte peut aussi l'imposer dans <i>Réglages de la table → Premier joueur</i>.</p>
+            </div>
+            <button class="btn-secondary" onclick="closeRulesHelp(); openTutorial();" style="width:100%; margin-top:6px;" data-i18n="rules_replay">🧭 Revoir le tutoriel</button>
+            <button class="btn-primary" onclick="closeRulesHelp()" style="width:100%; margin-top:6px;" data-i18n="rules_got_it">Compris !</button>
+        </div>
+    </div>
+
+    <!-- Feuille : choisir une autre table à regarder -->
+    <div id="watch-sheet" class="gm-overlay" style="display:none;" onclick="if(event.target===this)closeWatchSheet()">
+        <div class="gm-sheet">
+            <div class="gm-grab"></div>
+            <div class="gm-title">Regarder une autre table</div>
+            <div id="watch-list" class="watch-list"></div>
+            <button class="gm-item gm-cancel" onclick="closeWatchSheet()">Fermer</button>
+        </div>
+    </div>
+
+    <div id="lobby-chat-widget">
+        <div id="lobby-chat-panel">
+            <h4 style="margin: 0 0 10px 0; color: var(--gold); font-family: 'Pirata One', cursive;">💬 Tchat de la Taverne</h4>
+            <div id="chat-messages" class="messages" style="height: 200px;"></div>
+            <div class="chat-input-area">
+                <input type="text" id="chat-input" placeholder="Parle à la taverne...">
+                <button class="btn-primary" onclick="sendMessage()">Envoyer</button>
+            </div>
+        </div>
+        <div id="lobby-chat-bubble" onclick="toggleLobbyChatPanel()"><svg viewBox="0 0 8.4666 8.4666" fill="currentColor" width="24" height="24" aria-hidden="true"><path d="M2.2835 2.9278c-0.061,-0.0252 -0.1288,-0.0393 -0.2002,-0.0393 -0.071,0 -0.1385,0.0141 -0.1996,0.0394 -0.0639,0.0266 -0.1218,0.0657 -0.1704,0.1141 -0.048,0.0482 -0.087,0.1062 -0.1136,0.17 -0.0252,0.0609 -0.0393,0.1284 -0.0393,0.1994 0,0.0709 0.0141,0.1385 0.0394,0.1995 0.0266,0.0639 0.0658,0.122 0.1141,0.1705 0.0482,0.048 0.1061,0.0871 0.17,0.1136 0.0609,0.0252 0.1284,0.0393 0.1994,0.0393 0.0709,0 0.1385,-0.0141 0.1995,-0.0394 0.0639,-0.0266 0.1219,-0.0658 0.1705,-0.1141 0.0473,-0.0476 0.0859,-0.104 0.1121,-0.1662l0.0015 -0.0039c0.0252,-0.0609 0.0393,-0.1283 0.0393,-0.1993 0,-0.069 -0.0133,-0.1348 -0.0374,-0.1947 -0.0247,-0.0615 -0.0608,-0.1173 -0.105,-0.1642l-0.0107 -0.0109c-0.0485,-0.0485 -0.1063,-0.0876 -0.1696,-0.1138zm3.5185 -0.0001c-0.0609,-0.0251 -0.1284,-0.0392 -0.1994,-0.0392 -0.0712,0 -0.1389,0.0141 -0.2001,0.0395 -0.064,0.0263 -0.1215,0.0655 -0.1697,0.1138 -0.0482,0.0483 -0.0872,0.1063 -0.1138,0.1702 -0.0252,0.0609 -0.0393,0.1284 -0.0393,0.1994 0,0.0709 0.0141,0.1385 0.0394,0.1995 0.0266,0.0639 0.0658,0.1219 0.1141,0.1705 0.0476,0.0473 0.104,0.0859 0.1662,0.1121l0.0039 0.0015c0.0609,0.0252 0.1283,0.0393 0.1993,0.0393 0.071,0 0.1385,-0.0141 0.1996,-0.0394 0.0639,-0.0266 0.1218,-0.0657 0.1704,-0.1141 0.0473,-0.0476 0.0858,-0.104 0.1121,-0.1663l0.0015 -0.0038c0.0252,-0.0609 0.0393,-0.1283 0.0393,-0.1993 0,-0.0709 -0.0141,-0.1384 -0.0395,-0.1996 -0.0265,-0.0639 -0.0657,-0.1219 -0.114,-0.1704 -0.0482,-0.048 -0.1061,-0.0871 -0.17,-0.1137zm-1.7589 0.0001c-0.061,-0.0252 -0.1288,-0.0393 -0.2002,-0.0393 -0.071,0 -0.1385,0.0141 -0.1996,0.0394 -0.0639,0.0266 -0.1218,0.0657 -0.1704,0.1141 -0.048,0.0482 -0.087,0.1062 -0.1136,0.17 -0.0252,0.0609 -0.0393,0.1284 -0.0393,0.1994 0,0.0709 0.0141,0.1385 0.0394,0.1995 0.0266,0.0639 0.0658,0.122 0.1141,0.1705 0.0482,0.048 0.1061,0.0871 0.17,0.1136 0.0609,0.0252 0.1284,0.0393 0.1994,0.0393 0.0691,0 0.1349,-0.0133 0.1948,-0.0374 0.0625,-0.0252 0.1192,-0.0622 0.1669,-0.108l0.0081 -0.0077c0.0485,-0.0485 0.0876,-0.1063 0.1138,-0.1696 0.0252,-0.061 0.0393,-0.1288 0.0393,-0.2002 0,-0.0713 -0.0141,-0.1392 -0.0393,-0.2002 -0.0262,-0.0633 -0.0653,-0.1211 -0.1138,-0.1696 -0.0485,-0.0485 -0.1063,-0.0876 -0.1696,-0.1138zm3.4317 1.6403l0 -1.5366c0.0005,-0.014 0.0039,-0.0282 0.0113,-0.0413 0.0228,-0.0405 0.0742,-0.0549 0.1147,-0.0321 0.063,0.0355 0.1218,0.0774 0.1753,0.1242l0.0047 0.0039c0.0546,0.0487 0.1046,0.1036 0.1486,0.1635 0.0634,0.0865 0.1139,0.1837 0.1478,0.2875 0.0329,0.1005 0.0508,0.2078 0.0508,0.3186l0 1.7992c0,0.1386 -0.028,0.2716 -0.0785,0.393 -0.0521,0.1254 -0.1287,0.2388 -0.2237,0.3338 -0.0952,0.0952 -0.2087,0.1718 -0.3341,0.2239 -0.1214,0.0503 -0.2542,0.0783 -0.3927,0.0783 -0.0176,0 -0.0336,0.0072 -0.0451,0.0187 -0.0115,0.0115 -0.0187,0.0275 -0.0187,0.0451l0 0.576c-0.0002,0.0192 -0.0067,0.0384 -0.0199,0.0542 -0.0299,0.0357 -0.0833,0.0405 -0.119,0.0106l-0.8209 -0.6875c-0.0056,-0.0052 -0.0127,-0.0097 -0.0206,-0.0128 -0.0069,-0.0027 -0.015,-0.0043 -0.0236,-0.0043l-2.2971 0c-0.0917,0 -0.1812,-0.0123 -0.2664,-0.0352 -0.0877,-0.0236 -0.1711,-0.0587 -0.2479,-0.1033 -0.0595,-0.0346 -0.1153,-0.0748 -0.1658,-0.1193 -0.0504,-0.0444 -0.0969,-0.0942 -0.1381,-0.1482 -0.0284,-0.0357 -0.0233,-0.0879 0.0119,-0.1174l0.12 -0.1004c0.0152,-0.0145 0.0358,-0.0234 0.0584,-0.0234l2.8999 0c0.1983,0 0.3876,-0.0397 0.56,-0.1114 0.179,-0.0745 0.3413,-0.1844 0.4774,-0.3205 0.1359,-0.1359 0.2455,-0.2979 0.32,-0.477 0.0716,-0.1722 0.1113,-0.3615 0.1113,-0.5598zm-6.3066 1.239c-0.1642,-0.0683 -0.3124,-0.1684 -0.4357,-0.2917l-0.0076 -0.0076c-0.1212,-0.1232 -0.2192,-0.2703 -0.2861,-0.4329 -0.0645,-0.1571 -0.1002,-0.3284 -0.1002,-0.5068l0 -2.3134c0,-0.1805 0.0364,-0.3536 0.1022,-0.5118 0.0671,-0.1615 0.1654,-0.3076 0.2869,-0.4303l0.0048 -0.0052c0.1233,-0.1233 0.2715,-0.2234 0.4357,-0.2917 0.1582,-0.0658 0.3312,-0.1022 0.5115,-0.1022l4.3264 0c0.1805,0 0.3534,0.0364 0.5117,0.1021 0.1643,0.0683 0.3125,0.1683 0.4358,0.2916 0.1233,0.1233 0.2233,0.2715 0.2916,0.4358 0.0657,0.1583 0.1021,0.3312 0.1021,0.5117l0 2.3134c0,0.1805 -0.0364,0.3534 -0.1021,0.5117 -0.0683,0.1643 -0.1683,0.3125 -0.2916,0.4358 -0.1233,0.1233 -0.2715,0.2233 -0.4358,0.2916 -0.1583,0.0657 -0.3312,0.1021 -0.5117,0.1021l-2.9535 0c-0.0086,0 -0.0167,0.0016 -0.0236,0.0043 -0.0067,0.0026 -0.0132,0.0067 -0.0186,0.0114l-1.1239 0.9408c-0.0152,0.0145 -0.0358,0.0234 -0.0584,0.0234 -0.0467,0 -0.0847,-0.038 -0.0847,-0.0847l0 -0.8314c0,-0.0176 -0.0072,-0.0336 -0.0187,-0.0451 -0.0112,-0.0116 -0.0272,-0.0187 -0.045,-0.0187 -0.1803,0 -0.3533,-0.0364 -0.5115,-0.1022z"/></svg><span id="lobby-chat-badge" class="notif-dot" style="display:none;"></span></div>
+    </div>
+
+    <!-- BULLE "+" POUR CRÉER UNE TABLE (mobile, onglet Les Tables uniquement) -->
+    <button id="create-bubble" onclick="createGame()" aria-label="Créer une table"><svg viewBox="0 0 1000 1000" fill="currentColor" width="26" height="26" aria-hidden="true"><path d="M900.5,500c0,50-40.9,90.8-90.8,90.8H590.8v218.8c0,50-40.9,90.8-90.8,90.8h0c-50,0-90.8-40.9-90.8-90.8V590.8H190.4c-50,0-90.8-40.9-90.8-90.8v0c0-50,40.9-90.8,90.8-90.8h218.8V190.4c0-50,40.9-90.8,90.8-90.8h0c50,0,90.8,40.9,90.8,90.8v218.8h218.8C859.6,409.2,900.5,450,900.5,500L900.5,500z"/></svg></button>
+
+    <button id="save-style-bubble" onclick="saveStyle()" disabled aria-label="Sauvegarder mon style"><svg viewBox="0 0 100 100" fill="currentColor" width="26" height="26" aria-hidden="true"><path d="M95,25.7L73.9,4.6c-1.6-1.6-3.8-2.5-6.1-2.5h-9.8v17.6c0,1.8-1.5,3.3-3.3,3.3H27.1c-1.8,0-3.3-1.5-3.3-3.3V2.1H11.1c-4.7,0-8.6,3.8-8.6,8.6v78.6c0,4.7,3.8,8.6,8.6,8.6h77.8c4.7,0,8.6-3.8,8.6-8.6V31.8C97.5,29.5,96.6,27.3,95,25.7z M77.1,78.5c0,1.8-1.5,3.3-3.3,3.3H26.1c-1.8,0-3.3-1.5-3.3-3.3V45.4c0-1.8,1.5-3.3,3.3-3.3h47.7c1.8,0,3.3,1.5,3.3,3.3V78.5z"/><path d="M44.2,17.4h6.5c0.7,0,1.3-0.6,1.3-1.3V2.2h-9.2v13.9C42.9,16.8,43.5,17.4,44.2,17.4z"/><path d="M64,51.3H36c-1.9,0-3.5,1.6-3.5,3.5s1.6,3.5,3.5,3.5H64c1.9,0,3.5-1.6,3.5-3.5S65.9,51.3,64,51.3z"/><path d="M64,65.6H36c-1.9,0-3.5,1.6-3.5,3.5s1.6,3.5,3.5,3.5H64c1.9,0,3.5-1.6,3.5-3.5S65.9,65.6,64,65.6z"/></svg></button>
+
+    <!-- WIDGETS FLOTTANTS (TCHAT IN-GAME + VOCAL) -->
+    <div id="widgets-container">
+
+        <!-- WIDGET TCHAT IN-GAME -->
+        <div id="game-chat-widget" style="display: none;">
+            <div id="game-chat-panel">
+                <h4 style="margin: 0 0 10px 0; color: var(--gold); font-family: 'Pirata One', cursive;">💬 Tchat de la Table</h4>
+                <div id="game-chat-messages" class="messages" style="height: 150px;"></div>
+                <div class="chat-input-area">
+                    <input type="text" id="game-chat-input" placeholder="Message secret...">
+                    <button class="btn-bid" onclick="sendGameMessage()">Envoyer</button>
+                </div>
+            </div>
+            <div id="game-chat-bubble" onclick="toggleGameChatPanel()"><svg viewBox="0 0 24 24" fill="currentColor" width="26" height="26" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm3 5a1.2 1.2 0 1 0 0 2.4A1.2 1.2 0 0 0 7 9zm5 0a1.2 1.2 0 1 0 0 2.4A1.2 1.2 0 0 0 12 9zm5 0a1.2 1.2 0 1 0 0 2.4A1.2 1.2 0 0 0 17 9z"/></svg></div>
+        </div>
+
+        <!-- WIDGET VOCAL -->
+        <div id="voice-widget-container" style="display: none;">
+            <div id="voice-panel">
+                <h4 style="margin: 0 0 10px 0; color: var(--gold); font-family: 'Pirata One', cursive; font-size: 1.2rem;">🎤 Salon Audio</h4>
+                <p id="voice-status" style="font-size: 0.9rem; margin-bottom: 5px;">Déconnecté</p>
+                <ul id="voice-users-list"></ul>
+                <button id="btn-ptt" class="ptt-btn" style="display:none;">🎙️ Maintiens pour parler</button>
+                <button id="btn-toggle-voice" class="btn-calza" onclick="toggleVoice()">Rejoindre</button>
+            </div>
+            <div id="voice-bubble" onclick="toggleVoicePanel()"><svg viewBox="0 0 100 100" fill="currentColor" width="24" height="24" aria-hidden="true"><path d="M50.5,71.4L50.5,71.4c7.6,0,13.8-6.2,13.8-13.8V52h-7.4c-1.2,0-2.2-1-2.2-2.2c0-1.2,1-2.2,2.2-2.2h7.4v-4.6h-7.4c-1.2,0-2.2-1-2.2-2.2c0-1.2,1-2.2,2.2-2.2h7.4v-4.6h-7.4c-1.2,0-2.2-1-2.2-2.2c0-1.2,1-2.2,2.2-2.2h7.4v-4.6h-7.4c-1.2,0-2.2-1-2.2-2.2c0-1.2,1-2.2,2.2-2.2h7.4v-1.2c0-7.6-6.2-13.8-13.8-13.8h0c-7.6,0-13.8,6.2-13.8,13.8v1.2H44c1.2,0,2.2,1,2.2,2.2c0,1.2-1,2.2-2.2,2.2h-7.4v4.6H44c1.2,0,2.2,1,2.2,2.2c0,1.2-1,2.2-2.2,2.2h-7.4v4.6H44c1.2,0,2.2,1,2.2,2.2c0,1.2-1,2.2-2.2,2.2h-7.4v4.6H44c1.2,0,2.2,1,2.2,2.2c0,1.2-1,2.2-2.2,2.2h-7.4v5.6C36.6,65.2,42.8,71.4,50.5,71.4z"/><path d="M67.1,34.4v24.2c0,9.2-7.4,16.6-16.6,16.6c-9.2,0-16.6-7.4-16.6-16.6V34.4v-5h-5.3v30.1c0,9.6,6.2,17.8,14.8,20.7c-5.7,2.7-9.6,8.4-9.6,15.1h16.7h16.7c0-6.7-3.9-12.5-9.6-15.1c8.6-2.9,14.8-11.1,14.8-20.7V29.4h-5.3V34.4z"/></svg><span id="voice-dot" class="notif-dot" style="display:none;"></span></div>
+        </div>
+    </div>
+
+    <!-- WIDGET ÉMOTES (bulle à droite en jeu) -->
+    <div id="emote-widget">
+        <div id="emote-panel"></div>
+        <div id="emote-bubble" onclick="toggleEmotePanel()"><svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zM8.5 11a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm7 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM12 17.5c2.33 0 4.32-1.45 5.12-3.5H6.88c.8 2.05 2.79 3.5 5.12 3.5z"/></svg></div>
+    </div>
+
+    <!-- Calques globaux : toast + émotes flottantes -->
+    <div class="ambient-layer" id="ambient-layer" aria-hidden="true"></div>
+    <div id="toast" class="toast"></div>
+    <div id="emote-layer" class="emote-layer"></div>
+    <button id="spec-return" class="spec-return" onclick="returnFromSpectate()">‹ Retour au tournoi</button>
+
+    <div id="palifico-cinematic" class="pc-overlay" style="display:none;" aria-hidden="true">
+        <div class="pc-rings"><span></span><span></span><span></span></div>
+        <div class="pc-content">
+            <div class="pc-who"></div>
+            <div class="pc-title" data-text="PALIFICO">PALIFICO</div>
+            <div class="pc-sub">Les règles changent</div>
+        </div>
+        <div class="pc-flash"></div>
+    </div>
+
+    <div id="challenge-cinematic" class="cc-overlay" style="display:none;" aria-hidden="true">
+        <div class="cc-rings"><span></span><span></span></div>
+        <div class="cc-content">
+            <div class="cc-who"></div>
+            <div class="cc-title" data-text=""></div>
+            <div class="cc-sub"></div>
+        </div>
+        <div class="cc-flash"></div>
+    </div>
+
+    <div id="bid-cinematic" class="bc-overlay" style="display:none;" aria-hidden="true">
+        <div class="bc-content">
+            <div class="bc-who"></div>
+            <div class="bc-bid"></div>
+        </div>
+    </div>
+
+    <div id="reveal-count" class="rc-overlay" style="display:none;" aria-hidden="true">
+        <div class="rc-head">
+            <div class="rc-target" id="rc-target"></div>
+            <div class="rc-bid" id="rc-bid"></div>
+        </div>
+        <div class="rc-counter">
+            <span class="rc-num" id="rc-num">0</span>
+            <span class="rc-goal" id="rc-goal"></span>
+        </div>
+        <div class="rc-verdict" id="rc-verdict"></div>
+        <div class="rc-board" id="rc-board"></div>
+    </div>
+
+    <div id="storm-overlay" class="storm-overlay" style="display:none;" aria-hidden="true">
+        <div class="storm-bg"></div>
+        <div class="storm-rain"></div>
+        <div class="storm-flash"></div>
+        <canvas class="storm-canvas"></canvas>
+    </div>
+
+    <div id="skin-unlock" class="su-overlay" style="display:none;" onclick="closeSkinUnlock()">
+        <canvas class="su-confetti"></canvas>
+        <div class="su-card">
+            <div class="su-label">Nouveau dé débloqué</div>
+            <div class="su-die-wrap"><span id="su-die" class="su-die"></span><span class="su-shine"></span></div>
+            <div class="su-name" id="su-name"></div>
+            <div class="su-hint">Équipe-le dans « Ton Style »</div>
+        </div>
+    </div>
+
+    <div id="victory-screen" class="vic-screen" style="display:none;">
+        <div class="vic-rays"></div>
+        <canvas class="vic-confetti"></canvas>
+        <div class="vic-inner">
+            <div class="vic-crown">👑</div>
+            <div class="vic-label" id="vic-label">Victoire</div>
+            <div class="vic-name" id="vic-name"></div>
+            <button class="vic-btn" onclick="closeVictoryScreen()">Retour à la taverne</button>
+        </div>
+    </div>
+
+    <div id="champion-screen" class="champ-screen" style="display:none;">
+        <div class="champ-inner">
+            <div class="champ-trophy">🏆</div>
+            <div class="champ-label" id="champ-label">Champion du tournoi</div>
+            <div class="champ-name" id="champ-name"></div>
+            <div class="champ-recap-title">Son parcours vers la victoire</div>
+            <div class="champ-recap" id="champ-recap"></div>
+            <button class="champ-btn" onclick="closeChampionScreen()">Continuer</button>
+        </div>
+    </div>
+
+    <div id="tournament-screen" class="screen">
+        <div class="tourney-topbar">
+            <button class="tourney-back" onclick="backFromTournament()">‹ Retour</button>
+            <div id="tourney-head" class="tourney-headinfo"></div>
+        </div>
+        <div id="tourney-body" class="tourney-screen-body"></div>
+    </div>
+
+    <!-- Barre de navigation mobile (façon appli) — visible uniquement sur petit écran, dans le lobby -->
+    <nav id="bottom-nav" class="bottom-nav" aria-label="Navigation">
+        <button id="bnav-tavern" class="bnav-item active" onclick="switchLobbyTab('tavern')" aria-label="Tables"><span class="bnav-ico"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="m94.387 49.602c-0.039063-0.16016-4.1445-16.137-7.3906-26.684-3.168-10.293-14.32-13.191-14.434-13.219-0.050781-0.007813-8.6094-1.5547-18.66-3.2812-1.2109-0.20703-2.4766-0.3125-3.7578-0.3125-8.3438 0-15.434 4.4102-15.504 4.4531l-22.879 16.828c-10.125 8.4531-5.6484 17.246-5.6016 17.332 0.09375 0.19922 8.582 18.082 12.84 26.301 4.1953 8.0859 15.699 14.312 15.816 14.375l16.414 7.7969c1.5039 0.45703 3.1406 0.70312 4.7969 0.70312 8.3984 0 15.008-6.3008 15.074-6.3633 0.097657-0.10156 11.473-12.195 18.789-19.812 7.1055-7.4062 4.5234-18.012 4.4961-18.117zm-35.785-34.766c3.1445-1.3281 6.1914-1.2227 6.8125 0.23828 0.61719 1.457-1.4336 3.7188-4.5781 5.0469-3.1484 1.3242-6.1914 1.2188-6.8125-0.23828-0.61328-1.4609 1.4375-3.7188 4.5781-5.0469zm16.637 2.4062 0.64844 0.77734-27.527 23.113-0.65234-0.77734zm-34.816-5.8164c2.9102-1.2266 5.7344-1.1328 6.3047 0.21875 0.57031 1.3477-1.3281 3.4453-4.2383 4.6758-2.9141 1.2266-5.7344 1.1289-6.3086-0.22266-0.57031-1.3477 1.3281-3.4414 4.2422-4.6719zm-18.738 14.316c2.9727-1.2539 5.8594-1.1562 6.4414 0.22656 0.58203 1.3789-1.3594 3.5156-4.3281 4.7734-2.9766 1.2539-5.8555 1.1523-6.4375-0.22656-0.58594-1.3828 1.3516-3.5195 4.3242-4.7734zm-13.453 13.227 0.30078-0.96875 24.449 7.6016-0.30078 0.96875zm21.27 37.906c-0.8125 0.72656-3.0938-0.48438-5.0938-2.707-1.9961-2.2266-2.9531-4.6211-2.1406-5.3516 0.81641-0.73047 3.0938 0.47656 5.0898 2.7031 2 2.2227 2.957 4.6211 2.1445 5.3555zm3.707-5.9609c-0.87891 0.78906-3.3359-0.51953-5.4883-2.9141-2.1523-2.3984-3.1836-4.9805-2.3047-5.7695 0.87891-0.78906 3.3359 0.51562 5.4844 2.9141 2.1523 2.3984 3.1875 4.9805 2.3086 5.7695zm4.3477-6.7031c-0.96875 0.86719-3.6758-0.57422-6.0469-3.2148-2.3711-2.6445-3.5078-5.4883-2.5391-6.3594 0.96875-0.86719 3.6758 0.56641 6.0469 3.2109 2.3672 2.6445 3.5078 5.4883 2.5391 6.3633zm-3.3828-28.52c-0.64844-1.543 1.5195-3.9375 4.8477-5.3398 3.332-1.4062 6.5547-1.293 7.2109 0.25 0.65234 1.543-1.5195 3.9375-4.8477 5.3438-3.332 1.4023-6.5547 1.2891-7.2109-0.25391zm21.406 53.73-13.355-32.773 0.9375-0.38281 13.352 32.77zm1.7148-30.688c-2.3164-0.76172-3.3086-4.0781-2.2148-7.4062s3.8516-5.4102 6.1719-4.6523c2.3125 0.75781 3.3047 4.0742 2.2148 7.4023-1.0938 3.332-3.8555 5.4102-6.1719 4.6562zm14.184 16.906c-1.0078 3.0625-3.5508 4.9805-5.6836 4.2812-2.1328-0.69922-3.0469-3.75-2.0391-6.8164 1.0039-3.0625 3.5469-4.9805 5.6797-4.2812 2.1328 0.69922 3.0469 3.7539 2.043 6.8164zm5.2266-18.898c-1.0703 3.2656-3.6523 5.3516-5.7656 4.6602-2.1133-0.69531-2.9531-3.9062-1.8828-7.1719 1.0703-3.2656 3.6523-5.3516 5.7656-4.6602 2.1055 0.69141 2.9531 3.9023 1.8828 7.1719zm-0.73047-14.953c-2.0391-0.67187-2.8242-3.8594-1.7539-7.1289 1.0742-3.2656 3.5938-5.3711 5.6328-4.7031 2.0391 0.66797 2.8242 3.8594 1.7539 7.125-1.0703 3.2695-3.5938 5.375-5.6328 4.707zm12.551 17.117c-0.97266 2.957-3.2969 4.8516-5.1914 4.2305-1.8945-0.62109-2.6484-3.5234-1.6719-6.4805 0.96875-2.957 3.2891-4.8516 5.1875-4.2305 1.8945 0.62109 2.6445 3.5234 1.6758 6.4805z"/></svg></span></button>
+        <button id="bnav-campagne" class="bnav-item" onclick="switchLobbyTab('campagne')" aria-label="Campagne"><span class="bnav-ico"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5a2.5 2.5 0 110-5 2.5 2.5 0 010 5z"/></svg></span></button>
+        <button id="bnav-style" class="bnav-item" onclick="switchLobbyTab('style')" aria-label="Style"><span class="bnav-ico"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M13,7.5 C12.173,7.5 11.5,6.827 11.5,6 C11.5,5.173 12.173,4.5 13,4.5 C13.827,4.5 14.5,5.173 14.5,6 C14.5,6.827 13.827,7.5 13,7.5 M10,19 C8.897,19 8,18.103 8,17 C8,15.897 8.897,15 10,15 C11.103,15 12,15.897 12,17 C12,18.103 11.103,19 10,19 M6,14.5 C5.173,14.5 4.5,13.827 4.5,13 C4.5,12.173 5.173,11.5 6,11.5 C6.827,11.5 7.5,12.173 7.5,13 C7.5,13.827 6.827,14.5 6,14.5 M8,6 C9.103,6 10,6.897 10,8 C10,9.103 9.103,10 8,10 C6.897,10 6,9.103 6,8 C6,6.897 6.897,6 8,6 M21.814,10.069 C21.022,5.954 17.716,2.761 13.587,2.123 C10.365,1.622 7.21,2.648 4.929,4.93 C2.648,7.211 1.625,10.367 2.123,13.59 C2.762,17.718 5.956,21.023 10.07,21.813 C10.714,21.938 11.359,22 12.001,22 C12.646,22 13.288,21.938 13.921,21.813 C14.814,21.636 15.587,21.085 16.043,20.301 C16.495,19.523 16.59,18.589 16.304,17.733 C16.165,17.318 16.267,16.886 16.576,16.576 C16.876,16.276 17.294,16.173 17.738,16.305 C18.59,16.591 19.524,16.495 20.301,16.042 C21.085,15.587 21.636,14.813 21.812,13.922 C22.063,12.658 22.063,11.362 21.814,10.069"/></svg></span></button>
+        <button id="bnav-leaderboard" class="bnav-item" onclick="switchLobbyTab('leaderboard')" aria-label="Classement"><span class="bnav-ico"><svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="m67.969 76.562v16.016h-2.3438v-35.547h3.125v-6.25h-37.5v6.25h3.125v35.547h-2.3438v-28.516h-27.344v6.25h3.125v22.266h-1.5625c-0.64062 0-1.1719 0.53125-1.1719 1.1719s0.53125 1.1719 1.1719 1.1719h87.5c0.64062 0 1.1719-0.53125 1.1719-1.1719s-0.53125-1.1719-1.1719-1.1719h-1.5625v-16.016h3.125v-6.25h-27.344z"/><path d="m59.344 31.297s0.015625-0.03125 0.03125-0.046875c0.375-0.45312 0.89062-1.1094 1.4531-1.9219l7.2344-2.0625c2.2031-0.625 3.8906-2.4062 4.3906-4.6562l2.0938-9.4375c0.20312-0.9375-0.015625-1.8906-0.60938-2.6406s-1.4844-1.1719-2.4375-1.1719h-6.5469c-0.26562-1.2031-0.57812-2.2656-0.875-3.125h-28.125c-0.29688 0.85938-0.625 1.9219-0.875 3.125h-6.5469c-0.95312 0-1.8438 0.42188-2.4375 1.1719s-0.8125 1.7031-0.60938 2.6406l2.0938 9.4375c0.5 2.2344 2.1719 4.0156 4.3906 4.6562l7.2344 2.0625c0.5625 0.79688 1.0781 1.4531 1.4531 1.9219 0 0.015625 0.015625 0.03125 0.03125 0.046875 1.2188 1.6406 2.8281 2.8906 4.6562 3.6719v6.9531c0 2.9531-1.8906 5.5781-4.6875 6.5h20.312l-1.0625-0.26562c-3.0469-0.76562-5.1875-3.5-5.1875-6.6562v-6.5469c1.8281-0.79688 3.4375-2.0312 4.6562-3.6719zm12.141-18.797-2.0938 9.4375c-0.25 1.125-1.0938 2.0156-2.1875 2.3281l-4.1406 1.1875c1.1875-2.5156 2.2188-5.6719 2.4219-9.3906 0.0625-1.2656 0.03125-2.4375-0.0625-3.5469h6.0781zm-38.688 11.766c-1.1094-0.3125-1.9375-1.2031-2.1875-2.3281l-2.0938-9.4375h6.0781c-0.09375 1.1094-0.14062 2.2969-0.0625 3.5469 0.20312 3.7344 1.2344 6.875 2.4219 9.3906l-4.1406-1.1875z"/></svg></span></button>
+        <button id="bnav-profil" class="bnav-item" onclick="switchLobbyTab('profil')" aria-label="Profil"><span class="bnav-ico"><svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><path d="M32,29.39c7.57,0,13.73-6.15,13.73-13.7S39.57,1.96,32,1.96s-13.7,6.16-13.7,13.73,6.15,13.7,13.7,13.7Z"/><path d="M50.25,42.01c-4.63-5.21-11.28-8.19-18.25-8.19s-13.59,2.98-18.21,8.17c-4.65,5.23-6.86,12.21-6.05,19.16,.04,.34,.25,.64,.56,.79,.14,.07,.29,.1,.43,.1,.18,0,.37-.05,.53-.15,12.77-7.93,32.75-7.94,45.49,0,.29,.18,.65,.2,.96,.05,.31-.15,.52-.44,.56-.78,.82-6.94-1.37-13.92-6.01-19.15Z"/></svg></span></button>
+    </nav>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="glyphs.js"></script>
+    <script src="app.js"></script>
+
+    <!-- Service worker géré par le salon (portail) -->
+</body>
+</html>
