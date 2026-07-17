@@ -179,7 +179,7 @@ function placeholder(name, emoji) {
     <p>Cet espace est prêt à être construit. La connexion est déjà partagée avec le salon.</p>
     <a class="btn btn-ghost" href="/">← Retour au salon</a></main></body></html>`;
 }
-app.get('/perudo', requireAuth, (req, res) => res.send(placeholder('Perudo — La Taverne', '🎲')));
+app.get('/perudo', requireAuth, (req, res) => require('./perudo/game')(app, io));
 app.get('/recettes', requireAuth, (req, res) => res.send(placeholder('Les Recettes', '🍽️')));
 app.get('/media', requireAuth, (req, res) => res.send(placeholder('Espace Média', '🎞️')));
 app.get('/mots-fleches', requireAuth, (req, res) => res.send(placeholder('Mots Fléchés du jour', '🧩')));
