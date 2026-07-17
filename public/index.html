@@ -2,52 +2,57 @@
 <html lang="fr">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
     <meta name="theme-color" content="#14100b">
     <title>Le Salon</title>
     <link rel="manifest" href="/manifest.json">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/style.css">
 </head>
-<body>
-    <!-- Chargement -->
-    <div id="boot" class="boot"><div class="boot-ring"></div></div>
+<body class="is-boot">
 
-    <!-- SAS D'ENTRÉE (connexion) -->
-    <main id="entry" class="entry" hidden>
-        <div class="entry-card">
+    <!-- Chargement -->
+    <div class="boot" id="boot"><div class="boot-ring"></div></div>
+
+    <!-- SAS D'ENTRÉE -->
+    <main class="entry" id="entry">
+        <form class="entry-card" id="entry-form" autocomplete="on" novalidate>
             <div class="crest">✦</div>
             <h1 class="entry-title">Le Salon</h1>
             <p class="entry-sub">Un nom, un mot de passe, et la porte s'ouvre.</p>
-            <div class="field">
-                <input id="pseudo" type="text" placeholder="Ton nom" autocomplete="username" autocapitalize="off" autocorrect="off" maxlength="20">
-            </div>
-            <div class="field">
-                <input id="password" type="password" placeholder="Ton mot de passe" autocomplete="current-password">
-            </div>
-            <p class="hint">Astuce : mets un mot de passe simple et unique, pas un que tu réutilises ailleurs.</p>
-            <div class="entry-actions">
-                <button class="btn-primary" id="btn-login">Entrer</button>
-                <button class="btn-ghost" id="btn-register">Créer un compte</button>
-            </div>
-            <div id="entry-error" class="entry-error" role="alert"></div>
-        </div>
+
+            <input class="input" id="pseudo" type="text" placeholder="Ton nom" autocomplete="username"
+                   autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="20">
+            <input class="input" id="password" type="password" placeholder="Ton mot de passe" autocomplete="current-password">
+
+            <p class="hint">Astuce : choisis un mot de passe simple et unique, pas un que tu utilises ailleurs.</p>
+
+            <button class="btn btn-primary" id="btn-login" type="submit">Entrer</button>
+            <button class="btn btn-ghost" id="btn-register" type="button">Créer un compte</button>
+
+            <div class="entry-error" id="entry-error" role="alert" aria-live="polite"></div>
+        </form>
     </main>
 
-    <!-- LE SALON (grille d'apps) -->
-    <main id="hub" class="hub" hidden>
-        <header class="hub-head">
-            <div class="hub-greet">
-                <span class="hub-eyebrow">Bienvenue</span>
-                <h1 id="hub-name" class="hub-title">—</h1>
-            </div>
-            <button class="btn-logout" id="btn-logout" aria-label="Se déconnecter">Sortir</button>
-        </header>
-        <div class="rule"></div>
-        <section class="tiles" id="tiles" aria-label="Applications"></section>
-        <footer class="hub-foot">Ton salon personnel · d'autres pièces arrivent bientôt.</footer>
+    <!-- LE SALON -->
+    <main class="hub" id="hub">
+        <div class="hub-inner">
+            <header class="hub-head">
+                <div class="hub-greet">
+                    <span class="hub-eyebrow">Bienvenue</span>
+                    <h1 class="hub-name" id="hub-name">—</h1>
+                </div>
+                <button class="btn-logout" id="btn-logout" type="button">Sortir</button>
+            </header>
+
+            <div class="rule" aria-hidden="true"></div>
+
+            <section class="tiles" id="tiles" aria-label="Applications"></section>
+
+            <p class="hub-foot">D'autres pièces ouvriront bientôt.</p>
+        </div>
     </main>
 
     <script src="/app.js"></script>

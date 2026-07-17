@@ -177,7 +177,7 @@ function placeholder(name, emoji) {
     <body class="app-placeholder"><main class="ph-card">
     <div class="ph-emoji">${emoji}</div><h1>${name}</h1>
     <p>Cet espace est prêt à être construit. La connexion est déjà partagée avec le salon.</p>
-    <a class="btn-ghost" href="/">← Retour au salon</a></main></body></html>`;
+    <a class="btn btn-ghost" href="/">← Retour au salon</a></main></body></html>`;
 }
 app.get('/perudo', requireAuth, (req, res) => res.send(placeholder('Perudo — La Taverne', '🎲')));
 app.get('/recettes', requireAuth, (req, res) => res.send(placeholder('Les Recettes', '🍽️')));
