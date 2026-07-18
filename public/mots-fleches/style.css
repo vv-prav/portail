@@ -144,3 +144,11 @@ body.not-started .mf-actions { opacity: 0.35; pointer-events: none; }
 .mf-inline-board { background: linear-gradient(165deg, var(--ink-3), var(--ink-2)); border: 1px solid var(--line);
                    border-radius: 12px; padding: 12px; }
 .mf-inline-board[hidden] { display: none; }
+
+/* Pastille d'état sur les onglets de niveau */
+.lv { position: relative; }
+.lv::after { content: ''; position: absolute; top: 5px; right: 6px; font-size: 0.62rem; line-height: 1; }
+.lv.st-encours::after { content: '●'; color: var(--brass); }
+.lv.st-fini::after { content: '✓'; color: var(--good); font-weight: 900; }
+.lv.st-abandon::after { content: '✕'; color: var(--muted); }
+.lv.on.st-encours::after, .lv.on.st-fini::after, .lv.on.st-abandon::after { color: #2a1c07; }

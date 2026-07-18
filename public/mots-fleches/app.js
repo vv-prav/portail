@@ -198,6 +198,7 @@ async function finish() {
     renderBoard((data && data.board) || [], $('mf-board'));
     showInlineBoard((data && data.board) || []);
     $('mf-end').hidden = false;
+    refreshStates();
 }
 // Classement affiché dans la page, sous la grille du niveau terminé
 function showInlineBoard(board) {
@@ -235,6 +236,7 @@ $('mf-confirm-yes').addEventListener('click', async () => {
     renderBoard((b.data && b.data.board) || [], $('mf-board'));
     showInlineBoard((b.data && b.data.board) || []);
     $('mf-end').hidden = false;
+    refreshStates();
 });
 
 // --- Démarrage de la grille (le chrono part et ne s'arrête plus) ---
@@ -244,6 +246,7 @@ async function beginGrid() {
     started = true;
     document.body.classList.remove('not-started');
     startTimer();
+    refreshStates();
     const first = inputCells[0];
     if (first) selectCell(first.r, first.c, false);
 }
@@ -288,14 +291,26 @@ document.querySelectorAll('.lv').forEach(b => {
     b.addEventListener('click', () => { if (b.dataset.lv !== level) { level = b.dataset.lv; localStorage.setItem('mf_level', level); load(); } });
 });
 function paintLevels() { document.querySelectorAll('.lv').forEach(b => b.classList.toggle('on', b.dataset.lv === level)); }
+// Pastille d'état sur chaque onglet : ● en cours · ✓ terminée
+async function refreshStates() {
+    const { data } = await api('/api/mf/states');
+    if (!data || !data.states) return;
+    document.querySelectorAll('.lv').forEach(b => {
+        const st = data.states[b.dataset.lv];
+        b.classList.remove('st-encours', 'st-fini', 'st-abandon');
+        if (st && st !== 'neuf') b.classList.add('st-' + st);
+    });
+}
 
 // ---------- Chargement ----------
 async function load() {
     document.body.className = 'is-boot';
     paintLevels();
     values = {}; active = null; dir = 'right'; solved = false; gaveUp = false;
-    seconds = 0; stopTimer(); $('mf-timer').textContent = '0:00';
+    seconds = 0; startedAt = null; started = false;          // chaque grille a SON chrono
+    stopTimer(); $('mf-timer').textContent = '0:00';
     $('mf-end').hidden = true; $('mf-confirm').hidden = true;
+    $('mf-inline-board').hidden = true;
 
     const today = await api('/api/mf/today?level=' + level);
     if (!today.ok) { location.href = '/'; return; }
@@ -331,4 +346,4 @@ async function load() {
 }
 
 buildKeyboard();
-load();
+load().then(refreshStates);

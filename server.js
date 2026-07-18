@@ -316,6 +316,17 @@ app.post('/api/mf/check', requireAuth, (req, res) => {
     res.json({ slots, wrong, allOk: slots.every(s => s.ok) });
 });
 
+// État des 3 grilles du jour (pour les pastilles sur les onglets)
+app.get('/api/mf/states', requireAuth, (req, res) => {
+    const user = currentUser(req), date = mfTodayId();
+    const out = {};
+    for (const lv of MF_LEVELS) {
+        const p = mfData.progress[user + '|' + date + '|' + lv];
+        out[lv] = !p ? 'neuf' : (p.solved ? 'fini' : (p.gaveUp ? 'abandon' : (p.startedAt ? 'encours' : 'neuf')));
+    }
+    res.json({ states: out });
+});
+
 // Classement du jour
 app.get('/api/mf/board', requireAuth, (req, res) => {
     const date = mfTodayId(), level = mfLevel(req.query.level), user = currentUser(req);
