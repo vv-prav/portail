@@ -11,7 +11,7 @@ let els = {};                 // "r,c" -> élément
 let slots = [], cellSlots = {}, inputCells = [];
 let active = null, dir = 'right';
 let solved = false, gaveUp = false;
-let seconds = 0, timerId = null, running = false;
+let seconds = 0, timerId = null, startedAt = null, started = false;
 
 async function api(path, body) {
     const res = await fetch(path, {
@@ -25,11 +25,15 @@ async function api(path, body) {
 }
 
 // ---------- Chronomètre ----------
-function fmt(s) { return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
-function tick() { if (running) { seconds++; $('mf-timer').textContent = fmt(seconds); } }
-function startTimer() { if (!timerId) timerId = setInterval(tick, 1000); running = true; }
-function stopTimer() { running = false; }
-document.addEventListener('visibilitychange', () => { if (document.hidden) stopTimer(); else if (!solved && !gaveUp) startTimer(); });
+function fmt(s) { const m = Math.floor(s / 60); return m + ':' + String(s % 60).padStart(2, '0'); }
+// Le chrono court en continu depuis le démarrage (même si on quitte l'app)
+function tick() {
+    if (!startedAt || solved || gaveUp) return;
+    seconds = Math.floor((Date.now() - startedAt) / 1000);
+    $('mf-timer').textContent = fmt(seconds);
+}
+function startTimer() { if (!timerId) timerId = setInterval(tick, 1000); tick(); }
+function stopTimer() { clearInterval(timerId); timerId = null; }
 
 // ---------- Construction ----------
 function buildModel() {
@@ -60,11 +64,15 @@ function renderGrid() {
                 cell.addEventListener('click', () => selectCell(r, c, true));
                 els[key(r, c)] = cell;
             } else {
-                const def = P.defs.find(d => d.r === r && d.c === c);
-                if (def) {
-                    cell.className = 'mf-def';
-                    cell.innerHTML = `<span class="def-txt">${def.clue}</span><span class="def-arrow">${def.dir === 'right' ? '▶' : '▼'}</span>`;
-                    cell.addEventListener('click', (e) => { e.stopPropagation(); selectSlotByDef(def); });
+                const here = P.defs.filter(d => d.r === r && d.c === c);
+                if (here.length) {
+                    cell.className = 'mf-def' + (here.length > 1 ? ' two' : '');
+                    cell.innerHTML = here.map(d =>
+                        `<span class="def-one"><span class="def-txt">${d.clue}</span>` +
+                        `<span class="def-arrow ${d.dir}">${d.dir === 'right' ? '▶' : '▼'}</span></span>`).join('');
+                    cell.querySelectorAll('.def-one').forEach((el, i) => {
+                        el.addEventListener('click', (e) => { e.stopPropagation(); selectSlotByDef(here[i]); });
+                    });
                 } else cell.className = 'mf-block';
             }
             g.appendChild(cell);
@@ -119,7 +127,7 @@ function step(delta) {
 
 // ---------- Saisie ----------
 function setLetter(ch) {
-    if (!active || solved || gaveUp) return;
+    if (!active || solved || gaveUp || !started) return;
     const k = key(active.r, active.c);
     if (!els[k]) return;
     values[k] = ch;
@@ -128,7 +136,7 @@ function setLetter(ch) {
     step(1); refreshHighlights(); saveSoon(); maybeSolved();
 }
 function backspace() {
-    if (!active || solved || gaveUp) return;
+    if (!active || solved || gaveUp || !started) return;
     const k = key(active.r, active.c);
     if (values[k]) { delete values[k]; els[k].querySelector('.mf-letter').textContent = ''; }
     else {
@@ -180,17 +188,26 @@ async function finish() {
     if (solved) return;
     solved = true; stopTimer();
     await api('/api/mf/progress', { level, cells: values });
-    const { data } = await api('/api/mf/solve', { level, seconds });
+    const { data } = await api('/api/mf/solve', { level });
+    if (data && data.seconds) { seconds = data.seconds; $('mf-timer').textContent = fmt(seconds); }
     $('mf-end-emoji').textContent = '🎉';
     $('mf-end-title').textContent = 'Grille résolue !';
     $('mf-end-sub').textContent = data && data.rank
         ? `Ton temps : ${fmt(data.seconds || seconds)} · ${data.rank}${data.rank === 1 ? 'er' : 'e'} sur ${data.total}`
         : `Ton temps : ${fmt(seconds)}`;
-    renderBoard((data && data.board) || []);
+    renderBoard((data && data.board) || [], $('mf-board'));
+    showInlineBoard((data && data.board) || []);
     $('mf-end').hidden = false;
 }
-function renderBoard(board) {
-    const box = $('mf-board');
+// Classement affiché dans la page, sous la grille du niveau terminé
+function showInlineBoard(board) {
+    const box = $('mf-inline-board');
+    if (!box) return;
+    renderBoard(board, box);
+    box.hidden = false;
+}
+function renderBoard(board, box) {
+    if (!box) box = $('mf-board');
     if (!board.length) { box.innerHTML = '<p class="mf-board-empty">Personne d’autre n’a encore terminé aujourd’hui.</p>'; return; }
     box.innerHTML = '<div class="mf-board-title">Classement du jour · ' + (P.levelLabel || level) + '</div>' +
         board.slice(0, 12).map((e, i) => `<div class="mf-board-row${i === 0 ? ' first' : ''}">
@@ -215,9 +232,22 @@ $('mf-confirm-yes').addEventListener('click', async () => {
     $('mf-end-emoji').textContent = '🏳️';
     $('mf-end-title').textContent = 'Réponses révélées';
     $('mf-end-sub').textContent = 'Pas de classement cette fois — retente ta chance demain !';
-    renderBoard((b.data && b.data.board) || []);
+    renderBoard((b.data && b.data.board) || [], $('mf-board'));
+    showInlineBoard((b.data && b.data.board) || []);
     $('mf-end').hidden = false;
 });
+
+// --- Démarrage de la grille (le chrono part et ne s'arrête plus) ---
+async function beginGrid() {
+    const { data } = await api('/api/mf/start', { level });
+    startedAt = (data && data.startedAt) || Date.now();
+    started = true;
+    document.body.classList.remove('not-started');
+    startTimer();
+    const first = inputCells[0];
+    if (first) selectCell(first.r, first.c, false);
+}
+$('mf-start-btn').addEventListener('click', beginGrid);
 
 $('mf-check').addEventListener('click', () => doCheck(true));
 $('mf-end-close').addEventListener('click', () => { $('mf-end').hidden = true; });
@@ -278,14 +308,26 @@ async function load() {
     if (pr) {
         values = pr.cells || {};
         solved = !!pr.solved; gaveUp = !!pr.gaveUp;
-        seconds = pr.seconds || 0;
+        startedAt = pr.startedAt || null;
+        seconds = (prog.data.elapsed != null) ? prog.data.elapsed : (pr.seconds || 0);
         for (const k in values) if (els[k]) els[k].querySelector('.mf-letter').textContent = values[k];
-        if (seconds) $('mf-timer').textContent = fmt(seconds);
+        $('mf-timer').textContent = fmt(seconds);
     }
-    document.body.className = 'is-ready';
-    if (solved || gaveUp) { await doCheck(false); }
-    else { startTimer(); }
-    $('mf-clue').textContent = 'Touche une case pour commencer.';
+    started = !!startedAt;
+    document.body.className = 'is-ready' + (started ? '' : ' not-started');
+
+    if (solved || gaveUp) {
+        stopTimer();
+        await doCheck(false);                                  // remet les mots trouvés en vert
+        const b = await api('/api/mf/board?level=' + level);
+        showInlineBoard((b.data && b.data.board) || []);        // classement visible dans l'onglet
+    } else if (started) {
+        await doCheck(false);                                  // on retrouve ses mots déjà validés
+        startTimer();
+        $('mf-clue').textContent = 'Touche une case pour continuer.';
+    } else {
+        $('mf-clue').textContent = 'Appuie sur « Commencer » pour lancer la grille.';
+    }
 }
 
 buildKeyboard();

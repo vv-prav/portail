@@ -225,7 +225,20 @@ app.get('/api/mf/today', requireAuth, (req, res) => {
 app.get('/api/mf/progress', requireAuth, (req, res) => {
     const level = mfLevel(req.query.level);
     const key = currentUser(req) + '|' + mfTodayId() + '|' + level;
-    res.json({ progress: mfData.progress[key] || null });
+    const p = mfData.progress[key] || null;
+    const elapsed = (p && p.startedAt && !p.solved && !p.gaveUp)
+        ? Math.floor((Date.now() - p.startedAt) / 1000)
+        : (p ? (p.seconds || 0) : 0);
+    res.json({ progress: p, elapsed });
+});
+
+// Démarrage du chrono (il court ensuite en continu, même hors de l'app)
+app.post('/api/mf/start', requireAuth, (req, res) => {
+    const level = mfLevel(req.body && req.body.level);
+    const key = currentUser(req) + '|' + mfTodayId() + '|' + level;
+    const p = mfData.progress[key] || { cells: {}, solved: false, gaveUp: false, seconds: 0 };
+    if (!p.startedAt) { p.startedAt = Date.now(); mfData.progress[key] = p; saveMf(); }
+    res.json({ ok: true, startedAt: p.startedAt, elapsed: Math.floor((Date.now() - p.startedAt) / 1000) });
 });
 app.post('/api/mf/progress', requireAuth, (req, res) => {
     const level = mfLevel(req.body && req.body.level);
@@ -238,7 +251,7 @@ app.post('/api/mf/progress', requireAuth, (req, res) => {
         if (/^[A-Z]$/.test(v) && /^\d+,\d+$/.test(k)) clean[k] = v;
     }
     const prev = mfData.progress[key] || {};
-    mfData.progress[key] = { cells: clean, solved: !!prev.solved, gaveUp: !!prev.gaveUp, seconds: prev.seconds || 0, ts: Date.now() };
+    mfData.progress[key] = { cells: clean, solved: !!prev.solved, gaveUp: !!prev.gaveUp, seconds: prev.seconds || 0, startedAt: prev.startedAt || Date.now(), ts: Date.now() };
     saveMf();
     res.json({ ok: true });
 });
@@ -247,10 +260,10 @@ app.post('/api/mf/progress', requireAuth, (req, res) => {
 app.post('/api/mf/solve', requireAuth, (req, res) => {
     const user = currentUser(req), date = mfTodayId(), level = mfLevel(req.body && req.body.level);
     const key = user + '|' + date + '|' + level, bKey = date + '|' + level;
-    let sec = Math.round(Number(req.body && req.body.seconds) || 0);
-    if (!Number.isFinite(sec) || sec < 3) sec = 3;
-    if (sec > 7200) sec = 7200;                       // borne : 2 h max
     const prog = mfData.progress[key] || {};
+    let sec = prog.startedAt ? Math.round((Date.now() - prog.startedAt) / 1000) : 0;
+    if (!Number.isFinite(sec) || sec < 3) sec = 3;
+    if (sec > 86400) sec = 86400;                     // borne de sécurité (24 h)
     if (prog.gaveUp) return res.json({ ok: false, reason: 'gaveup', board: mfBoard(date, level).map(e => ({ u: e.u, t: mfFormat(e.s) })) });
     if (!prog.solved) {
         mfData.progress[key] = { ...prog, solved: true, seconds: sec, ts: Date.now() };

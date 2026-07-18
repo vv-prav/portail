@@ -70,10 +70,16 @@ body.is-ready .mf { display: flex; }
 .mf-cell.wrong { background: #f3c9c0; color: #7a2418; animation: shake .35s; }
 .mf-cell.revealed { background: #e6dcc6; color: #6b5b3e; font-style: italic; }
 @keyframes shake { 25% { transform: translateX(-2px);} 75% { transform: translateX(2px);} }
-.mf-def { background: #1a1309; padding: 2px; text-align: left; }
-.def-txt { font-size: clamp(0.42rem, 1.85vw, 0.6rem); line-height: 1.12; color: #d9cbb0; padding: 2px 3px;
+.mf-def { background: #16100a; padding: 0; text-align: left; display: flex; flex-direction: column; }
+.def-one { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; cursor: pointer; padding: 1px 7px 1px 2px; }
+.mf-def.two .def-one + .def-one { border-top: 1px solid rgba(217,169,78,0.28); }
+.def-txt { font-size: clamp(0.36rem, 1.6vw, 0.56rem); line-height: 1.08; color: #d9cbb0;
            display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
-.def-arrow { position: absolute; right: 2px; bottom: 1px; font-size: 0.5rem; color: var(--brass); }
+.mf-def.two .def-txt { -webkit-line-clamp: 2; }
+.def-arrow { position: absolute; font-size: 0.5rem; color: var(--brass); line-height: 1; }
+.def-arrow.right { right: 1px; top: 50%; transform: translateY(-50%); }
+.def-arrow.down { right: 1px; bottom: 0; }
+.def-one:active { background: rgba(217,169,78,0.15); }
 
 /* ---- Actions ---- */
 .mf-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -117,3 +123,24 @@ body.is-ready .mf { display: flex; }
 .mf-board-empty { color: var(--muted); font-size: 0.85rem; text-align: center; margin: 0; }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; } }
+
+
+/* ===== Voile « Commencer » (grille floutée derrière) ===== */
+.mf-grid-wrap { position: relative; }
+.mf-start { display: none; }
+body.not-started .mf-start {
+    display: grid; place-items: center; position: absolute; inset: 0; z-index: 5;
+    border-radius: 10px; background: rgba(20,16,11,0.55); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+}
+body.not-started .mf-grid { filter: blur(3px) saturate(0.75); pointer-events: none; }
+body.not-started .mf-keyboard { opacity: 0.35; pointer-events: none; }
+body.not-started .mf-actions { opacity: 0.35; pointer-events: none; }
+.mf-start-box { text-align: center; padding: 18px 16px; max-width: 260px; }
+.mf-start-emoji { font-size: 2.2rem; }
+.mf-start-txt { color: var(--parchment); font-size: 0.85rem; line-height: 1.45; margin: 6px 0 14px; text-shadow: 0 2px 8px rgba(0,0,0,0.8); }
+.mf-start-box .mf-btn { padding: 14px 26px; font-size: 1rem; box-shadow: 0 8px 22px rgba(0,0,0,0.5); }
+
+/* ===== Classement affiché dans la page (sous la grille) ===== */
+.mf-inline-board { background: linear-gradient(165deg, var(--ink-3), var(--ink-2)); border: 1px solid var(--line);
+                   border-radius: 12px; padding: 12px; }
+.mf-inline-board[hidden] { display: none; }

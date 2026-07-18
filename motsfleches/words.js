@@ -5,6 +5,30 @@
 //  Pour enrichir le jeu : ajoute simplement des entrées dans les listes.
 // =====================================================================
 
+const W3 = [
+    ['AMI', 'Copain fidèle', 1], ['ANE', 'Il a de longues oreilles', 1], ['BAL', 'Soirée dansante', 1],
+    ['BUS', 'Transport en commun', 1], ['CLE', 'Elle ouvre la porte', 1], ['CRI', 'Éclat de voix', 1],
+    ['DUO', 'À deux', 2], ['EAU', 'On la boit', 1], ['FEU', 'Il brûle', 1],
+    ['GAZ', 'Il alimente la cuisinière', 2], ['ILE', 'Terre entourée d’eau', 1], ['JEU', 'On y joue', 1],
+    ['LAC', 'Étendue d’eau douce', 1], ['LIT', 'On y dort', 1], ['MAL', 'Le contraire du bien', 1],
+    ['MER', 'Elle est salée', 1], ['MUR', 'Il sépare les pièces', 1], ['NEZ', 'Il sent les odeurs', 1],
+    ['NID', 'Maison des oiseaux', 1], ['OIE', 'Oiseau de la ferme', 2], ['OUI', 'Le contraire de non', 1],
+    ['PAS', 'Enjambée', 1], ['PIC', 'Sommet pointu', 2], ['POT', 'Récipient de fleurs', 1],
+    ['RAT', 'Rongeur des caves', 1], ['RIZ', 'Grain blanc du repas', 1], ['ROI', 'Il porte la couronne', 1],
+    ['RUE', 'Voie de la ville', 1], ['SAC', 'On y met ses affaires', 1], ['SEL', 'Il relève les plats', 1],
+    ['TAS', 'Grand amas', 1], ['THE', 'Boisson chaude en feuilles', 1], ['VIN', 'Boisson de la vigne', 1],
+    ['VUE', 'Sens des yeux', 1], ['ZOO', 'Parc à animaux', 1], ['AIL', 'Il parfume le plat', 2],
+    ['ARC', 'Il lance des flèches', 1], ['BEC', 'Bouche de l’oiseau', 1], ['DOS', 'Derrière du corps', 1],
+    ['FIL', 'Il sert à coudre', 1], ['GEL', 'Froid qui glace', 2], ['JUS', 'Boisson de fruits', 1],
+    ['LOI', 'Règle du pays', 1], ['MIE', 'Intérieur du pain', 2], ['NUL', 'Match sans vainqueur', 2],
+    ['PIE', 'Oiseau noir et blanc voleur', 2], ['PUR', 'Sans mélange', 2], ['SOL', 'On marche dessus', 1],
+    ['TON', 'Hauteur de la voix', 2], ['VER', 'Il rampe dans la terre', 1], ['VIS', 'Elle se serre au tournevis', 2],
+    ['AIR', 'On le respire', 1], ['BOL', 'Récipient du petit-déjeuner', 1], ['CAR', 'Bus de voyage', 2],
+    ['DES', 'On les lance au jeu', 1], ['ETE', 'Saison chaude', 1], ['FER', 'Métal du forgeron', 1],
+    ['MAI', 'Mois du muguet', 1], ['NOM', 'Il désigne la personne', 1], ['PIN', 'Arbre à aiguilles', 1],
+    ['SEC', 'Sans humidité', 1], ['TOP', 'Signal de départ', 2], ['VOL', 'Trajet en avion', 1],
+];
+
 const W4 = [
     ['PONT', 'Ouvrage pour traverser une rivière', 1],
     ['CHAT', 'Félin qui ronronne', 1],
@@ -296,7 +320,7 @@ function buildIndex(lists) {
     return idx;
 }
 
-const LISTS = { 4: W4, 5: W5, 6: W6, 7: W7 };
+const LISTS = { 3: W3, 4: W4, 5: W5, 6: W6, 7: W7 };
 
 module.exports = {
     LISTS,
