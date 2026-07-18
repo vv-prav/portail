@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#14100b">
+    <title>Administration</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="ad">
+        <header class="ad-head">
+            <a class="ad-back" href="/" aria-label="Retour au salon">←</a>
+            <div class="ad-titles">
+                <h1 class="ad-title">Administration</h1>
+                <span class="ad-sub" id="ad-who">—</span>
+            </div>
+        </header>
+
+        <nav class="ad-tabs" id="ad-tabs">
+            <button class="tab on" data-tab="home" type="button">Vue d'ensemble</button>
+            <button class="tab" data-tab="accounts" type="button">Comptes</button>
+            <button class="tab" data-tab="system" type="button">Système</button>
+        </nav>
+
+        <!-- VUE D'ENSEMBLE -->
+        <section class="pane" id="pane-home">
+            <div class="stats" id="ad-stats"></div>
+            <div class="card">
+                <h2 class="card-title">Annonce du salon</h2>
+                <p class="card-sub">Affichée à tous en haut du salon. Laisser vide pour la retirer.</p>
+                <input class="in" id="ann-text" maxlength="200" placeholder="Ex : nouvelle grille difficile ce week-end !">
+                <button class="btn" id="ann-save" type="button">Publier l'annonce</button>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Dernières actions</h2>
+                <div class="log" id="ad-log"></div>
+            </div>
+        </section>
+
+        <!-- COMPTES -->
+        <section class="pane" id="pane-accounts" hidden>
+            <div class="card">
+                <input class="in" id="acc-q" placeholder="Rechercher un pseudo…" autocapitalize="off">
+                <div class="seg" id="acc-sort">
+                    <button class="on" data-sort="recent" type="button">Récents</button>
+                    <button data-sort="active" type="button">Actifs</button>
+                    <button data-sort="name" type="button">A-Z</button>
+                </div>
+            </div>
+            <p class="count" id="acc-count"></p>
+            <div class="list" id="acc-list"></div>
+        </section>
+
+        <!-- SYSTÈME -->
+        <section class="pane" id="pane-system" hidden>
+            <div class="card">
+                <h2 class="card-title">Sauvegarde</h2>
+                <p class="card-sub">Télécharge toutes les données (comptes + mots fléchés) en JSON. À faire régulièrement.</p>
+                <a class="btn" href="/api/admin/backup" download>Télécharger la sauvegarde</a>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Entretien</h2>
+                <p class="card-sub">Supprime les classements et messages de plus de 15 jours, et les grilles de plus de 20 jours.</p>
+                <button class="btn ghost" id="sys-purge" type="button">Lancer le ménage</button>
+            </div>
+            <div class="card">
+                <h2 class="card-title">État du serveur</h2>
+                <div class="kv" id="sys-info"></div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Fiche d'un compte -->
+    <div class="ov" id="ov-acc" hidden>
+        <div class="ov-card">
+            <h2 class="ov-title" id="acc-name">—</h2>
+            <div class="kv" id="acc-detail"></div>
+            <div class="acts" id="acc-acts"></div>
+            <button class="btn ghost" id="acc-close" type="button">Fermer</button>
+        </div>
+    </div>
+
+    <!-- Confirmation / résultat -->
+    <div class="ov" id="ov-ask" hidden>
+        <div class="ov-card">
+            <div class="ov-emoji" id="ask-emoji">❓</div>
+            <h2 class="ov-title" id="ask-title">Confirmer</h2>
+            <p class="ov-sub" id="ask-sub"></p>
+            <div class="code-box" id="ask-code" hidden>—</div>
+            <div id="ask-acts"></div>
+            <button class="btn ghost" id="ask-cancel" type="button">Fermer</button>
+        </div>
+    </div>
+
+    <div class="toast" id="toast" hidden></div>
+    <script src="app.js"></script>
+</body>
+</html>

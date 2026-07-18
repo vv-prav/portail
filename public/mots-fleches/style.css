@@ -73,7 +73,6 @@ body.is-ready .mf { display:flex; }
 .mf-block { background:#0e0a06; }
 .mf-cell { background:var(--paper); color:var(--paper-ink); cursor:pointer; transition:background .12s; }
 .mf-letter { font-weight:800; font-size:clamp(.8rem,4vw,1.4rem); line-height:1; text-transform:uppercase; }
-.mf-cell.draft .mf-letter { color:#9a8f7c; font-weight:600; font-style:italic; }
 .mf-cell.in-slot { background:#f7edd8; }
 .mf-cell.active { background:var(--brass-soft); box-shadow:inset 0 0 0 3px var(--brass); }
 .mf-cell.good { background:#cfe8d8; color:#1e4634; }
@@ -103,7 +102,7 @@ body.not-started .mf-keyboard, body.not-started .mf-tools { opacity:.35; pointer
 .mf-start-txt { color:var(--parchment); font-size:.85rem; line-height:1.45; margin:6px 0 14px; text-shadow:0 2px 8px rgba(0,0,0,.8); }
 
 /* Outils */
-.mf-tools { display:grid; grid-template-columns:repeat(5,1fr); gap:5px; }
+.mf-tools { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
 .tool { display:flex; flex-direction:column; align-items:center; gap:2px; padding:8px 2px; border-radius:10px;
         background:rgba(255,255,255,.05); border:1px solid var(--line); color:var(--parchment);
         font-family:inherit; cursor:pointer; }

@@ -27,10 +27,11 @@
                    autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="20">
             <input class="input" id="password" type="password" placeholder="Ton mot de passe" autocomplete="current-password">
 
-            <p class="hint">Astuce : choisis un mot de passe simple et unique, pas un que tu utilises ailleurs.</p>
+            <p class="hint">6 caractères minimum. Choisis un mot de passe unique, pas un que tu utilises ailleurs.</p>
 
             <button class="btn btn-primary" id="btn-login" type="submit">Entrer</button>
             <button class="btn btn-ghost" id="btn-register" type="button">Créer un compte</button>
+            <button class="link-btn" id="btn-forgot" type="button">Mot de passe oublié ?</button>
 
             <div class="entry-error" id="entry-error" role="alert" aria-live="polite"></div>
         </form>
@@ -49,11 +50,40 @@
 
             <div class="rule" aria-hidden="true"></div>
 
+            <p class="hub-announce" id="hub-announce" hidden></p>
+
             <section class="tiles" id="tiles" aria-label="Applications"></section>
 
             <p class="hub-foot">D'autres pièces ouvriront bientôt.</p>
         </div>
     </main>
+
+    <!-- Code de récupération (affiché une seule fois) -->
+    <div class="ov" id="ov-code" hidden>
+        <div class="ov-card">
+            <div class="ov-emoji">🔑</div>
+            <h2 class="ov-title">Note ce code</h2>
+            <p class="ov-sub">C'est le <b>seul moyen</b> de récupérer ton compte si tu oublies ton mot de passe. Il ne sera plus jamais affiché.</p>
+            <div class="code-box" id="code-box">—</div>
+            <button class="btn btn-ghost" id="code-copy" type="button">Copier le code</button>
+            <button class="btn btn-primary" id="code-ok" type="button">C'est noté, entrer</button>
+        </div>
+    </div>
+
+    <!-- Mot de passe oublié -->
+    <div class="ov" id="ov-forgot" hidden>
+        <div class="ov-card">
+            <div class="ov-emoji">🔓</div>
+            <h2 class="ov-title">Mot de passe oublié</h2>
+            <p class="ov-sub">Entre ton nom et le code de récupération noté à l'inscription.</p>
+            <input class="input" id="f-pseudo" type="text" placeholder="Ton nom" autocapitalize="off" autocorrect="off">
+            <input class="input" id="f-code" type="text" placeholder="Code (XXXX-XXXX-XXXX-XXXX)" autocapitalize="characters" autocorrect="off">
+            <input class="input" id="f-pass" type="password" placeholder="Nouveau mot de passe">
+            <div class="entry-error" id="f-error" role="alert"></div>
+            <button class="btn btn-primary" id="f-send" type="button">Réinitialiser</button>
+            <button class="btn btn-ghost" id="f-cancel" type="button">Annuler</button>
+        </div>
+    </div>
 
     <script src="/app.js"></script>
 </body>

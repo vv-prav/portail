@@ -9,12 +9,11 @@ let P = null;
 let level = localStorage.getItem('mf_level') || 'moyen';
 let viewDate = null;                 // null = aujourd'hui, sinon archive
 let isArchive = false;
-let values = {}, drafts = {}, els = {};
+let values = {}, els = {};
 let slots = [], cellSlots = {}, inputCells = [];
 let active = null, dir = 'right';
 let solved = false, gaveUp = false, started = false;
 let startedAt = null, penalty = 0, seconds = 0, timerId = null, nextIn = 0;
-let pencil = false;
 
 async function api(path, body) {
     const res = await fetch(path, {
@@ -94,11 +93,7 @@ function renderGrid() {
     repaintValues();
 }
 function repaintValues() {
-    for (const k in els) {
-        const el = els[k], v = values[k] || '';
-        el.querySelector('.mf-letter').textContent = v;
-        el.classList.toggle('draft', !!(v && drafts[k]));
-    }
+    for (const k in els) els[k].querySelector('.mf-letter').textContent = values[k] || '';
 }
 
 // ---------- Sélection / navigation ----------
@@ -160,7 +155,6 @@ function setLetter(ch) {
     const k = key(active.r, active.c);
     if (!els[k]) return;
     values[k] = ch;
-    if (pencil) drafts[k] = 1; else delete drafts[k];
     els[k].classList.remove('wrong', 'good');
     repaintValues();
     const idx = currentSlotIdx();
@@ -170,12 +164,12 @@ function setLetter(ch) {
 function backspace() {
     if (!active || solved || gaveUp || !started) return;
     const k = key(active.r, active.c);
-    if (values[k]) { delete values[k]; delete drafts[k]; }
-    else { step(-1); const k2 = key(active.r, active.c); delete values[k2]; delete drafts[k2]; }
+    if (values[k]) { delete values[k]; }
+    else { step(-1); delete values[key(active.r, active.c)]; }
     repaintValues(); refreshHighlights(); saveSoon();
 }
 let saveT = null;
-function saveSoon() { clearTimeout(saveT); saveT = setTimeout(() => api('/api/mf/progress', dbody({ level, cells: values, drafts })), 600); }
+function saveSoon() { clearTimeout(saveT); saveT = setTimeout(() => api('/api/mf/progress', dbody({ level, cells: values })), 600); }
 
 // ---------- Vérification ----------
 async function doCheck(showWrong) {
@@ -204,7 +198,7 @@ async function maybeSolved() {
 async function finish() {
     if (solved) return;
     solved = true;
-    await api('/api/mf/progress', dbody({ level, cells: values, drafts }));
+    await api('/api/mf/progress', dbody({ level, cells: values }));
     const { data } = await api('/api/mf/solve', dbody({ level }));
     if (data && data.seconds) { seconds = data.seconds; $('mf-timer').textContent = fmt(seconds); }
     $('mf-end-emoji').textContent = '🎉';
@@ -247,21 +241,17 @@ function ask(emoji, title, sub, actions) {
 $('ask-cancel').addEventListener('click', () => { $('mf-ask').hidden = true; });
 
 // ---------- Outils ----------
-$('t-pencil').addEventListener('click', () => {
-    pencil = !pencil;
-    $('t-pencil').classList.toggle('on', pencil);
-});
 $('t-check').addEventListener('click', () => { if (started) doCheck(true); });
 $('t-erase').addEventListener('click', () => {
     if (!started || solved || gaveUp) return;
     ask('🧹', 'Effacer', 'Que veux-tu effacer ?', [
         { label: 'Le mot en cours', run: () => {
             const idx = currentSlotIdx(); if (idx < 0) return;
-            slots[idx].cells.forEach(({ r, c }) => { delete values[key(r, c)]; delete drafts[key(r, c)]; });
+            slots[idx].cells.forEach(({ r, c }) => { delete values[key(r, c)]; });
             repaintValues(); refreshHighlights(); saveSoon();
         } },
         { label: 'Toute la grille', danger: true, run: () => {
-            values = {}; drafts = {};
+            values = {};
             Object.values(els).forEach(el => el.classList.remove('good', 'wrong'));
             repaintValues(); refreshHighlights(); saveSoon();
         } },
@@ -282,7 +272,7 @@ async function useHint(type) {
         : { level, type: 'letter', r: active.r, c: active.c };
     const { ok, data } = await api('/api/mf/hint', dbody(body));
     if (!ok || !data.reveal) return;
-    Object.entries(data.reveal).forEach(([k, v]) => { values[k] = v; delete drafts[k]; });
+    Object.entries(data.reveal).forEach(([k, v]) => { values[k] = v; });
     penalty = data.penalty || penalty;
     repaintValues(); refreshHighlights(); tick(); maybeSolved();
 }
@@ -297,7 +287,7 @@ async function doGiveUp() {
     if (!data || !data.grid) return;
     gaveUp = true;
     inputCells.forEach(({ r, c }) => {
-        values[key(r, c)] = data.grid[r][c]; delete drafts[key(r, c)];
+        values[key(r, c)] = data.grid[r][c];
         const el = els[key(r, c)]; if (el) el.classList.add('revealed');
     });
     repaintValues();
@@ -426,13 +416,12 @@ $('arch-today').addEventListener('click', () => { viewDate = null; $('mf-archive
 async function load() {
     document.body.className = 'is-boot';
     paintLevels();
-    values = {}; drafts = {}; active = null; dir = 'right';
+    values = {}; active = null; dir = 'right';
     solved = false; gaveUp = false; started = false;
     startedAt = null; penalty = 0; seconds = 0;
     $('mf-timer').textContent = '0:00';
     ['mf-end', 'mf-ask', 'mf-comments', 'mf-archive', 'mf-defzoom'].forEach(id => { $(id).hidden = true; });
     $('mf-inline-board').hidden = true;
-    pencil = false; $('t-pencil').classList.remove('on');
 
     const today = await api('/api/mf/today?level=' + level + dq());
     if (!today.ok) { location.href = '/'; return; }
@@ -446,7 +435,7 @@ async function load() {
     const prog = await api('/api/mf/progress?level=' + level + dq());
     const pr = prog.data && prog.data.progress;
     if (pr) {
-        values = pr.cells || {}; drafts = pr.drafts || {};
+        values = pr.cells || {};
         solved = !!pr.solved; gaveUp = !!pr.gaveUp;
         startedAt = pr.startedAt || null; penalty = pr.penalty || 0;
         seconds = (prog.data.elapsed != null) ? prog.data.elapsed : (pr.seconds || 0);

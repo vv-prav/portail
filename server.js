@@ -23,6 +23,10 @@ if (SESSION_SECRET === 'dev-secret-a-changer') {
     console.log('⚠️  SESSION_SECRET non défini : secret de dev utilisé. Définis-le en production.');
 }
 const SESSION_DAYS = 30;
+// Administrateurs : pseudos séparés par des virgules dans la variable ADMIN_USERS
+const ADMIN_USERS = (process.env.ADMIN_USERS || 'Viper la Voile Noire')
+    .split(',').map(s => s.trim()).filter(Boolean);
+function isAdmin(pseudo) { return ADMIN_USERS.includes(pseudo); }
 const IS_PROD = process.env.NODE_ENV === 'production';
 
 // ---------------------------------------------------------------------
@@ -85,6 +89,45 @@ function verifyPassword(password, stored) {
 }
 
 const PSEUDO_REGEX = /^[a-zA-Z0-9_ -]{3,20}$/;
+const MIN_PASSWORD = 6;
+
+// --- Protection contre le brute-force (mémoire, fenêtre glissante) ---
+const MAX_TRIES = 5, LOCK_MS = 15 * 60 * 1000;
+const loginTries = new Map();                       // clé -> { n, until, ts }
+function triesKey(req, pseudo) {
+    const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '').split(',')[0].trim();
+    return ip + '|' + pseudo.toLowerCase();
+}
+function loginBlocked(key) {
+    const e = loginTries.get(key);
+    if (!e) return 0;
+    if (e.until && e.until > Date.now()) return Math.ceil((e.until - Date.now()) / 60000);
+    if (e.until && e.until <= Date.now()) loginTries.delete(key);
+    return 0;
+}
+function loginFailed(key) {
+    const e = loginTries.get(key) || { n: 0 };
+    e.n++; e.ts = Date.now();
+    if (e.n >= MAX_TRIES) { e.until = Date.now() + LOCK_MS; e.n = 0; }
+    loginTries.set(key, e);
+}
+function loginOk(key) { loginTries.delete(key); }
+setInterval(() => {                                  // ménage horaire
+    const now = Date.now();
+    for (const [k, e] of loginTries) if ((e.until && e.until < now) || (e.ts && now - e.ts > 3600e3)) loginTries.delete(k);
+}, 3600e3);
+
+// --- Code de récupération (l'utilisateur le note ; on n'en garde que l'empreinte) ---
+function makeRecoveryCode() {
+    const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';       // sans caractères ambigus
+    let out = [];
+    for (let g = 0; g < 4; g++) {
+        let s = '';
+        for (let i = 0; i < 4; i++) s += A[crypto.randomInt(A.length)];
+        out.push(s);
+    }
+    return out.join('-');
+}
 
 // Échappement HTML (messages du forum, etc.)
 function escapeHtml(str) {
@@ -96,7 +139,8 @@ function escapeHtml(str) {
 // ---------------------------------------------------------------------
 function signSession(pseudo) {
     const exp = Date.now() + SESSION_DAYS * 864e5;
-    const payload = Buffer.from(JSON.stringify({ u: pseudo, exp })).toString('base64url');
+    const ep = (registeredUsers[pseudo] && registeredUsers[pseudo].sessionEpoch) || 0;
+    const payload = Buffer.from(JSON.stringify({ u: pseudo, exp, ep })).toString('base64url');
     const sig = crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('base64url');
     return `${payload}.${sig}`;
 }
@@ -108,7 +152,10 @@ function readSession(token) {
     try {
         const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
         if (!data.exp || data.exp < Date.now()) return null;
-        if (!registeredUsers[data.u]) return null;
+        const user = registeredUsers[data.u];
+        if (!user) return null;
+        if (user.banned) return null;                                  // compte banni
+        if ((user.sessionEpoch || 0) > (data.ep || 0)) return null;    // session révoquée
         return data.u;
     } catch (e) { return null; }
 }
@@ -128,6 +175,12 @@ function setSessionCookie(res, pseudo) {
     });
 }
 
+// Pour les routes d'API : réponse JSON plutôt qu'une redirection
+function requireAuthApi(req, res, next) {
+    if (currentUser(req)) return next();
+    return res.status(401).json({ error: 'Non connecté.' });
+}
+
 // Middleware : protège les pages d'apps (redirige vers le salon si non connecté)
 function requireAuth(req, res, next) {
     if (currentUser(req)) return next();
@@ -141,23 +194,65 @@ app.post('/api/register', (req, res) => {
     const pseudo = (req.body.pseudo || '').trim();
     const password = req.body.password || '';
     if (!PSEUDO_REGEX.test(pseudo)) return res.status(400).json({ error: 'Nom invalide (3 à 20 caractères).' });
-    if (password.length < 3) return res.status(400).json({ error: 'Mot de passe trop court (3 minimum).' });
+    if (password.length < MIN_PASSWORD) return res.status(400).json({ error: `Mot de passe trop court (${MIN_PASSWORD} caractères minimum).` });
     if (registeredUsers[pseudo]) return res.status(409).json({ error: 'Ce nom est déjà pris. Connecte-toi.' });
-    registeredUsers[pseudo] = { pseudo, passwordHash: hashPassword(password), created: Date.now() };
+    const code = makeRecoveryCode();
+    registeredUsers[pseudo] = { pseudo, passwordHash: hashPassword(password), recoveryHash: hashPassword(code), created: Date.now() };
     saveUsers(true);
     setSessionCookie(res, pseudo);
-    res.json({ ok: true, user: { pseudo } });
+    res.json({ ok: true, user: { pseudo }, recoveryCode: code });
 });
 
 app.post('/api/login', (req, res) => {
     const pseudo = (req.body.pseudo || '').trim();
     const password = req.body.password || '';
+    const tk = triesKey(req, pseudo);
+    const wait = loginBlocked(tk);
+    if (wait) return res.status(429).json({ error: `Trop de tentatives. Réessaie dans ${wait} min.` });
     const user = registeredUsers[pseudo];
     if (!user || !verifyPassword(password, user.passwordHash)) {
+        loginFailed(tk);
         return res.status(401).json({ error: 'Nom ou mot de passe incorrect.' });
     }
+    if (user.banned) return res.status(403).json({ error: "Ce compte a été suspendu." });
+    loginOk(tk);
+    user.lastLogin = Date.now();
+    saveUsers();
     setSessionCookie(res, pseudo);
     res.json({ ok: true, user: { pseudo } });
+});
+
+// --- Récupération de mot de passe avec le code noté à l'inscription ---
+app.post('/api/recover', (req, res) => {
+    const pseudo = (req.body.pseudo || '').trim();
+    const code = String(req.body.code || '').trim().toUpperCase();
+    const newPassword = req.body.newPassword || '';
+    const tk = triesKey(req, 'recover:' + pseudo);
+    const wait = loginBlocked(tk);
+    if (wait) return res.status(429).json({ error: `Trop de tentatives. Réessaie dans ${wait} min.` });
+    if (newPassword.length < MIN_PASSWORD) return res.status(400).json({ error: `Mot de passe trop court (${MIN_PASSWORD} caractères minimum).` });
+    const user = registeredUsers[pseudo];
+    if (!user || !user.recoveryHash || !verifyPassword(code, user.recoveryHash)) {
+        loginFailed(tk);
+        return res.status(401).json({ error: 'Nom ou code de récupération incorrect.' });
+    }
+    loginOk(tk);
+    const fresh = makeRecoveryCode();                 // le code servi est aussitôt remplacé
+    user.passwordHash = hashPassword(newPassword);
+    user.recoveryHash = hashPassword(fresh);
+    saveUsers(true);
+    setSessionCookie(res, pseudo);
+    res.json({ ok: true, user: { pseudo }, recoveryCode: fresh });
+});
+
+// --- Nouveau code de récupération (connecté) ---
+app.post('/api/new-code', requireAuthApi, (req, res) => {
+    const user = registeredUsers[currentUser(req)];
+    if (!user) return res.status(404).json({ error: 'Compte introuvable.' });
+    const code = makeRecoveryCode();
+    user.recoveryHash = hashPassword(code);
+    saveUsers(true);
+    res.json({ ok: true, recoveryCode: code });
 });
 
 app.post('/api/logout', (req, res) => {
@@ -168,7 +263,7 @@ app.post('/api/logout', (req, res) => {
 app.get('/api/me', (req, res) => {
     const pseudo = currentUser(req);
     if (!pseudo) return res.status(401).json({ error: 'Non connecté.' });
-    res.json({ user: { pseudo } });
+    res.json({ user: { pseudo, isAdmin: isAdmin(pseudo) } });
 });
 
 // ---------------------------------------------------------------------
@@ -211,51 +306,113 @@ function mfSecondsToMidnight() {
 function mfLevel(q) { return MF_LEVELS.includes(q) ? q : 'moyen'; }
 function mfFormat(sec) { return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
 
-let mfData = { progress: {}, board: {}, grids: {}, history: {}, comments: {}, days: {} };
+// --- Stockage par CLÉS SÉPARÉES ---------------------------------------
+//  Un cache mémoire sert les lectures ; seules les clés modifiées sont
+//  réécrites (quelques centaines d'octets au lieu de tout le jeu de données).
+//  Clés : mf:prog:<user>:<date>:<niv> · mf:board:<date>:<niv>
+//         mf:grid:<date>:<niv> · mf:hist:<date> · mf:cmt:<date> · mf:days:<user>
+const MF_KEEP_DAYS = 15;      // classements et messages
+const MF_KEEP_GRIDS = 20;     // grilles et progressions (archives sur 14 jours)
+
+let mfCache = {};
+const mfDirty = new Set();
+let _mfFlush = null;
+
+function mfGet(k) { return mfCache[k]; }
+function mfSet(k, v) { mfCache[k] = v; mfDirty.add(k); mfSchedule(); }
+function mfDel(k) { delete mfCache[k]; mfDirty.add(k); mfSchedule(); }
+function mfSchedule() { clearTimeout(_mfFlush); _mfFlush = setTimeout(mfFlush, 1200); }
+
+async function mfFlush() {
+    const keys = [...mfDirty];
+    mfDirty.clear();
+    if (!keys.length) return;
+    if (redis) {
+        for (const k of keys) {
+            try {
+                if (mfCache[k] === undefined) await redis.del(k);
+                else await redis.set(k, mfCache[k]);
+            } catch (e) { /* on réessaiera à la prochaine écriture */ }
+        }
+    } else {
+        try { fs.writeFileSync('./mf_data.json', JSON.stringify(mfCache)); } catch (e) {}
+    }
+}
+
 async function loadMf() {
-    if (redis) { try { const d = await redis.get('mf_data'); if (d) mfData = d; } catch (e) {} }
-    else { try { mfData = JSON.parse(fs.readFileSync('./mf_data.json', 'utf-8')) || mfData; } catch (e) {} }
-    for (const k of ['progress', 'board', 'grids', 'history', 'comments', 'days']) if (!mfData[k]) mfData[k] = {};
+    if (redis) {
+        try {
+            const keys = await redis.keys('mf:*');
+            for (let i = 0; i < keys.length; i += 50) {
+                const chunk = keys.slice(i, i + 50);
+                const vals = await redis.mget(...chunk);
+                chunk.forEach((k, j) => { if (vals[j] != null) mfCache[k] = vals[j]; });
+            }
+            console.log(`🧩 ${keys.length} clé(s) mots fléchés chargée(s).`);
+        } catch (e) { console.log('⚠️  Lecture Redis (mots fléchés) :', e.message); }
+    } else {
+        try { mfCache = JSON.parse(fs.readFileSync('./mf_data.json', 'utf-8')) || {}; } catch (e) { mfCache = {}; }
+    }
+    mfPurge();
 }
-let _mfTimer = null;
-function saveMf() {
-    const write = () => {
-        if (redis) redis.set('mf_data', mfData).catch(() => {});
-        else { try { fs.writeFileSync('./mf_data.json', JSON.stringify(mfData)); } catch (e) {} }
-    };
-    clearTimeout(_mfTimer); _mfTimer = setTimeout(write, 1200);
+
+// Ménage : on ne garde pas d'historique inutile
+function mfPurge() {
+    const today = mfTodayId();
+    const limitShort = mfShiftDay(today, -MF_KEEP_DAYS);   // classements, messages
+    const limitLong = mfShiftDay(today, -MF_KEEP_GRIDS);   // grilles, progressions
+    let removed = 0;
+    for (const k of Object.keys(mfCache)) {
+        const parts = k.split(':');
+        let date = null, limit = limitLong;
+        if (parts[1] === 'board' || parts[1] === 'cmt') { date = parts[2]; limit = limitShort; }
+        else if (parts[1] === 'grid' || parts[1] === 'hist') date = parts[2];
+        else if (parts[1] === 'prog') date = parts[3];
+        if (date && /^\d{4}-\d{2}-\d{2}$/.test(date) && date < limit) { mfDel(k); removed++; }
+    }
+    // les séries de jours ne sont pas datées : on borne leur taille
+    for (const k of Object.keys(mfCache)) {
+        if (k.startsWith('mf:days:') && Array.isArray(mfCache[k]) && mfCache[k].length > 400) {
+            mfSet(k, mfCache[k].slice(-400));
+        }
+    }
+    if (removed) console.log(`🧹 ${removed} clé(s) mots fléchés purgée(s).`);
 }
+setInterval(mfPurge, 6 * 3600 * 1000);   // ménage toutes les 6 h
+
+// --- Accès typés ---
+const kProg = (u, d, l) => `mf:prog:${u}:${d}:${l}`;
+const kBoard = (d, l) => `mf:board:${d}:${l}`;
+const kGrid = (d, l) => `mf:grid:${d}:${l}`;
+const kHist = (d) => `mf:hist:${d}`;
+const kCmt = (d) => `mf:cmt:${d}`;
+const kDays = (u) => `mf:days:${u}`;
 
 // Grille (mise en cache) — rotation : on évite les mots des 15 derniers jours
 function mfGrid(date, level) {
-    const k = date + '|' + level;
-    if (mfData.grids[k]) return mfData.grids[k];
+    const cached = mfGet(kGrid(date, level));
+    if (cached) return cached;
     const recent = [];
     for (let i = 1; i <= 15; i++) {
-        const h = mfData.history[mfShiftDay(date, -i)];
-        if (h) recent.push(...h);
+        const h = mfGet(kHist(mfShiftDay(date, -i)));
+        if (Array.isArray(h)) recent.push(...h);
     }
     const p = MF.generate(level, date, recent);
-    mfData.grids[k] = p;
-    (mfData.history[date] = mfData.history[date] || []).push(...(p.wordList || []));
-    // ménage : on ne garde que ~40 jours de grilles
-    const limit = mfShiftDay(date, -40);
-    for (const key of Object.keys(mfData.grids)) if (key.split('|')[0] < limit) delete mfData.grids[key];
-    for (const key of Object.keys(mfData.history)) if (key < limit) delete mfData.history[key];
-    saveMf();
+    mfSet(kGrid(date, level), p);
+    const hist = mfGet(kHist(date)) || [];
+    mfSet(kHist(date), hist.concat(p.wordList || []));
     return p;
 }
 function mfPublic(p) { return { date: p.date, level: p.level, levelLabel: p.levelLabel, rows: p.rows, cols: p.cols, grid: p.grid, defs: p.defs, words: p.words }; }
 function mfBoard(date, level) {
-    return (mfData.board[date + '|' + level] || []).filter(e => !e.susp).slice().sort((a, b) => a.s - b.s);
+    return (mfGet(kBoard(date, level)) || []).filter(e => !e.susp).slice().sort((a, b) => a.s - b.s);
 }
-function mfProgKey(user, date, level) { return user + '|' + date + '|' + level; }
 
 // Série de jours consécutifs avec au moins une grille résolue
 function mfStreak(user) {
-    const days = new Set(mfData.days[user] || []);
+    const days = new Set(mfGet(kDays(user)) || []);
     let cur = 0, d = mfTodayId();
-    if (!days.has(d)) d = mfShiftDay(d, -1);        // la journée en cours ne casse pas la série
+    if (!days.has(d)) d = mfShiftDay(d, -1);
     while (days.has(d)) { cur++; d = mfShiftDay(d, -1); }
     return { current: cur, total: days.size };
 }
@@ -276,7 +433,7 @@ app.get('/api/mf/today', requireAuth, (req, res) => {
 app.get('/api/mf/progress', requireAuth, (req, res) => {
     const level = mfLevel(req.query.level);
     const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mfTodayId();
-    const p = mfData.progress[mfProgKey(currentUser(req), date, level)] || null;
+    const p = mfGet(kProg(currentUser(req), date, level)) || null;
     const elapsed = (p && p.startedAt && !p.solved && !p.gaveUp)
         ? Math.floor((Date.now() - p.startedAt) / 1000) + (p.penalty || 0)
         : (p ? (p.seconds || 0) : 0);
@@ -285,26 +442,25 @@ app.get('/api/mf/progress', requireAuth, (req, res) => {
 app.post('/api/mf/start', requireAuth, (req, res) => {
     const level = mfLevel(req.body && req.body.level);
     const date = /^\d{4}-\d{2}-\d{2}$/.test((req.body && req.body.date) || '') ? req.body.date : mfTodayId();
-    const key = mfProgKey(currentUser(req), date, level);
-    const p = mfData.progress[key] || { cells: {}, drafts: {}, solved: false, gaveUp: false, seconds: 0, penalty: 0, hints: 0 };
-    if (!p.startedAt) { p.startedAt = Date.now(); mfData.progress[key] = p; saveMf(); }
+    const key = kProg(currentUser(req), date, level);
+    const p = mfGet(key) || { cells: {}, solved: false, gaveUp: false, seconds: 0, penalty: 0, hints: 0 };
+    if (!p.startedAt) { p.startedAt = Date.now(); mfSet(key, p); }
     res.json({ ok: true, startedAt: p.startedAt, penalty: p.penalty || 0 });
 });
 app.post('/api/mf/progress', requireAuth, (req, res) => {
     const b = req.body || {};
     const level = mfLevel(b.level);
     const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : mfTodayId();
-    const key = mfProgKey(currentUser(req), date, level);
-    const clean = {}, drafts = {};
+    const key = kProg(currentUser(req), date, level);
+    const clean = {};
     let n = 0;
     for (const k in (b.cells || {})) {
         if (n++ > 200) break;
         const v = String(b.cells[k] || '').toUpperCase().slice(0, 1);
-        if (/^[A-Z]$/.test(v) && /^\d+,\d+$/.test(k)) { clean[k] = v; if (b.drafts && b.drafts[k]) drafts[k] = 1; }
+        if (/^[A-Z]$/.test(v) && /^\d+,\d+$/.test(k)) clean[k] = v;
     }
-    const prev = mfData.progress[key] || {};
-    mfData.progress[key] = { ...prev, cells: clean, drafts, ts: Date.now(), startedAt: prev.startedAt || Date.now() };
-    saveMf();
+    const prev = mfGet(key) || {};
+    mfSet(key, { ...prev, cells: clean, ts: Date.now(), startedAt: prev.startedAt || Date.now() });
     res.json({ ok: true });
 });
 
@@ -338,8 +494,8 @@ app.post('/api/mf/hint', requireAuth, (req, res) => {
     const b = req.body || {};
     const level = mfLevel(b.level);
     const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : mfTodayId();
-    const key = mfProgKey(currentUser(req), date, level);
-    const prog = mfData.progress[key];
+    const key = kProg(currentUser(req), date, level);
+    const prog = mfGet(key);
     if (!prog || !prog.startedAt) return res.status(400).json({ error: 'Grille non commencée.' });
     if (prog.solved || prog.gaveUp) return res.status(400).json({ error: 'Grille terminée.' });
     const p = mfGrid(date, level);
@@ -359,7 +515,7 @@ app.post('/api/mf/hint', requireAuth, (req, res) => {
     prog.penalty = (prog.penalty || 0) + cost;
     prog.hints = (prog.hints || 0) + 1;
     prog.cells = { ...(prog.cells || {}), ...reveal };
-    saveMf();
+    mfSet(key, prog);
     res.json({ ok: true, reveal, cost, penalty: prog.penalty, hints: prog.hints });
 });
 
@@ -368,8 +524,8 @@ app.post('/api/mf/solve', requireAuth, (req, res) => {
     const user = currentUser(req), today = mfTodayId();
     const level = mfLevel(req.body && req.body.level);
     const date = /^\d{4}-\d{2}-\d{2}$/.test((req.body && req.body.date) || '') ? req.body.date : today;
-    const key = mfProgKey(user, date, level), bKey = date + '|' + level;
-    const prog = mfData.progress[key] || {};
+    const key = kProg(user, date, level);
+    const prog = mfGet(key) || {};
     let sec = prog.startedAt ? Math.round((Date.now() - prog.startedAt) / 1000) : 0;
     sec += (prog.penalty || 0);
     if (!Number.isFinite(sec) || sec < 1) sec = 1;
@@ -378,18 +534,17 @@ app.post('/api/mf/solve', requireAuth, (req, res) => {
     const isArchive = date !== today;
     const suspicious = sec < (MF_MIN_TIME[level] || 25);      // temps anormalement court
     if (!prog.solved) {
-        mfData.progress[key] = { ...prog, solved: true, seconds: sec, ts: Date.now() };
+        mfSet(key, { ...prog, solved: true, seconds: sec, ts: Date.now() });
         if (!isArchive && !prog.gaveUp) {
-            const list = mfData.board[bKey] = mfData.board[bKey] || [];
-            if (!list.some(e => e.u === user)) list.push({ u: user, s: sec, susp: suspicious });
-            const days = mfData.days[user] = mfData.days[user] || [];
-            if (!days.includes(date)) days.push(date);
+            const list = (mfGet(kBoard(date, level)) || []).slice();
+            if (!list.some(e => e.u === user)) { list.push({ u: user, s: sec, susp: suspicious }); mfSet(kBoard(date, level), list); }
+            const days = (mfGet(kDays(user)) || []).slice();
+            if (!days.includes(date)) { days.push(date); mfSet(kDays(user), days); }
         }
-        saveMf();
     }
     const board = mfBoard(date, level);
     res.json({
-        ok: true, seconds: mfData.progress[key].seconds, isArchive, suspicious,
+        ok: true, seconds: (mfGet(key) || {}).seconds || sec, isArchive, suspicious,
         rank: board.findIndex(e => e.u === user) + 1, total: board.length,
         board: board.map(e => ({ u: e.u, t: mfFormat(e.s) })),
         streak: mfStreak(user),
@@ -401,10 +556,10 @@ app.post('/api/mf/giveup', requireAuth, (req, res) => {
     const user = currentUser(req);
     const level = mfLevel(req.body && req.body.level);
     const date = /^\d{4}-\d{2}-\d{2}$/.test((req.body && req.body.date) || '') ? req.body.date : mfTodayId();
-    const key = mfProgKey(user, date, level);
+    const key = kProg(user, date, level);
     const p = mfGrid(date, level);
-    const prog = mfData.progress[key] || {};
-    if (!prog.solved) { mfData.progress[key] = { ...prog, gaveUp: true, ts: Date.now() }; saveMf(); }
+    const prog = mfGet(key) || {};
+    if (!prog.solved) mfSet(key, { ...prog, gaveUp: true, ts: Date.now() });
     res.json({ ok: true, grid: p.grid });
 });
 
@@ -420,7 +575,7 @@ app.get('/api/mf/states', requireAuth, (req, res) => {
     const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mfTodayId();
     const out = {};
     for (const lv of MF_LEVELS) {
-        const p = mfData.progress[mfProgKey(user, date, lv)];
+        const p = mfGet(kProg(user, date, lv));
         out[lv] = !p ? 'neuf' : (p.solved ? 'fini' : (p.gaveUp ? 'abandon' : (p.startedAt ? 'encours' : 'neuf')));
     }
     res.json({ states: out, streak: mfStreak(user), nextIn: mfSecondsToMidnight() });
@@ -431,7 +586,7 @@ app.get('/api/mf/archive', requireAuth, (req, res) => {
     const out = [];
     for (let i = 1; i <= 14; i++) {
         const d = mfShiftDay(today, -i);
-        const done = MF_LEVELS.filter(lv => (mfData.progress[mfProgKey(user, d, lv)] || {}).solved).length;
+        const done = MF_LEVELS.filter(lv => (mfGet(kProg(user, d, lv)) || {}).solved).length;
         out.push({ date: d, done });
     }
     res.json({ days: out });
@@ -440,19 +595,37 @@ app.get('/api/mf/archive', requireAuth, (req, res) => {
 // --- Fil de discussion du jour ---
 app.get('/api/mf/comments', requireAuth, (req, res) => {
     const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mfTodayId();
-    res.json({ comments: (mfData.comments[date] || []).slice(-60) });
+    res.json({ comments: (mfGet(kCmt(date)) || []).slice(-60) });
 });
 app.post('/api/mf/comments', requireAuth, (req, res) => {
     const user = currentUser(req), date = mfTodayId();
     const txt = String((req.body && req.body.text) || '').trim().slice(0, 240);
     if (!txt) return res.status(400).json({ error: 'Message vide.' });
-    const list = mfData.comments[date] = mfData.comments[date] || [];
+    const list = (mfGet(kCmt(date)) || []).slice();
     const last = list.filter(c => c.u === user).slice(-1)[0];
     if (last && Date.now() - last.ts < 4000) return res.status(429).json({ error: 'Doucement !' });
     list.push({ u: user, t: escapeHtml(txt), ts: Date.now() });
     if (list.length > 200) list.splice(0, list.length - 200);
-    saveMf();
+    mfSet(kCmt(date), list);
     res.json({ ok: true, comments: list.slice(-60) });
+});
+
+// ---------------------------------------------------------------------
+//  ADMINISTRATION — espace réservé (voir admin/routes.js)
+// ---------------------------------------------------------------------
+function requireAdmin(req, res, next) {
+    const u = currentUser(req);
+    if (u && isAdmin(u)) return next();
+    if (req.path.startsWith('/api/')) return res.status(403).json({ error: 'Accès réservé.' });
+    return res.redirect('/');
+}
+app.use('/admin', requireAdmin, express.static(__dirname + '/public/admin'));
+require('./admin/routes')(app, {
+    requireAdmin, currentUser, isAdmin, ADMIN_USERS,
+    users: () => registeredUsers,
+    saveUsers, hashPassword, makeRecoveryCode,
+    mf: { get: mfGet, set: mfSet, del: mfDel, cache: () => mfCache, purge: mfPurge, levels: MF_LEVELS, today: mfTodayId, shift: mfShiftDay },
+    redis: () => redis,
 });
 
 // ---------------------------------------------------------------------
@@ -470,6 +643,15 @@ app.use(express.static('public'));
 io.on('connection', (socket) => {
     // Prêt pour Perudo & co. Le salon lui-même n'a pas besoin de temps réel.
 });
+
+// Filet de sécurité : aucune erreur ne doit faire tomber le serveur
+app.use((err, req, res, next) => {
+    console.error('Erreur non gérée :', err && err.message);
+    if (res.headersSent) return next(err);
+    if (req.path.startsWith('/api/')) return res.status(500).json({ error: 'Erreur interne.' });
+    res.status(500).send('Une erreur est survenue. <a href="/">Retour au salon</a>');
+});
+process.on('unhandledRejection', (e) => console.error('Promesse rejetée :', e && e.message));
 
 const PORT = process.env.PORT || 3000;
 Promise.all([loadUsers(), loadMf()]).then(() => {

@@ -361,15 +361,37 @@ const W8 = [
 // ---------------------------------------------------------------------
 //  Index et utilitaires
 // ---------------------------------------------------------------------
-const LISTS = { 3: W3, 4: W4, 5: W5, 6: W6, 7: W7, 8: W8 };
+const X = require('./words-extra');
+const LISTS = {
+    3: W3,
+    4: W4.concat(X.X4),
+    5: W5.concat(X.X5),
+    6: W6.concat(X.X6),
+    7: W7.concat(X.X7),
+    8: W8.concat(X.X8),
+};
 
 // Normalise : ['MOT','d1|d2',n] -> { m, defs:[...], n }
+// Garde-fous : longueur exacte, A-Z uniquement, pas de doublon (les
+// définitions d'un doublon sont fusionnées avec celles du premier).
 function normalize(lists) {
     const out = {};
+    const seen = new Map();
     for (const [len, list] of Object.entries(lists)) {
-        out[len] = list
-            .filter(([m]) => m.length === +len)          // garde-fou : longueur exacte
-            .map(([m, d, n]) => ({ m, defs: String(d).split('|').filter(Boolean), n }));
+        out[len] = [];
+        for (const [m, d, n] of list) {
+            if (m.length !== +len || !/^[A-Z]+$/.test(m)) continue;
+            const defs = String(d).split('|').map(s => s.trim()).filter(Boolean);
+            if (!defs.length) continue;
+            if (seen.has(m)) {                       // doublon : on enrichit les définitions
+                const w = seen.get(m);
+                defs.forEach(x => { if (!w.defs.includes(x)) w.defs.push(x); });
+                continue;
+            }
+            const w = { m, defs, n };
+            seen.set(m, w);
+            out[len].push(w);
+        }
     }
     return out;
 }

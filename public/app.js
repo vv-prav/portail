@@ -9,6 +9,8 @@ const APPS = [
 ];
 
 const $ = (id) => document.getElementById(id);
+const ADMIN_APP = { id: 'admin', name: 'Administration', desc: 'Comptes, données et réglages.', emoji: '🛡️', href: '/admin', accent: '#c96f6f', status: 'open' };
+let isAdminUser = false;
 
 function setState(state) { document.body.className = 'is-' + state; }
 
@@ -24,7 +26,8 @@ async function api(path, body) {
 }
 
 function renderTiles() {
-    $('tiles').innerHTML = APPS.map(a => {
+    const list = isAdminUser ? APPS.concat(ADMIN_APP) : APPS;
+    $('tiles').innerHTML = list.map(a => {
         const open = a.status === 'open';
         const badge = open
             ? '<span class="tile-badge open">Ouvert</span>'
@@ -43,11 +46,22 @@ function renderTiles() {
     }).join('');
 }
 
-function enterHub(pseudo) {
+function enterHub(pseudo, admin) {
+    if (admin !== undefined) isAdminUser = !!admin;
     $('hub-name').textContent = pseudo;
     renderTiles();
     setState('hub');
     window.scrollTo(0, 0);
+    loadAnnounce();
+}
+
+// Annonce publiée depuis l'administration
+async function loadAnnounce() {
+    const { ok, data } = await api('/api/announce');
+    const box = $('hub-announce');
+    if (!box) return;
+    if (ok && data.announce) { box.textContent = data.announce; box.hidden = false; }
+    else box.hidden = true;
 }
 
 // --- Connexion / inscription ---
@@ -66,8 +80,45 @@ async function auth(kind) {
     busy = false;
     $('btn-login').disabled = $('btn-register').disabled = false;
     if (!ok) { setError(data.error || 'Une erreur est survenue.'); return; }
-    enterHub(data.user.pseudo);
+    if (data.recoveryCode) { showCode(data.recoveryCode, data.user.pseudo); return; }
+    enterHub(data.user.pseudo, data.user.isAdmin);
 }
+
+// --- Code de récupération (affiché une seule fois) ---
+let pendingPseudo = null;
+function showCode(code, pseudo) {
+    pendingPseudo = pseudo;
+    $('code-box').textContent = code;
+    $('ov-code').hidden = false;
+}
+$('code-copy').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText($('code-box').textContent); $('code-copy').textContent = 'Copié ✓'; }
+    catch (e) { $('code-copy').textContent = 'Copie impossible — note-le'; }
+});
+$('code-ok').addEventListener('click', () => {
+    $('ov-code').hidden = true;
+    if (pendingPseudo) location.reload();
+});
+
+// --- Mot de passe oublié ---
+$('btn-forgot').addEventListener('click', () => {
+    $('f-pseudo').value = $('pseudo').value.trim();
+    $('f-error').textContent = '';
+    $('ov-forgot').hidden = false;
+});
+$('f-cancel').addEventListener('click', () => { $('ov-forgot').hidden = true; });
+$('f-send').addEventListener('click', async () => {
+    const pseudo = $('f-pseudo').value.trim();
+    const code = $('f-code').value.trim().toUpperCase();
+    const newPassword = $('f-pass').value;
+    if (!pseudo || !code || !newPassword) { $('f-error').textContent = 'Remplis tous les champs.'; return; }
+    $('f-send').disabled = true;
+    const { ok, data } = await api('/api/recover', { pseudo, code, newPassword });
+    $('f-send').disabled = false;
+    if (!ok) { $('f-error').textContent = data.error || 'Erreur.'; return; }
+    $('ov-forgot').hidden = true;
+    showCode(data.recoveryCode, data.user.pseudo);      // nouveau code à noter
+});
 
 $('entry-form').addEventListener('submit', (e) => { e.preventDefault(); auth('login'); });
 $('btn-register').addEventListener('click', () => auth('register'));
@@ -80,7 +131,7 @@ $('btn-logout').addEventListener('click', async () => {
 (async function boot() {
     const { ok, data } = await api('/api/me');
     if (ok && data.user) {
-        enterHub(data.user.pseudo);
+        enterHub(data.user.pseudo, data.user.isAdmin);
     } else {
         setState('entry');
         setTimeout(() => { const p = $('pseudo'); if (p) p.focus(); }, 120);
