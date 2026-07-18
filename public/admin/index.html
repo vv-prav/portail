@@ -23,6 +23,7 @@
         <nav class="ad-tabs" id="ad-tabs">
             <button class="tab on" data-tab="home" type="button">Vue d'ensemble</button>
             <button class="tab" data-tab="accounts" type="button">Comptes</button>
+            <button class="tab" data-tab="dict" type="button">Dictionnaire</button>
             <button class="tab" data-tab="system" type="button">Système</button>
         </nav>
 
@@ -55,6 +56,42 @@
             <div class="list" id="acc-list"></div>
         </section>
 
+        <!-- DICTIONNAIRE -->
+        <section class="pane" id="pane-dict" hidden>
+            <div class="stats" id="dict-stats"></div>
+
+            <div class="card">
+                <button class="btn" id="dict-new" type="button">➕ Ajouter un mot</button>
+            </div>
+
+            <div class="card">
+                <input class="in" id="dict-q" placeholder="Rechercher un mot…" autocapitalize="characters">
+                <div class="seg" id="dict-len">
+                    <button class="on" data-len="0" type="button">Toutes</button>
+                    <button data-len="3" type="button">3</button>
+                    <button data-len="4" type="button">4</button>
+                    <button data-len="5" type="button">5</button>
+                    <button data-len="6" type="button">6</button>
+                    <button data-len="7" type="button">7</button>
+                    <button data-len="8" type="button">8</button>
+                </div>
+                <div class="seg" id="dict-lvl" style="margin-top:6px">
+                    <button class="on" data-level="0" type="button">Tous</button>
+                    <button data-level="1" type="button">Courant</button>
+                    <button data-level="2" type="button">Moyen</button>
+                    <button data-level="3" type="button">Rare</button>
+                </div>
+                <div class="seg" id="dict-only" style="margin-top:6px">
+                    <button class="on" data-only="" type="button">Tout</button>
+                    <button data-only="custom" type="button">Mes ajouts</button>
+                    <button data-only="unused" type="button">Jamais sortis</button>
+                </div>
+            </div>
+
+            <p class="count" id="dict-count"></p>
+            <div class="list" id="dict-list"></div>
+        </section>
+
         <!-- SYSTÈME -->
         <section class="pane" id="pane-system" hidden>
             <div class="card">
@@ -81,6 +118,27 @@
             <div class="kv" id="acc-detail"></div>
             <div class="acts" id="acc-acts"></div>
             <button class="btn ghost" id="acc-close" type="button">Fermer</button>
+        </div>
+    </div>
+
+    <!-- Édition d'un mot -->
+    <div class="ov" id="ov-word" hidden>
+        <div class="ov-card">
+            <h2 class="ov-title" id="w-title">Nouveau mot</h2>
+            <p class="ov-sub" id="w-info">3 à 8 lettres, sans accent ni espace.</p>
+            <input class="in" id="w-mot" maxlength="8" placeholder="MOT" autocapitalize="characters" autocomplete="off">
+            <div class="seg" id="w-level">
+                <button class="on" data-n="1" type="button">Courant</button>
+                <button data-n="2" type="button">Moyen</button>
+                <button data-n="3" type="button">Rare</button>
+            </div>
+            <p class="w-lab">Définitions (une par ligne, tirées au hasard chaque jour)</p>
+            <textarea class="in ta" id="w-defs" rows="4" placeholder="Il vole avec des passagers&#10;Long-courrier"></textarea>
+            <div class="entry-err" id="w-err"></div>
+            <button class="btn" id="w-save" type="button">Enregistrer</button>
+            <button class="btn danger" id="w-del" type="button" hidden>Retirer du jeu</button>
+            <button class="btn ghost" id="w-restore" type="button" hidden>Annuler mes modifications</button>
+            <button class="btn ghost" id="w-close" type="button">Fermer</button>
         </div>
     </div>
 

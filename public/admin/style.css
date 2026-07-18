@@ -122,3 +122,14 @@ body {
 .toast[hidden] { display:none; }
 
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.001ms !important; transition-duration:.001ms !important; } }
+
+/* ===== Éditeur de dictionnaire ===== */
+.ad-tabs { grid-template-columns:repeat(4,1fr); }
+.tab { font-size:.75rem; padding:11px 3px; }
+.ta { resize:vertical; min-height:88px; line-height:1.5; font-family:inherit; }
+.w-lab { color:var(--muted); font-size:.76rem; text-align:left; margin:12px 2px 6px; }
+#w-level { margin-bottom:4px; }
+.entry-err { color:#ff9a7a; font-size:.82rem; min-height:1.1em; margin:4px 0 10px; }
+.ov-card .in, .ov-card .seg { text-align:left; }
+#w-mot { text-transform:uppercase; letter-spacing:2px; font-weight:700; text-align:center; }
+#w-mot:disabled { opacity:.75; }

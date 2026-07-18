@@ -5,7 +5,7 @@
 //  Une même case peut porter deux définitions (une par direction).
 //  Grille DÉTERMINISTE : même date + même niveau = même grille pour tous.
 // =====================================================================
-const { WORDS } = require('./words');
+const dict = require('./dict');
 
 function hashSeed(str) {
     let h = 2166136261;
@@ -35,6 +35,7 @@ const LEVELS = {
 
 function poolsFor(cfg, exclude) {
     const skip = exclude || new Set();
+    const WORDS = dict.words();                      // dictionnaire de base + modifications admin
     const pools = {};
     for (const len of cfg.lens) {
         pools[len] = (WORDS[len] || []).filter(w => w.n >= cfg.minN && w.n <= cfg.maxN && !skip.has(w.m));

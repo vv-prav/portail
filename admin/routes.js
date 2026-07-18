@@ -189,6 +189,110 @@ module.exports = function attachAdmin(app, ctx) {
     });
 
     // =================================================================
+    //  DICTIONNAIRE (mots fléchés)
+    // =================================================================
+    const dict = require('../motsfleches/dict');
+    const DICT_KEY = 'mf:dict';
+
+    // Au démarrage : on applique les modifications enregistrées
+    dict.setOverrides(mf.get(DICT_KEY) || {});
+    function saveDict(obj) { mf.set(DICT_KEY, obj); dict.setOverrides(obj); }
+
+    // Compte les apparitions de chaque mot dans les grilles passées
+    function usageCounts() {
+        const counts = {};
+        for (const [k, v] of Object.entries(mf.cache())) {
+            if (!k.startsWith('mf:hist:') || !Array.isArray(v)) continue;
+            for (const w of v) counts[w] = (counts[w] || 0) + 1;
+        }
+        return counts;
+    }
+
+    G('/dict', (req, res) => {
+        const q = String(req.query.q || '').toUpperCase().trim();
+        const len = Number(req.query.len) || 0;
+        const lvl = Number(req.query.level) || 0;
+        const only = req.query.only || '';                 // 'custom' = uniquement mes ajouts
+        const ov = dict.getOverrides();
+        const counts = usageCounts();
+
+        let list = Object.values(dict.words()).flat().map(w => ({
+            m: w.m, defs: w.defs, n: w.n,
+            custom: !!ov[w.m],
+            used: counts[w.m] || 0,
+        }));
+        if (q) list = list.filter(w => w.m.includes(q));
+        if (len) list = list.filter(w => w.m.length === len);
+        if (lvl) list = list.filter(w => w.n === lvl);
+        if (only === 'custom') list = list.filter(w => w.custom);
+        if (only === 'unused') list = list.filter(w => !w.used);
+        list.sort((a, b) => a.m.localeCompare(b.m));
+
+        res.json({ total: list.length, words: list.slice(0, 200) });
+    });
+
+    G('/dict/stats', (req, res) => {
+        const counts = usageCounts();
+        const all = Object.values(dict.words()).flat();
+        const ov = dict.getOverrides();
+        const byLen = {}, byLvl = { 1: 0, 2: 0, 3: 0 };
+        all.forEach(w => { byLen[w.m.length] = (byLen[w.m.length] || 0) + 1; byLvl[w.n] = (byLvl[w.n] || 0) + 1; });
+        const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 15).map(([m, c]) => ({ m, c }));
+        res.json({
+            total: all.length,
+            defs: all.reduce((s, w) => s + w.defs.length, 0),
+            custom: Object.keys(ov).filter(m => !ov[m].deleted).length,
+            removed: Object.keys(ov).filter(m => ov[m].deleted).length,
+            never: all.filter(w => !counts[w.m]).length,
+            byLen, byLvl, top,
+        });
+    });
+
+    G('/dict/word', (req, res) => {
+        const m = String(req.query.m || '').toUpperCase();
+        const w = dict.find(m);
+        if (!w) return res.status(404).json({ error: 'Mot introuvable.' });
+        res.json({ word: { ...w, used: usageCounts()[m] || 0 } });
+    });
+
+    A('/dict/save', (req, res) => {
+        const m = String(req.body.m || '').trim().toUpperCase();
+        const defs = (req.body.defs || []).map(d => String(d).trim()).filter(Boolean);
+        const n = Number(req.body.n);
+        const err = dict.validate(m, defs, n);
+        if (err) return res.status(400).json({ error: err });
+        const existing = dict.find(m);
+        if (!req.body.edit && existing) return res.status(409).json({ error: 'Ce mot existe déjà — ouvre-le pour le modifier.' });
+        const ov = { ...dict.getOverrides() };
+        ov[m] = { defs, n };
+        saveDict(ov);
+        log(currentUser(req), existing ? 'mot modifié' : 'mot ajouté', m, defs[0]);
+        res.json({ ok: true });
+    });
+
+    A('/dict/delete', (req, res) => {
+        const m = String(req.body.m || '').trim().toUpperCase();
+        if (!dict.find(m)) return res.status(404).json({ error: 'Mot introuvable.' });
+        const ov = { ...dict.getOverrides() };
+        const inBase = (dict.baseWords()[m.length] || []).some(w => w.m === m);
+        if (inBase) ov[m] = { deleted: true };            // masqué (le fichier de base n'est pas touché)
+        else delete ov[m];                                 // simple ajout : on l'efface
+        saveDict(ov);
+        log(currentUser(req), 'mot retiré', m);
+        res.json({ ok: true });
+    });
+
+    A('/dict/restore', (req, res) => {
+        const m = String(req.body.m || '').trim().toUpperCase();
+        const ov = { ...dict.getOverrides() };
+        if (!ov[m]) return res.status(404).json({ error: 'Rien à annuler pour ce mot.' });
+        delete ov[m];
+        saveDict(ov);
+        log(currentUser(req), 'mot rétabli', m);
+        res.json({ ok: true });
+    });
+
+    // =================================================================
     //  SYSTÈME
     // =================================================================
     // Sauvegarde complète à télécharger
@@ -198,6 +302,7 @@ module.exports = function attachAdmin(app, ctx) {
             version: 1,
             users: users(),
             motsfleches: mf.cache(),
+            dictionnaire: dict.getOverrides(),
         };
         const name = 'salon-sauvegarde-' + new Date().toISOString().slice(0, 10) + '.json';
         res.setHeader('Content-Type', 'application/json; charset=utf-8');

@@ -42,8 +42,9 @@ function fmtDur(sec) {
 // ---------- Onglets ----------
 document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
     document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === b));
-    ['home', 'accounts', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== b.dataset.tab); });
+    ['home', 'accounts', 'dict', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== b.dataset.tab); });
     if (b.dataset.tab === 'accounts') loadAccounts();
+    if (b.dataset.tab === 'dict') { loadDictStats(); loadDict(); }
     if (b.dataset.tab === 'system') loadOverview();
 }));
 
@@ -196,6 +197,121 @@ async function openAccount(pseudo) {
     $('ov-acc').hidden = false;
 }
 $('acc-close').addEventListener('click', () => { $('ov-acc').hidden = true; });
+
+// ---------- Dictionnaire ----------
+let dQ = '', dLen = 0, dLvl = 0, dOnly = '', dT = null, editing = null;
+
+function segBind(id, attr, apply) {
+    document.querySelectorAll('#' + id + ' button').forEach(b => b.addEventListener('click', () => {
+        document.querySelectorAll('#' + id + ' button').forEach(x => x.classList.toggle('on', x === b));
+        apply(b.dataset[attr]);
+        loadDict();
+    }));
+}
+segBind('dict-len', 'len', v => { dLen = Number(v) || 0; });
+segBind('dict-lvl', 'level', v => { dLvl = Number(v) || 0; });
+segBind('dict-only', 'only', v => { dOnly = v || ''; });
+$('dict-q').addEventListener('input', () => { clearTimeout(dT); dT = setTimeout(() => { dQ = $('dict-q').value.trim(); loadDict(); }, 250); });
+
+const LVL_NAME = { 1: 'courant', 2: 'moyen', 3: 'rare' };
+async function loadDict() {
+    const url = `/api/admin/dict?q=${encodeURIComponent(dQ)}&len=${dLen}&level=${dLvl}&only=${dOnly}`;
+    const { data } = await api(url);
+    const list = (data && data.words) || [];
+    $('dict-count').textContent = list.length + ' mot(s) affiché(s) sur ' + (data.total || 0);
+    $('dict-list').innerHTML = list.length ? list.map(w => `
+        <button class="row" data-m="${esc(w.m)}">
+            <span class="r-main">
+                <span class="r-name">${esc(w.m)}${w.custom ? ' <i class="badge adm">modifié</i>' : ''}</span>
+                <span class="r-sub">${esc(w.defs[0] || '')}${w.defs.length > 1 ? ' · +' + (w.defs.length - 1) : ''} — ${LVL_NAME[w.n]} · vu ${w.used}×</span>
+            </span>
+            <span class="r-go">›</span>
+        </button>`).join('') : '<p class="empty">Aucun mot trouvé.</p>';
+    $('dict-list').querySelectorAll('.row').forEach(b => b.addEventListener('click', () => openWord(b.dataset.m)));
+}
+
+async function loadDictStats() {
+    const { data } = await api('/api/admin/dict/stats');
+    if (!data || data.total == null) return;
+    $('dict-stats').innerHTML = [
+        ['📖', data.total, 'mots'],
+        ['💬', data.defs, 'définitions'],
+        ['✏️', data.custom, 'ajoutés / modifiés'],
+        ['🚫', data.removed, 'retirés'],
+        ['💤', data.never, 'jamais sortis'],
+        ['🔁', (data.top[0] ? data.top[0].m + ' (' + data.top[0].c + '×)' : '—'), 'le plus vu'],
+    ].map(([i, v, l]) => `<div class="stat"><span class="s-ico">${i}</span><b>${v}</b><em>${l}</em></div>`).join('');
+}
+
+function setLevelButtons(n) {
+    document.querySelectorAll('#w-level button').forEach(b => b.classList.toggle('on', Number(b.dataset.n) === n));
+}
+function currentLevel() {
+    const b = document.querySelector('#w-level button.on');
+    return b ? Number(b.dataset.n) : 1;
+}
+document.querySelectorAll('#w-level button').forEach(b => b.addEventListener('click', () => setLevelButtons(Number(b.dataset.n))));
+
+$('dict-new').addEventListener('click', () => {
+    editing = null;
+    $('w-title').textContent = 'Nouveau mot';
+    $('w-info').textContent = '3 à 8 lettres, sans accent ni espace.';
+    $('w-mot').value = ''; $('w-mot').disabled = false;
+    $('w-defs').value = ''; $('w-err').textContent = '';
+    setLevelButtons(1);
+    $('w-del').hidden = true; $('w-restore').hidden = true;
+    $('ov-word').hidden = false;
+    $('w-mot').focus();
+});
+
+async function openWord(m) {
+    const { ok, data } = await api('/api/admin/dict/word?m=' + encodeURIComponent(m));
+    if (!ok) return toast(data.error || 'Erreur');
+    const w = data.word;
+    editing = w.m;
+    $('w-title').textContent = w.m;
+    $('w-info').textContent = `${w.m.length} lettres · utilisé ${w.used}× dans les grilles` + (w.inBase ? ' · présent dans le dictionnaire de base' : ' · ajouté par toi');
+    $('w-mot').value = w.m; $('w-mot').disabled = true;
+    $('w-defs').value = (w.defs || []).join('\n');
+    $('w-err').textContent = '';
+    setLevelButtons(w.n);
+    $('w-del').hidden = false;
+    $('w-restore').hidden = !w.custom;
+    $('ov-word').hidden = false;
+}
+$('w-close').addEventListener('click', () => { $('ov-word').hidden = true; });
+
+$('w-save').addEventListener('click', async () => {
+    const m = $('w-mot').value.trim().toUpperCase();
+    const defs = $('w-defs').value.split('\n').map(s => s.trim()).filter(Boolean);
+    const n = currentLevel();
+    $('w-err').textContent = '';
+    const { ok, data } = await api('/api/admin/dict/save', { m, defs, n, edit: !!editing });
+    if (!ok) { $('w-err').textContent = data.error || 'Erreur.'; return; }
+    $('ov-word').hidden = true;
+    toast(editing ? 'Mot modifié.' : 'Mot ajouté.');
+    loadDict(); loadDictStats();
+});
+
+$('w-del').addEventListener('click', () => {
+    const m = editing;
+    ask('🚫', 'Retirer du jeu ?', `« ${m} » ne sortira plus dans les grilles. Tu pourras l'annuler plus tard.`, [
+        { label: 'Confirmer', danger: true, run: async () => {
+            const r = await api('/api/admin/dict/delete', { m });
+            toast(r.ok ? 'Mot retiré.' : (r.data.error || 'Erreur'));
+            $('ov-word').hidden = true; loadDict(); loadDictStats();
+        } }]);
+});
+
+$('w-restore').addEventListener('click', () => {
+    const m = editing;
+    ask('↩️', 'Annuler tes modifications ?', `« ${m} » reviendra à sa version d'origine du dictionnaire.`, [
+        { label: 'Confirmer', run: async () => {
+            const r = await api('/api/admin/dict/restore', { m });
+            toast(r.ok ? 'Modifications annulées.' : (r.data.error || 'Erreur'));
+            $('ov-word').hidden = true; loadDict(); loadDictStats();
+        } }]);
+});
 
 // ---------- Système ----------
 $('sys-purge').addEventListener('click', () => ask('🧹', 'Lancer le ménage ?', 'Les données trop anciennes seront supprimées définitivement.', [
