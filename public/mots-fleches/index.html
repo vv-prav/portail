@@ -10,18 +10,25 @@
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="is-boot">
+
     <div class="boot" id="boot"><div class="boot-ring"></div></div>
 
-    <div class="mf" id="mf" hidden>
+    <div class="mf" id="mf">
         <header class="mf-head">
-            <a class="mf-back" href="/">←</a>
+            <a class="mf-back" href="/" aria-label="Retour au salon">←</a>
             <div class="mf-titles">
                 <h1 class="mf-title">Mots Fléchés</h1>
                 <span class="mf-date" id="mf-date"></span>
             </div>
-            <button class="mf-check" id="mf-check" type="button">Vérifier</button>
+            <div class="mf-timer" id="mf-timer">0:00</div>
         </header>
+
+        <div class="mf-levels" id="mf-levels" role="tablist">
+            <button class="lv" data-lv="facile" type="button">Facile</button>
+            <button class="lv" data-lv="moyen" type="button">Moyen</button>
+            <button class="lv" data-lv="difficile" type="button">Difficile</button>
+        </div>
 
         <div class="mf-clue" id="mf-clue">Touche une case pour commencer.</div>
 
@@ -29,9 +36,35 @@
             <div class="mf-grid" id="mf-grid"></div>
         </div>
 
-        <div class="mf-solved" id="mf-solved" hidden>🎉 Grille résolue ! Bravo.</div>
+        <div class="mf-actions">
+            <button class="mf-btn" id="mf-check" type="button">Vérifier</button>
+            <button class="mf-btn ghost" id="mf-giveup" type="button">Abandonner</button>
+        </div>
 
         <div class="mf-keyboard" id="mf-keyboard"></div>
+    </div>
+
+    <!-- Panneau de fin : temps + classement -->
+    <div class="mf-overlay" id="mf-end" hidden>
+        <div class="mf-card">
+            <div class="mf-end-emoji" id="mf-end-emoji">🎉</div>
+            <h2 class="mf-end-title" id="mf-end-title">Grille résolue !</h2>
+            <p class="mf-end-sub" id="mf-end-sub"></p>
+            <div class="mf-board" id="mf-board"></div>
+            <button class="mf-btn" id="mf-end-close" type="button">Fermer</button>
+            <a class="mf-btn ghost" href="/">Retour au salon</a>
+        </div>
+    </div>
+
+    <!-- Confirmation d'abandon -->
+    <div class="mf-overlay" id="mf-confirm" hidden>
+        <div class="mf-card">
+            <div class="mf-end-emoji">🏳️</div>
+            <h2 class="mf-end-title">Abandonner ?</h2>
+            <p class="mf-end-sub">Les réponses seront révélées et tu ne figureras pas au classement du jour.</p>
+            <button class="mf-btn danger" id="mf-confirm-yes" type="button">Oui, montrer les réponses</button>
+            <button class="mf-btn ghost" id="mf-confirm-no" type="button">Continuer à jouer</button>
+        </div>
     </div>
 
     <script src="app.js"></script>

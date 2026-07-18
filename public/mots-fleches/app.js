@@ -1,19 +1,17 @@
 // =====================================================================
-//  MOTS FLÉCHÉS — moteur client
+//  MOTS FLÉCHÉS — client
 // =====================================================================
 const $ = (id) => document.getElementById(id);
 const key = (r, c) => r + ',' + c;
 
-let P = null;            // puzzle du jour
-let slots = [];          // mots dérivés de la grille
-let cellSlots = {};      // "r,c" -> { right: idx, down: idx }
-let defsAt = {};         // "r,c" -> [def, ...]
-let inputCells = [];     // liste des cases à remplir
-let values = {};         // saisie du joueur : "r,c" -> lettre
-let els = {};            // éléments DOM des cases
-let active = null;       // {r,c}
-let dir = 'right';
-let solved = false;
+let P = null;                 // grille du jour (sans solution)
+let level = localStorage.getItem('mf_level') || 'facile';
+let values = {};              // "r,c" -> lettre
+let els = {};                 // "r,c" -> élément
+let slots = [], cellSlots = {}, inputCells = [];
+let active = null, dir = 'right';
+let solved = false, gaveUp = false;
+let seconds = 0, timerId = null, running = false;
 
 async function api(path, body) {
     const res = await fetch(path, {
@@ -21,87 +19,82 @@ async function api(path, body) {
         headers: body ? { 'Content-Type': 'application/json' } : undefined,
         body: body ? JSON.stringify(body) : undefined,
     });
-    let data = {}; try { data = await res.json(); } catch (e) {}
-    return { ok: res.ok, status: res.status, data };
+    let data = {};
+    try { data = await res.json(); } catch (e) {}
+    return { ok: res.ok, data };
 }
 
-// --- Dérive les mots (slots) depuis la grille-solution ---
+// ---------- Chronomètre ----------
+function fmt(s) { return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+function tick() { if (running) { seconds++; $('mf-timer').textContent = fmt(seconds); } }
+function startTimer() { if (!timerId) timerId = setInterval(tick, 1000); running = true; }
+function stopTimer() { running = false; }
+document.addEventListener('visibilitychange', () => { if (document.hidden) stopTimer(); else if (!solved && !gaveUp) startTimer(); });
+
+// ---------- Construction ----------
 function buildModel() {
-    slots = []; cellSlots = {}; defsAt = {}; inputCells = [];
-    for (let r = 0; r < P.rows; r++) for (let c = 0; c < P.cols; c++) {
-        if (P.grid[r][c]) inputCells.push({ r, c });
-    }
+    inputCells = []; slots = []; cellSlots = {};
+    for (let r = 0; r < P.rows; r++) for (let c = 0; c < P.cols; c++) if (P.grid[r][c]) inputCells.push({ r, c });
     P.defs.forEach(def => {
-        (defsAt[key(def.r, def.c)] = defsAt[key(def.r, def.c)] || []).push(def);
         const cells = [];
         let r = def.r, c = def.c;
         if (def.dir === 'right') { c++; while (c < P.cols && P.grid[r][c]) { cells.push({ r, c }); c++; } }
         else { r++; while (r < P.rows && P.grid[r][c]) { cells.push({ r, c }); r++; } }
         if (!cells.length) return;
         const idx = slots.length;
-        slots.push({ clue: def.clue, dir: def.dir, cells, defR: def.r, defC: def.c });
-        cells.forEach(cc => { const k = key(cc.r, cc.c); (cellSlots[k] = cellSlots[k] || {})[def.dir] = idx; });
+        slots.push({ defR: def.r, defC: def.c, dir: def.dir, clue: def.clue, cells });
+        cells.forEach(({ r, c }) => { (cellSlots[key(r, c)] = cellSlots[key(r, c)] || {})[def.dir] = idx; });
     });
 }
 
-// --- Rendu de la grille ---
 function renderGrid() {
     const g = $('mf-grid');
     g.style.gridTemplateColumns = `repeat(${P.cols}, 1fr)`;
-    g.innerHTML = '';
-    els = {};
-    for (let r = 0; r < P.rows; r++) for (let c = 0; c < P.cols; c++) {
-        const cell = document.createElement('div');
-        const k = key(r, c);
-        if (P.grid[r][c]) {
-            cell.className = 'mf-cell input';
-            const span = document.createElement('span');
-            span.className = 'mf-letter';
-            span.textContent = values[k] || '';
-            cell.appendChild(span);
-            cell.addEventListener('click', () => selectCell(r, c, true));
-        } else if (defsAt[k]) {
-            cell.className = 'mf-cell def';
-            defsAt[k].forEach(def => {
-                const line = document.createElement('div');
-                line.className = 'def-line';
-                line.innerHTML = `<span class="def-txt">${def.clue}</span><span class="def-arrow ${def.dir}">${def.dir === 'right' ? '▶' : '▼'}</span>`;
-                line.addEventListener('click', (e) => { e.stopPropagation(); selectSlotByDef(def); });
-                cell.appendChild(line);
-            });
-        } else {
-            cell.className = 'mf-cell block';
+    g.innerHTML = ''; els = {};
+    for (let r = 0; r < P.rows; r++) {
+        for (let c = 0; c < P.cols; c++) {
+            const cell = document.createElement('div');
+            if (P.grid[r][c]) {
+                cell.className = 'mf-cell';
+                cell.innerHTML = '<span class="mf-letter"></span>';
+                cell.addEventListener('click', () => selectCell(r, c, true));
+                els[key(r, c)] = cell;
+            } else {
+                const def = P.defs.find(d => d.r === r && d.c === c);
+                if (def) {
+                    cell.className = 'mf-def';
+                    cell.innerHTML = `<span class="def-txt">${def.clue}</span><span class="def-arrow">${def.dir === 'right' ? '▶' : '▼'}</span>`;
+                    cell.addEventListener('click', (e) => { e.stopPropagation(); selectSlotByDef(def); });
+                } else cell.className = 'mf-block';
+            }
+            g.appendChild(cell);
         }
-        els[k] = cell;
-        g.appendChild(cell);
     }
+    for (const k in values) if (els[k]) els[k].querySelector('.mf-letter').textContent = values[k];
 }
 
+// ---------- Sélection / navigation ----------
 function currentSlotIdx() {
     if (!active) return -1;
-    const cs = cellSlots[key(active.r, active.c)] || {};
+    const cs = cellSlots[key(active.r, active.c)];
+    if (!cs) return -1;
     if (cs[dir] != null) return cs[dir];
     if (cs.right != null) { dir = 'right'; return cs.right; }
     if (cs.down != null) { dir = 'down'; return cs.down; }
     return -1;
 }
-
 function refreshHighlights() {
     Object.values(els).forEach(el => el.classList.remove('active', 'in-slot'));
-    const idx = currentSlotIdx();
-    if (idx < 0) return;
-    slots[idx].cells.forEach(cc => els[key(cc.r, cc.c)].classList.add('in-slot'));
-    if (active) els[key(active.r, active.c)].classList.add('active');
-    // barre d'indice
+    const idx = currentSlotIdx(); if (idx < 0) return;
+    slots[idx].cells.forEach(({ r, c }) => els[key(r, c)] && els[key(r, c)].classList.add('in-slot'));
+    if (active && els[key(active.r, active.c)]) els[key(active.r, active.c)].classList.add('active');
     const s = slots[idx];
     $('mf-clue').innerHTML = `<span class="clue-dir">${s.dir === 'right' ? '▶' : '▼'}</span> ${s.clue}`;
 }
-
 function selectCell(r, c, toggle) {
     const k = key(r, c);
     if (!cellSlots[k]) return;
     if (toggle && active && active.r === r && active.c === c) {
-        // bascule de direction si la case appartient aux deux
         const cs = cellSlots[k];
         if (cs.right != null && cs.down != null) dir = (dir === 'right') ? 'down' : 'right';
     } else if (cellSlots[k][dir] == null) {
@@ -110,122 +103,190 @@ function selectCell(r, c, toggle) {
     active = { r, c };
     refreshHighlights();
 }
-
 function selectSlotByDef(def) {
     const idx = slots.findIndex(s => s.defR === def.r && s.defC === def.c && s.dir === def.dir);
     if (idx < 0) return;
-    dir = def.dir;
-    active = { ...slots[idx].cells[0] };
+    dir = def.dir; active = { ...slots[idx].cells[0] };
     refreshHighlights();
 }
-
-function advance() {
+function step(delta) {
     const idx = currentSlotIdx(); if (idx < 0) return;
     const cells = slots[idx].cells;
     const pos = cells.findIndex(cc => cc.r === active.r && cc.c === active.c);
-    if (pos >= 0 && pos < cells.length - 1) active = { ...cells[pos + 1] };
-}
-function retreat() {
-    const idx = currentSlotIdx(); if (idx < 0) return;
-    const cells = slots[idx].cells;
-    const pos = cells.findIndex(cc => cc.r === active.r && cc.c === active.c);
-    if (pos > 0) active = { ...cells[pos - 1] };
+    const next = pos + delta;
+    if (pos >= 0 && next >= 0 && next < cells.length) active = { ...cells[next] };
 }
 
+// ---------- Saisie ----------
 function setLetter(ch) {
-    if (!active) return;
+    if (!active || solved || gaveUp) return;
     const k = key(active.r, active.c);
+    if (!els[k]) return;
     values[k] = ch;
     els[k].querySelector('.mf-letter').textContent = ch;
     els[k].classList.remove('wrong');
-    advance();
-    refreshHighlights();
-    checkSolved();
-    saveSoon();
+    step(1); refreshHighlights(); saveSoon(); maybeSolved();
 }
 function backspace() {
-    if (!active) return;
+    if (!active || solved || gaveUp) return;
     const k = key(active.r, active.c);
     if (values[k]) { delete values[k]; els[k].querySelector('.mf-letter').textContent = ''; }
-    else { retreat(); const k2 = key(active.r, active.c); delete values[k2]; if (els[k2]) els[k2].querySelector('.mf-letter').textContent = ''; }
-    refreshHighlights();
-    saveSoon();
+    else {
+        step(-1);
+        const k2 = key(active.r, active.c);
+        delete values[k2];
+        if (els[k2]) els[k2].querySelector('.mf-letter').textContent = '';
+    }
+    refreshHighlights(); saveSoon();
 }
 
-function checkSolved() {
-    const done = inputCells.every(({ r, c }) => values[key(r, c)] === P.grid[r][c]);
-    if (done && !solved) { solved = true; $('mf-solved').hidden = false; save(true); }
-    return done;
-}
+let saveT = null;
+function saveSoon() { clearTimeout(saveT); saveT = setTimeout(() => api('/api/mf/progress', { level, cells: values }), 700); }
 
-function showCheck() {
-    inputCells.forEach(({ r, c }) => {
-        const k = key(r, c), el = els[k];
-        if (values[k] && values[k] !== P.grid[r][c]) { el.classList.add('wrong'); setTimeout(() => el.classList.remove('wrong'), 1400); }
+// ---------- Vérification ----------
+function paintSlots(list) {
+    (list || []).forEach(s => {
+        const idx = slots.findIndex(x => x.defR === s.r && x.defC === s.c && x.dir === s.dir);
+        if (idx < 0) return;
+        slots[idx].cells.forEach(({ r, c }) => {
+            const el = els[key(r, c)]; if (!el) return;
+            if (s.ok) el.classList.add('good');
+        });
     });
-    checkSolved();
+}
+async function doCheck(showWrong) {
+    const { data } = await api('/api/mf/check', { level, cells: values });
+    if (!data || !data.slots) return null;
+    Object.values(els).forEach(el => el.classList.remove('good'));
+    paintSlots(data.slots);
+    if (showWrong) {
+        (data.wrong || []).forEach(k => {
+            const el = els[k]; if (!el) return;
+            el.classList.add('wrong');
+            setTimeout(() => el.classList.remove('wrong'), 1600);
+        });
+    }
+    return data;
+}
+async function maybeSolved() {
+    if (solved || gaveUp) return;
+    if (!inputCells.every(({ r, c }) => values[key(r, c)])) return;   // pas encore rempli
+    const data = await doCheck(false);
+    if (data && data.allOk) finish();
 }
 
-// --- Sauvegarde (débounce) ---
-let _saveT = null;
-function saveSoon() { clearTimeout(_saveT); _saveT = setTimeout(() => save(false), 700); }
-function save(force) {
-    api('/api/mf/progress', { cells: values, solved: solved });
+// ---------- Fin de partie ----------
+async function finish() {
+    if (solved) return;
+    solved = true; stopTimer();
+    await api('/api/mf/progress', { level, cells: values });
+    const { data } = await api('/api/mf/solve', { level, seconds });
+    $('mf-end-emoji').textContent = '🎉';
+    $('mf-end-title').textContent = 'Grille résolue !';
+    $('mf-end-sub').textContent = data && data.rank
+        ? `Ton temps : ${fmt(data.seconds || seconds)} · ${data.rank}${data.rank === 1 ? 'er' : 'e'} sur ${data.total}`
+        : `Ton temps : ${fmt(seconds)}`;
+    renderBoard((data && data.board) || []);
+    $('mf-end').hidden = false;
+}
+function renderBoard(board) {
+    const box = $('mf-board');
+    if (!board.length) { box.innerHTML = '<p class="mf-board-empty">Personne d’autre n’a encore terminé aujourd’hui.</p>'; return; }
+    box.innerHTML = '<div class="mf-board-title">Classement du jour · ' + (P.levelLabel || level) + '</div>' +
+        board.slice(0, 12).map((e, i) => `<div class="mf-board-row${i === 0 ? ' first' : ''}">
+            <span class="bpos">${i + 1}</span><span class="bname">${e.u}</span><span class="btime">${e.t}</span></div>`).join('');
 }
 
-// --- Clavier tactile (AZERTY) ---
+// ---------- Abandon ----------
+$('mf-giveup').addEventListener('click', () => { if (!solved) $('mf-confirm').hidden = false; });
+$('mf-confirm-no').addEventListener('click', () => { $('mf-confirm').hidden = true; });
+$('mf-confirm-yes').addEventListener('click', async () => {
+    $('mf-confirm').hidden = true;
+    const { data } = await api('/api/mf/giveup', { level });
+    if (!data || !data.grid) return;
+    gaveUp = true; stopTimer();
+    inputCells.forEach(({ r, c }) => {
+        const ch = data.grid[r][c];
+        values[key(r, c)] = ch;
+        const el = els[key(r, c)];
+        if (el) { el.querySelector('.mf-letter').textContent = ch; el.classList.add('revealed'); }
+    });
+    const b = await api('/api/mf/board?level=' + level);
+    $('mf-end-emoji').textContent = '🏳️';
+    $('mf-end-title').textContent = 'Réponses révélées';
+    $('mf-end-sub').textContent = 'Pas de classement cette fois — retente ta chance demain !';
+    renderBoard((b.data && b.data.board) || []);
+    $('mf-end').hidden = false;
+});
+
+$('mf-check').addEventListener('click', () => doCheck(true));
+$('mf-end-close').addEventListener('click', () => { $('mf-end').hidden = true; });
+
+// ---------- Clavier tactile ----------
 function buildKeyboard() {
-    const rows = ['AZERTYUIOP', 'QSDFGHJKLM', 'WXCVBN'];
     const kb = $('mf-keyboard');
     kb.innerHTML = '';
-    rows.forEach((row, i) => {
-        const rEl = document.createElement('div'); rEl.className = 'kb-row';
-        row.split('').forEach(ch => {
+    [['A','Z','E','R','T','Y','U','I','O','P'], ['Q','S','D','F','G','H','J','K','L','M'], ['W','X','C','V','B','N']].forEach((row, i) => {
+        const line = document.createElement('div');
+        line.className = 'kb-row';
+        row.forEach(ch => {
             const b = document.createElement('button');
-            b.className = 'kb-key'; b.textContent = ch; b.type = 'button';
+            b.className = 'kb'; b.type = 'button'; b.textContent = ch;
             b.addEventListener('click', () => setLetter(ch));
-            rEl.appendChild(b);
+            line.appendChild(b);
         });
         if (i === 2) {
             const del = document.createElement('button');
-            del.className = 'kb-key kb-del'; del.textContent = '⌫'; del.type = 'button';
+            del.className = 'kb wide'; del.type = 'button'; del.innerHTML = '⌫';
             del.addEventListener('click', backspace);
-            rEl.appendChild(del);
+            line.appendChild(del);
         }
-        kb.appendChild(rEl);
+        kb.appendChild(line);
     });
 }
-
-// Clavier physique (desktop) en bonus
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Backspace') { e.preventDefault(); backspace(); }
-    else if (/^[a-zA-ZàâäéèêëïîôöùûüçÀÂ]$/.test(e.key)) setLetter(e.key.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').slice(0, 1));
-    else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { advance(); refreshHighlights(); }
+    else if (/^[a-zA-Z]$/.test(e.key)) setLetter(e.key.toUpperCase());
+    else if (e.key === 'ArrowRight') { dir = 'right'; step(1); refreshHighlights(); }
+    else if (e.key === 'ArrowLeft') { dir = 'right'; step(-1); refreshHighlights(); }
+    else if (e.key === 'ArrowDown') { dir = 'down'; step(1); refreshHighlights(); }
+    else if (e.key === 'ArrowUp') { dir = 'down'; step(-1); refreshHighlights(); }
 });
 
-$('mf-check').addEventListener('click', showCheck);
+// ---------- Niveaux ----------
+document.querySelectorAll('.lv').forEach(b => {
+    b.addEventListener('click', () => { if (b.dataset.lv !== level) { level = b.dataset.lv; localStorage.setItem('mf_level', level); load(); } });
+});
+function paintLevels() { document.querySelectorAll('.lv').forEach(b => b.classList.toggle('on', b.dataset.lv === level)); }
 
-// --- Démarrage ---
-(async function boot() {
-    const today = await api('/api/mf/today');
+// ---------- Chargement ----------
+async function load() {
+    document.body.className = 'is-boot';
+    paintLevels();
+    values = {}; active = null; dir = 'right'; solved = false; gaveUp = false;
+    seconds = 0; stopTimer(); $('mf-timer').textContent = '0:00';
+    $('mf-end').hidden = true; $('mf-confirm').hidden = true;
+
+    const today = await api('/api/mf/today?level=' + level);
     if (!today.ok) { location.href = '/'; return; }
-    P = today.data.puzzle;
-    $('mf-date').textContent = new Date(today.data.date + 'T00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    P = today.data;
+    $('mf-date').textContent = new Date(P.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    buildModel(); renderGrid();
 
-    const prog = await api('/api/mf/progress');
-    if (prog.ok && prog.data.progress) {
-        values = prog.data.progress.cells || {};
-        solved = !!prog.data.progress.solved;
+    const prog = await api('/api/mf/progress?level=' + level);
+    const pr = prog.data && prog.data.progress;
+    if (pr) {
+        values = pr.cells || {};
+        solved = !!pr.solved; gaveUp = !!pr.gaveUp;
+        seconds = pr.seconds || 0;
+        for (const k in values) if (els[k]) els[k].querySelector('.mf-letter').textContent = values[k];
+        if (seconds) $('mf-timer').textContent = fmt(seconds);
     }
+    document.body.className = 'is-ready';
+    if (solved || gaveUp) { await doCheck(false); }
+    else { startTimer(); }
+    $('mf-clue').textContent = 'Touche une case pour commencer.';
+}
 
-    buildModel();
-    renderGrid();
-    buildKeyboard();
-    if (solved) $('mf-solved').hidden = false;
-
-    $('boot').hidden = true;
-    $('mf').hidden = false;
-
-    // sélectionne le premier mot
-    if (slots.length) { dir = slots[0].dir; active = { ...slots[0].cells[0] }; refreshHighlights(); }
-})();
+buildKeyboard();
+load();

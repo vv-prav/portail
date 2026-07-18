@@ -182,44 +182,132 @@ function placeholder(name, emoji) {
 app.get('/recettes', requireAuth, (req, res) => res.send(placeholder('Les Recettes', '🍽️')));
 app.get('/media', requireAuth, (req, res) => res.send(placeholder('Espace Média', '🎞️')));
 // ---------------------------------------------------------------------
-//  MOTS FLÉCHÉS — grille du jour + progression par joueur.
+//  MOTS FLÉCHÉS — grille du jour (3 niveaux), progression et classement.
 // ---------------------------------------------------------------------
-const MF_PUZZLES = require('./motsfleches/puzzles');
-function mfDayIndex() { return Math.floor(Date.now() / 864e5); }        // numéro de jour
-function mfTodayId() { return new Date().toISOString().slice(0, 10); }  // AAAA-MM-JJ
-function mfPuzzleForToday() { return MF_PUZZLES[mfDayIndex() % MF_PUZZLES.length]; }
+const MF = require('./motsfleches/generator');
+const MF_LEVELS = ['facile', 'moyen', 'difficile'];
+function mfTodayId() { return new Date().toISOString().slice(0, 10); }
+function mfLevel(q) { return MF_LEVELS.includes(q) ? q : 'facile'; }
 
-let mfProgress = {};
-async function loadMfProgress() {
-    if (redis) { try { const d = await redis.get('mf_progress'); if (d) mfProgress = d; return; } catch (e) {} }
-    try { mfProgress = JSON.parse(fs.readFileSync('./mf_progress.json', 'utf-8')) || {}; } catch (e) { mfProgress = {}; }
+let mfData = { progress: {}, board: {} };   // progress: "user|date|niv" · board: "date|niv" -> [{u,s}]
+async function loadMf() {
+    if (redis) { try { const d = await redis.get('mf_data'); if (d) mfData = d; return; } catch (e) {} }
+    try { mfData = JSON.parse(fs.readFileSync('./mf_data.json', 'utf-8')) || mfData; } catch (e) {}
+    if (!mfData.progress) mfData.progress = {};
+    if (!mfData.board) mfData.board = {};
 }
 let _mfTimer = null;
-function saveMfProgress() {
+function saveMf() {
     const write = () => {
-        if (redis) redis.set('mf_progress', mfProgress).catch(() => {});
-        else { try { fs.writeFileSync('./mf_progress.json', JSON.stringify(mfProgress)); } catch (e) {} }
+        if (redis) redis.set('mf_data', mfData).catch(() => {});
+        else { try { fs.writeFileSync('./mf_data.json', JSON.stringify(mfData)); } catch (e) {} }
     };
     clearTimeout(_mfTimer); _mfTimer = setTimeout(write, 1200);
+}
+function mfFormat(sec) {
+    const m = Math.floor(sec / 60), s = sec % 60;
+    return m + ':' + String(s).padStart(2, '0');
+}
+function mfBoard(date, level) {
+    return (mfData.board[date + '|' + level] || []).slice().sort((a, b) => a.s - b.s);
 }
 
 app.use('/mots-fleches', requireAuth, express.static(__dirname + '/public/mots-fleches'));
 
+// Grille du jour (sans la solution : elle n'est envoyée qu'en cas d'abandon)
 app.get('/api/mf/today', requireAuth, (req, res) => {
-    res.json({ date: mfTodayId(), puzzle: mfPuzzleForToday() });
+    const level = mfLevel(req.query.level), date = mfTodayId();
+    const p = MF.generate(level, date);
+    res.json({ date, level, levelLabel: p.levelLabel, rows: p.rows, cols: p.cols, grid: p.grid, defs: p.defs });
 });
+
+// Progression personnelle du jour
 app.get('/api/mf/progress', requireAuth, (req, res) => {
-    const key = currentUser(req) + '|' + mfTodayId();
-    res.json({ progress: mfProgress[key] || null });
+    const level = mfLevel(req.query.level);
+    const key = currentUser(req) + '|' + mfTodayId() + '|' + level;
+    res.json({ progress: mfData.progress[key] || null });
 });
 app.post('/api/mf/progress', requireAuth, (req, res) => {
-    const key = currentUser(req) + '|' + mfTodayId();
+    const level = mfLevel(req.body && req.body.level);
+    const key = currentUser(req) + '|' + mfTodayId() + '|' + level;
     const cells = (req.body && req.body.cells && typeof req.body.cells === 'object') ? req.body.cells : {};
     const clean = {}; let n = 0;
-    for (const k in cells) { if (n++ > 80) break; const v = String(cells[k] || '').toUpperCase().slice(0, 1); if (/^[A-Z]$/.test(v)) clean[k] = v; }
-    mfProgress[key] = { cells: clean, solved: !!(req.body && req.body.solved), ts: Date.now() };
-    saveMfProgress();
+    for (const k in cells) {
+        if (n++ > 120) break;
+        const v = String(cells[k] || '').toUpperCase().slice(0, 1);
+        if (/^[A-Z]$/.test(v) && /^\d+,\d+$/.test(k)) clean[k] = v;
+    }
+    const prev = mfData.progress[key] || {};
+    mfData.progress[key] = { cells: clean, solved: !!prev.solved, gaveUp: !!prev.gaveUp, seconds: prev.seconds || 0, ts: Date.now() };
+    saveMf();
     res.json({ ok: true });
+});
+
+// Grille résolue : on enregistre le temps au classement du jour
+app.post('/api/mf/solve', requireAuth, (req, res) => {
+    const user = currentUser(req), date = mfTodayId(), level = mfLevel(req.body && req.body.level);
+    const key = user + '|' + date + '|' + level, bKey = date + '|' + level;
+    let sec = Math.round(Number(req.body && req.body.seconds) || 0);
+    if (!Number.isFinite(sec) || sec < 3) sec = 3;
+    if (sec > 7200) sec = 7200;                       // borne : 2 h max
+    const prog = mfData.progress[key] || {};
+    if (prog.gaveUp) return res.json({ ok: false, reason: 'gaveup', board: mfBoard(date, level).map(e => ({ u: e.u, t: mfFormat(e.s) })) });
+    if (!prog.solved) {
+        mfData.progress[key] = { ...prog, solved: true, seconds: sec, ts: Date.now() };
+        const list = mfData.board[bKey] = mfData.board[bKey] || [];
+        if (!list.some(e => e.u === user)) list.push({ u: user, s: sec });
+        saveMf();
+    }
+    const board = mfBoard(date, level);
+    res.json({
+        ok: true, seconds: mfData.progress[key].seconds,
+        rank: board.findIndex(e => e.u === user) + 1, total: board.length,
+        board: board.map(e => ({ u: e.u, t: mfFormat(e.s) })),
+    });
+});
+
+// Abandon : on renvoie la solution (et le joueur n'entre pas au classement)
+app.post('/api/mf/giveup', requireAuth, (req, res) => {
+    const user = currentUser(req), date = mfTodayId(), level = mfLevel(req.body && req.body.level);
+    const key = user + '|' + date + '|' + level;
+    const p = MF.generate(level, date);
+    const prog = mfData.progress[key] || {};
+    if (!prog.solved) { mfData.progress[key] = { ...prog, gaveUp: true, ts: Date.now() }; saveMf(); }
+    res.json({ ok: true, grid: p.grid });
+});
+
+// Vérification : le serveur dit quels MOTS sont corrects, sans révéler les lettres
+function mfSlots(p) {
+    return p.defs.map(def => {
+        const cells = [];
+        let r = def.r, c = def.c;
+        if (def.dir === 'right') { c++; while (c < p.cols && p.grid[r][c]) { cells.push({ r, c }); c++; } }
+        else { r++; while (r < p.rows && p.grid[r][c]) { cells.push({ r, c }); r++; } }
+        return { r: def.r, c: def.c, dir: def.dir, cells };
+    });
+}
+app.post('/api/mf/check', requireAuth, (req, res) => {
+    const level = mfLevel(req.body && req.body.level), date = mfTodayId();
+    const p = MF.generate(level, date);
+    const cells = (req.body && req.body.cells) || {};
+    const slots = mfSlots(p).map(s => ({
+        r: s.r, c: s.c, dir: s.dir,
+        ok: s.cells.every(({ r, c }) => String(cells[r + ',' + c] || '').toUpperCase() === p.grid[r][c]),
+    }));
+    const wrong = [];
+    for (const k in cells) {
+        const m = /^(\d+),(\d+)$/.exec(k); if (!m) continue;
+        const r = +m[1], c = +m[2];
+        if (p.grid[r] && p.grid[r][c] && String(cells[k]).toUpperCase() !== p.grid[r][c]) wrong.push(k);
+    }
+    res.json({ slots, wrong, allOk: slots.every(s => s.ok) });
+});
+
+// Classement du jour
+app.get('/api/mf/board', requireAuth, (req, res) => {
+    const date = mfTodayId(), level = mfLevel(req.query.level), user = currentUser(req);
+    const board = mfBoard(date, level);
+    res.json({ board: board.map(e => ({ u: e.u, t: mfFormat(e.s) })), me: board.findIndex(e => e.u === user) + 1 });
 });
 
 // ---------------------------------------------------------------------
@@ -239,6 +327,6 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-Promise.all([loadUsers(), loadMfProgress()]).then(() => {
+Promise.all([loadUsers(), loadMf()]).then(() => {
     server.listen(PORT, () => console.log(`🏛️  Le Salon tourne sur le port ${PORT}`));
 });
