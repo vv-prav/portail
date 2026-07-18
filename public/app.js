@@ -5,7 +5,7 @@ const APPS = [
     { id: 'perudo',      name: 'Perudo',        desc: 'Le jeu de dés des pirates, en ligne.', emoji: '🎲', href: '/perudo',       accent: '#d9a94e', status: 'open' },
     { id: 'recettes',    name: 'Recettes',      desc: 'Garde et partage tes recettes.',       emoji: '🍽️', href: '/recettes',     accent: '#e07a4e', status: 'soon' },
     { id: 'media',       name: 'Espace Média',  desc: 'Tes montages photo & vidéo.',          emoji: '🎞️', href: '/media',        accent: '#6c7fd8', status: 'soon' },
-    { id: 'motsfleches', name: 'Mots Fléchés',  desc: 'Une nouvelle grille chaque jour.',     emoji: '🧩', href: '/mots-fleches', accent: '#5aa87a', status: 'soon' },
+    { id: 'motsfleches', name: 'Mots Fléchés',  desc: 'Une nouvelle grille chaque jour.',     emoji: '🧩', href: '/mots-fleches', accent: '#5aa87a', status: 'open' },
 ];
 
 const $ = (id) => document.getElementById(id);

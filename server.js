@@ -181,7 +181,46 @@ function placeholder(name, emoji) {
 }
 app.get('/recettes', requireAuth, (req, res) => res.send(placeholder('Les Recettes', '🍽️')));
 app.get('/media', requireAuth, (req, res) => res.send(placeholder('Espace Média', '🎞️')));
-app.get('/mots-fleches', requireAuth, (req, res) => res.send(placeholder('Mots Fléchés du jour', '🧩')));
+// ---------------------------------------------------------------------
+//  MOTS FLÉCHÉS — grille du jour + progression par joueur.
+// ---------------------------------------------------------------------
+const MF_PUZZLES = require('./motsfleches/puzzles');
+function mfDayIndex() { return Math.floor(Date.now() / 864e5); }        // numéro de jour
+function mfTodayId() { return new Date().toISOString().slice(0, 10); }  // AAAA-MM-JJ
+function mfPuzzleForToday() { return MF_PUZZLES[mfDayIndex() % MF_PUZZLES.length]; }
+
+let mfProgress = {};
+async function loadMfProgress() {
+    if (redis) { try { const d = await redis.get('mf_progress'); if (d) mfProgress = d; return; } catch (e) {} }
+    try { mfProgress = JSON.parse(fs.readFileSync('./mf_progress.json', 'utf-8')) || {}; } catch (e) { mfProgress = {}; }
+}
+let _mfTimer = null;
+function saveMfProgress() {
+    const write = () => {
+        if (redis) redis.set('mf_progress', mfProgress).catch(() => {});
+        else { try { fs.writeFileSync('./mf_progress.json', JSON.stringify(mfProgress)); } catch (e) {} }
+    };
+    clearTimeout(_mfTimer); _mfTimer = setTimeout(write, 1200);
+}
+
+app.use('/mots-fleches', requireAuth, express.static(__dirname + '/public/mots-fleches'));
+
+app.get('/api/mf/today', requireAuth, (req, res) => {
+    res.json({ date: mfTodayId(), puzzle: mfPuzzleForToday() });
+});
+app.get('/api/mf/progress', requireAuth, (req, res) => {
+    const key = currentUser(req) + '|' + mfTodayId();
+    res.json({ progress: mfProgress[key] || null });
+});
+app.post('/api/mf/progress', requireAuth, (req, res) => {
+    const key = currentUser(req) + '|' + mfTodayId();
+    const cells = (req.body && req.body.cells && typeof req.body.cells === 'object') ? req.body.cells : {};
+    const clean = {}; let n = 0;
+    for (const k in cells) { if (n++ > 80) break; const v = String(cells[k] || '').toUpperCase().slice(0, 1); if (/^[A-Z]$/.test(v)) clean[k] = v; }
+    mfProgress[key] = { cells: clean, solved: !!(req.body && req.body.solved), ts: Date.now() };
+    saveMfProgress();
+    res.json({ ok: true });
+});
 
 // ---------------------------------------------------------------------
 //  PERUDO — jeu temps réel, intégré au monolithe sous /perudo.
@@ -200,6 +239,6 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-loadUsers().then(() => {
+Promise.all([loadUsers(), loadMfProgress()]).then(() => {
     server.listen(PORT, () => console.log(`🏛️  Le Salon tourne sur le port ${PORT}`));
 });
