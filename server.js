@@ -86,6 +86,11 @@ function verifyPassword(password, stored) {
 
 const PSEUDO_REGEX = /^[a-zA-Z0-9_ -]{3,20}$/;
 
+// Échappement HTML (messages du forum, etc.)
+function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 // ---------------------------------------------------------------------
 //  Session sans store : cookie signé (HMAC). Survit aux redéploiements.
 // ---------------------------------------------------------------------
@@ -182,19 +187,35 @@ function placeholder(name, emoji) {
 app.get('/recettes', requireAuth, (req, res) => res.send(placeholder('Les Recettes', '🍽️')));
 app.get('/media', requireAuth, (req, res) => res.send(placeholder('Espace Média', '🎞️')));
 // ---------------------------------------------------------------------
-//  MOTS FLÉCHÉS — grille du jour (3 niveaux), progression et classement.
+//  MOTS FLÉCHÉS — grilles du jour, classement, indices, séries, forum.
 // ---------------------------------------------------------------------
 const MF = require('./motsfleches/generator');
-const MF_LEVELS = ['facile', 'moyen', 'difficile'];
-function mfTodayId() { return new Date().toISOString().slice(0, 10); }
-function mfLevel(q) { return MF_LEVELS.includes(q) ? q : 'facile'; }
+const MF_LEVELS = ['moyen', 'difficile', 'expert'];
+const MF_MIN_TIME = { moyen: 25, difficile: 40, expert: 60 };   // seuils anti-triche (secondes)
 
-let mfData = { progress: {}, board: {} };   // progress: "user|date|niv" · board: "date|niv" -> [{u,s}]
+// Le jour bascule à minuit, heure de Paris
+function mfDayId(d) {
+    return new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d || new Date());
+}
+function mfTodayId() { return mfDayId(); }
+function mfShiftDay(dateId, delta) {
+    const d = new Date(dateId + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + delta);
+    return d.toISOString().slice(0, 10);
+}
+function mfSecondsToMidnight() {
+    const now = new Date();
+    const parts = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).formatToParts(now);
+    const g = (t) => Number(parts.find(p => p.type === t).value);
+    return 86400 - (g('hour') * 3600 + g('minute') * 60 + g('second'));
+}
+function mfLevel(q) { return MF_LEVELS.includes(q) ? q : 'moyen'; }
+function mfFormat(sec) { return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
+
+let mfData = { progress: {}, board: {}, grids: {}, history: {}, comments: {}, days: {} };
 async function loadMf() {
-    if (redis) { try { const d = await redis.get('mf_data'); if (d) mfData = d; return; } catch (e) {} }
-    try { mfData = JSON.parse(fs.readFileSync('./mf_data.json', 'utf-8')) || mfData; } catch (e) {}
-    if (!mfData.progress) mfData.progress = {};
-    if (!mfData.board) mfData.board = {};
+    if (redis) { try { const d = await redis.get('mf_data'); if (d) mfData = d; } catch (e) {} }
+    else { try { mfData = JSON.parse(fs.readFileSync('./mf_data.json', 'utf-8')) || mfData; } catch (e) {} }
+    for (const k of ['progress', 'board', 'grids', 'history', 'comments', 'days']) if (!mfData[k]) mfData[k] = {};
 }
 let _mfTimer = null;
 function saveMf() {
@@ -204,92 +225,90 @@ function saveMf() {
     };
     clearTimeout(_mfTimer); _mfTimer = setTimeout(write, 1200);
 }
-function mfFormat(sec) {
-    const m = Math.floor(sec / 60), s = sec % 60;
-    return m + ':' + String(s).padStart(2, '0');
+
+// Grille (mise en cache) — rotation : on évite les mots des 15 derniers jours
+function mfGrid(date, level) {
+    const k = date + '|' + level;
+    if (mfData.grids[k]) return mfData.grids[k];
+    const recent = [];
+    for (let i = 1; i <= 15; i++) {
+        const h = mfData.history[mfShiftDay(date, -i)];
+        if (h) recent.push(...h);
+    }
+    const p = MF.generate(level, date, recent);
+    mfData.grids[k] = p;
+    (mfData.history[date] = mfData.history[date] || []).push(...(p.wordList || []));
+    // ménage : on ne garde que ~40 jours de grilles
+    const limit = mfShiftDay(date, -40);
+    for (const key of Object.keys(mfData.grids)) if (key.split('|')[0] < limit) delete mfData.grids[key];
+    for (const key of Object.keys(mfData.history)) if (key < limit) delete mfData.history[key];
+    saveMf();
+    return p;
 }
+function mfPublic(p) { return { date: p.date, level: p.level, levelLabel: p.levelLabel, rows: p.rows, cols: p.cols, grid: p.grid, defs: p.defs, words: p.words }; }
 function mfBoard(date, level) {
-    return (mfData.board[date + '|' + level] || []).slice().sort((a, b) => a.s - b.s);
+    return (mfData.board[date + '|' + level] || []).filter(e => !e.susp).slice().sort((a, b) => a.s - b.s);
+}
+function mfProgKey(user, date, level) { return user + '|' + date + '|' + level; }
+
+// Série de jours consécutifs avec au moins une grille résolue
+function mfStreak(user) {
+    const days = new Set(mfData.days[user] || []);
+    let cur = 0, d = mfTodayId();
+    if (!days.has(d)) d = mfShiftDay(d, -1);        // la journée en cours ne casse pas la série
+    while (days.has(d)) { cur++; d = mfShiftDay(d, -1); }
+    return { current: cur, total: days.size };
 }
 
 app.use('/mots-fleches', requireAuth, express.static(__dirname + '/public/mots-fleches'));
 
-// Grille du jour (sans la solution : elle n'est envoyée qu'en cas d'abandon)
+// --- Grille (du jour ou d'une date passée) ---
 app.get('/api/mf/today', requireAuth, (req, res) => {
-    const level = mfLevel(req.query.level), date = mfTodayId();
-    const p = MF.generate(level, date);
-    res.json({ date, level, levelLabel: p.levelLabel, rows: p.rows, cols: p.cols, grid: p.grid, defs: p.defs });
+    const level = mfLevel(req.query.level);
+    const today = mfTodayId();
+    let date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : today;
+    if (date > today) date = today;
+    const p = mfGrid(date, level);
+    res.json({ ...mfPublic(p), today, isArchive: date !== today, nextIn: mfSecondsToMidnight() });
 });
 
-// Progression personnelle du jour
+// --- Progression ---
 app.get('/api/mf/progress', requireAuth, (req, res) => {
     const level = mfLevel(req.query.level);
-    const key = currentUser(req) + '|' + mfTodayId() + '|' + level;
-    const p = mfData.progress[key] || null;
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mfTodayId();
+    const p = mfData.progress[mfProgKey(currentUser(req), date, level)] || null;
     const elapsed = (p && p.startedAt && !p.solved && !p.gaveUp)
-        ? Math.floor((Date.now() - p.startedAt) / 1000)
+        ? Math.floor((Date.now() - p.startedAt) / 1000) + (p.penalty || 0)
         : (p ? (p.seconds || 0) : 0);
     res.json({ progress: p, elapsed });
 });
-
-// Démarrage du chrono (il court ensuite en continu, même hors de l'app)
 app.post('/api/mf/start', requireAuth, (req, res) => {
     const level = mfLevel(req.body && req.body.level);
-    const key = currentUser(req) + '|' + mfTodayId() + '|' + level;
-    const p = mfData.progress[key] || { cells: {}, solved: false, gaveUp: false, seconds: 0 };
+    const date = /^\d{4}-\d{2}-\d{2}$/.test((req.body && req.body.date) || '') ? req.body.date : mfTodayId();
+    const key = mfProgKey(currentUser(req), date, level);
+    const p = mfData.progress[key] || { cells: {}, drafts: {}, solved: false, gaveUp: false, seconds: 0, penalty: 0, hints: 0 };
     if (!p.startedAt) { p.startedAt = Date.now(); mfData.progress[key] = p; saveMf(); }
-    res.json({ ok: true, startedAt: p.startedAt, elapsed: Math.floor((Date.now() - p.startedAt) / 1000) });
+    res.json({ ok: true, startedAt: p.startedAt, penalty: p.penalty || 0 });
 });
 app.post('/api/mf/progress', requireAuth, (req, res) => {
-    const level = mfLevel(req.body && req.body.level);
-    const key = currentUser(req) + '|' + mfTodayId() + '|' + level;
-    const cells = (req.body && req.body.cells && typeof req.body.cells === 'object') ? req.body.cells : {};
-    const clean = {}; let n = 0;
-    for (const k in cells) {
-        if (n++ > 120) break;
-        const v = String(cells[k] || '').toUpperCase().slice(0, 1);
-        if (/^[A-Z]$/.test(v) && /^\d+,\d+$/.test(k)) clean[k] = v;
+    const b = req.body || {};
+    const level = mfLevel(b.level);
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : mfTodayId();
+    const key = mfProgKey(currentUser(req), date, level);
+    const clean = {}, drafts = {};
+    let n = 0;
+    for (const k in (b.cells || {})) {
+        if (n++ > 200) break;
+        const v = String(b.cells[k] || '').toUpperCase().slice(0, 1);
+        if (/^[A-Z]$/.test(v) && /^\d+,\d+$/.test(k)) { clean[k] = v; if (b.drafts && b.drafts[k]) drafts[k] = 1; }
     }
     const prev = mfData.progress[key] || {};
-    mfData.progress[key] = { cells: clean, solved: !!prev.solved, gaveUp: !!prev.gaveUp, seconds: prev.seconds || 0, startedAt: prev.startedAt || Date.now(), ts: Date.now() };
+    mfData.progress[key] = { ...prev, cells: clean, drafts, ts: Date.now(), startedAt: prev.startedAt || Date.now() };
     saveMf();
     res.json({ ok: true });
 });
 
-// Grille résolue : on enregistre le temps au classement du jour
-app.post('/api/mf/solve', requireAuth, (req, res) => {
-    const user = currentUser(req), date = mfTodayId(), level = mfLevel(req.body && req.body.level);
-    const key = user + '|' + date + '|' + level, bKey = date + '|' + level;
-    const prog = mfData.progress[key] || {};
-    let sec = prog.startedAt ? Math.round((Date.now() - prog.startedAt) / 1000) : 0;
-    if (!Number.isFinite(sec) || sec < 3) sec = 3;
-    if (sec > 86400) sec = 86400;                     // borne de sécurité (24 h)
-    if (prog.gaveUp) return res.json({ ok: false, reason: 'gaveup', board: mfBoard(date, level).map(e => ({ u: e.u, t: mfFormat(e.s) })) });
-    if (!prog.solved) {
-        mfData.progress[key] = { ...prog, solved: true, seconds: sec, ts: Date.now() };
-        const list = mfData.board[bKey] = mfData.board[bKey] || [];
-        if (!list.some(e => e.u === user)) list.push({ u: user, s: sec });
-        saveMf();
-    }
-    const board = mfBoard(date, level);
-    res.json({
-        ok: true, seconds: mfData.progress[key].seconds,
-        rank: board.findIndex(e => e.u === user) + 1, total: board.length,
-        board: board.map(e => ({ u: e.u, t: mfFormat(e.s) })),
-    });
-});
-
-// Abandon : on renvoie la solution (et le joueur n'entre pas au classement)
-app.post('/api/mf/giveup', requireAuth, (req, res) => {
-    const user = currentUser(req), date = mfTodayId(), level = mfLevel(req.body && req.body.level);
-    const key = user + '|' + date + '|' + level;
-    const p = MF.generate(level, date);
-    const prog = mfData.progress[key] || {};
-    if (!prog.solved) { mfData.progress[key] = { ...prog, gaveUp: true, ts: Date.now() }; saveMf(); }
-    res.json({ ok: true, grid: p.grid });
-});
-
-// Vérification : le serveur dit quels MOTS sont corrects, sans révéler les lettres
+// --- Vérification (le serveur ne révèle jamais les lettres) ---
 function mfSlots(p) {
     return p.defs.map(def => {
         const cells = [];
@@ -300,13 +319,11 @@ function mfSlots(p) {
     });
 }
 app.post('/api/mf/check', requireAuth, (req, res) => {
-    const level = mfLevel(req.body && req.body.level), date = mfTodayId();
-    const p = MF.generate(level, date);
-    const cells = (req.body && req.body.cells) || {};
-    const slots = mfSlots(p).map(s => ({
-        r: s.r, c: s.c, dir: s.dir,
-        ok: s.cells.every(({ r, c }) => String(cells[r + ',' + c] || '').toUpperCase() === p.grid[r][c]),
-    }));
+    const b = req.body || {};
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : mfTodayId();
+    const p = mfGrid(date, mfLevel(b.level));
+    const cells = b.cells || {};
+    const slots = mfSlots(p).map(s => ({ r: s.r, c: s.c, dir: s.dir, ok: s.cells.every(({ r, c }) => String(cells[r + ',' + c] || '').toUpperCase() === p.grid[r][c]) }));
     const wrong = [];
     for (const k in cells) {
         const m = /^(\d+),(\d+)$/.exec(k); if (!m) continue;
@@ -316,22 +333,126 @@ app.post('/api/mf/check', requireAuth, (req, res) => {
     res.json({ slots, wrong, allOk: slots.every(s => s.ok) });
 });
 
-// État des 3 grilles du jour (pour les pastilles sur les onglets)
-app.get('/api/mf/states', requireAuth, (req, res) => {
-    const user = currentUser(req), date = mfTodayId();
-    const out = {};
-    for (const lv of MF_LEVELS) {
-        const p = mfData.progress[user + '|' + date + '|' + lv];
-        out[lv] = !p ? 'neuf' : (p.solved ? 'fini' : (p.gaveUp ? 'abandon' : (p.startedAt ? 'encours' : 'neuf')));
+// --- Indices : une lettre (+30 s) ou un mot entier (+5 min) ---
+app.post('/api/mf/hint', requireAuth, (req, res) => {
+    const b = req.body || {};
+    const level = mfLevel(b.level);
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : mfTodayId();
+    const key = mfProgKey(currentUser(req), date, level);
+    const prog = mfData.progress[key];
+    if (!prog || !prog.startedAt) return res.status(400).json({ error: 'Grille non commencée.' });
+    if (prog.solved || prog.gaveUp) return res.status(400).json({ error: 'Grille terminée.' });
+    const p = mfGrid(date, level);
+    const reveal = {};
+    let cost = 0;
+    if (b.type === 'word') {
+        const slot = mfSlots(p).find(s => s.r === b.r && s.c === b.c && s.dir === b.dir);
+        if (!slot) return res.status(400).json({ error: 'Mot introuvable.' });
+        slot.cells.forEach(({ r, c }) => { reveal[r + ',' + c] = p.grid[r][c]; });
+        cost = 300;                                     // +5 minutes
+    } else {
+        const r = Number(b.r), c = Number(b.c);
+        if (!p.grid[r] || !p.grid[r][c]) return res.status(400).json({ error: 'Case invalide.' });
+        reveal[r + ',' + c] = p.grid[r][c];
+        cost = 30;                                      // +30 secondes
     }
-    res.json({ states: out });
+    prog.penalty = (prog.penalty || 0) + cost;
+    prog.hints = (prog.hints || 0) + 1;
+    prog.cells = { ...(prog.cells || {}), ...reveal };
+    saveMf();
+    res.json({ ok: true, reveal, cost, penalty: prog.penalty, hints: prog.hints });
 });
 
-// Classement du jour
+// --- Résolution : enregistrement du temps ---
+app.post('/api/mf/solve', requireAuth, (req, res) => {
+    const user = currentUser(req), today = mfTodayId();
+    const level = mfLevel(req.body && req.body.level);
+    const date = /^\d{4}-\d{2}-\d{2}$/.test((req.body && req.body.date) || '') ? req.body.date : today;
+    const key = mfProgKey(user, date, level), bKey = date + '|' + level;
+    const prog = mfData.progress[key] || {};
+    let sec = prog.startedAt ? Math.round((Date.now() - prog.startedAt) / 1000) : 0;
+    sec += (prog.penalty || 0);
+    if (!Number.isFinite(sec) || sec < 1) sec = 1;
+    if (sec > 86400) sec = 86400;
+
+    const isArchive = date !== today;
+    const suspicious = sec < (MF_MIN_TIME[level] || 25);      // temps anormalement court
+    if (!prog.solved) {
+        mfData.progress[key] = { ...prog, solved: true, seconds: sec, ts: Date.now() };
+        if (!isArchive && !prog.gaveUp) {
+            const list = mfData.board[bKey] = mfData.board[bKey] || [];
+            if (!list.some(e => e.u === user)) list.push({ u: user, s: sec, susp: suspicious });
+            const days = mfData.days[user] = mfData.days[user] || [];
+            if (!days.includes(date)) days.push(date);
+        }
+        saveMf();
+    }
+    const board = mfBoard(date, level);
+    res.json({
+        ok: true, seconds: mfData.progress[key].seconds, isArchive, suspicious,
+        rank: board.findIndex(e => e.u === user) + 1, total: board.length,
+        board: board.map(e => ({ u: e.u, t: mfFormat(e.s) })),
+        streak: mfStreak(user),
+    });
+});
+
+// --- Abandon ---
+app.post('/api/mf/giveup', requireAuth, (req, res) => {
+    const user = currentUser(req);
+    const level = mfLevel(req.body && req.body.level);
+    const date = /^\d{4}-\d{2}-\d{2}$/.test((req.body && req.body.date) || '') ? req.body.date : mfTodayId();
+    const key = mfProgKey(user, date, level);
+    const p = mfGrid(date, level);
+    const prog = mfData.progress[key] || {};
+    if (!prog.solved) { mfData.progress[key] = { ...prog, gaveUp: true, ts: Date.now() }; saveMf(); }
+    res.json({ ok: true, grid: p.grid });
+});
+
+// --- Classement, états, stats ---
 app.get('/api/mf/board', requireAuth, (req, res) => {
-    const date = mfTodayId(), level = mfLevel(req.query.level), user = currentUser(req);
+    const level = mfLevel(req.query.level), user = currentUser(req);
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mfTodayId();
     const board = mfBoard(date, level);
     res.json({ board: board.map(e => ({ u: e.u, t: mfFormat(e.s) })), me: board.findIndex(e => e.u === user) + 1 });
+});
+app.get('/api/mf/states', requireAuth, (req, res) => {
+    const user = currentUser(req);
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mfTodayId();
+    const out = {};
+    for (const lv of MF_LEVELS) {
+        const p = mfData.progress[mfProgKey(user, date, lv)];
+        out[lv] = !p ? 'neuf' : (p.solved ? 'fini' : (p.gaveUp ? 'abandon' : (p.startedAt ? 'encours' : 'neuf')));
+    }
+    res.json({ states: out, streak: mfStreak(user), nextIn: mfSecondsToMidnight() });
+});
+// Archives : les 14 derniers jours
+app.get('/api/mf/archive', requireAuth, (req, res) => {
+    const user = currentUser(req), today = mfTodayId();
+    const out = [];
+    for (let i = 1; i <= 14; i++) {
+        const d = mfShiftDay(today, -i);
+        const done = MF_LEVELS.filter(lv => (mfData.progress[mfProgKey(user, d, lv)] || {}).solved).length;
+        out.push({ date: d, done });
+    }
+    res.json({ days: out });
+});
+
+// --- Fil de discussion du jour ---
+app.get('/api/mf/comments', requireAuth, (req, res) => {
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mfTodayId();
+    res.json({ comments: (mfData.comments[date] || []).slice(-60) });
+});
+app.post('/api/mf/comments', requireAuth, (req, res) => {
+    const user = currentUser(req), date = mfTodayId();
+    const txt = String((req.body && req.body.text) || '').trim().slice(0, 240);
+    if (!txt) return res.status(400).json({ error: 'Message vide.' });
+    const list = mfData.comments[date] = mfData.comments[date] || [];
+    const last = list.filter(c => c.u === user).slice(-1)[0];
+    if (last && Date.now() - last.ts < 4000) return res.status(429).json({ error: 'Doucement !' });
+    list.push({ u: user, t: escapeHtml(txt), ts: Date.now() });
+    if (list.length > 200) list.splice(0, list.length - 200);
+    saveMf();
+    res.json({ ok: true, comments: list.slice(-60) });
 });
 
 // ---------------------------------------------------------------------

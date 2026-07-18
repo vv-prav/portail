@@ -5,7 +5,7 @@
 //  Une même case peut porter deux définitions (une par direction).
 //  Grille DÉTERMINISTE : même date + même niveau = même grille pour tous.
 // =====================================================================
-const { LISTS } = require('./words');
+const { WORDS } = require('./words');
 
 function hashSeed(str) {
     let h = 2166136261;
@@ -27,27 +27,31 @@ function shuffle(arr, rnd) {
 }
 
 const LEVELS = {
-    facile:    { rows: 8,  cols: 7, lens: [3, 4, 5],       maxN: 1, target: 9,  label: 'Facile' },
-    moyen:     { rows: 9,  cols: 8, lens: [3, 4, 5, 6],    maxN: 2, target: 12, label: 'Moyen' },
-    difficile: { rows: 10, cols: 9, lens: [3, 4, 5, 6, 7], maxN: 3, target: 15, label: 'Difficile' },
+    moyen:     { rows: 8,  cols: 7,  lens: [3, 4, 5],          minN: 1, maxN: 1, target: 10, label: 'Moyen' },
+    difficile: { rows: 9,  cols: 8,  lens: [3, 4, 5, 6],       minN: 1, maxN: 2, target: 13, label: 'Difficile' },
+    // Expert : mots plus longs, vocabulaire rare, aucun mot de 3 lettres
+    expert:    { rows: 11, cols: 10, lens: [4, 5, 6, 7, 8],    minN: 2, maxN: 3, target: 16, label: 'Expert' },
 };
 
-function poolsFor(cfg) {
+function poolsFor(cfg, exclude) {
+    const skip = exclude || new Set();
     const pools = {};
     for (const len of cfg.lens) {
-        pools[len] = (LISTS[len] || []).filter(([, , n]) => n <= cfg.maxN).map(([m, d, n]) => ({ m, d, n }));
+        pools[len] = (WORDS[len] || []).filter(w => w.n >= cfg.minN && w.n <= cfg.maxN && !skip.has(w.m));
+        // si l'exclusion vide trop le stock, on la relâche pour cette longueur
+        if (pools[len].length < 8) pools[len] = (WORDS[len] || []).filter(w => w.n >= cfg.minN && w.n <= cfg.maxN);
     }
     return pools;
 }
 
 const BLOCK = '#';
 
-function buildAttempt(cfg, rnd) {
+function buildAttempt(cfg, rnd, exclude) {
     const { rows, cols } = cfg;
     const grid = Array.from({ length: rows }, () => Array(cols).fill(null));
     const placed = [];
     const defTaken = new Set();
-    const pools = poolsFor(cfg);
+    const pools = poolsFor(cfg, exclude);
     const usedWords = new Set();
 
     function canPlace(word, r0, c0, dir) {
@@ -163,24 +167,61 @@ function validate(grid, placed, rows, cols) {
     return found.every(f => declared.has(f));
 }
 
-function generate(level, dateId) {
-    const cfg = LEVELS[level] || LEVELS.facile;
+// Contrôle qualité : assez de mots, assez de croisements, grille pas trop vide
+function qualityOk(res, cfg) {
+    if (res.placed.length < Math.max(5, Math.floor(cfg.target * 0.6))) return false;
+    const letters = res.grid.flat().filter(v => v && v !== BLOCK).length;
+    if (letters < cfg.rows * cfg.cols * 0.28) return false;          // densité minimale
+    const crossed = new Set();
+    res.placed.forEach(p => {
+        for (let i = 0; i < p.m.length; i++) {
+            const r = p.dir === 'right' ? p.r : p.r + i;
+            const c = p.dir === 'right' ? p.c + i : p.c;
+            const k = r + ',' + c;
+            if (crossed.has(k)) crossed.add('X' + k); else crossed.add(k);
+        }
+    });
+    const crossings = [...crossed].filter(k => k[0] === 'X').length;
+    return crossings >= Math.floor(res.placed.length / 2);           // au moins 1 croisement / 2 mots
+}
+
+/**
+ * Grille du jour.
+ * @param {string} level 'moyen' | 'difficile' | 'expert'
+ * @param {string} dateId 'AAAA-MM-JJ'
+ * @param {string[]} recentWords mots vus récemment, à éviter
+ */
+function generate(level, dateId, recentWords) {
+    const cfg = LEVELS[level] || LEVELS.moyen;
+    const exclude = new Set(recentWords || []);
     let best = null;
-    for (let attempt = 0; attempt < 40; attempt++) {
+
+    for (let attempt = 0; attempt < 60; attempt++) {
         const rnd = mulberry32(hashSeed(dateId + '|' + level + '|' + attempt));
-        const res = buildAttempt(cfg, rnd);
+        const res = buildAttempt(cfg, rnd, exclude);
         if (!res || res.placed.length < 4) continue;
         if (!validate(res.grid, res.placed, cfg.rows, cfg.cols)) continue;
+        if (!qualityOk(res, cfg)) continue;
         if (!best || res.placed.length > best.placed.length) best = res;
         if (best.placed.length >= cfg.target) break;
     }
+    // filet de sécurité : on retente sans exclusion
+    if (!best && exclude.size) return generate(level, dateId, null);
     if (!best) throw new Error('Génération impossible pour ' + level + ' ' + dateId);
 
+    // une définition tirée au sort parmi celles du mot (stable pour la journée)
+    const rndDef = mulberry32(hashSeed(dateId + '|' + level + '|defs'));
     const grid = best.grid.map(row => row.map(v => (v && v !== BLOCK ? v : null)));
-    const defs = best.placed.map(p => ({ r: p.defR, c: p.defC, dir: p.dir, clue: p.d }));
+    const defs = best.placed.map(p => ({
+        r: p.defR, c: p.defC, dir: p.dir,
+        clue: p.defs[Math.floor(rndDef() * p.defs.length)] || p.defs[0],
+    }));
+
     return {
         id: dateId + '-' + level, level, levelLabel: cfg.label, date: dateId,
-        rows: cfg.rows, cols: cfg.cols, grid, defs, words: best.placed.length,
+        rows: cfg.rows, cols: cfg.cols, grid, defs,
+        words: best.placed.length,
+        wordList: best.placed.map(p => p.m),
     };
 }
 

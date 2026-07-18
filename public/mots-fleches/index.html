@@ -24,13 +24,19 @@
             <div class="mf-timer" id="mf-timer">0:00</div>
         </header>
 
-        <div class="mf-levels" id="mf-levels" role="tablist">
-            <button class="lv" data-lv="facile" type="button">Facile</button>
+        <div class="mf-levels" id="mf-levels">
             <button class="lv" data-lv="moyen" type="button">Moyen</button>
             <button class="lv" data-lv="difficile" type="button">Difficile</button>
+            <button class="lv" data-lv="expert" type="button">Expert</button>
         </div>
 
-        <div class="mf-clue" id="mf-clue">Touche une case pour commencer.</div>
+        <div class="mf-strip">
+            <span class="chip" id="mf-streak" title="Jours consécutifs">🔥 <b>0</b></span>
+            <span class="chip" id="mf-next" title="Prochaine grille">🕛 —</span>
+            <span class="chip archive-chip" id="mf-archive-chip" hidden>📅 Archive</span>
+        </div>
+
+        <div class="mf-clue" id="mf-clue">Appuie sur « Commencer » pour lancer la grille.</div>
 
         <div class="mf-grid-wrap">
             <div class="mf-grid" id="mf-grid"></div>
@@ -43,17 +49,25 @@
             </div>
         </div>
 
-        <div class="mf-inline-board" id="mf-inline-board" hidden></div>
-
-        <div class="mf-actions">
-            <button class="mf-btn" id="mf-check" type="button">Vérifier</button>
-            <button class="mf-btn ghost" id="mf-giveup" type="button">Abandonner</button>
+        <div class="mf-tools">
+            <button class="tool" id="t-pencil" type="button" title="Mode crayon"><span>✏️</span><em>Crayon</em></button>
+            <button class="tool" id="t-hint"   type="button" title="Indice"><span>💡</span><em>Indice</em></button>
+            <button class="tool" id="t-erase"  type="button" title="Effacer"><span>🧹</span><em>Effacer</em></button>
+            <button class="tool" id="t-check"  type="button" title="Vérifier"><span>✓</span><em>Vérifier</em></button>
+            <button class="tool" id="t-giveup" type="button" title="Abandonner"><span>🏳️</span><em>Rendre</em></button>
         </div>
 
+        <div class="mf-inline-board" id="mf-inline-board" hidden></div>
+
         <div class="mf-keyboard" id="mf-keyboard"></div>
+
+        <div class="mf-panels">
+            <button class="panel-toggle" id="btn-comments" type="button">💬 Discussion du jour</button>
+            <button class="panel-toggle" id="btn-archive" type="button">📅 Grilles précédentes</button>
+        </div>
     </div>
 
-    <!-- Panneau de fin : temps + classement -->
+    <!-- Fin de grille -->
     <div class="mf-overlay" id="mf-end" hidden>
         <div class="mf-card">
             <div class="mf-end-emoji" id="mf-end-emoji">🎉</div>
@@ -65,14 +79,48 @@
         </div>
     </div>
 
-    <!-- Confirmation d'abandon -->
-    <div class="mf-overlay" id="mf-confirm" hidden>
+    <!-- Confirmations génériques -->
+    <div class="mf-overlay" id="mf-ask" hidden>
         <div class="mf-card">
-            <div class="mf-end-emoji">🏳️</div>
-            <h2 class="mf-end-title">Abandonner ?</h2>
-            <p class="mf-end-sub">Les réponses seront révélées et tu ne figureras pas au classement du jour.</p>
-            <button class="mf-btn danger" id="mf-confirm-yes" type="button">Oui, montrer les réponses</button>
-            <button class="mf-btn ghost" id="mf-confirm-no" type="button">Continuer à jouer</button>
+            <div class="mf-end-emoji" id="ask-emoji">❓</div>
+            <h2 class="mf-end-title" id="ask-title">Confirmer</h2>
+            <p class="mf-end-sub" id="ask-sub"></p>
+            <div id="ask-actions"></div>
+            <button class="mf-btn ghost" id="ask-cancel" type="button">Annuler</button>
+        </div>
+    </div>
+
+    <!-- Discussion -->
+    <div class="mf-overlay" id="mf-comments" hidden>
+        <div class="mf-card">
+            <h2 class="mf-end-title">Discussion du jour</h2>
+            <p class="mf-end-sub">Pas de spoilers, restez fair-play 🙂</p>
+            <div class="cmt-list" id="cmt-list"></div>
+            <div class="cmt-form">
+                <input id="cmt-input" maxlength="240" placeholder="Ton message…" autocomplete="off">
+                <button class="mf-btn" id="cmt-send" type="button">Envoyer</button>
+            </div>
+            <button class="mf-btn ghost" id="cmt-close" type="button">Fermer</button>
+        </div>
+    </div>
+
+    <!-- Archives -->
+    <div class="mf-overlay" id="mf-archive" hidden>
+        <div class="mf-card">
+            <h2 class="mf-end-title">Grilles précédentes</h2>
+            <p class="mf-end-sub">Rejouables, mais hors classement.</p>
+            <div class="arch-list" id="arch-list"></div>
+            <button class="mf-btn" id="arch-today" type="button">Revenir à aujourd'hui</button>
+            <button class="mf-btn ghost" id="arch-close" type="button">Fermer</button>
+        </div>
+    </div>
+
+    <!-- Aperçu d'une définition en grand -->
+    <div class="mf-overlay def-zoom" id="mf-defzoom" hidden>
+        <div class="defzoom-card">
+            <span class="defzoom-dir" id="defzoom-dir">▶</span>
+            <p class="defzoom-txt" id="defzoom-txt"></p>
+            <button class="mf-btn" id="defzoom-close" type="button">Fermer</button>
         </div>
     </div>
 
