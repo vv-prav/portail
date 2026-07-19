@@ -133,3 +133,42 @@ body {
 .ov-card .in, .ov-card .seg { text-align:left; }
 #w-mot { text-transform:uppercase; letter-spacing:2px; font-weight:700; text-align:center; }
 #w-mot:disabled { opacity:.75; }
+
+/* ===== Lot 3 : Perudo, grilles, administrateurs ===== */
+.ad-tabs { grid-template-columns:repeat(3,1fr); gap:5px; }
+.tab { font-size:.72rem; padding:10px 2px; }
+.row.static { cursor:default; }
+.row.static:active { transform:none; }
+.mini { flex:0 0 auto; padding:7px 11px; border-radius:8px; background:rgba(255,255,255,.08);
+        border:1px solid var(--line); color:var(--brass-soft); font-size:.72rem; font-family:inherit; cursor:pointer; }
+.mini.danger { border-color:rgba(224,122,95,.5); color:#ffb4a0; }
+.mini.wide { width:100%; margin-top:8px; }
+.mini:active { transform:scale(.95); }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.fld { display:flex; flex-direction:column; gap:4px; text-align:left; color:var(--muted); font-size:.72rem; }
+.fld .in { margin-bottom:0; padding:11px; font-size:15px; }
+.fld input[type=color] { padding:4px; height:44px; }
+.glv { background:rgba(0,0,0,.24); border:1px solid var(--line); border-radius:12px; padding:12px; margin-top:10px; }
+.glv-head { display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-bottom:6px; }
+.glv-head b { color:var(--brass-soft); font-size:.95rem; }
+.glv-head span { color:var(--muted); font-size:.72rem; text-align:right; }
+.glv-words { font-size:.7rem; color:var(--muted); line-height:1.5; margin:0 0 8px; overflow-wrap:anywhere; }
+.glv-board { display:flex; flex-direction:column; gap:4px; }
+.bd-row { display:flex; align-items:center; gap:8px; font-size:.8rem; padding:6px 8px; border-radius:8px; background:rgba(0,0,0,.3); }
+.bd-row span { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.bd-row b { color:var(--brass-soft); font-variant-numeric:tabular-nums; }
+.bd-row.susp { opacity:.55; text-decoration:line-through; }
+.log-row.up { align-items:flex-start; }
+.log-row .mini { margin-left:auto; }
+
+/* ===== Navigation déroulante (mobile-first, extensible) ===== */
+.ad-nav { margin-bottom: 16px; }
+.ad-select { width: 100%; padding: 14px 44px 14px 14px; border-radius: 12px; font-size: 1rem; font-weight: 700;
+             font-family: inherit; color: var(--brass-soft); background: linear-gradient(165deg, var(--ink-3), var(--ink-2));
+             border: 1px solid var(--brass); appearance: none; -webkit-appearance: none; cursor: pointer;
+             background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9'%3E%3Cpath d='M1 1l6 6 6-6' stroke='%23d9a94e' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+             background-repeat: no-repeat; background-position: right 16px center; }
+.ad-select:focus { outline: none; box-shadow: 0 0 0 2px rgba(217,169,78,.3); }
+#ask-input { text-align: center; font-weight: 700; letter-spacing: .5px; border-color: rgba(224,122,95,.5); }
+#ask-input[hidden] { display: none; }
+#ask-acts .btn:disabled { opacity: .35; cursor: not-allowed; transform: none; }

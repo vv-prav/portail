@@ -25,14 +25,15 @@
         </header>
 
         <div class="mf-levels" id="mf-levels">
-            <button class="lv" data-lv="moyen" type="button">Moyen</button>
-            <button class="lv" data-lv="difficile" type="button">Difficile</button>
-            <button class="lv" data-lv="expert" type="button">Expert</button>
+            <button class="lv" data-lv="moyen" type="button" data-i="lv_moyen">Moyen</button>
+            <button class="lv" data-lv="difficile" type="button" data-i="lv_difficile">Difficile</button>
+            <button class="lv" data-lv="expert" type="button" data-i="lv_expert">Expert</button>
         </div>
 
         <div class="mf-strip">
             <span class="chip" id="mf-streak" title="Jours consécutifs">🔥 <b>0</b></span>
             <span class="chip" id="mf-next" title="Prochaine grille">🕛 —</span>
+            <span class="chip live-chip" id="mf-live" hidden></span>
             <span class="chip archive-chip" id="mf-archive-chip" hidden>📅 Archive</span>
         </div>
 
@@ -43,17 +44,17 @@
             <div class="mf-start" id="mf-start">
                 <div class="mf-start-box">
                     <div class="mf-start-emoji">🧩</div>
-                    <p class="mf-start-txt">Le chrono démarre dès que tu commences<br>et ne s'arrête plus.</p>
-                    <button class="mf-btn" id="mf-start-btn" type="button">Commencer</button>
+                    <p class="mf-start-txt" data-i="start_txt">Le chrono démarre dès que tu commences et ne s'arrête plus.</p>
+                    <button class="mf-btn" id="mf-start-btn" type="button" data-i="start_btn">Commencer</button>
                 </div>
             </div>
         </div>
 
         <div class="mf-tools">
-            <button class="tool" id="t-hint"   type="button" title="Indice"><span>💡</span><em>Indice</em></button>
-            <button class="tool" id="t-erase"  type="button" title="Effacer"><span>🧹</span><em>Effacer</em></button>
-            <button class="tool" id="t-check"  type="button" title="Vérifier"><span>✓</span><em>Vérifier</em></button>
-            <button class="tool" id="t-giveup" type="button" title="Abandonner"><span>🏳️</span><em>Rendre</em></button>
+            <button class="tool" id="t-hint"   type="button"><span>💡</span><em data-i="tool_hint">Indice</em></button>
+            <button class="tool" id="t-erase"  type="button"><span>🧹</span><em data-i="tool_erase">Effacer</em></button>
+            <button class="tool" id="t-check"  type="button"><span>✓</span><em data-i="tool_check">Vérifier</em></button>
+            <button class="tool" id="t-giveup" type="button"><span>🏳️</span><em data-i="tool_giveup">Rendre</em></button>
         </div>
 
         <div class="mf-inline-board" id="mf-inline-board" hidden></div>
@@ -61,8 +62,8 @@
         <div class="mf-keyboard" id="mf-keyboard"></div>
 
         <div class="mf-panels">
-            <button class="panel-toggle" id="btn-comments" type="button">💬 Discussion du jour</button>
-            <button class="panel-toggle" id="btn-archive" type="button">📅 Grilles précédentes</button>
+            <button class="panel-toggle" id="btn-comments" type="button">💬 <span data-i="panel_chat">Discussion du jour</span></button>
+            <button class="panel-toggle" id="btn-archive" type="button">📅 <span data-i="panel_arch">Grilles précédentes</span></button>
         </div>
     </div>
 
@@ -73,8 +74,8 @@
             <h2 class="mf-end-title" id="mf-end-title">Grille résolue !</h2>
             <p class="mf-end-sub" id="mf-end-sub"></p>
             <div class="mf-board" id="mf-board"></div>
-            <button class="mf-btn" id="mf-end-close" type="button">Fermer</button>
-            <a class="mf-btn ghost" href="/">Retour au salon</a>
+            <button class="mf-btn" id="mf-end-close" type="button" data-i="close">Fermer</button>
+            <a class="mf-btn ghost" href="/" data-i="back_salon">Retour au salon</a>
         </div>
     </div>
 
@@ -85,32 +86,32 @@
             <h2 class="mf-end-title" id="ask-title">Confirmer</h2>
             <p class="mf-end-sub" id="ask-sub"></p>
             <div id="ask-actions"></div>
-            <button class="mf-btn ghost" id="ask-cancel" type="button">Annuler</button>
+            <button class="mf-btn ghost" id="ask-cancel" type="button" data-i="cancel">Annuler</button>
         </div>
     </div>
 
     <!-- Discussion -->
     <div class="mf-overlay" id="mf-comments" hidden>
         <div class="mf-card">
-            <h2 class="mf-end-title">Discussion du jour</h2>
-            <p class="mf-end-sub">Pas de spoilers, restez fair-play 🙂</p>
+            <h2 class="mf-end-title" data-i="panel_chat">Discussion du jour</h2>
+            <p class="mf-end-sub" data-i="chat_sub">Pas de spoilers, restez fair-play 🙂</p>
             <div class="cmt-list" id="cmt-list"></div>
             <div class="cmt-form">
-                <input id="cmt-input" maxlength="240" placeholder="Ton message…" autocomplete="off">
-                <button class="mf-btn" id="cmt-send" type="button">Envoyer</button>
+                <input id="cmt-input" maxlength="240" data-ph="chat_ph" placeholder="Ton message…" autocomplete="off">
+                <button class="mf-btn" id="cmt-send" type="button" data-i="chat_send">Envoyer</button>
             </div>
-            <button class="mf-btn ghost" id="cmt-close" type="button">Fermer</button>
+            <button class="mf-btn ghost" id="cmt-close" type="button" data-i="close">Fermer</button>
         </div>
     </div>
 
     <!-- Archives -->
     <div class="mf-overlay" id="mf-archive" hidden>
         <div class="mf-card">
-            <h2 class="mf-end-title">Grilles précédentes</h2>
-            <p class="mf-end-sub">Rejouables, mais hors classement.</p>
+            <h2 class="mf-end-title" data-i="panel_arch">Grilles précédentes</h2>
+            <p class="mf-end-sub" data-i="arch_sub">Rejouables, mais hors classement.</p>
             <div class="arch-list" id="arch-list"></div>
-            <button class="mf-btn" id="arch-today" type="button">Revenir à aujourd'hui</button>
-            <button class="mf-btn ghost" id="arch-close" type="button">Fermer</button>
+            <button class="mf-btn" id="arch-today" type="button" data-i="arch_today">Revenir à aujourd'hui</button>
+            <button class="mf-btn ghost" id="arch-close" type="button" data-i="close">Fermer</button>
         </div>
     </div>
 
@@ -119,7 +120,7 @@
         <div class="defzoom-card">
             <span class="defzoom-dir" id="defzoom-dir">▶</span>
             <p class="defzoom-txt" id="defzoom-txt"></p>
-            <button class="mf-btn" id="defzoom-close" type="button">Fermer</button>
+            <button class="mf-btn" id="defzoom-close" type="button" data-i="close">Fermer</button>
         </div>
     </div>
 

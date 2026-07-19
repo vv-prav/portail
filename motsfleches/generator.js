@@ -27,10 +27,10 @@ function shuffle(arr, rnd) {
 }
 
 const LEVELS = {
-    moyen:     { rows: 8,  cols: 7,  lens: [3, 4, 5],          minN: 1, maxN: 1, target: 10, label: 'Moyen' },
-    difficile: { rows: 9,  cols: 8,  lens: [3, 4, 5, 6],       minN: 1, maxN: 2, target: 13, label: 'Difficile' },
+    moyen:     { rows: 8,  cols: 7,  lens: [3, 4, 5],          minN: 1, maxN: 1, target: 16, density: 0.50, label: 'Moyen' },
+    difficile: { rows: 9,  cols: 8,  lens: [3, 4, 5, 6],       minN: 1, maxN: 2, target: 20, density: 0.50, label: 'Difficile' },
     // Expert : mots plus longs, vocabulaire rare, aucun mot de 3 lettres
-    expert:    { rows: 11, cols: 10, lens: [4, 5, 6, 7, 8],    minN: 2, maxN: 3, target: 16, label: 'Expert' },
+    expert:    { rows: 11, cols: 10, lens: [4, 5, 6, 7, 8],    minN: 2, maxN: 3, target: 24, density: 0.48, label: 'Expert' },
 };
 
 function poolsFor(cfg, exclude) {
@@ -111,33 +111,55 @@ function buildAttempt(cfg, rnd, exclude) {
     }
     if (!placed.length) return null;
 
-    let guard = 0;
-    while (placed.length < cfg.target && guard++ < 300) {
-        let done = false;
+    // Passe A : greffe par croisement sur un mot déjà posé
+    function crossPass() {
         for (const base of shuffle(placed, rnd)) {
             const dir = base.dir === 'right' ? 'down' : 'right';
-            for (let i = 0; i < base.m.length && !done; i++) {
+            for (let i = 0; i < base.m.length; i++) {
                 const cr = base.dir === 'right' ? base.r : base.r + i;
                 const cc = base.dir === 'right' ? base.c + i : base.c;
                 const letter = base.m[i];
                 for (const len of shuffle(cfg.lens, rnd)) {
                     const cands = shuffle((pools[len] || []).filter(w => !usedWords.has(w.m) && w.m.indexOf(letter) >= 0), rnd);
-                    for (const w of cands) {
+                    for (const w of cands.slice(0, 14)) {
                         for (let j = 0; j < w.m.length; j++) {
                             if (w.m[j] !== letter) continue;
                             const r0 = dir === 'right' ? cr : cr - j;
                             const c0 = dir === 'right' ? cc - j : cc;
                             const info = canPlace(w.m, r0, c0, dir);
-                            if (info && info.crossings >= 1) { place(w, r0, c0, dir, info); done = true; break; }
+                            if (info && info.crossings >= 1) { place(w, r0, c0, dir, info); return true; }
                         }
-                        if (done) break;
                     }
-                    if (done) break;
                 }
             }
-            if (done) break;
         }
-        if (!done) break;
+        return false;
+    }
+
+    // Passe B : nouvel îlot dans une zone vide (comme les grilles de magazine,
+    // faites de plusieurs blocs reliés par leurs cases de définition)
+    function islandPass() {
+        const cells = [];
+        for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) if (grid[r][c] === null) cells.push({ r, c });
+        for (const { r, c } of shuffle(cells, rnd)) {
+            for (const dir of shuffle(['right', 'down'], rnd)) {
+                for (const len of shuffle(cfg.lens, rnd)) {
+                    const cands = shuffle((pools[len] || []).filter(w => !usedWords.has(w.m)), rnd);
+                    for (const w of cands.slice(0, 10)) {
+                        const info = canPlace(w.m, r, c, dir);
+                        if (info) { place(w, r, c, dir, info); return true; }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    let guard = 0;
+    while (placed.length < cfg.target && guard++ < 400) {
+        if (crossPass()) continue;      // priorité aux croisements (plus jolis)
+        if (islandPass()) continue;     // sinon on ouvre un îlot ailleurs
+        break;                          // plus rien de plaçable
     }
     return { grid, placed };
 }
@@ -170,9 +192,9 @@ function validate(grid, placed, rows, cols) {
 
 // Contrôle qualité : assez de mots, assez de croisements, grille pas trop vide
 function qualityOk(res, cfg) {
-    if (res.placed.length < Math.max(5, Math.floor(cfg.target * 0.6))) return false;
+    if (res.placed.length < Math.max(6, Math.floor(cfg.target * 0.6))) return false;
     const letters = res.grid.flat().filter(v => v && v !== BLOCK).length;
-    if (letters < cfg.rows * cfg.cols * 0.28) return false;          // densité minimale
+    if (letters < cfg.rows * cfg.cols * (cfg.density || 0.45)) return false;   // grille dense exigée
     const crossed = new Set();
     res.placed.forEach(p => {
         for (let i = 0; i < p.m.length; i++) {
@@ -183,7 +205,7 @@ function qualityOk(res, cfg) {
         }
     });
     const crossings = [...crossed].filter(k => k[0] === 'X').length;
-    return crossings >= Math.floor(res.placed.length / 2);           // au moins 1 croisement / 2 mots
+    return crossings >= Math.floor(res.placed.length / 3);           // îlots admis, croisements requis
 }
 
 /**
@@ -195,18 +217,21 @@ function qualityOk(res, cfg) {
 function generate(level, dateId, recentWords) {
     const cfg = LEVELS[level] || LEVELS.moyen;
     const exclude = new Set(recentWords || []);
-    let best = null;
+    let best = null;        // grille valide ET dense
+    let fallback = null;    // grille valide (filet de sécurité)
 
-    for (let attempt = 0; attempt < 60; attempt++) {
+    for (let attempt = 0; attempt < 20; attempt++) {
         const rnd = mulberry32(hashSeed(dateId + '|' + level + '|' + attempt));
         const res = buildAttempt(cfg, rnd, exclude);
         if (!res || res.placed.length < 4) continue;
         if (!validate(res.grid, res.placed, cfg.rows, cfg.cols)) continue;
+        if (!fallback || res.placed.length > fallback.placed.length) fallback = res;
         if (!qualityOk(res, cfg)) continue;
         if (!best || res.placed.length > best.placed.length) best = res;
         if (best.placed.length >= cfg.target) break;
+        if (attempt >= 6 && best.placed.length >= Math.floor(cfg.target * 0.75)) break;
     }
-    // filet de sécurité : on retente sans exclusion
+    if (!best) best = fallback;                       // mieux vaut une grille correcte qu'aucune
     if (!best && exclude.size) return generate(level, dateId, null);
     if (!best) throw new Error('Génération impossible pour ' + level + ' ' + dateId);
 

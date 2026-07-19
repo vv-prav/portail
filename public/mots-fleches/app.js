@@ -5,6 +5,93 @@ const $ = (id) => document.getElementById(id);
 const key = (r, c) => r + ',' + c;
 const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// ---------- i18n (clé partagée avec le salon et le Perudo) ----------
+const I18N = {
+    fr: {
+        start_txt: "Le chrono démarre dès que tu commences et ne s'arrête plus.",
+        start_btn: "Commencer", close: "Fermer", cancel: "Annuler", back_salon: "Retour au salon",
+        tool_hint: "Indice", tool_erase: "Effacer", tool_check: "Vérifier", tool_giveup: "Rendre",
+        panel_chat: "Discussion du jour", panel_arch: "Grilles précédentes",
+        chat_sub: "Pas de spoilers, restez fair-play 🙂", chat_ph: "Ton message…", chat_send: "Envoyer",
+        chat_empty: "Personne n'a encore écrit aujourd'hui.",
+        arch_sub: "Rejouables, mais hors classement.", arch_today: "Revenir à aujourd'hui", arch_none: "Aucune archive.",
+        clue_start: "Appuie sur « Commencer » pour lancer la grille.",
+        clue_resume: "Touche une case pour continuer.",
+        clue_arch: "Grille d'archive — hors classement. Appuie sur « Commencer ».",
+        clue_done: "Grille terminée 🎉", clue_revealed: "Réponses révélées.",
+        clue_pick: "Choisis d'abord une case.",
+        end_title: "Grille résolue !", end_revealed: "Réponses révélées",
+        end_time: "Ton temps :", end_arch: "grille d'archive (hors classement)", end_of: "sur",
+        end_streak: "jours d'affilée", end_noboard: "Pas de classement cette fois — retente demain !",
+        board_title: "Classement du jour", board_empty: "Personne n'a encore terminé cette grille aujourd'hui.",
+        erase_title: "Effacer", erase_sub: "Que veux-tu effacer ?", erase_word: "Le mot en cours", erase_all: "Toute la grille",
+        hint_title: "Demander un indice", hint_sub: "Le temps ajouté compte dans ton score.",
+        hint_letter: "Révéler cette lettre (+30 s)", hint_word: "Révéler tout le mot (+5 min)",
+        giveup_title: "Abandonner ?", giveup_sub: "Les réponses seront révélées et tu ne figureras pas au classement.",
+        giveup_yes: "Oui, montrer les réponses",
+        lv_moyen: "Moyen", lv_difficile: "Difficile", lv_expert: "Expert",
+        live_done: "ont fini", tip_zoom: "Astuce : garde le doigt appuyé sur une définition pour l'agrandir.",
+    },
+    en: {
+        start_txt: "The clock starts as soon as you begin — and never stops.",
+        start_btn: "Start", close: "Close", cancel: "Cancel", back_salon: "Back to the lounge",
+        tool_hint: "Hint", tool_erase: "Erase", tool_check: "Check", tool_giveup: "Give up",
+        panel_chat: "Today's chat", panel_arch: "Past grids",
+        chat_sub: "No spoilers, play fair 🙂", chat_ph: "Your message…", chat_send: "Send",
+        chat_empty: "Nobody has written today yet.",
+        arch_sub: "Replayable, but off the leaderboard.", arch_today: "Back to today", arch_none: "No archives.",
+        clue_start: "Tap “Start” to begin the grid.",
+        clue_resume: "Tap a square to continue.",
+        clue_arch: "Archive grid — off the leaderboard. Tap “Start”.",
+        clue_done: "Grid solved 🎉", clue_revealed: "Answers revealed.",
+        clue_pick: "Pick a square first.",
+        end_title: "Grid solved!", end_revealed: "Answers revealed",
+        end_time: "Your time:", end_arch: "archive grid (off the leaderboard)", end_of: "of",
+        end_streak: "day streak", end_noboard: "No ranking this time — try again tomorrow!",
+        board_title: "Today's leaderboard", board_empty: "Nobody has finished this grid today yet.",
+        erase_title: "Erase", erase_sub: "What do you want to erase?", erase_word: "Current word", erase_all: "The whole grid",
+        hint_title: "Ask for a hint", hint_sub: "The added time counts in your score.",
+        hint_letter: "Reveal this letter (+30 s)", hint_word: "Reveal the whole word (+5 min)",
+        giveup_title: "Give up?", giveup_sub: "Answers will be revealed and you won't appear on the leaderboard.",
+        giveup_yes: "Yes, show the answers",
+        lv_moyen: "Medium", lv_difficile: "Hard", lv_expert: "Expert",
+        live_done: "finished", tip_zoom: "Tip: press and hold a clue to enlarge it.",
+    },
+    es: {
+        start_txt: "El cronómetro arranca en cuanto empiezas — y no se detiene.",
+        start_btn: "Empezar", close: "Cerrar", cancel: "Cancelar", back_salon: "Volver al salón",
+        tool_hint: "Pista", tool_erase: "Borrar", tool_check: "Comprobar", tool_giveup: "Rendirse",
+        panel_chat: "Charla del día", panel_arch: "Cuadrículas pasadas",
+        chat_sub: "Sin spoilers, juega limpio 🙂", chat_ph: "Tu mensaje…", chat_send: "Enviar",
+        chat_empty: "Nadie ha escrito hoy todavía.",
+        arch_sub: "Rejugables, pero fuera de la clasificación.", arch_today: "Volver a hoy", arch_none: "Sin archivos.",
+        clue_start: "Pulsa «Empezar» para lanzar la cuadrícula.",
+        clue_resume: "Toca una casilla para continuar.",
+        clue_arch: "Cuadrícula de archivo — fuera de clasificación. Pulsa «Empezar».",
+        clue_done: "¡Cuadrícula resuelta! 🎉", clue_revealed: "Respuestas reveladas.",
+        clue_pick: "Elige primero una casilla.",
+        end_title: "¡Cuadrícula resuelta!", end_revealed: "Respuestas reveladas",
+        end_time: "Tu tiempo:", end_arch: "cuadrícula de archivo (fuera de clasificación)", end_of: "de",
+        end_streak: "días seguidos", end_noboard: "Sin clasificación esta vez — ¡inténtalo mañana!",
+        board_title: "Clasificación del día", board_empty: "Nadie ha terminado esta cuadrícula hoy.",
+        erase_title: "Borrar", erase_sub: "¿Qué quieres borrar?", erase_word: "La palabra actual", erase_all: "Toda la cuadrícula",
+        hint_title: "Pedir una pista", hint_sub: "El tiempo añadido cuenta en tu puntuación.",
+        hint_letter: "Revelar esta letra (+30 s)", hint_word: "Revelar toda la palabra (+5 min)",
+        giveup_title: "¿Rendirse?", giveup_sub: "Se revelarán las respuestas y no aparecerás en la clasificación.",
+        giveup_yes: "Sí, mostrar las respuestas",
+        lv_moyen: "Medio", lv_difficile: "Difícil", lv_expert: "Experto",
+        live_done: "han terminado", tip_zoom: "Consejo: mantén pulsada una definición para ampliarla.",
+    },
+};
+let LANG = localStorage.getItem('erquy_lang') || 'fr';
+if (!I18N[LANG]) LANG = 'fr';
+const t = (k) => (I18N[LANG] && I18N[LANG][k]) || I18N.fr[k] || k;
+const LOCALE = LANG === 'en' ? 'en-GB' : (LANG === 'es' ? 'es-ES' : 'fr-FR');
+function applyI18n() {
+    document.querySelectorAll('[data-i]').forEach(el => { el.textContent = t(el.dataset.i); });
+    document.querySelectorAll('[data-ph]').forEach(el => { el.placeholder = t(el.dataset.ph); });
+}
+
 let P = null;
 let level = localStorage.getItem('mf_level') || 'moyen';
 let viewDate = null;                 // null = aujourd'hui, sinon archive
@@ -172,15 +259,30 @@ let saveT = null;
 function saveSoon() { clearTimeout(saveT); saveT = setTimeout(() => api('/api/mf/progress', dbody({ level, cells: values })), 600); }
 
 // ---------- Vérification ----------
+let _prevGood = new Set();          // mots déjà verts (pour ne fêter que les nouveaux)
 async function doCheck(showWrong) {
     const { data } = await api('/api/mf/check', dbody({ level, cells: values }));
     if (!data || !data.slots) return null;
     Object.values(els).forEach(el => el.classList.remove('good'));
+    let newlyDone = false;
     data.slots.forEach(s => {
         if (!s.ok) return;
+        const sk = s.dir + ':' + s.r + ':' + s.c;
+        const fresh = !_prevGood.has(sk);
+        _prevGood.add(sk);
         const idx = slots.findIndex(x => x.defR === s.r && x.defC === s.c && x.dir === s.dir);
-        if (idx >= 0) slots[idx].cells.forEach(({ r, c }) => els[key(r, c)] && els[key(r, c)].classList.add('good'));
+        if (idx >= 0) slots[idx].cells.forEach(({ r, c }) => {
+            const el = els[key(r, c)];
+            if (!el) return;
+            el.classList.add('good');
+            if (fresh) {
+                newlyDone = true;
+                el.classList.remove('pop'); void el.offsetWidth;    // relance l'animation
+                el.classList.add('pop');
+            }
+        });
     });
+    if (newlyDone && navigator.vibrate) { try { navigator.vibrate(35); } catch (e) {} }
     if (showWrong) (data.wrong || []).forEach(k => {
         const el = els[k]; if (!el) return;
         el.classList.add('wrong'); setTimeout(() => el.classList.remove('wrong'), 1600);
@@ -202,11 +304,11 @@ async function finish() {
     const { data } = await api('/api/mf/solve', dbody({ level }));
     if (data && data.seconds) { seconds = data.seconds; $('mf-timer').textContent = fmt(seconds); }
     $('mf-end-emoji').textContent = '🎉';
-    $('mf-end-title').textContent = 'Grille résolue !';
-    let sub = 'Ton temps : ' + fmt((data && data.seconds) || seconds);
-    if (data && data.isArchive) sub += ' · grille d’archive (hors classement)';
-    else if (data && data.rank) sub += ' · ' + data.rank + (data.rank === 1 ? 'er' : 'e') + ' sur ' + data.total;
-    if (data && data.streak && data.streak.current > 1) sub += ' · 🔥 ' + data.streak.current + ' jours d’affilée';
+    $('mf-end-title').textContent = t('end_title');
+    let sub = t('end_time') + ' ' + fmt((data && data.seconds) || seconds);
+    if (data && data.isArchive) sub += ' · ' + t('end_arch');
+    else if (data && data.rank) sub += ' · ' + data.rank + (LANG === 'fr' ? (data.rank === 1 ? 'er' : 'e') : (LANG === 'es' ? 'º' : (data.rank === 1 ? 'st' : data.rank === 2 ? 'nd' : data.rank === 3 ? 'rd' : 'th'))) + ' ' + t('end_of') + ' ' + data.total;
+    if (data && data.streak && data.streak.current > 1) sub += ' · 🔥 ' + data.streak.current + ' ' + t('end_streak');
     $('mf-end-sub').textContent = sub;
     renderBoard((data && data.board) || [], $('mf-board'));
     showInlineBoard((data && data.board) || []);
@@ -215,9 +317,9 @@ async function finish() {
 }
 function renderBoard(board, box) {
     if (!box) box = $('mf-board');
-    if (!board.length) { box.innerHTML = '<p class="mf-board-empty">Personne n’a encore terminé cette grille aujourd’hui.</p>'; return; }
+    if (!board.length) { box.innerHTML = '<p class="mf-board-empty">' + t('board_empty') + '</p>'; return; }
     const medal = ['🥇', '🥈', '🥉'];
-    box.innerHTML = '<div class="mf-board-title">Classement du jour · ' + esc(P.levelLabel || level) + '</div>' +
+    box.innerHTML = '<div class="mf-board-title">' + t('board_title') + ' · ' + t('lv_' + level) + '</div>' +
         board.slice(0, 15).map((e, i) => `<div class="mf-board-row${i < 3 ? ' top top' + (i + 1) : ''}">
             <span class="bpos">${medal[i] || (i + 1)}</span><span class="bname">${esc(e.u)}</span><span class="btime">${esc(e.t)}</span></div>`).join('');
 }
@@ -244,13 +346,13 @@ $('ask-cancel').addEventListener('click', () => { $('mf-ask').hidden = true; });
 $('t-check').addEventListener('click', () => { if (started) doCheck(true); });
 $('t-erase').addEventListener('click', () => {
     if (!started || solved || gaveUp) return;
-    ask('🧹', 'Effacer', 'Que veux-tu effacer ?', [
-        { label: 'Le mot en cours', run: () => {
+    ask('🧹', t('erase_title'), t('erase_sub'), [
+        { label: t('erase_word'), run: () => {
             const idx = currentSlotIdx(); if (idx < 0) return;
             slots[idx].cells.forEach(({ r, c }) => { delete values[key(r, c)]; });
             repaintValues(); refreshHighlights(); saveSoon();
         } },
-        { label: 'Toute la grille', danger: true, run: () => {
+        { label: t('erase_all'), danger: true, run: () => {
             values = {};
             Object.values(els).forEach(el => el.classList.remove('good', 'wrong'));
             repaintValues(); refreshHighlights(); saveSoon();
@@ -259,10 +361,10 @@ $('t-erase').addEventListener('click', () => {
 });
 $('t-hint').addEventListener('click', () => {
     if (!started || solved || gaveUp) return;
-    if (!active) { $('mf-clue').textContent = 'Choisis d’abord une case.'; return; }
-    ask('💡', 'Demander un indice', 'Le temps ajouté compte dans ton score.', [
-        { label: 'Révéler cette lettre (+30 s)', run: () => useHint('letter') },
-        { label: 'Révéler tout le mot (+5 min)', danger: true, run: () => useHint('word') },
+    if (!active) { $('mf-clue').textContent = t('clue_pick'); return; }
+    ask('💡', t('hint_title'), t('hint_sub'), [
+        { label: t('hint_letter'), run: () => useHint('letter') },
+        { label: t('hint_word'), danger: true, run: () => useHint('word') },
     ]);
 });
 async function useHint(type) {
@@ -278,8 +380,8 @@ async function useHint(type) {
 }
 $('t-giveup').addEventListener('click', () => {
     if (!started || solved || gaveUp) return;
-    ask('🏳️', 'Abandonner ?', 'Les réponses seront révélées et tu ne figureras pas au classement.', [
-        { label: 'Oui, montrer les réponses', danger: true, run: doGiveUp },
+    ask('🏳️', t('giveup_title'), t('giveup_sub'), [
+        { label: t('giveup_yes'), danger: true, run: doGiveUp },
     ]);
 });
 async function doGiveUp() {
@@ -293,8 +395,8 @@ async function doGiveUp() {
     repaintValues();
     const b = await api('/api/mf/board?level=' + level + dq());
     $('mf-end-emoji').textContent = '🏳️';
-    $('mf-end-title').textContent = 'Réponses révélées';
-    $('mf-end-sub').textContent = 'Pas de classement cette fois — retente demain !';
+    $('mf-end-title').textContent = t('end_revealed');
+    $('mf-end-sub').textContent = t('end_noboard');
     renderBoard((b.data && b.data.board) || [], $('mf-board'));
     showInlineBoard((b.data && b.data.board) || []);
     $('mf-end').hidden = false;
@@ -343,12 +445,13 @@ document.addEventListener('keydown', (e) => {
 
 // ---------- Démarrage ----------
 async function beginGrid() {
+    maybeShowTip();
     const { data } = await api('/api/mf/start', dbody({ level }));
     startedAt = (data && data.startedAt) || Date.now();
     penalty = (data && data.penalty) || 0;
     started = true;
     document.body.classList.remove('not-started');
-    startTimer(); refreshStates();
+    startTimer(); refreshStates(); startLive();
     const first = inputCells[0];
     if (first) selectCell(first.r, first.c, false);
 }
@@ -380,7 +483,7 @@ async function loadComments() {
     const list = (data && data.comments) || [];
     box.innerHTML = list.length
         ? list.map(c => `<div class="cmt"><b>${esc(c.u)}</b><span>${c.t}</span></div>`).join('')
-        : '<p class="mf-board-empty">Personne n’a encore écrit aujourd’hui.</p>';
+        : '<p class="mf-board-empty">' + t('chat_empty') + '</p>';
     box.scrollTop = box.scrollHeight;
 }
 async function sendComment() {
@@ -401,9 +504,9 @@ $('btn-archive').addEventListener('click', async () => {
     const { data } = await api('/api/mf/archive');
     const box = $('arch-list');
     box.innerHTML = ((data && data.days) || []).map(d => {
-        const lbl = new Date(d.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+        const lbl = new Date(d.date + 'T12:00:00').toLocaleDateString(LOCALE, { weekday: 'short', day: 'numeric', month: 'short' });
         return `<button class="arch-row" data-date="${d.date}"><span>${lbl}</span><em>${d.done}/3</em></button>`;
-    }).join('') || '<p class="mf-board-empty">Aucune archive.</p>';
+    }).join('') || '<p class="mf-board-empty">' + t('arch_none') + '</p>';
     box.querySelectorAll('.arch-row').forEach(b => b.addEventListener('click', () => {
         viewDate = b.dataset.date; $('mf-archive').hidden = true; load();
     }));
@@ -416,7 +519,7 @@ $('arch-today').addEventListener('click', () => { viewDate = null; $('mf-archive
 async function load() {
     document.body.className = 'is-boot';
     paintLevels();
-    values = {}; active = null; dir = 'right';
+    values = {}; active = null; dir = 'right'; _prevGood = new Set();
     solved = false; gaveUp = false; started = false;
     startedAt = null; penalty = 0; seconds = 0;
     $('mf-timer').textContent = '0:00';
@@ -428,7 +531,7 @@ async function load() {
     P = today.data;
     isArchive = !!P.isArchive;
     nextIn = P.nextIn || 0;
-    $('mf-date').textContent = new Date(P.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    $('mf-date').textContent = new Date(P.date + 'T12:00:00').toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
     $('mf-archive-chip').hidden = !isArchive;
     buildModel(); renderGrid();
 
@@ -450,18 +553,43 @@ async function load() {
         if (gaveUp) inputCells.forEach(({ r, c }) => els[key(r, c)] && els[key(r, c)].classList.add('revealed'));
         const b = await api('/api/mf/board?level=' + level + dq());
         showInlineBoard((b.data && b.data.board) || []);
-        $('mf-clue').textContent = solved ? 'Grille terminée 🎉' : 'Réponses révélées.';
+        $('mf-clue').textContent = solved ? t('clue_done') : t('clue_revealed');
     } else if (started) {
         await doCheck(false);
-        $('mf-clue').textContent = 'Touche une case pour continuer.';
+        startLive();
+        $('mf-clue').textContent = t('clue_resume');
     } else {
-        $('mf-clue').textContent = isArchive
-            ? 'Grille d’archive — hors classement. Appuie sur « Commencer ».'
-            : 'Appuie sur « Commencer » pour lancer la grille.';
+        $('mf-clue').textContent = isArchive ? t('clue_arch') : t('clue_start');
     }
     startTimer();
     refreshStates();
 }
 
+// Pouls du classement pendant le jeu : « X ont fini · meilleur temps »
+let _liveTimer = null;
+async function refreshLive() {
+    if (solved || gaveUp || !started || isArchive) return;
+    const { data } = await api('/api/mf/board?level=' + level + dq());
+    const board = (data && data.board) || [];
+    const chip = $('mf-live');
+    if (!chip) return;
+    if (!board.length) { chip.hidden = true; return; }
+    chip.innerHTML = '🏁 <b>' + board.length + '</b> ' + t('live_done') + ' · ⚡ ' + esc(board[0].t);
+    chip.hidden = false;
+}
+function startLive() { clearInterval(_liveTimer); _liveTimer = setInterval(refreshLive, 30000); refreshLive(); }
+
+// Astuce montrée une seule fois : l'appui long agrandit une définition
+function maybeShowTip() {
+    if (localStorage.getItem('mf_tip_zoom')) return;
+    localStorage.setItem('mf_tip_zoom', '1');
+    const tip = document.createElement('div');
+    tip.className = 'mf-tip';
+    tip.innerHTML = '🔍 ' + t('tip_zoom');
+    document.body.appendChild(tip);
+    setTimeout(() => { tip.classList.add('bye'); setTimeout(() => tip.remove(), 400); }, 5200);
+}
+
+applyI18n();
 buildKeyboard();
 load();

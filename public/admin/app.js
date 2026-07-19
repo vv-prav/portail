@@ -40,30 +40,41 @@ function fmtDur(sec) {
 }
 
 // ---------- Onglets ----------
-document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === b));
-    ['home', 'accounts', 'dict', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== b.dataset.tab); });
-    if (b.dataset.tab === 'accounts') loadAccounts();
-    if (b.dataset.tab === 'dict') { loadDictStats(); loadDict(); }
-    if (b.dataset.tab === 'system') loadOverview();
-}));
+$('ad-select').addEventListener('change', () => {
+    const tab = $('ad-select').value;
+    ['home', 'accounts', 'perudo', 'grids', 'dict', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== tab); });
+    if (tab === 'accounts') loadAccounts();
+    if (tab === 'perudo') loadPerudo();
+    if (tab === 'grids') loadGrids();
+    if (tab === 'dict') { loadDictStats(); loadDict(); }
+    if (tab === 'system') { loadOverview(); loadAdmins(); }
+    window.scrollTo(0, 0);
+});
 
 // ---------- Boîte générique ----------
-function ask(emoji, title, sub, actions, code) {
+function ask(emoji, title, sub, actions, code, confirmText) {
     $('ask-emoji').textContent = emoji;
     $('ask-title').textContent = title;
     $('ask-sub').textContent = sub || '';
     const cb = $('ask-code');
     if (code) { cb.textContent = code; cb.hidden = false; } else cb.hidden = true;
+    const inp = $('ask-input');
+    inp.value = '';
+    if (confirmText) { inp.placeholder = confirmText; inp.hidden = false; } else inp.hidden = true;
     const box = $('ask-acts'); box.innerHTML = '';
     (actions || []).forEach(a => {
         const b = document.createElement('button');
         b.className = 'btn' + (a.danger ? ' danger' : '');
         b.type = 'button'; b.textContent = a.label;
+        if (confirmText) {
+            b.disabled = true;
+            inp.addEventListener('input', () => { b.disabled = (inp.value.trim() !== confirmText); });
+        }
         b.addEventListener('click', () => { $('ov-ask').hidden = true; a.run(); });
         box.appendChild(b);
     });
     $('ov-ask').hidden = false;
+    if (confirmText) setTimeout(() => inp.focus(), 80);
 }
 $('ask-cancel').addEventListener('click', () => { $('ov-ask').hidden = true; });
 
@@ -90,15 +101,39 @@ async function loadOverview() {
     ].map(([k, v]) => `<div class="kv-row"><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('');
     loadLog();
 }
-async function loadLog() {
-    const { data } = await api('/api/admin/log');
-    const list = (data && data.log) || [];
+let _logCache = [];
+function renderLog() {
+    const q = ($('log-q').value || '').toLowerCase().trim();
+    const list = _logCache.filter(e => !q ||
+        (e.action || '').toLowerCase().includes(q) ||
+        (e.target || '').toLowerCase().includes(q) ||
+        (e.who || '').toLowerCase().includes(q) ||
+        (e.detail || '').toLowerCase().includes(q));
     $('ad-log').innerHTML = list.length
-        ? list.slice(0, 30).map(e => `<div class="log-row"><span class="lg-a">${esc(e.action)}</span>
+        ? list.slice(0, 60).map(e => `<div class="log-row"><span class="lg-a">${esc(e.action)}</span>
             <span class="lg-t">${esc(e.target)} ${esc(e.detail || '')}</span>
             <span class="lg-d">${fmtAgo(e.ts)}</span></div>`).join('')
-        : '<p class="empty">Aucune action enregistrée.</p>';
+        : '<p class="empty">Aucune action trouvée.</p>';
 }
+async function loadLog() {
+    const { data } = await api('/api/admin/log');
+    _logCache = (data && data.log) || [];
+    renderLog();
+}
+$('log-q').addEventListener('input', renderLog);
+$('log-export').addEventListener('click', () => {
+    const rows = [['date', 'admin', 'action', 'cible', 'détail']];
+    _logCache.forEach(e => rows.push([
+        new Date(e.ts).toISOString(), e.who || '', e.action || '', e.target || '', e.detail || '',
+    ]));
+    const csv = rows.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(';')).join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+    const aEl = document.createElement('a');
+    aEl.href = URL.createObjectURL(blob);
+    aEl.download = 'journal-admin-' + new Date().toISOString().slice(0, 10) + '.csv';
+    aEl.click();
+    setTimeout(() => URL.revokeObjectURL(aEl.href), 2000);
+});
 $('ann-save').addEventListener('click', async () => {
     const { ok } = await api('/api/admin/announce', { text: $('ann-text').value });
     toast(ok ? ($('ann-text').value ? 'Annonce publiée.' : 'Annonce retirée.') : 'Erreur.');
@@ -141,6 +176,7 @@ async function openAccount(pseudo) {
         ['Code de récupération', data.hasRecovery ? 'défini' : 'aucun'],
         ['Mots fléchés', `${mfs.solved || 0} réussies · ${mfs.gaveUp || 0} abandons · ${mfs.daysPlayed || 0} jours`],
         ['Meilleur temps', mfs.best ? Math.floor(mfs.best / 60) + ':' + String(mfs.best % 60).padStart(2, '0') : '—'],
+        ['Perudo', data.perudo ? `${data.perudo.wins} victoires / ${data.perudo.played} parties · ${data.perudo.rankPoints} pts` : 'jamais joué'],
     ].map(([k, v]) => `<div class="kv-row"><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('');
 
     const acts = $('acc-acts'); acts.innerHTML = '';
@@ -151,6 +187,10 @@ async function openAccount(pseudo) {
         b.addEventListener('click', fn);
         acts.appendChild(b);
     };
+    if (data.perudo) add('Gérer le profil Perudo (stats, cosmétiques)', () => {
+        $('ov-acc').hidden = true;
+        openPerudoPlayer(data.pseudo);
+    });
     add('Réinitialiser le mot de passe', () => ask('🔑', 'Réinitialiser ?', `Un mot de passe temporaire sera créé pour ${data.pseudo}, qui sera déconnecté.`, [
         { label: 'Confirmer', run: async () => {
             const r = await api('/api/admin/account/password', { pseudo: data.pseudo });
@@ -187,12 +227,12 @@ async function openAccount(pseudo) {
                 toast(r.ok ? 'C’est fait.' : (r.data.error || 'Erreur'));
                 if (r.ok) { $('ov-acc').hidden = true; loadAccounts(); }
             } }]), data.banned ? false : true);
-        add('Supprimer définitivement', () => ask('🗑️', 'Supprimer ?', `Le compte ${data.pseudo} et toutes ses données seront effacés. Cette action est irréversible.`, [
-            { label: 'Oui, supprimer', danger: true, run: async () => {
+        add('Supprimer définitivement', () => ask('🗑️', 'Supprimer ?', `Le compte ${data.pseudo} et toutes ses données seront effacés. Cette action est irréversible. Pour confirmer, recopie exactement le pseudo ci-dessous.`, [
+            { label: 'Supprimer ce compte', danger: true, run: async () => {
                 const r = await api('/api/admin/account/delete', { pseudo: data.pseudo });
                 toast(r.ok ? 'Compte supprimé.' : (r.data.error || 'Erreur'));
                 if (r.ok) { $('ov-acc').hidden = true; loadAccounts(); }
-            } }]), true);
+            } }], null, data.pseudo), true);
     }
     $('ov-acc').hidden = false;
 }
@@ -311,6 +351,186 @@ $('w-restore').addEventListener('click', () => {
             toast(r.ok ? 'Modifications annulées.' : (r.data.error || 'Erreur'));
             $('ov-word').hidden = true; loadDict(); loadDictStats();
         } }]);
+});
+
+// ---------- Perudo ----------
+const PD_AVATARS = ['', 'pirate', 'crane', 'perroquet', 'ancre', 'kraken', 'requin', 'epees', 'boussole', 'couronne', 'rhum', 'navire', 'tresor'];
+const PD_FRAMES = ['', 'or', 'argent', 'bronze', 'os', 'corde', 'emeraude', 'rubis', 'royal'];
+const PD_BANNERS = ['', 'ocean', 'coucher', 'nuit', 'tempete', 'jungle', 'or', 'sang', 'abysse'];
+function fillSelect(id, values, cur) {
+    $(id).innerHTML = values.map(v => `<option value="${v}"${v === cur ? ' selected' : ''}>${v || '— aucun —'}</option>`).join('');
+}
+let pdEditing = null;
+
+async function loadPerudo() {
+    const { data } = await api('/api/admin/perudo/overview');
+    if (!data || !data.available) { $('pd-games').innerHTML = '<p class="empty">Perudo indisponible.</p>'; return; }
+    const g = data.games || [];
+    $('pd-games').innerHTML = g.length ? g.map(x => `
+        <div class="row static">
+            <span class="r-main">
+                <span class="r-name">${esc(x.id)}${x.vsBot ? ' <i class="badge adm">bot</i>' : ''}${x.isDuo ? ' <i class="badge adm">duo</i>' : ''}</span>
+                <span class="r-sub">${x.started ? 'en cours' : 'en attente'} · ${x.players.map(p => esc(p.pseudo) + (p.isBot ? '🤖' : '') + ' (' + p.dice + ')').join(', ')}</span>
+            </span>
+            <button class="mini danger" data-end="${esc(x.id)}" type="button">Clore</button>
+        </div>`).join('') : '<p class="empty">Aucune partie en cours.</p>';
+    $('pd-games').querySelectorAll('[data-end]').forEach(b => b.addEventListener('click', () => {
+        ask('🛑', 'Clore la partie ?', 'Les joueurs seront renvoyés au lobby.', [
+            { label: 'Confirmer', danger: true, run: async () => { await api('/api/admin/perudo/endgame', { id: b.dataset.end }); toast('Partie close.'); loadPerudo(); } }]);
+    }));
+
+    const on = data.online || [];
+    $('pd-online').innerHTML = on.length ? on.map(o => `
+        <div class="row static">
+            <span class="r-main"><span class="r-name">${esc(o.pseudo)}</span></span>
+            <button class="mini" data-kick="${esc(o.sid)}" data-p="${esc(o.pseudo)}" type="button">Déconnecter</button>
+        </div>`).join('') : '<p class="empty">Personne en ligne.</p>';
+    $('pd-online').querySelectorAll('[data-kick]').forEach(b => b.addEventListener('click', async () => {
+        await api('/api/admin/perudo/kick', { sid: b.dataset.kick, pseudo: b.dataset.p });
+        toast('Joueur déconnecté.'); loadPerudo();
+    }));
+
+    const top = data.topPlayers || [];
+    $('pd-top').innerHTML = top.length ? top.map((u, i) => `
+        <button class="row" data-p="${esc(u.pseudo)}">
+            <span class="r-main">
+                <span class="r-name">${i + 1}. ${esc(u.pseudo)}</span>
+                <span class="r-sub">${u.rankPoints} pts · ${u.wins} victoires / ${u.played} parties</span>
+            </span><span class="r-go">›</span>
+        </button>`).join('') : '<p class="empty">Aucun joueur.</p>';
+    $('pd-top').querySelectorAll('.row').forEach(b => b.addEventListener('click', () => openPerudoPlayer(b.dataset.p)));
+}
+
+async function openPerudoPlayer(pseudo) {
+    const { ok, data } = await api('/api/admin/perudo/player?pseudo=' + encodeURIComponent(pseudo));
+    if (!ok) return toast(data.error || 'Aucun profil Perudo');
+    pdEditing = data.pseudo;
+    $('pd-name').textContent = data.pseudo;
+    $('pd-wins').value = data.wins; $('pd-played').value = data.played;
+    $('pd-points').value = data.rankPoints; $('pd-streak').value = data.bestStreak;
+    fillSelect('pd-avatar', PD_AVATARS, data.avatar);
+    fillSelect('pd-frame', PD_FRAMES, data.frame);
+    fillSelect('pd-banner', PD_BANNERS, data.banner);
+    $('pd-color').value = data.nameColor || '#d4af37';
+    $('pd-err').textContent = '';
+    $('ov-pd').hidden = false;
+}
+$('pd-close').addEventListener('click', () => { $('ov-pd').hidden = true; });
+$('pd-save').addEventListener('click', async () => {
+    const p = pdEditing;
+    const r1 = await api('/api/admin/perudo/stats', { pseudo: p, wins: $('pd-wins').value, played: $('pd-played').value, rankPoints: $('pd-points').value, bestStreak: $('pd-streak').value });
+    const r2 = await api('/api/admin/perudo/cosmetics', { pseudo: p, avatar: $('pd-avatar').value, frame: $('pd-frame').value, banner: $('pd-banner').value, nameColor: $('pd-color').value });
+    if (!r1.ok || !r2.ok) { $('pd-err').textContent = (r1.data.error || r2.data.error || 'Erreur.'); return; }
+    $('ov-pd').hidden = true; toast('Profil mis à jour.'); loadPerudo();
+});
+$('pd-reset').addEventListener('click', () => {
+    const p = pdEditing;
+    ask('🗑️', 'Réinitialiser ?', `Toutes les stats Perudo de ${p} seront remises à zéro.`, [
+        { label: 'Confirmer', danger: true, run: async () => {
+            const r = await api('/api/admin/perudo/reset', { pseudo: p });
+            toast(r.ok ? 'Profil réinitialisé.' : 'Erreur');
+            $('ov-pd').hidden = true; loadPerudo();
+        } }]);
+});
+
+// ---------- Grilles ----------
+const LV_LABEL = { moyen: 'Moyen', difficile: 'Difficile', expert: 'Expert' };
+function mmss(s) { return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+
+async function loadGrids() {
+    const d = await api('/api/admin/mf/difficulty');
+    const L = (d.data && d.data.levels) || {};
+    $('gr-diff').innerHTML = Object.entries(L).map(([lv, v]) =>
+        `<div class="kv-row"><span>${LV_LABEL[lv] || lv}</span><b>${v.solved}/${v.started} réussies (${v.rate}%) · moy ${v.avg ? mmss(v.avg) : '—'} · ${v.gaveUp} abandons</b></div>`).join('')
+        || '<p class="empty">Pas encore de données.</p>';
+    if (!$('gr-date').value) $('gr-date').value = new Date().toISOString().slice(0, 10);
+    loadGridDay();
+}
+$('gr-date').addEventListener('change', loadGridDay);
+
+async function loadGridDay() {
+    const date = $('gr-date').value;
+    const { data } = await api('/api/admin/mf/day?date=' + encodeURIComponent(date));
+    const L = (data && data.levels) || {};
+    $('gr-levels').innerHTML = Object.entries(L).map(([lv, v]) => `
+        <div class="glv">
+            <div class="glv-head"><b>${LV_LABEL[lv] || lv}</b>
+                <span>${v.generated ? v.words + ' mots' : 'non générée'} · ${v.solved}/${v.started} réussies</span></div>
+            ${v.wordList && v.wordList.length ? `<p class="glv-words">${v.wordList.map(esc).join(' · ')}</p>` : ''}
+            <div class="glv-board">${v.board.length ? v.board.map((e, i) => `
+                <div class="bd-row${e.susp ? ' susp' : ''}">
+                    <span>${i + 1}. ${esc(e.u)}</span><b>${mmss(e.s)}</b>
+                    <button class="mini" data-flag="${esc(e.u)}" data-lv="${lv}" type="button">${e.susp ? 'Valider' : 'Suspect'}</button>
+                    <button class="mini danger" data-del="${esc(e.u)}" data-lv="${lv}" type="button">✕</button>
+                </div>`).join('') : '<p class="empty">Aucun temps enregistré.</p>'}</div>
+            <button class="mini wide" data-regen="${lv}" type="button">Régénérer cette grille</button>
+        </div>`).join('');
+
+    $('gr-levels').querySelectorAll('[data-flag]').forEach(b => b.addEventListener('click', async () => {
+        await api('/api/admin/mf/board/flag', { date, level: b.dataset.lv, pseudo: b.dataset.flag });
+        loadGridDay();
+    }));
+    $('gr-levels').querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
+        await api('/api/admin/mf/board/remove', { date, level: b.dataset.lv, pseudo: b.dataset.del });
+        toast('Temps supprimé.'); loadGridDay();
+    }));
+    $('gr-levels').querySelectorAll('[data-regen]').forEach(b => b.addEventListener('click', () => {
+        ask('♻️', 'Régénérer la grille ?', 'Une nouvelle grille sera tirée. Les progressions et le classement de cette grille seront effacés.', [
+            { label: 'Confirmer', danger: true, run: async () => {
+                await api('/api/admin/mf/regen', { date, level: b.dataset.regen });
+                toast('Grille régénérée.'); loadGridDay();
+            } }]);
+    }));
+    loadGridComments(date);
+}
+
+async function loadGridComments(date) {
+    const { data } = await api('/api/admin/mf/comments?date=' + encodeURIComponent(date));
+    const list = (data && data.comments) || [];
+    $('gr-cmts').innerHTML = list.length ? list.map(c => `
+        <div class="log-row"><span class="lg-a">${esc(c.u)}</span><span class="lg-t">${c.t}</span>
+        <button class="mini danger" data-ts="${c.ts}" type="button">✕</button></div>`).join('')
+        : '<p class="empty">Aucun message ce jour-là.</p>';
+    $('gr-cmts').querySelectorAll('[data-ts]').forEach(b => b.addEventListener('click', async () => {
+        await api('/api/admin/mf/comments/remove', { date, ts: Number(b.dataset.ts) });
+        toast('Message supprimé.'); loadGridComments(date);
+    }));
+}
+
+$('gr-next').addEventListener('click', async () => {
+    $('gr-upcoming').innerHTML = '<p class="empty">Calcul en cours…</p>';
+    const { data } = await api('/api/admin/mf/upcoming');
+    const days = (data && data.days) || [];
+    $('gr-upcoming').innerHTML = days.map(d => `
+        <div class="log-row up"><span class="lg-a">${new Date(d.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+        <span class="lg-t">${Object.entries(d.levels).map(([lv, v]) => (LV_LABEL[lv] || lv) + ' : ' + (v.error ? '⚠️' : v.words + ' mots')).join(' · ')}</span></div>`).join('');
+});
+
+// ---------- Administrateurs ----------
+async function loadAdmins() {
+    const { data } = await api('/api/admin/admins');
+    if (!data || !data.all) return;
+    $('sys-admins').innerHTML = data.all.map(p => {
+        const root = (data.root || []).includes(p);
+        return `<div class="row static">
+            <span class="r-main"><span class="r-name">${esc(p)}${root ? ' <i class="badge adm">principal</i>' : ''}</span></span>
+            ${root || p === data.you ? '' : `<button class="mini danger" data-rm="${esc(p)}" type="button">Retirer</button>`}
+        </div>`;
+    }).join('');
+    $('sys-admins').querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => {
+        ask('🛡️', 'Retirer les droits ?', `${b.dataset.rm} n'aura plus accès à l'administration.`, [
+            { label: 'Confirmer', danger: true, run: async () => {
+                const r = await api('/api/admin/admins/remove', { pseudo: b.dataset.rm });
+                toast(r.ok ? 'Droits retirés.' : (r.data.error || 'Erreur')); loadAdmins();
+            } }]);
+    }));
+}
+$('adm-add').addEventListener('click', async () => {
+    const pseudo = $('adm-new').value.trim();
+    if (!pseudo) return;
+    const { ok, data } = await api('/api/admin/admins/add', { pseudo });
+    if (!ok) return toast(data.error || 'Erreur');
+    $('adm-new').value = ''; toast('Administrateur ajouté.'); loadAdmins();
 });
 
 // ---------- Système ----------

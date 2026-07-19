@@ -20,11 +20,15 @@
             </div>
         </header>
 
-        <nav class="ad-tabs" id="ad-tabs">
-            <button class="tab on" data-tab="home" type="button">Vue d'ensemble</button>
-            <button class="tab" data-tab="accounts" type="button">Comptes</button>
-            <button class="tab" data-tab="dict" type="button">Dictionnaire</button>
-            <button class="tab" data-tab="system" type="button">Système</button>
+        <nav class="ad-nav">
+            <select class="ad-select" id="ad-select" aria-label="Section">
+                <option value="home">📊 Vue d'ensemble</option>
+                <option value="accounts">👥 Comptes</option>
+                <option value="perudo">🎲 Perudo</option>
+                <option value="grids">🧩 Grilles</option>
+                <option value="dict">📖 Dictionnaire</option>
+                <option value="system">⚙️ Système</option>
+            </select>
         </nav>
 
         <!-- VUE D'ENSEMBLE -->
@@ -38,7 +42,9 @@
             </div>
             <div class="card">
                 <h2 class="card-title">Dernières actions</h2>
+                <input class="in" id="log-q" placeholder="Filtrer (action, pseudo…)">
                 <div class="log" id="ad-log"></div>
+                <button class="btn ghost" id="log-export" type="button" style="margin-top:10px">Exporter en CSV</button>
             </div>
         </section>
 
@@ -54,6 +60,46 @@
             </div>
             <p class="count" id="acc-count"></p>
             <div class="list" id="acc-list"></div>
+        </section>
+
+        <!-- PERUDO -->
+        <section class="pane" id="pane-perudo" hidden>
+            <div class="card">
+                <h2 class="card-title">Parties en cours</h2>
+                <div class="list" id="pd-games"></div>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Joueurs connectés</h2>
+                <div class="list" id="pd-online"></div>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Meilleurs joueurs</h2>
+                <p class="card-sub">Touche un joueur pour modifier ses stats et ses cosmétiques.</p>
+                <div class="list" id="pd-top"></div>
+            </div>
+        </section>
+
+        <!-- GRILLES -->
+        <section class="pane" id="pane-grids" hidden>
+            <div class="card">
+                <h2 class="card-title">Difficulté observée (14 jours)</h2>
+                <div class="kv" id="gr-diff"></div>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Grilles du jour</h2>
+                <input class="in" id="gr-date" type="date">
+                <div id="gr-levels"></div>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Discussion du jour</h2>
+                <div class="log" id="gr-cmts"></div>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Grilles à venir</h2>
+                <p class="card-sub">Aperçu des 7 prochains jours (non figées, elles peuvent encore changer).</p>
+                <button class="btn ghost" id="gr-next" type="button">Afficher l'aperçu</button>
+                <div class="log" id="gr-upcoming"></div>
+            </div>
         </section>
 
         <!-- DICTIONNAIRE -->
@@ -105,6 +151,13 @@
                 <button class="btn ghost" id="sys-purge" type="button">Lancer le ménage</button>
             </div>
             <div class="card">
+                <h2 class="card-title">Administrateurs</h2>
+                <p class="card-sub">Ils ont accès à cet espace. L'administrateur principal ne peut pas être retiré.</p>
+                <div class="list" id="sys-admins"></div>
+                <input class="in" id="adm-new" placeholder="Pseudo à promouvoir…" autocapitalize="off" style="margin-top:10px">
+                <button class="btn" id="adm-add" type="button">Ajouter cet administrateur</button>
+            </div>
+            <div class="card">
                 <h2 class="card-title">État du serveur</h2>
                 <div class="kv" id="sys-info"></div>
             </div>
@@ -142,6 +195,31 @@
         </div>
     </div>
 
+    <!-- Édition d'un joueur Perudo -->
+    <div class="ov" id="ov-pd" hidden>
+        <div class="ov-card">
+            <h2 class="ov-title" id="pd-name">—</h2>
+            <p class="ov-sub">Stats et cosmétiques Perudo.</p>
+            <div class="grid2">
+                <label class="fld">Victoires<input class="in" id="pd-wins" type="number" min="0" inputmode="numeric"></label>
+                <label class="fld">Parties<input class="in" id="pd-played" type="number" min="0" inputmode="numeric"></label>
+                <label class="fld">Points<input class="in" id="pd-points" type="number" min="0" inputmode="numeric"></label>
+                <label class="fld">Meilleure série<input class="in" id="pd-streak" type="number" min="0" inputmode="numeric"></label>
+            </div>
+            <p class="w-lab">Cosmétiques</p>
+            <div class="grid2">
+                <label class="fld">Avatar<select class="in" id="pd-avatar"></select></label>
+                <label class="fld">Cadre<select class="in" id="pd-frame"></select></label>
+                <label class="fld">Bannière<select class="in" id="pd-banner"></select></label>
+                <label class="fld">Couleur du nom<input class="in" id="pd-color" type="color"></label>
+            </div>
+            <div class="entry-err" id="pd-err"></div>
+            <button class="btn" id="pd-save" type="button">Enregistrer</button>
+            <button class="btn danger" id="pd-reset" type="button">Réinitialiser le profil</button>
+            <button class="btn ghost" id="pd-close" type="button">Fermer</button>
+        </div>
+    </div>
+
     <!-- Confirmation / résultat -->
     <div class="ov" id="ov-ask" hidden>
         <div class="ov-card">
@@ -149,6 +227,7 @@
             <h2 class="ov-title" id="ask-title">Confirmer</h2>
             <p class="ov-sub" id="ask-sub"></p>
             <div class="code-box" id="ask-code" hidden>—</div>
+            <input class="in" id="ask-input" hidden autocapitalize="off" autocorrect="off" autocomplete="off">
             <div id="ask-acts"></div>
             <button class="btn ghost" id="ask-cancel" type="button">Fermer</button>
         </div>

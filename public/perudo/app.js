@@ -500,7 +500,7 @@ function renderProfile() {
     if (pseudoEl) pseudoEl.innerText = myPseudo;
     const card = document.getElementById('prof-stats-card');
     if (card) {
-        const adminBtn = (myProfile && myProfile.isAdmin) ? `<button class="btn-secondary" onclick="openAdminPanel()" style="width:100%;margin-bottom:10px;">${t('prof_modpanel')}</button>` : '';
+        const adminBtn = '';
         card.innerHTML = adminBtn + `<button class="btn-secondary" onclick="openCosmetics()" style="width:100%;margin-bottom:10px;">${t('prof_customize')}</button>` + statsCardHTML(myProfile);
     }
 
@@ -4236,100 +4236,27 @@ const Spatial = (() => {
 // =====================================================================
 //  DASHBOARD ADMIN (modération)
 // =====================================================================
+// Un administrateur a clos la partie : retour au lobby, sans déconnexion
+socket.on('force_lobby', (msg) => {
+    try { showToast(msg || 'La partie a été close par un administrateur.'); } catch (e) {}
+    currentGameId = null;
+    try { switchVoiceRoom('tavern'); } catch (e) {}
+    showScreen('lobby-screen');
+    try { switchLobbyTab('tavern'); } catch (e) {}
+});
+
 socket.on('force_logout', (msg) => {
     try { alert(msg || 'Déconnecté par un modérateur.'); } catch (e) {}
     setTimeout(() => { try { location.reload(); } catch (e) {} }, 300);
 });
-function openAdminPanel() { socket.emit('admin_state'); }
-socket.on('admin_state', (data) => renderAdminPanel(data || {}));
-function renderAdminPanel(data) {
-    closeAdminPanel();
-    const players = (data.players || []).map(p =>
-        `<div class="adm-row"><span class="adm-name">${escapeHtml(p.pseudo)}${p.admin ? ' 🛡️' : ''}</span><span class="adm-actions"><button class="adm-btn" onclick="adminKick('${escapeAttr(p.sid)}')">Expulser</button>${p.admin ? '' : `<button class="adm-btn danger" onclick="adminBan('${escapeAttr(p.pseudo)}')">Bannir</button>`}</span></div>`
-    ).join('') || '<p class="list-empty">Personne en ligne.</p>';
-    const games = (data.games || []).map(g =>
-        `<div class="adm-row"><span class="adm-name">${escapeHtml(g.id)} — ${g.count} j. ${g.started ? '🔴' : '🟢'}</span></div>`
-    ).join('') || '<p class="list-empty">Aucune partie.</p>';
-    const banned = (data.banned || []).map(b =>
-        `<div class="adm-row"><span class="adm-name">${escapeHtml(b)}</span><span class="adm-actions"><button class="adm-btn" onclick="adminUnban('${escapeAttr(b)}')">Débannir</button></span></div>`
-    ).join('') || '<p class="list-empty">Aucun banni.</p>';
-    const ov = document.createElement('div'); ov.id = 'admin-overlay'; ov.className = 'recap-overlay';
-    ov.innerHTML = `<div class="recap-card adm-card">
-        <div class="recap-title">Modération</div>
-        <div class="cos-sec">Joueurs en ligne (${(data.players || []).length})</div><div class="adm-list">${players}</div>
-        <div class="cos-sec">Parties (${(data.games || []).length})</div><div class="adm-list">${games}</div>
-        <div class="cos-sec">Bannis</div><div class="adm-list">${banned}</div>
-        <div class="cos-sec">Comptes</div>
-        <input id="adm-search" class="adm-search" placeholder="Rechercher un pirate..." autocapitalize="off" autocorrect="off" oninput="adminSearch(this.value)">
-        <div class="adm-list adm-acc-list" id="adm-accounts"><p class="list-empty">Tape un nom pour rechercher.</p></div>
-        <button class="btn-primary recap-close" onclick="closeAdminPanel()">Fermer</button>
-    </div>`;
-    ov.addEventListener('click', (e) => { if (e.target === ov) closeAdminPanel(); });
-    document.body.appendChild(ov);
-    requestAnimationFrame(() => ov.classList.add('show'));
-}
-function closeAdminPanel() { const o = document.getElementById('admin-overlay'); if (o) o.remove(); }
-
-// --- Admin : gestion des comptes ---
-let _admSearchT = null;
-function adminSearch(q) {
-    clearTimeout(_admSearchT);
-    _admSearchT = setTimeout(() => socket.emit('admin_list_accounts', q || ''), 250);
-}
-function _admCurQuery() { const el = document.getElementById('adm-search'); return el ? el.value : ''; }
-socket.on('admin_accounts', (data) => renderAdminAccounts((data && data.list) || []));
-socket.on('admin_msg', (m) => { try { showToast(m); } catch (e) {} });
-function renderAdminAccounts(list) {
-    const box = document.getElementById('adm-accounts');
-    if (!box) return;
-    if (!list.length) { box.innerHTML = '<p class="list-empty">Aucun compte trouvé.</p>'; return; }
-    box.innerHTML = list.map(u => `
-      <div class="adm-acc">
-        <div class="adm-acc-head">
-          <span class="adm-name">${escapeHtml(u.pseudo)}${u.admin ? ' 🛡️' : ''}${u.banned ? ' ⛔' : ''}</span>
-          <span class="adm-acc-stats">${u.wins}V · ${u.played}P · ${u.rankPoints}pts</span>
-        </div>
-        <div class="adm-acc-actions">
-          <button class="adm-btn" onclick="adminEditAccount('${escapeAttr(u.pseudo)}',${u.wins},${u.played},${u.rankPoints})">Éditer</button>
-          <button class="adm-btn" onclick="adminResetStats('${escapeAttr(u.pseudo)}')">Reset</button>
-          ${u.admin ? '' : `<button class="adm-btn danger" onclick="adminDeleteAccount('${escapeAttr(u.pseudo)}')">Suppr.</button>`}
-        </div>
-      </div>`).join('');
-}
-function adminEditAccount(pseudo, wins, played, pts) {
-    const ov = document.createElement('div'); ov.id = 'adm-edit-overlay'; ov.className = 'recap-overlay show'; ov.style.zIndex = '5200';
-    ov.innerHTML = `<div class="recap-card adm-edit-card">
-        <div class="recap-title">Éditer ${escapeHtml(pseudo)}</div>
-        <label class="adm-field">Victoires <input type="number" id="adm-f-wins" value="${wins}" min="0" inputmode="numeric"></label>
-        <label class="adm-field">Parties <input type="number" id="adm-f-played" value="${played}" min="0" inputmode="numeric"></label>
-        <label class="adm-field">Points de classement <input type="number" id="adm-f-pts" value="${pts}" min="0" inputmode="numeric"></label>
-        <button class="btn-primary" style="width:100%;margin-top:6px;" onclick="adminSaveStats('${escapeAttr(pseudo)}')">Enregistrer</button>
-        <button class="btn-secondary" style="width:100%;margin-top:8px;" onclick="document.getElementById('adm-edit-overlay').remove()">Annuler</button>
-    </div>`;
-    ov.addEventListener('click', (e) => { if (e.target === ov) ov.remove(); });
-    document.body.appendChild(ov);
-}
-function adminSaveStats(pseudo) {
-    const gv = (id) => { const el = document.getElementById(id); return el ? Math.max(0, parseInt(el.value, 10) || 0) : 0; };
-    socket.emit('admin_edit_stats', { pseudo, wins: gv('adm-f-wins'), played: gv('adm-f-played'), rankPoints: gv('adm-f-pts') });
-    const o = document.getElementById('adm-edit-overlay'); if (o) o.remove();
-    setTimeout(() => adminSearch(_admCurQuery()), 250);
-}
-function adminResetStats(pseudo) {
-    if (confirm('Réinitialiser toutes les stats de ' + pseudo + ' ?')) { socket.emit('admin_reset_stats', pseudo); setTimeout(() => adminSearch(_admCurQuery()), 250); }
-}
-function adminDeleteAccount(pseudo) {
-    if (confirm('SUPPRIMER définitivement le compte ' + pseudo + ' ?\nCette action est irréversible.')) { socket.emit('admin_delete_account', pseudo); setTimeout(() => adminSearch(_admCurQuery()), 250); }
-}
-function adminKick(sid) { socket.emit('admin_kick', sid); }
-function adminBan(pseudo) { if (confirm('Bannir ' + pseudo + ' définitivement ?')) socket.emit('admin_ban', pseudo); }
-function adminUnban(pseudo) { socket.emit('admin_unban', pseudo); }
 
 // =====================================================================
 //  INTERNATIONALISATION (FR / EN / ES)
 // =====================================================================
 const I18N = {
   fr: {
+    solo_hint: "Personne en vue pour l'instant… Lance une partie contre le bot pour t'échauffer !",
+    solo_hint_btn: "Jouer contre le bot",
     login_title: "Perudo Online 🏴‍☠️", login_sub: "Identifie-toi avant d'entrer dans la taverne !",
     ph_pseudo: "Ton nom de pirate...", ph_pw: "Ton mot de passe...",
     pw_warn: "⚠️ Ne mets pas un mot de passe que tu utilises déjà ! Mets par exemple \"123\" ou \"mdp\".",
@@ -4372,6 +4299,8 @@ const I18N = {
     tut_skip: "Passer", tut_prev: "Précédent", tut_next: "Suivant", tut_finish: "Terminer 🏴‍☠️"
   },
   en: {
+    solo_hint: "Nobody around yet… Start a game against the bot to warm up!",
+    solo_hint_btn: "Play vs bot",
     login_title: "Perudo Online 🏴‍☠️", login_sub: "Log in before entering the tavern!",
     ph_pseudo: "Your pirate name...", ph_pw: "Your password...",
     pw_warn: "⚠️ Don't reuse a password you already use! Try e.g. \"123\" or \"pwd\".",
@@ -4414,6 +4343,8 @@ const I18N = {
     tut_skip: "Skip", tut_prev: "Previous", tut_next: "Next", tut_finish: "Finish 🏴‍☠️"
   },
   es: {
+    solo_hint: "Nadie a la vista por ahora… ¡Lanza una partida contra el bot para calentar!",
+    solo_hint_btn: "Jugar contra el bot",
     login_title: "Perudo Online 🏴‍☠️", login_sub: "¡Identifícate antes de entrar en la taberna!",
     ph_pseudo: "Tu nombre de pirata...", ph_pw: "Tu contraseña...",
     pw_warn: "⚠️ ¡No uses una contraseña que ya utilices! Pon por ejemplo \"123\" o \"clave\".",
@@ -4636,3 +4567,35 @@ Object.assign(I18N.es, {
 Object.assign(I18N.fr, { emote_title: "Émotes", bh_title: "Historique de la manche", bh_last_round: "Dernière manche", bh_empty: "Aucune enchère pour cette manche.", bh_face: "face", bh_dice: "dés" });
 Object.assign(I18N.en, { emote_title: "Emotes", bh_title: "Round history", bh_last_round: "Last round", bh_empty: "No bids this round.", bh_face: "face", bh_dice: "dice" });
 Object.assign(I18N.es, { emote_title: "Emotes", bh_title: "Historial de la ronda", bh_last_round: "Última ronda", bh_empty: "Ninguna apuesta en esta ronda.", bh_face: "cara", bh_dice: "dados" });
+
+
+// ---------------------------------------------------------------------
+//  Confort d'accueil : retrait du voile de chargement + suggestion bots
+// ---------------------------------------------------------------------
+(function () {
+    const veil = document.getElementById('boot-veil');
+    if (veil) { veil.style.opacity = '0'; veil.style.transition = 'opacity .25s'; setTimeout(() => veil.remove(), 260); }
+})();
+
+// Si la taverne est vide à l'arrivée, on propose une partie contre le bot
+let _soloHintDone = false;
+socket.on('update_games', (games) => {
+    if (_soloHintDone || !Array.isArray(games)) return;
+    const open = games.filter(g => !g.started);
+    if (open.length > 0) { _soloHintDone = true; return; }
+    _soloHintDone = true;
+    setTimeout(() => {
+        try {
+            const lobby = document.getElementById('lobby-screen');
+            if (!lobby || lobby.classList.contains('hidden')) return;
+            if (document.getElementById('solo-hint')) return;
+            const host = document.querySelector('#lobby-screen .games-list') || lobby;
+            const el = document.createElement('div');
+            el.id = 'solo-hint';
+            el.style.cssText = 'margin:10px 0;padding:12px 14px;border:1px dashed #d9a94e;border-radius:12px;background:rgba(217,169,78,.08);display:flex;align-items:center;gap:10px;';
+            el.innerHTML = '<span style="font-size:1.4rem;">🤖</span><span style="flex:1;font-size:.85rem;line-height:1.35;">' + t('solo_hint') + '</span>' +
+                '<button class="btn-primary" style="flex:0 0 auto;padding:10px 14px;" onclick="createBotGame();document.getElementById(\'solo-hint\').remove()">' + t('solo_hint_btn') + '</button>';
+            host.prepend(el);
+        } catch (e) {}
+    }, 900);
+});

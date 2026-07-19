@@ -18,6 +18,12 @@
     <meta name="format-detection" content="telephone=no">
 </head>
 <body data-lobby-tab="tavern">
+    <div id="boot-veil" style="position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:radial-gradient(130% 70% at 50% -8%,#2b2013 0%,transparent 55%),#14100b;">
+        <div style="font-size:2.4rem;">🎲</div>
+        <div style="width:34px;height:34px;border-radius:50%;border:3px solid rgba(217,169,78,.25);border-top-color:#d9a94e;animation:bootspin .8s linear infinite;"></div>
+        <p style="margin:0;font-family:system-ui,sans-serif;font-size:.85rem;color:#a08f74;">Entr&eacute;e dans la taverne&hellip;</p>
+        <style>@keyframes bootspin{to{transform:rotate(360deg)}}</style>
+    </div>
     <!-- INTRO / SPLASH ANIMÉ (logo Perudo) -->
     <div id="intro-splash" class="intro-splash" aria-hidden="true">
         <canvas class="intro-confetti"></canvas>

@@ -6,7 +6,7 @@
 const fs = require('fs');
 
 module.exports = function attachAdmin(app, ctx) {
-    const { requireAdmin, currentUser, isAdmin, ADMIN_USERS, users, saveUsers,
+    const { requireAdmin, currentUser, isAdmin, users, saveUsers,
             hashPassword, makeRecoveryCode, mf, redis } = ctx;
 
     // --- Journal des actions (mémoire + persistance légère) ---
@@ -36,7 +36,7 @@ module.exports = function attachAdmin(app, ctx) {
         res.json({
             you: currentUser(req),
             accounts: all.length,
-            admins: ADMIN_USERS,
+            admins: ctx.allAdmins(),
             banned: all.filter(u => u.banned).length,
             newThisWeek: all.filter(u => u.created && Date.now() - u.created < 7 * day).length,
             activeThisWeek: all.filter(u => u.lastLogin && Date.now() - u.lastLogin < 7 * day).length,
@@ -89,6 +89,11 @@ module.exports = function attachAdmin(app, ctx) {
             if (v.gaveUp) mfStats.gaveUp++;
         }
         const days = mf.get(`mf:days:${pseudo}`) || [];
+        let perudo = null;
+        try {
+            const pu = ctx.perudo().users()[pseudo];
+            if (pu) perudo = { wins: pu.wins || 0, played: pu.played || 0, rankPoints: pu.rankPoints || 0, bestStreak: pu.bestStreak || 0 };
+        } catch (e) {}
         res.json({
             pseudo: u.pseudo,
             created: u.created || 0,
@@ -97,6 +102,7 @@ module.exports = function attachAdmin(app, ctx) {
             admin: isAdmin(u.pseudo),
             hasRecovery: !!u.recoveryHash,
             motsfleches: { ...mfStats, daysPlayed: days.length },
+            perudo,
         });
     });
 
@@ -290,6 +296,258 @@ module.exports = function attachAdmin(app, ctx) {
         saveDict(ov);
         log(currentUser(req), 'mot rétabli', m);
         res.json({ ok: true });
+    });
+
+    // =================================================================
+    //  ADMINISTRATEURS
+    // =================================================================
+    G('/admins', (req, res) => {
+        res.json({
+            root: ctx.rootAdmins,
+            extra: (mf.get('mf:admins') || []),
+            all: ctx.allAdmins(),
+            you: currentUser(req),
+        });
+    });
+    A('/admins/add', (req, res) => {
+        const pseudo = String(req.body.pseudo || '').trim();
+        if (!users()[pseudo]) return res.status(404).json({ error: 'Ce compte n’existe pas.' });
+        if (isAdmin(pseudo)) return res.status(409).json({ error: 'Déjà administrateur.' });
+        const list = (mf.get('mf:admins') || []).slice();
+        list.push(pseudo);
+        mf.set('mf:admins', list);
+        log(currentUser(req), 'admin ajouté', pseudo);
+        res.json({ ok: true });
+    });
+    A('/admins/remove', (req, res) => {
+        const pseudo = String(req.body.pseudo || '').trim();
+        if (ctx.isRootAdmin(pseudo)) return res.status(400).json({ error: 'Administrateur principal : non retirable.' });
+        if (pseudo === currentUser(req)) return res.status(400).json({ error: 'Tu ne peux pas te retirer toi-même.' });
+        const list = (mf.get('mf:admins') || []).filter(p => p !== pseudo);
+        mf.set('mf:admins', list);
+        log(currentUser(req), 'admin retiré', pseudo);
+        res.json({ ok: true });
+    });
+
+    // =================================================================
+    //  PERUDO
+    // =================================================================
+    const P = () => ctx.perudo();
+
+    G('/perudo/overview', (req, res) => {
+        const api = P();
+        if (!api) return res.json({ available: false });
+        const all = Object.values(api.users());
+        res.json({
+            available: true,
+            accounts: all.length,
+            games: api.games(),
+            online: api.online(),
+            achievements: api.achievements(),
+            topPlayers: all.slice().sort((a, b) => (b.rankPoints || 0) - (a.rankPoints || 0)).slice(0, 10)
+                .map(u => ({ pseudo: u.pseudo, rankPoints: u.rankPoints || 0, wins: u.wins || 0, played: u.played || 0 })),
+        });
+    });
+
+    G('/perudo/player', (req, res) => {
+        const api = P(); if (!api) return res.status(400).json({ error: 'Perudo indisponible.' });
+        const u = api.users()[String(req.query.pseudo || '')];
+        if (!u) return res.status(404).json({ error: 'Aucun profil Perudo pour ce joueur.' });
+        api.ensure(u);
+        res.json({
+            pseudo: u.pseudo,
+            wins: u.wins || 0, played: u.played || 0, rankPoints: u.rankPoints || 0,
+            currentStreak: u.currentStreak || 0, bestStreak: u.bestStreak || 0,
+            title: u.title || '', achievements: u.achievements || [],
+            avatar: u.avatar || '', frame: u.frame || '', banner: u.banner || '', nameColor: u.nameColor || '',
+            stats: u.stats || {},
+        });
+    });
+
+    A('/perudo/stats', (req, res) => {
+        const api = P(); if (!api) return res.status(400).json({ error: 'Perudo indisponible.' });
+        const u = api.users()[String(req.body.pseudo || '')];
+        if (!u) return res.status(404).json({ error: 'Profil introuvable.' });
+        api.ensure(u);
+        const num = (v, max) => Math.max(0, Math.min(max, Math.round(Number(v) || 0)));
+        if (req.body.wins !== undefined) u.wins = num(req.body.wins, 1e6);
+        if (req.body.played !== undefined) u.played = num(req.body.played, 1e6);
+        if (req.body.rankPoints !== undefined) u.rankPoints = num(req.body.rankPoints, 1e7);
+        if (req.body.bestStreak !== undefined) u.bestStreak = num(req.body.bestStreak, 1e4);
+        if (u.wins > u.played) u.played = u.wins;
+        api.save(true); api.pushProfile(u.pseudo);
+        log(currentUser(req), 'stats Perudo', u.pseudo);
+        res.json({ ok: true });
+    });
+
+    A('/perudo/cosmetics', (req, res) => {
+        const api = P(); if (!api) return res.status(400).json({ error: 'Perudo indisponible.' });
+        const u = api.users()[String(req.body.pseudo || '')];
+        if (!u) return res.status(404).json({ error: 'Profil introuvable.' });
+        const id = (v) => (typeof v === 'string' && /^[a-z0-9_]{0,20}$/.test(v)) ? v : null;
+        const hex = (v) => (v === '' || /^#[0-9a-fA-F]{6}$/.test(v || '')) ? v : null;
+        for (const k of ['avatar', 'frame', 'banner']) {
+            if (req.body[k] !== undefined) { const v = id(req.body[k]); if (v !== null) u[k] = v; }
+        }
+        if (req.body.nameColor !== undefined) { const v = hex(req.body.nameColor); if (v !== null) u.nameColor = v; }
+        if (req.body.title !== undefined) u.title = String(req.body.title || '').slice(0, 30);
+        api.save(true); api.pushProfile(u.pseudo);
+        log(currentUser(req), 'cosmétiques Perudo', u.pseudo);
+        res.json({ ok: true });
+    });
+
+    A('/perudo/reset', (req, res) => {
+        const api = P(); if (!api) return res.status(400).json({ error: 'Perudo indisponible.' });
+        const u = api.users()[String(req.body.pseudo || '')];
+        if (!u) return res.status(404).json({ error: 'Profil introuvable.' });
+        u.wins = 0; u.played = 0; u.rankPoints = 0; u.currentStreak = 0; u.bestStreak = 0;
+        u.achievements = []; u.title = '';
+        if (u.stats) for (const k of Object.keys(u.stats)) if (typeof u.stats[k] === 'number') u.stats[k] = 0;
+        if (u.periodic) u.periodic = {};
+        api.save(true); api.pushProfile(u.pseudo);
+        log(currentUser(req), 'RESET Perudo', u.pseudo);
+        res.json({ ok: true });
+    });
+
+    A('/perudo/endgame', (req, res) => {
+        const api = P(); if (!api) return res.status(400).json({ error: 'Perudo indisponible.' });
+        const ok = api.endGame(String(req.body.id || ''));
+        if (ok) log(currentUser(req), 'partie close', String(req.body.id || ''));
+        res.json({ ok });
+    });
+
+    A('/perudo/kick', (req, res) => {
+        const api = P(); if (!api) return res.status(400).json({ error: 'Perudo indisponible.' });
+        const ok = api.kick(String(req.body.sid || ''), req.body.message);
+        if (ok) log(currentUser(req), 'joueur expulsé', String(req.body.pseudo || ''));
+        res.json({ ok });
+    });
+
+    // =================================================================
+    //  GRILLES (mots fléchés)
+    // =================================================================
+    const MFG = require('../motsfleches/generator');
+
+    G('/mf/day', (req, res) => {
+        const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mf.today();
+        const out = {};
+        for (const lv of mf.levels) {
+            const grid = mf.get(`mf:grid:${date}:${lv}`);
+            const board = (mf.get(`mf:board:${date}:${lv}`) || []).slice().sort((a, b) => a.s - b.s);
+            let started = 0, solved = 0, gaveUp = 0;
+            for (const [k, v] of Object.entries(mf.cache())) {
+                if (!k.startsWith('mf:prog:') || !k.endsWith(`:${date}:${lv}`) || !v) continue;
+                started++; if (v.solved) solved++; if (v.gaveUp) gaveUp++;
+            }
+            out[lv] = {
+                generated: !!grid,
+                words: grid ? grid.words : 0,
+                wordList: grid ? (grid.wordList || []) : [],
+                board: board.map(e => ({ u: e.u, s: e.s, susp: !!e.susp })),
+                started, solved, gaveUp,
+            };
+        }
+        res.json({ date, today: mf.today(), levels: out });
+    });
+
+    // Aperçu des grilles à venir (elles ne sont pas encore figées)
+    G('/mf/upcoming', (req, res) => {
+        const today = mf.today();
+        const out = [];
+        for (let i = 1; i <= 7; i++) {
+            const date = mf.shift(today, i);
+            const day = { date, levels: {} };
+            for (const lv of mf.levels) {
+                try {
+                    const recent = [];
+                    for (let j = 0; j < 15; j++) { const h = mf.get(`mf:hist:${mf.shift(date, -j - 1)}`); if (Array.isArray(h)) recent.push(...h); }
+                    const p = MFG.generate(lv, date, recent);
+                    day.levels[lv] = { words: p.words, list: p.wordList };
+                } catch (e) { day.levels[lv] = { error: true }; }
+            }
+            out.push(day);
+        }
+        res.json({ days: out });
+    });
+
+    A('/mf/regen', (req, res) => {
+        const date = /^\d{4}-\d{2}-\d{2}$/.test(req.body.date || '') ? req.body.date : mf.today();
+        const lv = mf.levels.includes(req.body.level) ? req.body.level : mf.levels[0];
+        mf.del(`mf:grid:${date}:${lv}`);
+        mf.del(`mf:hist:${date}`);
+        // les progressions de cette grille n'ont plus de sens
+        for (const k of Object.keys(mf.cache())) if (k.startsWith('mf:prog:') && k.endsWith(`:${date}:${lv}`)) mf.del(k);
+        mf.del(`mf:board:${date}:${lv}`);
+        log(currentUser(req), 'grille régénérée', date + ' ' + lv);
+        res.json({ ok: true });
+    });
+
+    A('/mf/board/remove', (req, res) => {
+        const date = String(req.body.date || mf.today());
+        const lv = mf.levels.includes(req.body.level) ? req.body.level : mf.levels[0];
+        const pseudo = String(req.body.pseudo || '');
+        const key = `mf:board:${date}:${lv}`;
+        mf.set(key, (mf.get(key) || []).filter(e => e.u !== pseudo));
+        log(currentUser(req), 'temps supprimé', pseudo, date + ' ' + lv);
+        res.json({ ok: true });
+    });
+
+    A('/mf/board/flag', (req, res) => {
+        const date = String(req.body.date || mf.today());
+        const lv = mf.levels.includes(req.body.level) ? req.body.level : mf.levels[0];
+        const pseudo = String(req.body.pseudo || '');
+        const key = `mf:board:${date}:${lv}`;
+        mf.set(key, (mf.get(key) || []).map(e => (e.u === pseudo ? { ...e, susp: !e.susp } : e)));
+        log(currentUser(req), 'temps marqué', pseudo);
+        res.json({ ok: true });
+    });
+
+    A('/mf/progress/reset', (req, res) => {
+        const date = String(req.body.date || mf.today());
+        const lv = mf.levels.includes(req.body.level) ? req.body.level : mf.levels[0];
+        const pseudo = String(req.body.pseudo || '');
+        mf.del(`mf:prog:${pseudo}:${date}:${lv}`);
+        log(currentUser(req), 'progression réinitialisée', pseudo, date + ' ' + lv);
+        res.json({ ok: true });
+    });
+
+    G('/mf/comments', (req, res) => {
+        const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mf.today();
+        res.json({ date, comments: mf.get(`mf:cmt:${date}`) || [] });
+    });
+    A('/mf/comments/remove', (req, res) => {
+        const date = String(req.body.date || mf.today());
+        const ts = Number(req.body.ts);
+        const key = `mf:cmt:${date}`;
+        mf.set(key, (mf.get(key) || []).filter(c => c.ts !== ts));
+        log(currentUser(req), 'message supprimé', String(req.body.u || ''));
+        res.json({ ok: true });
+    });
+
+    // Difficulté observée par niveau (sur 14 jours)
+    G('/mf/difficulty', (req, res) => {
+        const today = mf.today();
+        const out = {};
+        for (const lv of mf.levels) out[lv] = { started: 0, solved: 0, gaveUp: 0, times: [] };
+        for (let i = 0; i < 14; i++) {
+            const date = mf.shift(today, -i);
+            for (const lv of mf.levels) {
+                for (const [k, v] of Object.entries(mf.cache())) {
+                    if (!k.startsWith('mf:prog:') || !k.endsWith(`:${date}:${lv}`) || !v) continue;
+                    out[lv].started++;
+                    if (v.solved) { out[lv].solved++; if (v.seconds) out[lv].times.push(v.seconds); }
+                    if (v.gaveUp) out[lv].gaveUp++;
+                }
+            }
+        }
+        for (const lv of mf.levels) {
+            const t = out[lv].times;
+            out[lv].avg = t.length ? Math.round(t.reduce((a, b) => a + b, 0) / t.length) : 0;
+            out[lv].best = t.length ? Math.min(...t) : 0;
+            out[lv].rate = out[lv].started ? Math.round(out[lv].solved / out[lv].started * 100) : 0;
+            delete out[lv].times;
+        }
+        res.json({ levels: out });
     });
 
     // =================================================================

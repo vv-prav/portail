@@ -4,6 +4,7 @@
 //  Une seule connexion partagée pour toutes les mini-apps (même origine).
 // =====================================================================
 const express = require('express');
+const compression = require('compression');
 const http = require('http');
 const crypto = require('crypto');
 const fs = require('fs');
@@ -13,6 +14,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+app.use(compression());
 app.use(express.json({ limit: '1mb' }));
 
 // ---------------------------------------------------------------------
@@ -24,9 +26,13 @@ if (SESSION_SECRET === 'dev-secret-a-changer') {
 }
 const SESSION_DAYS = 30;
 // Administrateurs : pseudos séparés par des virgules dans la variable ADMIN_USERS
-const ADMIN_USERS = (process.env.ADMIN_USERS || 'Viper la Voile Noire')
+const ROOT_ADMINS = (process.env.ADMIN_USERS || 'Viper la Voile Noire')
     .split(',').map(s => s.trim()).filter(Boolean);
-function isAdmin(pseudo) { return ADMIN_USERS.includes(pseudo); }
+// Administrateurs ajoutés depuis l'interface (clé mf:admins) — les "racine" ne sont jamais retirables
+function extraAdmins() { const l = mfGet('mf:admins'); return Array.isArray(l) ? l : []; }
+function allAdmins() { return [...new Set([...ROOT_ADMINS, ...extraAdmins()])]; }
+function isRootAdmin(p) { return ROOT_ADMINS.includes(p); }
+function isAdmin(pseudo) { return ROOT_ADMINS.includes(pseudo) || extraAdmins().includes(pseudo); }
 const IS_PROD = process.env.NODE_ENV === 'production';
 
 // ---------------------------------------------------------------------
@@ -216,6 +222,7 @@ app.post('/api/login', (req, res) => {
     }
     if (user.banned) return res.status(403).json({ error: "Ce compte a été suspendu." });
     loginOk(tk);
+    user.prevLogin = user.lastLogin || 0;
     user.lastLogin = Date.now();
     saveUsers();
     setSessionCookie(res, pseudo);
@@ -280,7 +287,6 @@ function placeholder(name, emoji) {
     <a class="btn btn-ghost" href="/">← Retour au salon</a></main></body></html>`;
 }
 app.get('/recettes', requireAuth, (req, res) => res.send(placeholder('Les Recettes', '🍽️')));
-app.get('/media', requireAuth, (req, res) => res.send(placeholder('Espace Média', '🎞️')));
 // ---------------------------------------------------------------------
 //  MOTS FLÉCHÉS — grilles du jour, classement, indices, séries, forum.
 // ---------------------------------------------------------------------
@@ -611,6 +617,77 @@ app.post('/api/mf/comments', requireAuth, (req, res) => {
 });
 
 // ---------------------------------------------------------------------
+//  PERUDO — jeu temps réel, intégré au monolithe sous /perudo.
+//  Le front est protégé par le login du salon ; /perudo/healthz reste public.
+// ---------------------------------------------------------------------
+const perudoApi = require('./perudo/game')(app, io);
+app.use('/perudo', requireAuth, express.static(__dirname + '/public/perudo'));
+
+// ---------------------------------------------------------------------
+//  API DU SALON — pouls des apps et profil personnel
+// ---------------------------------------------------------------------
+const SALON_AVATARS = ['🦊','🐺','🦉','🐙','🦈','🐉','🦜','🐢','🦁','🐸','🦄','👻','🤖','☠️','🎩','🌙','⚓','🌊','🔥','✦'];
+
+app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
+    const user = currentUser(req);
+    const today = mfTodayId();
+    let done = 0;
+    for (const lv of MF_LEVELS) {
+        const p = mfGet(`mf:prog:${user}:${today}:${lv}`);
+        if (p && p.solved) done++;
+    }
+    let online = 0, games = 0;
+    try { online = perudoApi.online().length; games = perudoApi.games().filter(g => !g.vsBot).length; } catch (e) {}
+    // série mots fléchés
+    const days = new Set(mfGet(`mf:days:${user}`) || []);
+    let streak = 0, d = today;
+    if (!days.has(d)) d = mfShiftDay(d, -1);
+    while (days.has(d)) { streak++; d = mfShiftDay(d, -1); }
+    res.json({ mf: { done, total: MF_LEVELS.length, streak }, perudo: { online, games } });
+});
+
+app.get('/api/salon/profile', requireAuthApi, (req, res) => {
+    const user = registeredUsers[currentUser(req)];
+    if (!user) return res.status(404).json({ error: 'Compte introuvable.' });
+    const pseudo = user.pseudo;
+    // stats mots fléchés
+    let solved = 0, best = null;
+    for (const [k, v] of Object.entries(mfCache)) {
+        if (!k.startsWith(`mf:prog:${pseudo}:`) || !v || !v.solved) continue;
+        solved++;
+        if (v.seconds && (!best || v.seconds < best)) best = v.seconds;
+    }
+    const days = new Set(mfGet(`mf:days:${pseudo}`) || []);
+    let streak = 0, d = mfTodayId();
+    if (!days.has(d)) d = mfShiftDay(d, -1);
+    while (days.has(d)) { streak++; d = mfShiftDay(d, -1); }
+    // stats perudo
+    let perudo = null;
+    try {
+        const pu = perudoApi.users()[pseudo];
+        if (pu) perudo = { wins: pu.wins || 0, played: pu.played || 0, rankPoints: pu.rankPoints || 0 };
+    } catch (e) {}
+    res.json({
+        pseudo, avatar: user.avatar || '',
+        created: user.created || 0, prevLogin: user.prevLogin || 0,
+        isAdmin: isAdmin(pseudo),
+        mf: { solved, best, streak, days: days.size },
+        perudo,
+        avatars: SALON_AVATARS,
+    });
+});
+
+app.post('/api/salon/profile', requireAuthApi, (req, res) => {
+    const user = registeredUsers[currentUser(req)];
+    if (!user) return res.status(404).json({ error: 'Compte introuvable.' });
+    const av = String((req.body && req.body.avatar) || '');
+    if (av !== '' && !SALON_AVATARS.includes(av)) return res.status(400).json({ error: 'Avatar invalide.' });
+    user.avatar = av;
+    saveUsers();
+    res.json({ ok: true, avatar: av });
+});
+
+// ---------------------------------------------------------------------
 //  ADMINISTRATION — espace réservé (voir admin/routes.js)
 // ---------------------------------------------------------------------
 function requireAdmin(req, res, next) {
@@ -621,19 +698,14 @@ function requireAdmin(req, res, next) {
 }
 app.use('/admin', requireAdmin, express.static(__dirname + '/public/admin'));
 require('./admin/routes')(app, {
-    requireAdmin, currentUser, isAdmin, ADMIN_USERS,
+    requireAdmin, currentUser, isAdmin, isRootAdmin, allAdmins, rootAdmins: ROOT_ADMINS,
     users: () => registeredUsers,
     saveUsers, hashPassword, makeRecoveryCode,
     mf: { get: mfGet, set: mfSet, del: mfDel, cache: () => mfCache, purge: mfPurge, levels: MF_LEVELS, today: mfTodayId, shift: mfShiftDay },
     redis: () => redis,
+    perudo: () => perudoApi,
 });
 
-// ---------------------------------------------------------------------
-//  PERUDO — jeu temps réel, intégré au monolithe sous /perudo.
-//  Le front est protégé par le login du salon ; /perudo/healthz reste public.
-// ---------------------------------------------------------------------
-require('./perudo/game')(app, io);
-app.use('/perudo', requireAuth, express.static(__dirname + '/public/perudo'));
 
 // ---------------------------------------------------------------------
 //  Statique (le salon) + Socket.io prêt pour les apps temps réel.

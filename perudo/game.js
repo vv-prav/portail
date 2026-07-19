@@ -46,11 +46,9 @@ function secondPoints(n) { return n >= 3 ? Math.max(0, (n - 1)) * 3 : 0; }
 // Émotes autorisées en partie (clé -> emoji)
 // ===== Modération / Admin =====
 // 👉 Ajoute ici ton pseudo (sensible à la casse) pour devenir administrateur :
-const ADMINS = []; // ex : ['Viper la Voile Noire']
 let bannedPseudos = {};
 try { bannedPseudos = JSON.parse(fs.readFileSync(__dirname + '/banned.json', 'utf8')) || {}; } catch (e) { bannedPseudos = {}; }
 function saveBanned() { try { fs.writeFileSync(__dirname + '/banned.json', JSON.stringify(bannedPseudos)); } catch (e) {} }
-function isAdmin(pseudo) { return ADMINS.indexOf(pseudo) !== -1; }
 function isBanned(pseudo) { return !!bannedPseudos[pseudo]; }
 
 const EMOTES = {
@@ -922,7 +920,7 @@ function profilePayload(user) {
         campaignTotalStars: totalCampaignStars(user),
         campaignMaxStars: CAMPAIGN_MAX_STARS,
         tourneyWins: user.tourneyWins || 0,
-        isAdmin: isAdmin(user.pseudo)
+        isAdmin: false
     });
 }
 
@@ -2259,87 +2257,6 @@ io.on('connection', (socket) => {
         socket.emit('leaderboard_scoped', { scope: sc, list: getLeaderboard(50, sc) });
     });
 
-    // --- Modération (admin) ---
-    const adminOk = () => { const p = players[socket.id]; return p && isAdmin(p.pseudo); };
-    socket.on('admin_state', () => {
-        if (!adminOk()) return;
-        const plist = Object.entries(players).map(([sid, p]) => ({ sid, pseudo: p.pseudo, admin: isAdmin(p.pseudo) }));
-        const glist = Object.entries(activeGames).filter(([id, g]) => !g.vsBot).map(([id, g]) => ({ id, count: g.players.length, started: !!g.started }));
-        socket.emit('admin_state', { players: plist, games: glist, banned: Object.keys(bannedPseudos) });
-    });
-    socket.on('admin_kick', (sid) => {
-        if (!adminOk() || typeof sid !== 'string') return;
-        const s = io.sockets.sockets.get(sid);
-        if (s) { try { s.emit('force_logout', 'Tu as été expulsé par un modérateur.'); } catch (e) {} s.disconnect(true); }
-    });
-    socket.on('admin_ban', (pseudo) => {
-        if (!adminOk() || typeof pseudo !== 'string' || isAdmin(pseudo)) return;
-        bannedPseudos[pseudo] = true; saveBanned();
-        for (const [sid, p] of Object.entries(players)) {
-            if (p.pseudo === pseudo) { const s = io.sockets.sockets.get(sid); if (s) { try { s.emit('force_logout', 'Tu as été banni de la taverne.'); } catch (e) {} s.disconnect(true); } }
-        }
-        const plist = Object.entries(players).map(([sid, p]) => ({ sid, pseudo: p.pseudo, admin: isAdmin(p.pseudo) }));
-        const glist = Object.entries(activeGames).filter(([id, g]) => !g.vsBot).map(([id, g]) => ({ id, count: g.players.length, started: !!g.started }));
-        socket.emit('admin_state', { players: plist, games: glist, banned: Object.keys(bannedPseudos) });
-    });
-    socket.on('admin_unban', (pseudo) => {
-        if (!adminOk() || typeof pseudo !== 'string') return;
-        delete bannedPseudos[pseudo]; saveBanned();
-        socket.emit('admin_state', { players: Object.entries(players).map(([sid, p]) => ({ sid, pseudo: p.pseudo, admin: isAdmin(p.pseudo) })), games: Object.entries(activeGames).filter(([id, g]) => !g.vsBot).map(([id, g]) => ({ id, count: g.players.length, started: !!g.started })), banned: Object.keys(bannedPseudos) });
-    });
-
-    // Gestion des comptes (admin)
-    socket.on('admin_list_accounts', (q) => {
-        if (!adminOk()) return;
-        const query = (typeof q === 'string' ? q : '').toLowerCase().trim();
-        const list = Object.values(registeredUsers)
-            .filter(u => !query || u.pseudo.toLowerCase().includes(query))
-            .sort((a, b) => (b.rankPoints || 0) - (a.rankPoints || 0))
-            .slice(0, 60)
-            .map(u => ({ pseudo: u.pseudo, wins: u.wins || 0, played: u.played || 0, rankPoints: u.rankPoints || 0, admin: isAdmin(u.pseudo), banned: isBanned(u.pseudo) }));
-        socket.emit('admin_accounts', { query, list });
-    });
-    socket.on('admin_edit_stats', (d) => {
-        if (!adminOk() || !d || typeof d.pseudo !== 'string') return;
-        const u = registeredUsers[d.pseudo];
-        if (!u) return socket.emit('admin_msg', "Compte introuvable.");
-        ensureUserFields(u);
-        const clamp = (v) => Math.max(0, Math.min(1000000, Math.round(Number(v) || 0)));
-        if (d.wins !== undefined) u.wins = clamp(d.wins);
-        if (d.played !== undefined) u.played = clamp(d.played);
-        if (d.rankPoints !== undefined) u.rankPoints = clamp(d.rankPoints);
-        if (u.wins > u.played) u.played = u.wins; // cohérence
-        saveUsers(true);
-        // si le joueur est en ligne, on lui pousse son profil à jour
-        for (const [sid, p] of Object.entries(players)) {
-            if (p.pseudo === d.pseudo) { const s = io.sockets.sockets.get(sid); if (s) s.emit('profile_update', profilePayload(u)); }
-        }
-        socket.emit('admin_msg', `Stats de ${d.pseudo} mises à jour.`);
-    });
-    socket.on('admin_reset_stats', (pseudo) => {
-        if (!adminOk() || typeof pseudo !== 'string') return;
-        const u = registeredUsers[pseudo];
-        if (!u) return;
-        u.wins = 0; u.played = 0; u.rankPoints = 0;
-        if (u.stats) { for (const k of Object.keys(u.stats)) if (typeof u.stats[k] === 'number') u.stats[k] = 0; }
-        if (u.periodic) u.periodic = {};
-        saveUsers(true);
-        for (const [sid, p] of Object.entries(players)) {
-            if (p.pseudo === pseudo) { const s = io.sockets.sockets.get(sid); if (s) s.emit('profile_update', profilePayload(u)); }
-        }
-        socket.emit('admin_msg', `Stats de ${pseudo} réinitialisées.`);
-    });
-    socket.on('admin_delete_account', (pseudo) => {
-        if (!adminOk() || typeof pseudo !== 'string') return;
-        if (isAdmin(pseudo)) return socket.emit('admin_msg', "Impossible de supprimer un administrateur.");
-        if (!registeredUsers[pseudo]) return socket.emit('admin_msg', "Compte introuvable.");
-        delete registeredUsers[pseudo];
-        saveUsers(true);
-        for (const [sid, p] of Object.entries(players)) {
-            if (p.pseudo === pseudo) { const s = io.sockets.sockets.get(sid); if (s) { try { s.emit('force_logout', 'Ton compte a été supprimé par un administrateur.'); } catch (e) {} s.disconnect(true); } }
-        }
-        socket.emit('admin_msg', `Compte ${pseudo} supprimé.`);
-    });
     socket.on('get_profile', (pseudo) => {
         if (typeof pseudo !== 'string') return;
         const user = registeredUsers[pseudo];
@@ -2722,5 +2639,47 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 loadUsers();
+
+// --- Interface pour l'espace d'administration du salon ---
+return {
+    users: () => registeredUsers,
+    save: (now) => saveUsers(now),
+    ensure: ensureUserFields,
+    publicStats,
+    profilePayload,
+    titleOf,
+    achievements: () => ACHIEVEMENTS.map(a => ({ id: a.id, name: a.name, desc: a.desc })),
+    games: () => Object.entries(activeGames).map(([id, g]) => ({
+        id, started: !!g.started, vsBot: !!g.vsBot, isDuo: !!g.isDuo,
+        players: (g.players || []).map(p => ({ pseudo: p.pseudo, dice: p.dice, isBot: !!p.isBot })),
+        spectators: (g.spectators || []).length,
+    })),
+    online: () => Object.entries(players).map(([sid, p]) => ({ sid, pseudo: p.pseudo })),
+    endGame: (id) => {
+        const g = activeGames[id];
+        if (!g) return false;
+        try { io.to(id).emit('game_log', { k: 'log_total', type: 'system', p: { n: 0 } }); } catch (e) {}
+        try { io.to(id).emit('force_lobby', "La partie a été close par un administrateur."); } catch (e) {}
+        delete activeGames[id];
+        try { io.emit('update_games', getPublicGames()); } catch (e) {}
+        return true;
+    },
+    kick: (sid, msg) => {
+        const sock = io.sockets.sockets.get(sid);
+        if (!sock) return false;
+        try { sock.emit('force_logout', msg || "Tu as été déconnecté par un administrateur."); } catch (e) {}
+        sock.disconnect(true);
+        return true;
+    },
+    pushProfile: (pseudo) => {
+        const u = registeredUsers[pseudo];
+        if (!u) return;
+        for (const [sid, p] of Object.entries(players)) {
+            if (p.pseudo !== pseudo) continue;
+            const sock = io.sockets.sockets.get(sid);
+            if (sock) { try { sock.emit('profile_update', profilePayload(u)); } catch (e) {} }
+        }
+    },
+};
 
 }; // ===== fin attachPerudo =====
