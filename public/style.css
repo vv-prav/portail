@@ -81,7 +81,7 @@ body.is-hub   .hub   { display: block; }
 /* =====================  LE SALON  ===================== */
 .hub { min-height: 100dvh; animation: rise 0.45s ease both; }
 .hub-inner { max-width: 640px; margin: 0 auto; padding: max(18px, env(safe-area-inset-top)) 18px calc(28px + env(safe-area-inset-bottom)); }
-.hub-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 6px; }
+.hub-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 6px; margin-bottom: 18px; }
 .hub-greet { min-width: 0; }
 .hub-eyebrow { display: block; text-transform: uppercase; letter-spacing: 3px; font-size: 0.66rem; color: var(--muted); margin-bottom: 3px; }
 .hub-name { font-family: 'Fraunces', Georgia, serif; font-weight: 900; font-size: 2rem; margin: 0; color: var(--brass-soft); line-height: 1.05; overflow-wrap: anywhere; }
@@ -155,10 +155,14 @@ body.is-hub   .hub   { display: block; }
 .ov-card .btn + .btn { margin-top:10px; }
 
 /* Annonce publiée depuis l'administration */
-.hub-announce { background:rgba(217,169,78,.12); border:1px solid var(--line); border-left:3px solid var(--brass);
-                border-radius:10px; padding:11px 14px; color:var(--parchment); font-size:.86rem;
-                line-height:1.45; margin:0 0 16px; }
-.hub-announce[hidden] { display:none; }
+.hub-announce { position: relative; background: linear-gradient(165deg, rgba(217,169,78,.14), rgba(217,169,78,.06));
+                border: 1px solid rgba(217,169,78,.35); border-radius: 12px;
+                padding: 12px 14px 12px 42px; color: var(--parchment); font-size: .86rem;
+                line-height: 1.5; margin: 0 0 18px; overflow-wrap: anywhere;
+                box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+.hub-announce::before { content: '📣'; position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+                        font-size: 1.05rem; }
+.hub-announce[hidden] { display: none; }
 
 /* ===== En-tête profil du salon ===== */
 .hub-me { display: flex; align-items: center; gap: 12px; background: none; border: none; padding: 4px;

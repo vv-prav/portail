@@ -26,7 +26,7 @@ if (SESSION_SECRET === 'dev-secret-a-changer') {
 }
 const SESSION_DAYS = 30;
 // Administrateurs : pseudos séparés par des virgules dans la variable ADMIN_USERS
-const ROOT_ADMINS = (process.env.ADMIN_USERS || 'Viper la Voile Noire')
+const ROOT_ADMINS = (process.env.ADMIN_USERS || 'Viper la Voile Noire,VicoW')
     .split(',').map(s => s.trim()).filter(Boolean);
 // Administrateurs ajoutés depuis l'interface (clé mf:admins) — les "racine" ne sont jamais retirables
 function extraAdmins() { const l = mfGet('mf:admins'); return Array.isArray(l) ? l : []; }
