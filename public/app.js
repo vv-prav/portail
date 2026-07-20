@@ -28,6 +28,7 @@ const I18N = {
         app_recettes_d: "Garde et partage tes recettes.", app_admin_d: "Comptes, données et réglages.",
         b_open: "Ouvert", b_soon: "Bientôt", b_online: "en ligne", b_new_grid: "Nouvelle grille !",
         b_grid_done: "Grille du jour ✓", b_grid_part: "faites aujourd'hui",
+        b_rec_new: "cette semaine", b_rec_count: "recettes",
     },
     en: {
         entry_sub: "A name, a password, and the door opens.",
@@ -51,6 +52,7 @@ const I18N = {
         app_recettes_d: "Keep and share your recipes.", app_admin_d: "Accounts, data and settings.",
         b_open: "Open", b_soon: "Soon", b_online: "online", b_new_grid: "New grid!",
         b_grid_done: "Today's grid ✓", b_grid_part: "done today",
+        b_rec_new: "this week", b_rec_count: "recipes",
     },
     es: {
         entry_sub: "Un nombre, una contraseña, y la puerta se abre.",
@@ -74,6 +76,7 @@ const I18N = {
         app_recettes_d: "Guarda y comparte tus recetas.", app_admin_d: "Cuentas, datos y ajustes.",
         b_open: "Abierto", b_soon: "Pronto", b_online: "en línea", b_new_grid: "¡Nueva cuadrícula!",
         b_grid_done: "Cuadrícula de hoy ✓", b_grid_part: "hechas hoy",
+        b_rec_new: "esta semana", b_rec_count: "recetas",
     },
 };
 let LANG = localStorage.getItem('erquy_lang') || (navigator.language || 'fr').slice(0, 2);
@@ -94,7 +97,7 @@ document.querySelectorAll('#lang-row button').forEach(b => b.addEventListener('c
 const APPS = [
     { id: 'perudo',   name: 'Perudo',       dKey: 'app_perudo_d',   emoji: '🎲', href: '/perudo',       accent: '#d9a94e', status: 'open' },
     { id: 'mf',       name: 'Mots Fléchés', dKey: 'app_mf_d',       emoji: '🧩', href: '/mots-fleches', accent: '#5aa87a', status: 'open' },
-    { id: 'recettes', name: 'Recettes',     dKey: 'app_recettes_d', emoji: '🍽️', href: '/recettes',    accent: '#e07a4e', status: 'soon' },
+    { id: 'recettes', name: 'Recettes',     dKey: 'app_recettes_d', emoji: '🍽️', href: '/recettes',    accent: '#e07a4e', status: 'open' },
 ];
 const ADMIN_APP = { id: 'admin', name: 'Administration', dKey: 'app_admin_d', emoji: '🛡️', href: '/admin', accent: '#c96f6f', status: 'open' };
 let isAdminUser = false;
@@ -117,6 +120,11 @@ function tileBadge(app) {
     if (app.status !== 'open') return `<span class="tile-badge soon">${t('b_soon')}</span>`;
     if (app.id === 'perudo' && pulse && pulse.perudo && pulse.perudo.online > 0) {
         return `<span class="tile-badge live">🟢 ${pulse.perudo.online} ${t('b_online')}</span>`;
+    }
+    if (app.id === 'recettes' && pulse && pulse.rec) {
+        if (pulse.rec.fresh > 0) return `<span class="tile-badge new">✨ ${pulse.rec.fresh} ${t('b_rec_new')}</span>`;
+        if (pulse.rec.count > 0) return `<span class="tile-badge part">${pulse.rec.count} ${t('b_rec_count')}</span>`;
+        return `<span class="tile-badge open">${t('b_open')}</span>`;
     }
     if (app.id === 'mf' && pulse && pulse.mf) {
         const { done, total } = pulse.mf;

@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+    <meta name="theme-color" content="#14100b">
+    <title>Recettes</title>
+    <link rel="icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="is-boot">
+
+    <div class="boot"><div class="boot-ring"></div></div>
+
+    <div class="rc" id="rc">
+        <header class="rc-head">
+            <a class="rc-back" href="/" aria-label="Retour au salon">←</a>
+            <div class="rc-titles">
+                <h1 class="rc-title" data-i="title">Recettes</h1>
+                <span class="rc-sub" id="rc-count"></span>
+            </div>
+        </header>
+
+        <div class="rc-search">
+            <span class="rc-search-ico">🔎</span>
+            <input id="rc-q" type="search" data-ph="search_ph" placeholder="Chercher une recette…" autocomplete="off">
+        </div>
+
+        <div class="rc-chips" id="rc-cats"></div>
+        <div class="rc-chips small" id="rc-tags"></div>
+
+        <div class="rc-grid" id="rc-grid"></div>
+        <p class="rc-empty" id="rc-empty" hidden></p>
+    </div>
+
+    <button class="rc-fab" id="rc-add" type="button" aria-label="Ajouter une recette">+</button>
+
+    <!-- FORMULAIRE (ajout / édition) -->
+    <div class="rc-screen" id="rc-form" hidden>
+        <header class="rc-head">
+            <button class="rc-back" id="form-close" type="button" aria-label="Fermer">✕</button>
+            <div class="rc-titles"><h1 class="rc-title" id="form-title" data-i="form_new">Nouvelle recette</h1></div>
+        </header>
+        <div class="rc-form-body">
+            <label class="f-label" data-i="f_title">Titre</label>
+            <input class="f-in" id="f-title" maxlength="120" data-ph="f_title_ph" placeholder="Tarte aux pommes de Mamie…">
+
+            <label class="f-label" data-i="f_cat">Catégorie</label>
+            <div class="rc-chips" id="f-cats"></div>
+
+            <div class="f-row">
+                <div class="f-col">
+                    <label class="f-label" data-i="f_diff">Difficulté</label>
+                    <div class="rc-chips col" id="f-diffs"></div>
+                </div>
+                <div class="f-col">
+                    <label class="f-label" data-i="f_time">Temps (min)</label>
+                    <input class="f-in" id="f-time" type="number" min="0" max="600" inputmode="numeric" placeholder="30">
+                    <label class="f-label" data-i="f_serv">Personnes</label>
+                    <input class="f-in" id="f-serv" type="number" min="1" max="50" inputmode="numeric" value="4">
+                </div>
+            </div>
+
+            <label class="f-label" data-i="f_tags">Étiquettes</label>
+            <div class="rc-chips small" id="f-tags"></div>
+
+            <label class="f-label" data-i="f_photo">Photo</label>
+            <input id="f-photo" type="file" accept="image/*" hidden>
+            <button class="f-photo" id="f-photo-btn" type="button">
+                <img id="f-photo-img" alt="" hidden>
+                <span id="f-photo-txt">📷 <span data-i="f_photo_add">Ajouter une photo</span></span>
+            </button>
+            <button class="f-photo-del" id="f-photo-del" type="button" hidden data-i="f_photo_del">Retirer la photo</button>
+
+            <label class="f-label" data-i="f_ing">Ingrédients</label>
+            <div id="f-ings"></div>
+            <div class="rc-chips tiny" id="f-suggest"></div>
+            <button class="f-add-line" id="f-ing-add" type="button">+ <span data-i="f_ing_add">Ajouter un ingrédient</span></button>
+
+            <label class="f-label" data-i="f_steps">Étapes</label>
+            <div id="f-steps"></div>
+            <button class="f-add-line" id="f-step-add" type="button">+ <span data-i="f_step_add">Ajouter une étape</span></button>
+
+            <div class="f-err" id="f-err"></div>
+            <button class="rc-btn" id="f-save" type="button" data-i="f_save">Enregistrer la recette</button>
+        </div>
+    </div>
+
+    <!-- DÉTAIL -->
+    <div class="rc-screen" id="rc-detail" hidden>
+        <div class="d-hero" id="d-hero">
+            <button class="rc-back over" id="d-close" type="button" aria-label="Retour">←</button>
+            <img id="d-img" alt="" hidden>
+            <span class="d-emoji" id="d-emoji">🍽️</span>
+        </div>
+        <div class="d-body">
+            <h2 class="d-title" id="d-title">—</h2>
+            <p class="d-meta" id="d-meta">—</p>
+            <div class="d-tags" id="d-tags"></div>
+
+            <div class="d-sec" data-i="d_ing">Ingrédients</div>
+            <p class="d-hint" data-i="d_ing_hint">Touche un ingrédient pour le cocher pendant que tu cuisines.</p>
+            <div id="d-ings"></div>
+
+            <div class="d-sec" data-i="d_steps">Préparation</div>
+            <div id="d-steps"></div>
+
+            <div class="d-actions" id="d-actions"></div>
+        </div>
+    </div>
+
+    <!-- Confirmation -->
+    <div class="rc-ov" id="rc-ask" hidden>
+        <div class="rc-card">
+            <div class="rc-ask-emoji">🗑️</div>
+            <h2 class="rc-ask-title" data-i="ask_del">Supprimer cette recette ?</h2>
+            <p class="rc-ask-sub" data-i="ask_del_sub">Elle disparaîtra pour tout le monde.</p>
+            <button class="rc-btn danger" id="ask-yes" type="button" data-i="ask_yes">Oui, supprimer</button>
+            <button class="rc-btn ghost" id="ask-no" type="button" data-i="cancel">Annuler</button>
+        </div>
+    </div>
+
+    <div class="rc-toast" id="rc-toast" hidden></div>
+    <script src="app.js"></script>
+</body>
+</html>

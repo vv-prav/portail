@@ -361,7 +361,7 @@ const W8 = [
 // ---------------------------------------------------------------------
 //  Index et utilitaires
 // ---------------------------------------------------------------------
-const X = require('./words-extra');
+const X = require('./words-extra.js');
 const LISTS = {
     3: W3,
     4: W4.concat(X.X4),

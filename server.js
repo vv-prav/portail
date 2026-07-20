@@ -348,7 +348,7 @@ async function mfFlush() {
 async function loadMf() {
     if (redis) {
         try {
-            const keys = await redis.keys('mf:*');
+            const keys = [...await redis.keys('mf:*'), ...await redis.keys('rec:*')];
             for (let i = 0; i < keys.length; i += 50) {
                 const chunk = keys.slice(i, i + 50);
                 const vals = await redis.mget(...chunk);
@@ -624,6 +624,118 @@ const perudoApi = require('./perudo/game')(app, io);
 app.use('/perudo', requireAuth, express.static(__dirname + '/public/perudo'));
 
 // ---------------------------------------------------------------------
+//  RECETTES — carnet partagé du cercle
+//  Stockage : une clé par recette (rec:<id>) via le cache mfGet/mfSet.
+//  Photos : compressées côté client ; le serveur borne (miniature + grande).
+// ---------------------------------------------------------------------
+const REC_CATEGORIES = ['entree', 'plat', 'dessert', 'apero', 'boisson'];
+const REC_DIFFICULTIES = ['facile', 'moyen', 'difficile'];
+const REC_TAGS = ['vege', 'vegan', 'sans-gluten', 'rapide', 'sans-cuisson', 'epice'];
+
+function recClean(v, max) {
+    if (typeof v !== 'string') return '';
+    return v.replace(/[\u0000-\u001F\u007F]/g, '').trim().slice(0, max);
+}
+function recImage(v, maxLen) {
+    if (typeof v !== 'string' || !v.startsWith('data:image/')) return null;
+    if (v.length > maxLen) return null;
+    if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(v)) return null;
+    return v;
+}
+function recSanitize(input) {
+    if (!input || typeof input !== 'object') return null;
+    const title = recClean(input.title, 120);
+    if (!title) return null;
+    return {
+        title,
+        category: REC_CATEGORIES.includes(input.category) ? input.category : 'plat',
+        difficulty: REC_DIFFICULTIES.includes(input.difficulty) ? input.difficulty : 'facile',
+        prepTime: Math.max(0, Math.min(600, Math.round(Number(input.prepTime) || 0))),
+        servings: Math.max(1, Math.min(50, Math.round(Number(input.servings) || 1))),
+        tags: Array.isArray(input.tags) ? input.tags.filter(t => REC_TAGS.includes(t)).slice(0, 6) : [],
+        ingredients: Array.isArray(input.ingredients)
+            ? input.ingredients.slice(0, 40).map(i => ({
+                name: recClean(i && i.name, 80),
+                qty: recClean(String((i && i.qty) != null ? i.qty : ''), 20),
+                unit: recClean(i && i.unit, 20),
+              })).filter(i => i.name)
+            : [],
+        steps: Array.isArray(input.steps) ? input.steps.map(st => recClean(st, 500)).filter(Boolean).slice(0, 40) : [],
+        image: recImage(input.image, 420000),        // grande photo ≈ 300 Ko utiles
+        thumb: recImage(input.thumb, 50000),         // miniature pour la liste
+    };
+}
+function recAll() {
+    return Object.entries(mfCache)
+        .filter(([k]) => k.startsWith('rec:'))
+        .map(([, v]) => v)
+        .filter(Boolean)
+        .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+}
+function recCanEdit(req, r) {
+    const u = currentUser(req);
+    return r && (r.author === u || isAdmin(u));
+}
+const recLastAdd = new Map();          // anti-spam léger : 1 ajout / 3 s / utilisateur
+
+// Liste (légère : miniatures, jamais les grandes photos)
+app.get('/api/rec/list', requireAuthApi, (req, res) => {
+    const me = currentUser(req);
+    res.json({
+        me: { pseudo: me, isAdmin: isAdmin(me) },
+        recipes: recAll().map(r => ({
+            id: r.id, title: r.title, category: r.category, difficulty: r.difficulty,
+            prepTime: r.prepTime, servings: r.servings, tags: r.tags,
+            author: r.author, createdAt: r.createdAt, thumb: r.thumb || null,
+            nIngredients: (r.ingredients || []).length, nSteps: (r.steps || []).length,
+        })),
+    });
+});
+
+// Fiche complète
+app.get('/api/rec/one', requireAuthApi, (req, res) => {
+    const r = mfGet('rec:' + String(req.query.id || ''));
+    if (!r) return res.status(404).json({ error: 'Recette introuvable.' });
+    res.json({ recipe: r, canEdit: recCanEdit(req, r) });
+});
+
+app.post('/api/rec/add', requireAuthApi, (req, res) => {
+    const me = currentUser(req);
+    const last = recLastAdd.get(me) || 0;
+    if (Date.now() - last < 3000) return res.status(429).json({ error: 'Doucement ! Réessaie dans un instant.' });
+    const data = recSanitize(req.body);
+    if (!data) return res.status(400).json({ error: 'Il manque au moins un titre.' });
+    const recipe = { id: crypto.randomUUID(), ...data, author: me, createdAt: Date.now() };
+    mfSet('rec:' + recipe.id, recipe);
+    recLastAdd.set(me, Date.now());
+    res.json({ ok: true, id: recipe.id });
+});
+
+app.post('/api/rec/update', requireAuthApi, (req, res) => {
+    const key = 'rec:' + String((req.body && req.body.id) || '');
+    const existing = mfGet(key);
+    if (!existing) return res.status(404).json({ error: 'Recette introuvable.' });
+    if (!recCanEdit(req, existing)) return res.status(403).json({ error: 'Seul l’auteur peut modifier cette recette.' });
+    const data = recSanitize(req.body);
+    if (!data) return res.status(400).json({ error: 'Il manque au moins un titre.' });
+    // sans nouvelle photo envoyée, on garde l'ancienne
+    if (!data.image && !(req.body && req.body.removeImage)) { data.image = existing.image; data.thumb = existing.thumb; }
+    mfSet(key, { ...existing, ...data, editedAt: Date.now() });
+    res.json({ ok: true });
+});
+
+app.post('/api/rec/delete', requireAuthApi, (req, res) => {
+    const key = 'rec:' + String((req.body && req.body.id) || '');
+    const existing = mfGet(key);
+    if (!existing) return res.status(404).json({ error: 'Recette introuvable.' });
+    if (!recCanEdit(req, existing)) return res.status(403).json({ error: 'Seul l’auteur peut supprimer cette recette.' });
+    mfDel(key);
+    res.json({ ok: true });
+});
+
+app.use('/recettes', requireAuth, express.static(__dirname + '/public/recettes'));
+
+// ---------------------------------------------------------------------
 //  API DU SALON — pouls des apps et profil personnel
 // ---------------------------------------------------------------------
 const SALON_AVATARS = ['🦊','🐺','🦉','🐙','🦈','🐉','🦜','🐢','🦁','🐸','🦄','👻','🤖','☠️','🎩','🌙','⚓','🌊','🔥','✦'];
@@ -643,7 +755,9 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
     let streak = 0, d = today;
     if (!days.has(d)) d = mfShiftDay(d, -1);
     while (days.has(d)) { streak++; d = mfShiftDay(d, -1); }
-    res.json({ mf: { done, total: MF_LEVELS.length, streak }, perudo: { online, games } });
+    const recs = recAll();
+    const recNew = recs.filter(r => Date.now() - (r.createdAt || 0) < 7 * 864e5).length;
+    res.json({ mf: { done, total: MF_LEVELS.length, streak }, perudo: { online, games }, rec: { count: recs.length, fresh: recNew } });
 });
 
 app.get('/api/salon/profile', requireAuthApi, (req, res) => {
