@@ -5237,3 +5237,6 @@ body.reduced-motion .voice-user.speaking .vu-mic, body.reduced-motion .voice-use
 
 
 .bh-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+/* Retour au salon (médaillon du lobby) */
+.hdr-home { display: grid; place-items: center; text-decoration: none; font-size: 1.25rem; line-height: 1; color: inherit; }
+.hdr-home:active { transform: scale(0.92); }
