@@ -277,16 +277,6 @@ app.get('/api/me', (req, res) => {
 //  Pages d'apps (protégées). Placeholder tant que l'app n'est pas branchée.
 //  Chaque future mini-app aura son dossier dans public/ + sa route ici.
 // ---------------------------------------------------------------------
-function placeholder(name, emoji) {
-    return `<!doctype html><html lang="fr"><head><meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>${name}</title><link rel="stylesheet" href="/style.css"></head>
-    <body class="app-placeholder"><main class="ph-card">
-    <div class="ph-emoji">${emoji}</div><h1>${name}</h1>
-    <p>Cet espace est prêt à être construit. La connexion est déjà partagée avec le salon.</p>
-    <a class="btn btn-ghost" href="/">← Retour au salon</a></main></body></html>`;
-}
-app.get('/recettes', requireAuth, (req, res) => res.send(placeholder('Les Recettes', '🍽️')));
 // ---------------------------------------------------------------------
 //  MOTS FLÉCHÉS — grilles du jour, classement, indices, séries, forum.
 // ---------------------------------------------------------------------
