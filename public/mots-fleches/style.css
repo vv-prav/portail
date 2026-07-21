@@ -23,8 +23,10 @@ body.is-ready .mf { display:flex; }
 .boot-ring { width:34px; height:34px; border-radius:50%; border:3px solid var(--line); border-top-color:var(--brass); animation:spin .8s linear infinite; }
 @keyframes spin { to { transform:rotate(360deg); } }
 
-.mf { flex-direction:column; min-height:100dvh; max-width:560px; margin:0 auto;
+.mf { flex-direction:column; height:100dvh; max-width:560px; margin:0 auto; overflow:hidden;
       padding:max(10px,env(safe-area-inset-top)) 10px calc(10px + env(safe-area-inset-bottom)); gap:9px; }
+.mf-head, .mf-levels, .mf-strip, .mf-clue, .mf-tools, .mf-panels { flex:0 0 auto; }
+.mf-inline-board:not([hidden]) { flex:0 0 auto; max-height:26vh; overflow-y:auto; }
 
 /* En-tête */
 .mf-head { display:flex; align-items:center; gap:10px; }
@@ -65,20 +67,35 @@ body.is-ready .mf { display:flex; }
            border-radius:12px; font-size:.92rem; line-height:1.3; }
 .clue-dir { color:var(--brass); flex:0 0 auto; }
 
-/* Grille */
-.mf-grid-wrap { position:relative; display:flex; justify-content:center; }
-.mf-grid { display:grid; gap:2px; width:100%; background:rgba(217,169,78,.35); padding:2px;
-           border-radius:10px; border:2px solid var(--brass); overflow:hidden; }
-.mf-cell,.mf-def,.mf-block { aspect-ratio:1; display:grid; place-items:center; position:relative; }
+/* Grille — dimensionnée en JS (variable --cell) pour toujours remplir
+   exactement l'espace disponible, quels que soient rows/cols et l'écran. */
+.mf-grid-wrap { position:relative; display:flex; justify-content:center; align-items:center; flex:1; min-height:0; }
+.mf-grid { display:grid; gap:2px; background:rgba(217,169,78,.35); padding:2px;
+           border-radius:10px; border:2px solid var(--brass); overflow:hidden;
+           grid-template-columns:repeat(var(--cols,7), var(--cell,32px));
+           grid-auto-rows:var(--cell,32px); }
+.mf-cell,.mf-def,.mf-block { width:var(--cell,32px); height:var(--cell,32px); display:grid; place-items:center; position:relative; }
 .mf-block { background:#0e0a06; }
-.mf-cell { background:var(--paper); color:var(--paper-ink); cursor:pointer; transition:background .12s; }
-.mf-letter { font-weight:800; font-size:clamp(.8rem,4vw,1.4rem); line-height:1; text-transform:uppercase; }
+.mf-cell { background:var(--paper); }
+.mf-cell { background:var(--paper); cursor:pointer; transition:background .12s; }
+.mf-letter { font-weight:800; font-size:clamp(.8rem,4.2vw,1.5rem); line-height:1;
+             text-transform:uppercase; color:var(--paper-ink); pointer-events:none; }
 .mf-cell.in-slot { background:#f7edd8; }
 .mf-cell.active { background:var(--brass-soft); box-shadow:inset 0 0 0 3px var(--brass); }
 .mf-cell.good { background:#cfe8d8; color:#1e4634; }
 .mf-cell.good.active { background:#a8dcc0; }
 .mf-cell.wrong { background:#f3c9c0; color:#7a2418; animation:shake .35s; }
 .mf-cell.revealed { background:#e6dcc6; color:#6b5b3e; font-style:italic; }
+
+/* Saisie native : un unique input invisible qui suit la case active et
+   déclenche le clavier du téléphone — jamais de clavier custom à l'écran. */
+.mf-shadow-input {
+    position:absolute; z-index:6; border:none; margin:0; padding:0;
+    background:transparent; color:transparent; caret-color:transparent;
+    font-size:16px; text-align:center; -webkit-appearance:none; appearance:none;
+    opacity:0; pointer-events:none;
+}
+.mf-shadow-input:focus { outline:none; }
 @keyframes shake { 25%{transform:translateX(-2px);} 75%{transform:translateX(2px);} }
 .mf-def { background:#16100a; padding:0; display:flex; flex-direction:column; text-align:left; }
 .def-one { position:relative; flex:1; min-height:0; display:flex; align-items:center; cursor:pointer; padding:1px 8px 1px 2px; }
@@ -96,7 +113,7 @@ body.is-ready .mf { display:flex; }
 body.not-started .mf-start { display:grid; place-items:center; position:absolute; inset:0; z-index:5;
     border-radius:10px; background:rgba(20,16,11,.55); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); }
 body.not-started .mf-grid { filter:blur(3px) saturate(.75); pointer-events:none; }
-body.not-started .mf-keyboard, body.not-started .mf-tools { opacity:.35; pointer-events:none; }
+body.not-started .mf-tools { opacity:.35; pointer-events:none; }
 .mf-start-box { text-align:center; padding:18px 16px; max-width:260px; }
 .mf-start-emoji { font-size:2.2rem; }
 .mf-start-txt { color:var(--parchment); font-size:.85rem; line-height:1.45; margin:6px 0 14px; text-shadow:0 2px 8px rgba(0,0,0,.8); }
@@ -120,14 +137,6 @@ body.not-started .mf-keyboard, body.not-started .mf-tools { opacity:.35; pointer
 .mf-btn.danger { background:linear-gradient(180deg,#e07a5f,#c2513a); color:#fff; }
 .mf-btn:active { transform:scale(.98); }
 .mf-btn + .mf-btn { margin-top:9px; }
-
-/* Clavier */
-.mf-keyboard { display:flex; flex-direction:column; gap:5px; margin-top:auto; }
-.kb-row { display:flex; gap:4px; justify-content:center; }
-.kb { flex:1 1 0; min-width:0; height:44px; border-radius:8px; background:rgba(255,255,255,.08);
-      border:1px solid var(--line); color:var(--parchment); font-size:.95rem; font-weight:700; font-family:inherit; cursor:pointer; }
-.kb.wide { flex:1.6 1 0; }
-.kb:active { background:var(--brass); color:#2a1c07; }
 
 /* Panneaux secondaires */
 .mf-panels { display:grid; grid-template-columns:1fr 1fr; gap:6px; }

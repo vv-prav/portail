@@ -5237,6 +5237,9 @@ body.reduced-motion .voice-user.speaking .vu-mic, body.reduced-motion .voice-use
 
 
 .bh-row { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
-/* Retour au salon (médaillon du lobby) */
-.hdr-home { display: grid; place-items: center; text-decoration: none; font-size: 1.25rem; line-height: 1; color: inherit; }
-.hdr-home:active { transform: scale(0.92); }
+/* Retour au salon — même bouton que dans les Mots Fléchés et l'admin */
+.hdr-home { flex: 0 0 auto; width: 44px; height: 44px; display: grid; place-items: center;
+            border-radius: 12px; background: rgba(255,255,255,0.07); border: 1px solid rgba(217,169,78,0.25);
+            color: #ecca82; text-decoration: none; font-size: 1.25rem; line-height: 1;
+            box-shadow: none; padding: 0; }
+.hdr-home:active { transform: scale(0.93); }

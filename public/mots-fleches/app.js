@@ -149,7 +149,7 @@ function buildModel() {
 }
 function renderGrid() {
     const g = $('mf-grid');
-    g.style.gridTemplateColumns = `repeat(${P.cols}, 1fr)`;
+    g.style.setProperty('--cols', P.cols);
     g.innerHTML = ''; els = {};
     for (let r = 0; r < P.rows; r++) {
         for (let c = 0; c < P.cols; c++) {
@@ -178,7 +178,30 @@ function renderGrid() {
         }
     }
     repaintValues();
+    fitGrid();
 }
+
+// ---------- Dimensionnement dynamique : la grille remplit tout l'espace
+//            disponible (largeur ET hauteur), sans jamais déborder de l'écran. ----------
+function fitGrid() {
+    if (!P) return;
+    const wrap = $('mf-grid-wrap');
+    const g = $('mf-grid');
+    const wrapW = wrap.clientWidth, wrapH = wrap.clientHeight;
+    if (wrapW < 10 || wrapH < 10) return;           // pas encore mesurable (display:none, etc.)
+    const gap = 2, pad = 4;                          // doit matcher gap/padding du CSS .mf-grid
+    const cell = Math.floor(Math.min(
+        (wrapW - pad - gap * (P.cols - 1)) / P.cols,
+        (wrapH - pad - gap * (P.rows - 1)) / P.rows,
+    ));
+    g.style.setProperty('--cell', Math.max(22, cell) + 'px');
+    positionShadowInput();
+}
+let _fitT = null;
+function fitGridSoon() { clearTimeout(_fitT); _fitT = setTimeout(fitGrid, 60); }
+window.addEventListener('resize', fitGridSoon);
+window.addEventListener('orientationchange', fitGridSoon);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', fitGridSoon);
 function repaintValues() {
     for (const k in els) els[k].querySelector('.mf-letter').textContent = values[k] || '';
 }
@@ -201,8 +224,10 @@ function refreshHighlights() {
     const s = slots[idx];
     $('mf-clue').innerHTML = `<span class="clue-dir">${s.dir === 'right' ? '▶' : '▼'}</span> ${esc(s.clue)}`;
     $('mf-clue').onclick = () => showDefZoom(s);
+    positionShadowInput();
 }
 function selectCell(r, c, toggle) {
+    if (!started || solved || gaveUp) return;
     const k = key(r, c);
     if (!cellSlots[k]) return;
     if (toggle && active && active.r === r && active.c === c) {
@@ -244,6 +269,7 @@ function setLetter(ch) {
     values[k] = ch;
     els[k].classList.remove('wrong', 'good');
     repaintValues();
+    shadow.value = '';                                // prêt pour la lettre suivante
     const idx = currentSlotIdx();
     if (!step(1) || (idx >= 0 && slots[idx].cells.every(({ r, c }) => values[key(r, c)]))) jumpToNextSlot();
     refreshHighlights(); saveSoon(); maybeSolved();
@@ -303,6 +329,7 @@ async function finish() {
     await api('/api/mf/progress', dbody({ level, cells: values }));
     const { data } = await api('/api/mf/solve', dbody({ level }));
     if (data && data.seconds) { seconds = data.seconds; $('mf-timer').textContent = fmt(seconds); }
+    positionShadowInput();
     $('mf-end-emoji').textContent = '🎉';
     $('mf-end-title').textContent = t('end_title');
     let sub = t('end_time') + ' ' + fmt((data && data.seconds) || seconds);
@@ -323,7 +350,7 @@ function renderBoard(board, box) {
         board.slice(0, 15).map((e, i) => `<div class="mf-board-row${i < 3 ? ' top top' + (i + 1) : ''}">
             <span class="bpos">${medal[i] || (i + 1)}</span><span class="bname">${esc(e.u)}</span><span class="btime">${esc(e.t)}</span></div>`).join('');
 }
-function showInlineBoard(board) { renderBoard(board, $('mf-inline-board')); $('mf-inline-board').hidden = false; }
+function showInlineBoard(board) { renderBoard(board, $('mf-inline-board')); $('mf-inline-board').hidden = false; fitGridSoon(); }
 
 // ---------- Boîte de confirmation générique ----------
 function ask(emoji, title, sub, actions) {
@@ -393,6 +420,7 @@ async function doGiveUp() {
         const el = els[key(r, c)]; if (el) el.classList.add('revealed');
     });
     repaintValues();
+    positionShadowInput();
     const b = await api('/api/mf/board?level=' + level + dq());
     $('mf-end-emoji').textContent = '🏳️';
     $('mf-end-title').textContent = t('end_revealed');
@@ -413,35 +441,43 @@ function showDefZoom(d) {
 $('defzoom-close').addEventListener('click', () => { $('mf-defzoom').hidden = true; });
 $('mf-defzoom').addEventListener('click', (e) => { if (e.target === $('mf-defzoom')) $('mf-defzoom').hidden = true; });
 
-// ---------- Clavier ----------
-function buildKeyboard() {
-    const kb = $('mf-keyboard'); kb.innerHTML = '';
-    [['A','Z','E','R','T','Y','U','I','O','P'], ['Q','S','D','F','G','H','J','K','L','M'], ['W','X','C','V','B','N']].forEach((row, i) => {
-        const line = document.createElement('div'); line.className = 'kb-row';
-        row.forEach(ch => {
-            const b = document.createElement('button');
-            b.className = 'kb'; b.type = 'button'; b.textContent = ch;
-            b.addEventListener('click', () => setLetter(ch));
-            line.appendChild(b);
-        });
-        if (i === 2) {
-            const del = document.createElement('button');
-            del.className = 'kb wide'; del.type = 'button'; del.innerHTML = '⌫';
-            del.addEventListener('click', backspace);
-            line.appendChild(del);
-        }
-        kb.appendChild(line);
-    });
+// ---------- Saisie native : un unique input invisible suit la case active ----------
+// Il capte le clavier du téléphone (aucun clavier custom à l'écran), tout en
+// laissant l'affichage des lettres géré par nos <span class="mf-letter">.
+const shadow = $('mf-shadow');
+
+function positionShadowInput() {
+    if (!active) { shadow.style.opacity = '0'; shadow.blur(); return; }
+    const cellEl = els[key(active.r, active.c)];
+    if (!cellEl) return;
+    shadow.style.width = cellEl.offsetWidth + 'px';
+    shadow.style.height = cellEl.offsetHeight + 'px';
+    shadow.style.left = cellEl.offsetLeft + 'px';
+    shadow.style.top = cellEl.offsetTop + 'px';
+    shadow.value = values[key(active.r, active.c)] || '';
+    if (started && !solved && !gaveUp) {
+        if (document.activeElement !== shadow) shadow.focus({ preventScroll: true });
+    } else {
+        shadow.blur();
+    }
 }
-document.addEventListener('keydown', (e) => {
-    if (!$('mf-comments').hidden) return;
-    if (e.key === 'Backspace') { e.preventDefault(); backspace(); }
-    else if (/^[a-zA-Z]$/.test(e.key)) setLetter(e.key.toUpperCase());
-    else if (e.key === 'ArrowRight') { dir = 'right'; step(1); refreshHighlights(); }
-    else if (e.key === 'ArrowLeft') { dir = 'right'; step(-1); refreshHighlights(); }
-    else if (e.key === 'ArrowDown') { dir = 'down'; step(1); refreshHighlights(); }
-    else if (e.key === 'ArrowUp') { dir = 'down'; step(-1); refreshHighlights(); }
+shadow.addEventListener('input', () => {
+    const raw = shadow.value.replace(/[^a-zA-Z]/g, '');
+    if (!raw) { clearActiveCell(); return; }        // l'utilisateur a supprimé la lettre
+    setLetter(raw.slice(-1).toUpperCase());
 });
+shadow.addEventListener('keydown', (e) => {
+    if (e.key === 'Backspace' && !shadow.value) { e.preventDefault(); backspace(); }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); dir = 'right'; step(1); refreshHighlights(); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); dir = 'right'; step(-1); refreshHighlights(); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); dir = 'down'; step(1); refreshHighlights(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); dir = 'down'; step(-1); refreshHighlights(); }
+});
+function clearActiveCell() {
+    if (!active || solved || gaveUp || !started) return;
+    delete values[key(active.r, active.c)];
+    repaintValues(); refreshHighlights(); saveSoon();
+}
 
 // ---------- Démarrage ----------
 async function beginGrid() {
@@ -547,6 +583,7 @@ async function load() {
     }
     started = !!startedAt;
     document.body.className = 'is-ready' + (started ? '' : ' not-started');
+    fitGridSoon();     // la grille n'était pas mesurable tant que la page était cachée
 
     if (solved || gaveUp) {
         await doCheck(false);
@@ -591,5 +628,4 @@ function maybeShowTip() {
 }
 
 applyI18n();
-buildKeyboard();
 load();

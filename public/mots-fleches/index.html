@@ -39,8 +39,10 @@
 
         <div class="mf-clue" id="mf-clue">Appuie sur « Commencer » pour lancer la grille.</div>
 
-        <div class="mf-grid-wrap">
+        <div class="mf-grid-wrap" id="mf-grid-wrap">
             <div class="mf-grid" id="mf-grid"></div>
+            <input class="mf-shadow-input" id="mf-shadow" maxlength="1" autocomplete="off" autocorrect="off"
+                   autocapitalize="characters" spellcheck="false" inputmode="text" aria-hidden="true" tabindex="-1">
             <div class="mf-start" id="mf-start">
                 <div class="mf-start-box">
                     <div class="mf-start-emoji">🧩</div>
@@ -58,8 +60,6 @@
         </div>
 
         <div class="mf-inline-board" id="mf-inline-board" hidden></div>
-
-        <div class="mf-keyboard" id="mf-keyboard"></div>
 
         <div class="mf-panels">
             <button class="panel-toggle" id="btn-comments" type="button">💬 <span data-i="panel_chat">Discussion du jour</span></button>
