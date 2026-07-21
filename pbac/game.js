@@ -134,6 +134,7 @@ function startCard(g) {
     const entry = g.reviewQueue[g.reviewIndex];
     if (!entry) { finalizeCategoryOrRound(g); return; }
     g.status = 'voting';
+    broadcastState(g);   // le client doit savoir qu'on quitte l'écriture / le récap pour voter
     if (entry.type === 'empty') {
         g.voteOutcomes[entry.category + '|' + entry.pseudo] = false;
         g.cardState = { type: 'empty', resolved: true, accepted: false, votes: [], voters: {}, eligible: [] };
