@@ -87,6 +87,40 @@ body.is-ready .mf { display:flex; }
 .mf-cell.wrong { background:#f3c9c0; color:#7a2418; animation:shake .35s; }
 .mf-cell.revealed { background:#e6dcc6; color:#6b5b3e; font-style:italic; }
 
+/* Un mot confirmé lors d'une vérification : l'encre "sèche" sur la case
+   (halo doré qui s'étale puis s'efface) + quelques éclats de poussière de laiton. */
+.mf-cell.ink::after {
+    content:''; position:absolute; inset:0; pointer-events:none; z-index:1;
+    background: radial-gradient(circle at 50% 50%, rgba(217,169,78,.92) 0%, rgba(217,169,78,.55) 42%, rgba(217,169,78,0) 74%);
+    animation: mfInkSpread .62s ease-out forwards;
+}
+@keyframes mfInkSpread {
+    0%   { opacity:0; clip-path:circle(0% at 50% 50%); }
+    32%  { opacity:1; }
+    100% { opacity:0; clip-path:circle(78% at 50% 50%); }
+}
+.mf-dust {
+    position:absolute; left:50%; top:50%; width:5px; height:5px; border-radius:50%;
+    background:var(--brass-soft); pointer-events:none; z-index:2; opacity:0;
+    box-shadow:0 0 4px rgba(236,202,130,.8);
+}
+.mf-dust.go { animation:mfDustFly .68s ease-out forwards; }
+@keyframes mfDustFly {
+    0%   { opacity:1; transform:translate(-50%,-50%) scale(1); }
+    100% { opacity:0; transform:translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(.25); }
+}
+
+/* Grille résolue : les cases se soulèvent et retombent, ligne par ligne,
+   comme une vague qui traverse toute la grille avant l'écran de fin. */
+.mf-grid.cascading { overflow:visible; }
+@keyframes mfCascade {
+    0%   { transform:translateY(0) scale(1); }
+    38%  { transform:translateY(-10px) scale(1.045); box-shadow:0 10px 16px rgba(0,0,0,.4); }
+    64%  { transform:translateY(2px) scale(.98); box-shadow:none; }
+    100% { transform:translateY(0) scale(1); box-shadow:none; }
+}
+.mf-cell.cascade, .mf-def.cascade, .mf-block.cascade { animation:mfCascade .46s ease both; z-index:3; }
+
 /* Saisie native : un unique input invisible qui suit la case active et
    déclenche le clavier du téléphone — jamais de clavier custom à l'écran. */
 .mf-shadow-input {
@@ -199,8 +233,6 @@ body.not-started .mf-tools { opacity:.35; pointer-events:none; }
 
 
 /* ===== Feedback de validation d'un mot ===== */
-@keyframes cellpop { 0% { transform:scale(1); } 45% { transform:scale(1.14); box-shadow:0 0 14px rgba(90,168,122,.65); } 100% { transform:scale(1); } }
-.mf-cell.pop { animation:cellpop .42s ease; z-index:2; }
 
 /* ===== Pouls du classement pendant le jeu ===== */
 .live-chip { color:var(--brass-soft); border-color:var(--brass); }

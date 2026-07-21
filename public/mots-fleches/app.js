@@ -154,6 +154,7 @@ function renderGrid() {
     for (let r = 0; r < P.rows; r++) {
         for (let c = 0; c < P.cols; c++) {
             const cell = document.createElement('div');
+            cell.dataset.row = r;
             if (P.grid[r][c]) {
                 cell.className = 'mf-cell';
                 cell.innerHTML = '<span class="mf-letter"></span>';
@@ -262,6 +263,17 @@ function jumpToNextSlot() {
 }
 
 // ---------- Saisie ----------
+// Cherche la prochaine case VIDE du mot en cours après la position donnée
+// (les cases déjà remplies — typiquement par un mot croisé déjà bon —
+// ne sont plus jamais écrasées automatiquement : on saute par-dessus).
+function nextEmptyInSlot(idx, fromPos) {
+    if (idx < 0) return null;
+    const cells = slots[idx].cells;
+    for (let p = fromPos + 1; p < cells.length; p++) {
+        if (!values[key(cells[p].r, cells[p].c)]) return cells[p];
+    }
+    return null;
+}
 function setLetter(ch) {
     if (!active || solved || gaveUp || !started) return;
     const k = key(active.r, active.c);
@@ -271,7 +283,11 @@ function setLetter(ch) {
     repaintValues();
     shadow.value = '';                                // prêt pour la lettre suivante
     const idx = currentSlotIdx();
-    if (!step(1) || (idx >= 0 && slots[idx].cells.every(({ r, c }) => values[key(r, c)]))) jumpToNextSlot();
+    const cells = idx >= 0 ? slots[idx].cells : [];
+    const pos = cells.findIndex(cc => cc.r === active.r && cc.c === active.c);
+    const nextEmpty = nextEmptyInSlot(idx, pos);
+    if (nextEmpty) active = { ...nextEmpty };
+    else jumpToNextSlot();
     refreshHighlights(); saveSoon(); maybeSolved();
 }
 function backspace() {
@@ -285,7 +301,22 @@ let saveT = null;
 function saveSoon() { clearTimeout(saveT); saveT = setTimeout(() => api('/api/mf/progress', dbody({ level, cells: values })), 600); }
 
 // ---------- Vérification ----------
-let _prevGood = new Set();          // mots déjà verts (pour ne fêter que les nouveaux)
+// L'animation (encre + poussière de laiton) ne joue QUE lors d'une vérification
+// manuelle (bouton « Vérifier ») — jamais pendant la frappe ni au chargement.
+let _prevGood = new Set();          // mots déjà fêtés lors d'une vérification précédente
+function spawnDust(cellEl) {
+    for (let i = 0; i < 3; i++) {
+        const d = document.createElement('span');
+        d.className = 'mf-dust';
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 14 + Math.random() * 10;
+        d.style.setProperty('--dx', (Math.cos(angle) * dist).toFixed(1) + 'px');
+        d.style.setProperty('--dy', (Math.sin(angle) * dist).toFixed(1) + 'px');
+        cellEl.appendChild(d);
+        requestAnimationFrame(() => d.classList.add('go'));
+        setTimeout(() => d.remove(), 720);
+    }
+}
 async function doCheck(showWrong) {
     const { data } = await api('/api/mf/check', dbody({ level, cells: values }));
     if (!data || !data.slots) return null;
@@ -294,8 +325,8 @@ async function doCheck(showWrong) {
     data.slots.forEach(s => {
         if (!s.ok) return;
         const sk = s.dir + ':' + s.r + ':' + s.c;
-        const fresh = !_prevGood.has(sk);
-        _prevGood.add(sk);
+        const fresh = showWrong && !_prevGood.has(sk);   // « découverte » seulement à la vérification
+        if (showWrong) _prevGood.add(sk);
         const idx = slots.findIndex(x => x.defR === s.r && x.defC === s.c && x.dir === s.dir);
         if (idx >= 0) slots[idx].cells.forEach(({ r, c }) => {
             const el = els[key(r, c)];
@@ -303,8 +334,9 @@ async function doCheck(showWrong) {
             el.classList.add('good');
             if (fresh) {
                 newlyDone = true;
-                el.classList.remove('pop'); void el.offsetWidth;    // relance l'animation
-                el.classList.add('pop');
+                el.classList.remove('ink'); void el.offsetWidth;    // relance l'animation
+                el.classList.add('ink');
+                spawnDust(el);
             }
         });
     });
@@ -322,6 +354,34 @@ async function maybeSolved() {
     if (data && data.allOk) finish();
 }
 
+// ---------- Cascade de fin : les cases s'envolent ligne par ligne ----------
+const CASCADE_ROW_DELAY = 55;   // ms entre le départ de chaque ligne
+const CASCADE_DURATION = 460;   // durée de l'envolée d'une case
+function playSolveCascade() {
+    return new Promise((resolve) => {
+        const g = $('mf-grid');
+        const cells = [...g.children];
+        if (!cells.length) { resolve(); return; }
+        g.classList.add('cascading');
+        let maxRow = 0;
+        cells.forEach((el) => {
+            const r = Number(el.dataset.row || 0);
+            if (r > maxRow) maxRow = r;
+            el.style.animation = 'none';
+            void el.offsetWidth;
+            el.style.animationDelay = (r * CASCADE_ROW_DELAY) + 'ms';
+            el.classList.remove('cascade'); void el.offsetWidth;
+            el.classList.add('cascade');
+        });
+        const total = maxRow * CASCADE_ROW_DELAY + CASCADE_DURATION;
+        setTimeout(() => {
+            cells.forEach((el) => { el.classList.remove('cascade'); el.style.animationDelay = ''; });
+            g.classList.remove('cascading');
+            resolve();
+        }, total + 40);
+    });
+}
+
 // ---------- Fin ----------
 async function finish() {
     if (solved) return;
@@ -330,6 +390,8 @@ async function finish() {
     const { data } = await api('/api/mf/solve', dbody({ level }));
     if (data && data.seconds) { seconds = data.seconds; $('mf-timer').textContent = fmt(seconds); }
     positionShadowInput();
+    if (navigator.vibrate) { try { navigator.vibrate([30, 60, 30, 60, 50]); } catch (e) {} }
+    await playSolveCascade();
     $('mf-end-emoji').textContent = '🎉';
     $('mf-end-title').textContent = t('end_title');
     let sub = t('end_time') + ' ' + fmt((data && data.seconds) || seconds);
