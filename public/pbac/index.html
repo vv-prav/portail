@@ -51,6 +51,20 @@
                     <button type="button" data-v="moyen" class="on">90 s</button>
                     <button type="button" data-v="long">120 s</button>
                 </div>
+                <p class="pb-field-label">Lettre de chaque manche</p>
+                <div class="pb-choice" id="opt-letter-mode">
+                    <button type="button" data-v="random" class="on">Aléatoire</button>
+                    <button type="button" data-v="host">Je choisis</button>
+                </div>
+
+                <p class="pb-field-label">Catégories <span id="cat-count">8/8</span></p>
+                <p class="pb-cat-hint">Touche une catégorie pour l'ajouter ou la retirer. Il en faut exactement 8.</p>
+                <div class="pb-cat-grid" id="cat-grid"></div>
+                <div class="pb-cat-custom">
+                    <input id="cat-custom-input" type="text" maxlength="30" placeholder="Une catégorie perso…" autocomplete="off">
+                    <button type="button" id="cat-custom-add">Ajouter</button>
+                </div>
+
                 <button class="pb-btn" id="create-confirm">Créer</button>
                 <button class="pb-btn ghost" id="create-cancel">Annuler</button>
             </div>
@@ -62,6 +76,20 @@
             <p class="pb-hint" id="wait-hint">En attente de l'hôte…</p>
             <button class="pb-btn" id="btn-start" hidden>Lancer la partie</button>
             <button class="pb-btn ghost" id="btn-leave-lobby">Quitter la table</button>
+        </section>
+
+        <!-- CHOIX DE LA LETTRE PAR L'HÔTE -->
+        <section class="pb-view" id="v-choose-letter" hidden>
+            <p class="pb-hint" id="choose-letter-hint">Choisis la lettre de cette manche.</p>
+            <div class="pb-letter-grid" id="letter-grid"></div>
+            <p class="pb-hint" id="choose-letter-wait" hidden>L'hôte choisit la lettre…</p>
+        </section>
+
+        <!-- COMPTE À REBOURS -->
+        <section class="pb-view" id="v-countdown" hidden>
+            <div class="pb-countdown-box">
+                <span class="pb-countdown-num" id="countdown-num">3</span>
+            </div>
         </section>
 
         <!-- ÉCRITURE (un champ à la fois, chrono toujours visible) -->
@@ -101,6 +129,7 @@
                 <div class="pb-gauge">
                     <div class="pg-yes" id="gauge-yes"></div>
                     <div class="pg-no" id="gauge-no"></div>
+                    <span class="pg-spark" id="gauge-spark"></span>
                 </div>
                 <div class="pb-vote-btns" id="vote-btns">
                     <button class="pv-btn no" id="btn-vote-no">Non</button>
@@ -109,8 +138,9 @@
                 <p class="pv-outcome" id="vote-outcome" hidden></p>
             </div>
             <div class="pb-miss-card" id="vote-miss" hidden>
-                <p class="pm-word">Loupé !</p>
-                <p class="pm-sub"><span id="miss-author">—</span> n'a rien trouvé ici</p>
+                <p class="pm-stamp">Loupé</p>
+                <p class="pm-name" id="miss-name">—</p>
+                <p class="pm-sub" id="miss-sub">n'a rien écrit ici</p>
             </div>
         </section>
 
@@ -126,12 +156,14 @@
             <h2 class="pb-section-title">Résultats de la manche</h2>
             <div class="pb-score-list" id="round-score-list"></div>
             <button class="pb-btn" id="btn-next-round">Manche suivante</button>
+            <p class="pb-hint" id="round-wait-hint" hidden>En attente de l'hôte…</p>
         </section>
 
         <!-- FIN DE PARTIE -->
         <section class="pb-view" id="v-ended" hidden>
             <div class="pb-podium" id="pb-podium"></div>
             <button class="pb-btn" id="btn-rematch">Rejouer</button>
+            <p class="pb-hint" id="final-wait-hint" hidden>En attente de l'hôte…</p>
             <a class="pb-btn ghost" href="/">Retour au salon</a>
         </section>
     </div>

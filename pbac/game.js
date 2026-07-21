@@ -12,8 +12,15 @@ app.get('/pbac/healthz', (req, res) => res.status(200).json({ ok: true, t: Date.
 //  CONSTANTES
 // =====================================================================
 const CATEGORIES = ['Prénom', 'Animal', 'Pays ou ville', 'Fruit ou légume', 'Métier', 'Objet', 'Couleur', 'Sport'];
+const CATEGORY_PRESETS = [
+    'Prénom', 'Animal', 'Pays ou ville', 'Fruit ou légume', 'Métier', 'Objet', 'Couleur', 'Sport',
+    'Film ou série', 'Marque connue', 'Instrument de musique', 'Personnage de fiction',
+    'Plat ou dessert', 'Moyen de transport', 'Vêtement', 'Boisson', 'Matière scolaire',
+    'Expression toute faite', 'Élément de la maison', 'Insecte ou bestiole', 'Chanteur ou groupe', 'Prénom de star',
+];
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const DURATIONS = { court: 60, moyen: 90, long: 120 };
+const COUNTDOWN_MS = 3000;    // le « 3, 2, 1 » avant que la lettre n'apparaisse
 const CARD_PAUSE_MS = 1300;          // pause après résolution avant la carte suivante
 const EMPTY_PAUSE_MS = 1500;         // durée d'affichage d'une case vide (« Loupé »)
 const CATEGORY_SUMMARY_MS = 2600;    // récap affiché entre deux catégories
@@ -38,6 +45,23 @@ function salonPseudoFromCookie(cookieHeader) {
 }
 function norm(s) {
     return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim().replace(/\s+/g, ' ');
+}
+// Valide une liste de 8 catégories envoyée par l'hôte (préréglées ou tapées à la main).
+// En cas de doute (vide, doublons, mauvaise taille), on retombe sur les 8 catégories par défaut.
+function sanitizeCategories(input) {
+    if (!Array.isArray(input)) return CATEGORIES.slice();
+    const seen = new Set();
+    const out = [];
+    for (const raw of input) {
+        const clean = String(raw || '').trim().replace(/\s+/g, ' ').slice(0, 30);
+        if (!clean || clean.length < 2) continue;
+        const key = norm(clean);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(clean);
+        if (out.length === 8) break;
+    }
+    return out.length === 8 ? out : CATEGORIES.slice();
 }
 
 // =====================================================================
@@ -228,8 +252,9 @@ function stateForClient(g) {
     return {
         id: g.id, host: g.host, status: g.status, players: playerList(g),
         categories: g.categories, maxRounds: g.maxRounds, round: g.round,
-        duration: g.duration, letter: g.letter,
+        duration: g.duration, letter: g.letter, letterMode: g.letterMode,
         timerEnd: g.status === 'writing' ? g.timerEnd : null,
+        countdownEnd: g.status === 'countdown' ? g.countdownEnd : null,
         stoppedBy: g.stoppedBy || null,
         roundScores: g.roundScores || null,
         lastCategory: g.status === 'cat_summary' ? g.lastCategory : undefined,
@@ -250,10 +275,34 @@ function filterOutcomesFor(g, cat) {
 }
 function broadcastState(g) { io.to(roomOf(g)).emit('pbac_state', stateForClient(g)); }
 
-function startRound(g) {
+// Démarre une nouvelle manche : soit directement le compte à rebours (lettre
+// aléatoire), soit on attend d'abord que l'hôte choisisse sa lettre.
+function advanceToNextRound(g) {
     g.round++;
-    g.letter = pickLetter(g);
-    g.answers = {}; g.roundScores = null; g.stoppedBy = null;
+    g.stoppedBy = null;
+    if (g.letterMode === 'host') {
+        g.status = 'choosing_letter';
+        broadcastState(g);
+        return;
+    }
+    beginCountdown(g);
+}
+function beginCountdown(g) {
+    clearTimeout(g._timer);
+    g.status = 'countdown';
+    g.countdownEnd = Date.now() + COUNTDOWN_MS;
+    broadcastState(g);
+    g._timer = setTimeout(() => revealAndStartWriting(g), COUNTDOWN_MS);
+}
+function revealAndStartWriting(g) {
+    if (g.letterMode === 'host' && g.pendingLetter) {
+        g.letter = g.pendingLetter;
+        g.usedLetters.push(g.letter);
+    } else {
+        g.letter = pickLetter(g);
+    }
+    g.pendingLetter = null;
+    g.answers = {}; g.roundScores = null;
     for (const p of g.players) g.answers[p.pseudo] = {};
     g.status = 'writing';
     g.timerEnd = Date.now() + g.duration * 1000;
@@ -274,17 +323,18 @@ io.on('connection', (socket) => {
 
     socket.on('pbac_list', () => { socket.emit('pbac_games', publicGames()); });
 
-    socket.on('pbac_create', ({ rounds, duration }) => {
+    socket.on('pbac_create', ({ rounds, duration, categories, letterMode }) => {
         const pseudo = socket.data.pbacPseudo;
         if (!pseudo) return socket.emit('pbac_error', 'Session expirée, reviens au salon.');
         const id = 'p' + (nextId++);
         const g = {
             id, host: pseudo, status: 'lobby',
             players: [{ sid: socket.id, pseudo, connected: true }],
-            categories: CATEGORIES.slice(),
+            categories: sanitizeCategories(categories),
             maxRounds: [3, 5, 7].includes(Number(rounds)) ? Number(rounds) : 5,
             duration: DURATIONS[duration] || DURATIONS.moyen,
-            round: 0, usedLetters: [], scores: {}, answers: {},
+            letterMode: letterMode === 'host' ? 'host' : 'random',
+            round: 0, usedLetters: [], scores: {}, answers: {}, pendingLetter: null,
             reviewQueue: [], reviewIndex: 0, voteOutcomes: {}, categoryPoints: {}, cardState: null,
         };
         games[id] = g;
@@ -344,7 +394,16 @@ io.on('connection', (socket) => {
         const g = games[socketGame[socket.id]];
         if (!g || g.host !== socket.data.pbacPseudo || g.status !== 'lobby') return;
         if (g.players.length < 1) return;
-        startRound(g);
+        advanceToNextRound(g);
+    });
+
+    socket.on('pbac_pick_letter', ({ letter }) => {
+        const g = games[socketGame[socket.id]];
+        if (!g || g.host !== socket.data.pbacPseudo || g.status !== 'choosing_letter') return;
+        const L = String(letter || '').toUpperCase().trim();
+        if (!/^[A-Z]$/.test(L)) return;
+        g.pendingLetter = L;
+        beginCountdown(g);
     });
 
     socket.on('pbac_update_answers', (payload) => {
@@ -386,7 +445,7 @@ io.on('connection', (socket) => {
         const g = games[socketGame[socket.id]];
         if (!g || g.host !== socket.data.pbacPseudo || g.status !== 'ended_round') return;
         if (g.round >= g.maxRounds) { g.status = 'ended'; broadcastState(g); broadcastLobby(); return; }
-        startRound(g);
+        advanceToNextRound(g);
     });
 
     socket.on('pbac_rematch', () => {

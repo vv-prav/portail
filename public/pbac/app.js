@@ -5,6 +5,13 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 const RING_C = 175.9;
+const CATEGORY_PRESETS = [
+    'Prénom', 'Animal', 'Pays ou ville', 'Fruit ou légume', 'Métier', 'Objet', 'Couleur', 'Sport',
+    'Film ou série', 'Marque connue', 'Instrument de musique', 'Personnage de fiction',
+    'Plat ou dessert', 'Moyen de transport', 'Vêtement', 'Boisson', 'Matière scolaire',
+    'Expression toute faite', 'Élément de la maison', 'Insecte ou bestiole', 'Chanteur ou groupe', 'Prénom de star',
+];
+const DEFAULT_CATEGORIES = CATEGORY_PRESETS.slice(0, 8);
 
 let socket = null;
 let myPseudo = null;
@@ -12,6 +19,7 @@ let state = null;          // dernier état reçu du serveur (vue courante)
 let currentView = 'lobby';
 let answers = {};          // brouillon local des réponses (catégorie -> texte)
 let timerId = null;
+let selectedCats = DEFAULT_CATEGORIES.slice();   // catégories choisies pour la prochaine table créée
 
 function toast(msg) {
     const el = $('pb-toast');
@@ -19,7 +27,8 @@ function toast(msg) {
     clearTimeout(el._t); el._t = setTimeout(() => { el.hidden = true; }, 2600);
 }
 function showView(id) {
-    ['v-lobby', 'v-waiting', 'v-writing', 'v-voting', 'v-cat-summary', 'v-round-end', 'v-ended'].forEach(v => { $(v).hidden = (v !== id); });
+    ['v-lobby', 'v-waiting', 'v-choose-letter', 'v-countdown', 'v-writing', 'v-voting', 'v-cat-summary', 'v-round-end', 'v-ended']
+        .forEach(v => { $(v).hidden = (v !== id); });
     currentView = id;
 }
 
@@ -56,7 +65,12 @@ function renderLobby(games) {
     }));
 }
 
-$('btn-create').addEventListener('click', () => { $('v-create').hidden = false; });
+$('btn-create').addEventListener('click', () => {
+    selectedCats = DEFAULT_CATEGORIES.slice();
+    renderCatGrid();
+    $('cat-custom-input').value = '';
+    $('v-create').hidden = false;
+});
 $('create-cancel').addEventListener('click', () => { $('v-create').hidden = true; });
 document.querySelectorAll('#opt-rounds button').forEach(b => b.addEventListener('click', () => {
     document.querySelectorAll('#opt-rounds button').forEach(x => x.classList.toggle('on', x === b));
@@ -64,10 +78,56 @@ document.querySelectorAll('#opt-rounds button').forEach(b => b.addEventListener(
 document.querySelectorAll('#opt-duration button').forEach(b => b.addEventListener('click', () => {
     document.querySelectorAll('#opt-duration button').forEach(x => x.classList.toggle('on', x === b));
 }));
+document.querySelectorAll('#opt-letter-mode button').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('#opt-letter-mode button').forEach(x => x.classList.toggle('on', x === b));
+}));
+
+// ---------- Catégories personnalisables ----------
+function renderCatGrid() {
+    const customExtras = selectedCats.filter(c => !CATEGORY_PRESETS.includes(c));
+    const all = [...CATEGORY_PRESETS, ...customExtras];
+    $('cat-grid').innerHTML = all.map(c => {
+        const on = selectedCats.includes(c);
+        const isCustom = !CATEGORY_PRESETS.includes(c);
+        return `<button type="button" class="${on ? 'on ' : ''}${isCustom ? 'custom' : ''}" data-c="${esc(c)}">${esc(c)}</button>`;
+    }).join('');
+    $('cat-grid').querySelectorAll('button').forEach(b => b.addEventListener('click', () => toggleCat(b.dataset.c)));
+    updateCatCount();
+}
+function toggleCat(cat) {
+    if (selectedCats.includes(cat)) {
+        selectedCats = selectedCats.filter(c => c !== cat);
+    } else {
+        if (selectedCats.length >= 8) { toast('8 catégories maximum — retire-en une avant d\'en ajouter une autre.'); return; }
+        selectedCats.push(cat);
+    }
+    renderCatGrid();
+}
+function updateCatCount() {
+    const el = $('cat-count');
+    el.textContent = selectedCats.length + '/8';
+    el.className = selectedCats.length === 8 ? 'full' : (selectedCats.length > 8 ? 'over' : '');
+    $('create-confirm').disabled = selectedCats.length !== 8;
+}
+function addCustomCategory() {
+    const val = $('cat-custom-input').value.trim().replace(/\s+/g, ' ');
+    if (!val || val.length < 2) { toast('Donne un nom un peu plus long.'); return; }
+    if (val.length > 30) { toast('30 caractères maximum.'); return; }
+    if (selectedCats.some(c => c.toLowerCase() === val.toLowerCase())) { toast('Déjà dans la liste.'); return; }
+    if (selectedCats.length >= 8) { toast('8 catégories maximum — retire-en une avant d\'en ajouter une autre.'); return; }
+    selectedCats.push(val);
+    $('cat-custom-input').value = '';
+    renderCatGrid();
+}
+$('cat-custom-add').addEventListener('click', addCustomCategory);
+$('cat-custom-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomCategory(); } });
+
 $('create-confirm').addEventListener('click', () => {
+    if (selectedCats.length !== 8) { toast('Choisis exactement 8 catégories.'); return; }
     const rounds = document.querySelector('#opt-rounds button.on').dataset.v;
     const duration = document.querySelector('#opt-duration button.on').dataset.v;
-    socket.emit('pbac_create', { rounds: Number(rounds), duration });
+    const letterMode = document.querySelector('#opt-letter-mode button.on').dataset.v;
+    socket.emit('pbac_create', { rounds: Number(rounds), duration, letterMode, categories: selectedCats });
     $('v-create').hidden = true;
 });
 $('btn-leave-lobby').addEventListener('click', () => {
@@ -87,12 +147,24 @@ function onState(s) {
         $('pb-round-tag').hidden = true;
         renderWaiting(s);
         showView('v-waiting');
+    } else if (s.status === 'choosing_letter') {
+        $('pb-round-tag').hidden = false;
+        $('pb-round-tag').textContent = 'Manche ' + s.round + ' / ' + s.maxRounds;
+        renderChooseLetter(s);
+        showView('v-choose-letter');
+    } else if (s.status === 'countdown') {
+        $('pb-round-tag').hidden = false;
+        $('pb-round-tag').textContent = 'Manche ' + s.round + ' / ' + s.maxRounds;
+        renderCountdown(s);
+        showView('v-countdown');
     } else if (s.status === 'writing') {
         $('pb-round-tag').hidden = false;
         $('pb-round-tag').textContent = 'Manche ' + s.round + ' / ' + s.maxRounds;
+        clearInterval(timerId);
         renderWriting(s);
         showView('v-writing');
     } else if (s.status === 'voting') {
+        clearInterval(timerId);
         showView('v-voting');   // le contenu arrive via l'évènement pbac_card
     } else if (s.status === 'cat_summary') {
         clearInterval(timerId);
@@ -107,6 +179,46 @@ function onState(s) {
         renderFinal(s);
         showView('v-ended');
     }
+}
+
+// ---------- Choix de la lettre par l'hôte ----------
+function renderChooseLetter(s) {
+    const isHost = s.host === myPseudo;
+    $('choose-letter-hint').hidden = !isHost;
+    $('choose-letter-wait').hidden = isHost;
+    const grid = $('letter-grid');
+    if (isHost) {
+        if (!grid.children.length) {
+            grid.innerHTML = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(l => `<button type="button" data-l="${l}">${l}</button>`).join('');
+            grid.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+                grid.querySelectorAll('button').forEach(x => x.disabled = true);
+                socket.emit('pbac_pick_letter', { letter: b.dataset.l });
+            }));
+        } else {
+            grid.querySelectorAll('button').forEach(b => b.disabled = false);
+        }
+        grid.hidden = false;
+    } else {
+        grid.hidden = true;
+    }
+}
+
+// ---------- Compte à rebours ----------
+function renderCountdown(s) {
+    clearInterval(timerId);
+    const tick = () => {
+        const left = Math.max(0, (s.countdownEnd || 0) - Date.now());
+        const n = Math.ceil(left / 1000);
+        const el = $('countdown-num');
+        if (el.textContent !== String(n) && n > 0) {
+            el.textContent = String(n);
+            el.classList.remove('tick'); void el.offsetWidth;
+            el.classList.add('tick');
+            if (navigator.vibrate) { try { navigator.vibrate(18); } catch (e) {} }
+        }
+        if (left <= 0) clearInterval(timerId);
+    };
+    tick(); timerId = setInterval(tick, 100);
 }
 
 // ---------- Salle d'attente ----------
@@ -203,10 +315,13 @@ function renderCard(c) {
     if (c.type === 'empty') {
         normal.hidden = true;
         miss.hidden = false;
-        $('miss-author').textContent = c.pseudo;
+        $('miss-name').textContent = c.pseudo;
+        $('miss-sub').textContent = c.text
+            ? '« ' + c.text + ' » ne commence pas par ' + (state && state.letter)
+            : "n'a rien écrit ici";
         miss.classList.remove('go'); void miss.offsetWidth;
         miss.classList.add('go');
-        if (navigator.vibrate) { try { navigator.vibrate(35); } catch (e) {} }
+        if (navigator.vibrate) { try { navigator.vibrate([40, 60, 90]); } catch (e) {} }
         return;
     }
     miss.hidden = true;
@@ -227,6 +342,12 @@ function renderCard(c) {
         outcome.textContent = c.accepted ? 'Accepté' : 'Refusé';
         outcome.className = 'pv-outcome ' + (c.accepted ? 'accepted' : 'rejected');
         if (navigator.vibrate) { try { navigator.vibrate(c.accepted ? [20, 30, 20] : 25); } catch (e) {} }
+        const unanimous = total > 0 && (c.yes === total || c.no === total);
+        if (unanimous) {
+            const spark = $('gauge-spark');
+            spark.classList.remove('go'); void spark.offsetWidth;
+            spark.classList.add('go');
+        }
     } else {
         outcome.hidden = true;
         btns.hidden = false;
@@ -274,6 +395,7 @@ function renderRoundEnd(s) {
 
     const isHost = s.host === myPseudo;
     $('btn-next-round').hidden = !isHost;
+    $('round-wait-hint').hidden = isHost;
     $('btn-next-round').textContent = s.round >= s.maxRounds ? 'Voir le classement final' : 'Manche suivante';
     if (navigator.vibrate) { try { navigator.vibrate(tiedTop ? [20, 30, 20, 30, 20] : 20); } catch (e) {} }
 }
@@ -333,6 +455,7 @@ function renderFinal(s) {
 
     const isHost = s.host === myPseudo;
     $('btn-rematch').hidden = !isHost;
+    $('final-wait-hint').hidden = isHost;
 }
 $('btn-rematch').addEventListener('click', () => socket.emit('pbac_rematch'));
 
