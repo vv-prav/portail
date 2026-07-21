@@ -292,20 +292,30 @@ async function showEnd(kind, data) {
         sub = t('end_noboard');
     }
     $('mj-end-sub').textContent = sub;
+    lockPlayArea(true);
     const b = await api('/api/juste/board' + (viewDate ? '?date=' + viewDate : ''));
-    renderBoard((b.data && b.data.board) || []);
+    const board = (b.data && b.data.board) || [];
+    renderBoard(board);
+    showInlineBoard(board);
     $('mj-end').hidden = false;
     refreshLive();
 }
 $('mj-end-close').addEventListener('click', () => { $('mj-end').hidden = true; });
 
-function renderBoard(board) {
-    const box = $('mj-board');
+function renderBoard(board, target) {
+    const box = target || $('mj-board');
     if (!board.length) { box.innerHTML = '<p class="mj-board-empty">' + t('board_empty') + '</p>'; return; }
     const medal = ['🥇', '🥈', '🥉'];
     box.innerHTML = '<div class="mj-board-title">' + t('board_title') + '</div>' +
         board.slice(0, 15).map((e, i) => `<div class="mj-board-row${i < 3 ? ' top' + (i + 1) : ''}">
             <span class="bpos">${medal[i] || (i + 1)}</span><span class="bname">${esc(e.u)}</span><span class="btime">${guessLabel(e.guesses)}</span></div>`).join('');
+}
+function showInlineBoard(board) { renderBoard(board, $('mj-inline-board')); $('mj-inline-board').hidden = false; }
+function hideInlineBoard() { $('mj-inline-board').hidden = true; }
+// Une manche finie : plus de saisie possible, plus de bouton "Rendre"
+function lockPlayArea(locked) {
+    $('mj-form').hidden = locked;
+    $('t-giveup').hidden = locked;
 }
 
 // ---------- Pouls en direct ----------
@@ -418,10 +428,15 @@ async function load() {
 
     if (solved || gaveUp) {
         $('mj-clue').textContent = solved ? t('clue_done') : t('clue_gaveup');
+        lockPlayArea(true);
         const b = await api('/api/juste/board' + dq());
-        renderBoard((b.data && b.data.board) || []);
+        const board = (b.data && b.data.board) || [];
+        renderBoard(board);
+        showInlineBoard(board);
     } else {
         $('mj-clue').textContent = isArchive ? t('clue_arch') : (guesses.length ? t('clue_playing') : t('clue_start'));
+        lockPlayArea(false);
+        hideInlineBoard();
     }
     startTicker();
     startLive();

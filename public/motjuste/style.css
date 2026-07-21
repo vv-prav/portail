@@ -109,6 +109,10 @@ body.is-ready .mj { display:flex; }
 .mj-empty { color:var(--muted); font-size:.82rem; text-align:center; margin:8px 0 0; }
 .mj-empty[hidden] { display:none; }
 
+/* Classement épinglé sur l'écran principal, une fois la manche finie */
+.mj-inline-board { background:rgba(255,255,255,.035); border:1px solid var(--line); border-radius:14px; padding:14px; }
+.mj-inline-board[hidden] { display:none; }
+
 /* Outils */
 .mj-tools { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:auto; padding-top:6px; }
 .tool { display:flex; flex-direction:column; align-items:center; gap:3px; padding:9px 4px; border-radius:11px;

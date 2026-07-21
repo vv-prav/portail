@@ -3,11 +3,14 @@
 // =====================================================================
 const { MEAN, WORDS } = require('./words');
 
-// Normalisation : insensible aux accents, à la casse, aux espaces multiples.
+// Normalisation : insensible aux accents, à la casse, aux tirets et espaces multiples.
+// (« sous-marin » et « sous marin » doivent reconnaître le même mot du vocabulaire.)
 function norm(s) {
     return String(s || '')
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '')   // retire les accents
-        .toUpperCase().trim().replace(/\s+/g, ' ');
+        .toUpperCase().trim()
+        .replace(/[-']/g, ' ')                               // tirets/apostrophes -> espace
+        .replace(/\s+/g, ' ');
 }
 
 const INDEX = new Map();       // MOT normalisé -> { m, centered, raw, custom }
