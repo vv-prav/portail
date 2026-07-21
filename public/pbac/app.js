@@ -197,6 +197,21 @@ $('btn-stop').addEventListener('click', () => {
 function renderCard(c) {
     $('voting-progress').textContent = `Catégorie ${c.catIndex} / ${c.catTotal} · réponse ${c.cardIndex} / ${c.cardTotal}`;
     $('vote-cat').textContent = c.category;
+
+    const miss = $('vote-miss');
+    const normal = $('vote-normal');
+    if (c.type === 'empty') {
+        normal.hidden = true;
+        miss.hidden = false;
+        $('miss-author').textContent = c.pseudo;
+        miss.classList.remove('go'); void miss.offsetWidth;
+        miss.classList.add('go');
+        if (navigator.vibrate) { try { navigator.vibrate(35); } catch (e) {} }
+        return;
+    }
+    miss.hidden = true;
+    normal.hidden = false;
+
     $('vote-answer').textContent = c.text;
     $('vote-author').textContent = 'proposé par ' + c.pseudo;
 

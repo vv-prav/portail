@@ -39,6 +39,7 @@ body.is-ready .pb { display:flex; }
                 color:var(--brass-soft); font-weight:800; font-size:.82rem; white-space:nowrap; }
 
 .pb-view { display:flex; flex-direction:column; gap:12px; flex:1; }
+.pb-view[hidden] { display:none !important; }
 .pb-hint { text-align:center; color:var(--muted); font-size:.84rem; margin:0; }
 .pb-section-title { font-family:'Fraunces',Georgia,serif; font-weight:800; font-size:1.1rem; color:var(--brass-soft); text-align:center; margin:4px 0 0; }
 
@@ -125,6 +126,7 @@ body.is-ready .pb { display:flex; }
 /* Vote — une réponse à la fois */
 .pb-vote-card { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
                 text-align:center; padding:10px 4px; }
+.pb-vote-card[hidden] { display:none !important; }
 .pv-cat { font-size:.7rem; text-transform:uppercase; letter-spacing:1.8px; color:var(--brass); margin:0; }
 .pv-answer { font-family:'Fraunces',Georgia,serif; font-weight:900; font-size:2.1rem; color:var(--brass-soft);
              margin:2px 0; overflow-wrap:anywhere; }
@@ -144,6 +146,23 @@ body.is-ready .pb { display:flex; }
 .pv-outcome { font-weight:900; font-size:1.1rem; letter-spacing:1px; margin-top:6px; }
 .pv-outcome.accepted { color:var(--good); }
 .pv-outcome.rejected { color:var(--bad); }
+
+/* Case vide : personne n'a rien écrit — un petit clin d'œil plutôt qu'un silence */
+.pb-miss-card { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; text-align:center; }
+.pb-miss-card[hidden] { display:none !important; }
+.pm-word { font-family:'Fraunces',Georgia,serif; font-weight:900; font-size:2.6rem; color:var(--bad); margin:0; }
+.pm-sub { font-size:.9rem; color:var(--muted); margin:0; }
+.pm-sub span { color:var(--parchment); font-weight:700; }
+.pb-miss-card.go .pm-word { animation:pbMissWord .6s cubic-bezier(.36,.07,.19,.97) both; }
+.pb-miss-card.go .pm-sub { opacity:0; animation:pbMissSub .4s ease .25s forwards; }
+@keyframes pbMissWord {
+    0% { transform:scale(.3) rotate(-6deg); opacity:0; }
+    45% { transform:scale(1.15) rotate(4deg); opacity:1; }
+    60% { transform:scale(.94) rotate(-2deg); }
+    75% { transform:scale(1.04) rotate(1deg); }
+    100% { transform:scale(1) rotate(0); }
+}
+@keyframes pbMissSub { to { opacity:1; } }
 
 /* Récap de catégorie */
 .pb-summary-list { display:flex; flex-direction:column; gap:8px; }

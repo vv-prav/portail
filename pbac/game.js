@@ -14,8 +14,8 @@ app.get('/pbac/healthz', (req, res) => res.status(200).json({ ok: true, t: Date.
 const CATEGORIES = ['Prénom', 'Animal', 'Pays ou ville', 'Fruit ou légume', 'Métier', 'Objet', 'Couleur', 'Sport'];
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const DURATIONS = { court: 60, moyen: 90, long: 120 };
-const CARD_VOTE_MS = 8 * 1000;       // temps laissé pour voter une réponse
-const CARD_PAUSE_MS = 1100;          // pause après résolution avant la carte suivante
+const CARD_PAUSE_MS = 1300;          // pause après résolution avant la carte suivante
+const EMPTY_PAUSE_MS = 1500;         // durée d'affichage d'une case vide (« Loupé »)
 const CATEGORY_SUMMARY_MS = 2600;    // récap affiché entre deux catégories
 const MAX_PLAYERS = 8;
 const PSEUDO_MAX = 20;
@@ -75,21 +75,26 @@ function shuffle(arr) {
 // La carte en cours de vote, telle qu'envoyée aux clients (jamais les votes des autres avant résolution).
 function currentCardPublic(g) {
     if (g.status !== 'voting' || !g.reviewQueue[g.reviewIndex]) return null;
-    const { category, pseudo } = g.reviewQueue[g.reviewIndex];
+    const { category, pseudo, type } = g.reviewQueue[g.reviewIndex];
     const c = g.cardState;
-    return {
-        category, pseudo, text: g.answers[pseudo][category],
+    const base = {
+        category, pseudo, type, text: (g.answers[pseudo] && g.answers[pseudo][category]) || '',
         catIndex: g.categories.indexOf(category) + 1, catTotal: g.categories.length,
         cardIndex: g.reviewQueue.slice(0, g.reviewIndex + 1).filter(x => x.category === category).length,
         cardTotal: g.reviewQueue.filter(x => x.category === category).length,
+    };
+    if (type === 'empty') return base;
+    return {
+        ...base,
         yes: c.votes.filter(v => v === 'yes').length, no: c.votes.filter(v => v === 'no').length,
-        eligible: c.eligible.length, cardEnd: c.end, resolved: c.resolved, accepted: c.accepted,
+        eligible: c.eligible.length, resolved: c.resolved, accepted: c.accepted,
         iVoted: null,   // rempli côté envoi individuel (voir sendCardTo)
     };
 }
 function sendCardTo(g, socket) {
     const pub = currentCardPublic(g);
     if (!pub) return;
+    if (pub.type === 'empty') { socket.emit('pbac_card', pub); return; }
     const me = socket.data.pbacPseudo;
     pub.iVoted = (g.cardState.voters[me]) || null;
     pub.canVote = g.cardState.eligible.includes(me) && !pub.iVoted && !pub.resolved;
@@ -101,6 +106,7 @@ function broadcastCard(g) {
     for (const p of g.players) {
         const sock = io.sockets.sockets.get(p.sid);
         if (!sock) continue;
+        if (pub.type === 'empty') { sock.emit('pbac_card', pub); continue; }
         const clone = { ...pub };
         clone.iVoted = g.cardState.voters[p.pseudo] || null;
         clone.canVote = g.cardState.eligible.includes(p.pseudo) && !clone.iVoted && !clone.resolved;
@@ -108,17 +114,18 @@ function broadcastCard(g) {
     }
 }
 
+// Une carte par joueur et par catégorie — y compris les cases vides ou mal
+// lettrées, montrées brièvement (« Loupé ») plutôt que silencieusement ignorées.
 function buildReviewQueue(g) {
     const q = [];
     for (const cat of g.categories) {
-        const entries = g.players
-            .map(p => p.pseudo)
-            .filter(pseudo => {
-                const raw = (g.answers[pseudo] && g.answers[pseudo][cat]) || '';
-                const n = norm(raw);
-                return n && n[0] === g.letter;
-            });
-        shuffle(entries).forEach(pseudo => q.push({ category: cat, pseudo }));
+        const entries = g.players.map(p => {
+            const raw = (g.answers[p.pseudo] && g.answers[p.pseudo][cat]) || '';
+            const n = norm(raw);
+            const valid = !!(n && n[0] === g.letter);
+            return { category: cat, pseudo: p.pseudo, type: valid ? 'valid' : 'empty' };
+        });
+        shuffle(entries).forEach(e => q.push(e));
     }
     return q;
 }
@@ -126,13 +133,21 @@ function buildReviewQueue(g) {
 function startCard(g) {
     const entry = g.reviewQueue[g.reviewIndex];
     if (!entry) { finalizeCategoryOrRound(g); return; }
-    const eligible = g.players.filter(p => p.connected && p.pseudo !== entry.pseudo).map(p => p.pseudo);
-    g.cardState = { votes: [], voters: {}, eligible, resolved: false, accepted: false, end: Date.now() + CARD_VOTE_MS };
     g.status = 'voting';
+    if (entry.type === 'empty') {
+        g.voteOutcomes[entry.category + '|' + entry.pseudo] = false;
+        g.cardState = { type: 'empty', resolved: true, accepted: false, votes: [], voters: {}, eligible: [] };
+        broadcastCard(g);
+        g._timer = setTimeout(() => advanceAfterCard(g, entry), EMPTY_PAUSE_MS);
+        return;
+    }
+    const eligible = g.players.filter(p => p.connected && p.pseudo !== entry.pseudo).map(p => p.pseudo);
+    g.cardState = { votes: [], voters: {}, eligible, resolved: false, accepted: false };
     broadcastCard(g);
-    if (!eligible.length) { resolveCard(g, true); return; }   // personne pour voter : accepté d'office
-    g._timer = setTimeout(() => resolveCard(g), CARD_VOTE_MS);
+    if (!eligible.length) resolveCard(g, true);   // personne pour voter : accepté d'office
 }
+// Aucune limite de temps : on attend que tout le monde ait voté (parmi les
+// joueurs toujours connectés) avant de résoudre et d'avancer.
 function resolveCard(g, forceAccept) {
     clearTimeout(g._timer);
     if (!g.cardState || g.cardState.resolved) return;
@@ -142,12 +157,13 @@ function resolveCard(g, forceAccept) {
     const entry = g.reviewQueue[g.reviewIndex];
     g.voteOutcomes[entry.category + '|' + entry.pseudo] = accepted;
     broadcastCard(g);
-    g._timer = setTimeout(() => {
-        g.reviewIndex++;
-        const next = g.reviewQueue[g.reviewIndex];
-        if (!next || next.category !== entry.category) finalizeCategoryOrRound(g, entry.category);
-        else startCard(g);
-    }, CARD_PAUSE_MS);
+    g._timer = setTimeout(() => advanceAfterCard(g, entry), CARD_PAUSE_MS);
+}
+function advanceAfterCard(g, entry) {
+    g.reviewIndex++;
+    const next = g.reviewQueue[g.reviewIndex];
+    if (!next || next.category !== entry.category) finalizeCategoryOrRound(g, entry.category);
+    else startCard(g);
 }
 
 // Récapitulatif des points d'une catégorie (une fois toutes ses cartes votées),
@@ -359,7 +375,9 @@ io.on('connection', (socket) => {
         if (c.resolved || !c.eligible.includes(me) || c.voters[me]) return;
         c.voters[me] = value;
         c.votes.push(value);
-        if (c.votes.length >= c.eligible.length) resolveCard(g);
+        // On n'attend que les votants encore connectés (un départ ne doit pas bloquer la partie).
+        const stillNeeded = c.eligible.filter(p => { const pl = g.players.find(x => x.pseudo === p); return pl && pl.connected; });
+        if (!stillNeeded.length || c.votes.length >= stillNeeded.length) resolveCard(g);
         else broadcastCard(g);
     });
 

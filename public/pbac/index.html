@@ -95,7 +95,7 @@
         <!-- VOTE (une réponse à la fois) -->
         <section class="pb-view" id="v-voting" hidden>
             <p class="pb-hint" id="voting-progress">Catégorie 1 / 8</p>
-            <div class="pb-vote-card">
+            <div class="pb-vote-card" id="vote-normal">
                 <p class="pv-cat" id="vote-cat">Prénom</p>
                 <p class="pv-answer" id="vote-answer">Anaïs</p>
                 <p class="pv-author" id="vote-author">proposé par —</p>
@@ -108,6 +108,10 @@
                     <button class="pv-btn yes" id="btn-vote-yes">Oui</button>
                 </div>
                 <p class="pv-outcome" id="vote-outcome" hidden></p>
+            </div>
+            <div class="pb-miss-card" id="vote-miss" hidden>
+                <p class="pm-word">Loupé !</p>
+                <p class="pm-sub"><span id="miss-author">—</span> n'a rien trouvé ici</p>
             </div>
         </section>
 
