@@ -4,7 +4,18 @@
 // =====================================================================
 const crypto = require('crypto');
 
-module.exports = function attachPbac(app, io) {
+module.exports = function attachPbac(app, io, store) {
+
+const mfGet = store && store.get ? store.get : () => undefined;
+const mfSet = store && store.set ? store.set : () => {};
+const kPacks = (pseudo) => `pbac:packs:${norm(pseudo)}`;
+function sanitizePacks(list) {
+    if (!Array.isArray(list)) return [];
+    return list.slice(0, 12).map(p => ({
+        name: String((p && p.name) || '').trim().slice(0, 24),
+        categories: sanitizeCategories(p && p.categories),
+    })).filter(p => p.name);
+}
 
 app.get('/pbac/healthz', (req, res) => res.status(200).json({ ok: true, t: Date.now(), games: Object.keys(games).length }));
 
@@ -79,7 +90,7 @@ function publicGames() {
 function broadcastLobby() { io.emit('pbac_games', publicGames()); }
 
 function playerList(g) {
-    return g.players.map(p => ({ pseudo: p.pseudo, connected: p.connected, score: g.scores[p.pseudo] || 0, host: p.pseudo === g.host }));
+    return g.players.map(p => ({ pseudo: p.pseudo, connected: p.connected, score: g.scores[p.pseudo] || 0, host: p.pseudo === g.host, spectator: !!p.spectator }));
 }
 function roomOf(g) { return 'pbac:' + g.id; }
 
@@ -106,12 +117,14 @@ function currentCardPublic(g) {
         catIndex: g.categories.indexOf(category) + 1, catTotal: g.categories.length,
         cardIndex: g.reviewQueue.slice(0, g.reviewIndex + 1).filter(x => x.category === category).length,
         cardTotal: g.reviewQueue.filter(x => x.category === category).length,
+        queueIndex: g.reviewIndex, queueTotal: g.reviewQueue.length,
     };
     if (type === 'empty') return base;
     return {
         ...base,
         yes: c.votes.filter(v => v === 'yes').length, no: c.votes.filter(v => v === 'no').length,
-        eligible: c.eligible.length, resolved: c.resolved, accepted: c.accepted,
+        eligible: c.eligible.length, eligiblePseudos: c.eligible, votedPseudos: Object.keys(c.voters),
+        resolved: c.resolved, accepted: c.accepted,
         iVoted: null,   // rempli côté envoi individuel (voir sendCardTo)
     };
 }
@@ -143,7 +156,7 @@ function broadcastCard(g) {
 function buildReviewQueue(g) {
     const q = [];
     for (const cat of g.categories) {
-        const entries = g.players.map(p => {
+        const entries = g.players.filter(p => !p.spectator).map(p => {
             const raw = (g.answers[p.pseudo] && g.answers[p.pseudo][cat]) || '';
             const n = norm(raw);
             const valid = !!(n && n[0] === g.letter);
@@ -166,7 +179,7 @@ function startCard(g) {
         g._timer = setTimeout(() => advanceAfterCard(g, entry), EMPTY_PAUSE_MS);
         return;
     }
-    const eligible = g.players.filter(p => p.connected && p.pseudo !== entry.pseudo).map(p => p.pseudo);
+    const eligible = g.players.filter(p => p.connected && !p.spectator && p.pseudo !== entry.pseudo).map(p => p.pseudo);
     g.cardState = { votes: [], voters: {}, eligible, resolved: false, accepted: false };
     broadcastCard(g);
     if (!eligible.length) resolveCard(g, true);   // personne pour voter : accepté d'office
@@ -280,6 +293,7 @@ function broadcastState(g) { io.to(roomOf(g)).emit('pbac_state', stateForClient(
 function advanceToNextRound(g) {
     g.round++;
     g.stoppedBy = null;
+    g.players.forEach(p => { p.spectator = false; });   // tout le monde repart à égalité sur la nouvelle manche
     if (g.letterMode === 'host') {
         g.status = 'choosing_letter';
         broadcastState(g);
@@ -323,6 +337,32 @@ io.on('connection', (socket) => {
 
     socket.on('pbac_list', () => { socket.emit('pbac_games', publicGames()); });
 
+    socket.on('pbac_packs_list', () => {
+        const pseudo = socket.data.pbacPseudo;
+        if (!pseudo) return;
+        socket.emit('pbac_packs', sanitizePacks(mfGet(kPacks(pseudo))));
+    });
+    socket.on('pbac_packs_save', ({ name, categories }) => {
+        const pseudo = socket.data.pbacPseudo;
+        if (!pseudo) return socket.emit('pbac_error', 'Session expirée, reviens au salon.');
+        const cleanName = String(name || '').trim().slice(0, 24);
+        if (!cleanName) return socket.emit('pbac_error', 'Donne un nom à ce pack.');
+        const cats = sanitizeCategories(categories);
+        const packs = sanitizePacks(mfGet(kPacks(pseudo)));
+        const i = packs.findIndex(p => p.name.toLowerCase() === cleanName.toLowerCase());
+        const pack = { name: cleanName, categories: cats };
+        if (i >= 0) packs[i] = pack; else packs.unshift(pack);
+        mfSet(kPacks(pseudo), packs.slice(0, 12));
+        socket.emit('pbac_packs', packs.slice(0, 12));
+    });
+    socket.on('pbac_packs_delete', ({ name }) => {
+        const pseudo = socket.data.pbacPseudo;
+        if (!pseudo) return;
+        const packs = sanitizePacks(mfGet(kPacks(pseudo))).filter(p => p.name.toLowerCase() !== String(name || '').toLowerCase());
+        mfSet(kPacks(pseudo), packs);
+        socket.emit('pbac_packs', packs);
+    });
+
     socket.on('pbac_create', ({ rounds, duration, categories, letterMode }) => {
         const pseudo = socket.data.pbacPseudo;
         if (!pseudo) return socket.emit('pbac_error', 'Session expirée, reviens au salon.');
@@ -352,9 +392,10 @@ io.on('connection', (socket) => {
         let p = g.players.find(x => x.pseudo === pseudo);
         if (p) { p.sid = socket.id; p.connected = true; }
         else {
-            if (g.status !== 'lobby') return socket.emit('pbac_error', 'La partie a déjà commencé.');
             if (g.players.length >= MAX_PLAYERS) return socket.emit('pbac_error', 'Table complète.');
-            g.players.push({ sid: socket.id, pseudo, connected: true });
+            // Rejoint en pleine partie : spectateur jusqu'à la prochaine manche (jamais bloqué dehors).
+            const spectator = g.status !== 'lobby';
+            g.players.push({ sid: socket.id, pseudo, connected: true, spectator });
             g.scores[pseudo] = 0;
         }
         socketGame[socket.id] = g.id;

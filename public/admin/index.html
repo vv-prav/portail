@@ -28,6 +28,7 @@
                 <option value="grids">🧩 Grilles</option>
                 <option value="motus">🟨 Motus</option>
                 <option value="motjuste">🧊 Le Mot Juste</option>
+                <option value="pbac">✏️ Petit Bac</option>
                 <option value="dict">📖 Dictionnaire</option>
                 <option value="system">⚙️ Système</option>
             </select>
@@ -162,6 +163,19 @@
                 <button class="btn" id="mj-vocab-add" type="button">Ajouter au vocabulaire</button>
                 <input class="in" id="mj-vocab-q" placeholder="Rechercher dans le vocabulaire…" style="margin-top:14px">
                 <div class="list" id="mj-vocab-list"></div>
+            </div>
+        </section>
+
+        <!-- PETIT BAC -->
+        <section class="pane" id="pane-pbac" hidden>
+            <div class="card">
+                <h2 class="card-title">En direct</h2>
+                <div class="kv" id="pbac-live"></div>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Tables actives</h2>
+                <button class="btn ghost" id="pbac-refresh" type="button">Actualiser</button>
+                <div class="list" id="pbac-tables" style="margin-top:10px"></div>
             </div>
         </section>
 

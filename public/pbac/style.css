@@ -68,6 +68,30 @@ body.is-ready .pb { display:flex; }
 .pb-card { width:100%; max-width:400px; background:linear-gradient(165deg,var(--ink-3),var(--ink-2));
            border:2px solid var(--brass); border-radius:20px; padding:24px 22px; box-shadow:0 20px 50px rgba(0,0,0,.6);
            max-height:88dvh; overflow-y:auto; }
+.pb-create-card { display:flex; flex-direction:column; padding:24px 0 0; max-height:88dvh; overflow:hidden; }
+.pb-create-card .pb-card-title { padding:0 22px; }
+.pb-create-scroll { overflow-y:auto; padding:0 22px 4px; flex:1; min-height:0; }
+.pb-create-footer { flex:0 0 auto; padding:14px 22px calc(18px + env(safe-area-inset-bottom));
+                     border-top:1px solid var(--line); background:var(--ink-3); }
+.pb-create-footer .pb-btn { margin-top:0; }
+.pb-create-footer .pb-btn + .pb-btn { margin-top:9px; }
+
+/* Packs de catégories sauvegardés */
+.pb-packs-row { display:flex; flex-wrap:wrap; gap:7px; }
+.pb-packs-empty { font-size:.76rem; color:var(--muted); margin:0; }
+.pb-pack-chip { display:flex; align-items:stretch; border-radius:999px; overflow:hidden; border:1px solid var(--line); }
+.pb-pack-apply { padding:8px 12px; background:rgba(217,169,78,.1); border:none; color:var(--brass-soft);
+                  font-size:.78rem; font-weight:700; font-family:inherit; cursor:pointer; }
+.pb-pack-del { padding:8px 10px; background:rgba(210,98,74,.12); border:none; border-left:1px solid var(--line);
+               color:var(--bad); font-size:.72rem; cursor:pointer; }
+.pb-pack-save-row { display:flex; gap:8px; margin-top:16px; }
+.pb-pack-save-row input { flex:1; min-width:0; padding:11px 12px; border-radius:10px; background:rgba(255,255,255,.05);
+                           border:1px solid var(--line); color:var(--parchment); font-size:16px; font-family:inherit; }
+.pb-pack-save-row input:focus { outline:none; border-color:var(--brass); }
+.pb-pack-save-row button { flex:0 0 auto; padding:11px 14px; border-radius:10px; border:none; cursor:pointer;
+                            background:rgba(217,169,78,.16); color:var(--brass-soft); font-weight:700; font-family:inherit; }
+.pb-pack-save-row button:active { transform:scale(.96); }
+
 .pb-card-title { font-family:'Fraunces',Georgia,serif; font-weight:900; color:var(--brass-soft); text-align:center; margin:0 0 16px; font-size:1.25rem; }
 .pb-field-label { font-size:.7rem; text-transform:uppercase; letter-spacing:1.4px; color:var(--brass); margin:14px 0 8px;
                    display:flex; align-items:center; justify-content:space-between; }
@@ -105,6 +129,13 @@ body.is-ready .pb { display:flex; }
 .pb-letter-grid button:active { background:linear-gradient(180deg,var(--brass-soft),var(--brass)); color:#2a1c07; transform:scale(.94); }
 .pb-letter-grid button:disabled { opacity:.3; }
 
+/* Spectateur (rejoint en cours de manche) */
+.pb-spectator-box { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; text-align:center; }
+.pb-spectator-title { font-family:'Fraunces',Georgia,serif; font-weight:800; font-size:1.2rem; color:var(--brass-soft); margin:0; }
+.pb-spectator-letter { font-family:'Fraunces',Georgia,serif; font-weight:900; font-size:2.6rem; color:var(--muted);
+                        width:78px; height:78px; display:grid; place-items:center; border-radius:18px; margin:6px 0;
+                        background:rgba(255,255,255,.04); border:2px dashed var(--line); }
+
 /* Compte à rebours */
 .pb-countdown-box { flex:1; display:flex; align-items:center; justify-content:center; }
 .pb-countdown-num { font-family:'Fraunces',Georgia,serif; font-weight:900; font-size:7rem; color:var(--brass-soft);
@@ -137,10 +168,10 @@ body.is-ready .pb { display:flex; }
 .ring-fg.urgent { stroke:var(--bad); }
 .pb-timer-num { position:absolute; inset:0; display:grid; place-items:center; font-weight:800; font-size:.92rem;
                 color:var(--brass-soft); font-variant-numeric:tabular-nums; }
-.pb-letter { font-family:'Fraunces',Georgia,serif; font-weight:900; font-size:2rem; color:var(--brass-soft);
-             width:56px; height:56px; display:grid; place-items:center; border-radius:14px; flex:0 0 auto;
-             background:linear-gradient(165deg,var(--ink-3),var(--ink-2)); border:2px solid var(--brass);
-             box-shadow:0 8px 22px rgba(0,0,0,.4); }
+.pb-letter { font-family:'Fraunces',Georgia,serif; font-weight:900; font-size:3rem; color:var(--brass-soft);
+             width:92px; height:92px; display:grid; place-items:center; border-radius:20px; flex:0 0 auto;
+             margin:0 auto; background:linear-gradient(165deg,var(--ink-3),var(--ink-2)); border:2px solid var(--brass);
+             box-shadow:0 10px 26px rgba(0,0,0,.45); }
 .pb-letter.pop { animation:pbLetterLand .62s cubic-bezier(.34,1.4,.4,1); }
 @keyframes pbLetterLand {
     0% { transform:translateY(-70px) scale(.8) rotate(-10deg); opacity:0; }
@@ -156,7 +187,8 @@ body.is-ready .pb { display:flex; }
 @keyframes pbStopPulse { 0%,100%{box-shadow:0 8px 18px rgba(194,81,58,.35);} 50%{box-shadow:0 8px 18px rgba(194,81,58,.35), 0 0 0 6px rgba(194,81,58,.22);} }
 
 .pb-dots { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; }
-.pb-dot { width:9px; height:9px; border-radius:50%; background:rgba(255,255,255,.12); border:none; padding:0; cursor:pointer; }
+.pb-dot { position:relative; width:9px; height:9px; border-radius:50%; background:rgba(255,255,255,.12); border:none; padding:0; cursor:pointer; }
+.pb-dot::before { content:''; position:absolute; inset:-9px; }
 .pb-dot.filled { background:var(--good); }
 .pb-dot.current { width:22px; border-radius:5px; background:var(--brass-soft); }
 
@@ -176,7 +208,7 @@ body.is-ready .pb { display:flex; }
 .pv-cat { font-size:.7rem; text-transform:uppercase; letter-spacing:1.8px; color:var(--brass); margin:0; }
 .pv-answer { font-family:'Fraunces',Georgia,serif; font-weight:900; font-size:2.1rem; color:var(--brass-soft);
              margin:2px 0; overflow-wrap:anywhere; }
-.pv-author { font-size:.82rem; color:var(--muted); margin:0 0 8px; }
+.pv-author { font-size:1.05rem; font-weight:700; color:var(--brass-soft); margin:0 0 10px; }
 .pb-gauge { position:relative; width:100%; max-width:280px; height:12px; border-radius:999px; overflow:hidden; display:flex;
             background:rgba(255,255,255,.08); }
 .pg-yes { height:100%; width:0%; background:var(--good); transition:width .3s ease; }
@@ -190,6 +222,16 @@ body.is-ready .pb { display:flex; }
     85% { opacity:1; }
     100% { left:calc(100% - 16px); opacity:0; }
 }
+/* Progression globale de la manche (au-dessus de « Catégorie X/Y ») */
+.pb-round-progress { height:4px; border-radius:999px; background:rgba(255,255,255,.08); overflow:hidden; max-width:280px; margin:0 auto; width:100%; }
+.pb-round-progress-fill { height:100%; width:0%; background:linear-gradient(90deg,var(--brass),var(--brass-soft)); transition:width .35s ease; }
+
+/* Qui a déjà voté (sans révéler quoi) */
+.pb-voters-row { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; max-width:300px; }
+.pb-voter { font-size:.7rem; padding:5px 10px; border-radius:999px; background:rgba(255,255,255,.05);
+            border:1px solid var(--line); color:var(--muted); }
+.pb-voter.voted { color:var(--good); border-color:rgba(90,168,122,.5); background:rgba(90,168,122,.1); }
+
 .pb-vote-btns { display:flex; gap:14px; margin-top:10px; width:100%; max-width:300px; }
 .pv-btn { flex:1; padding:16px; border-radius:14px; border:2px solid transparent; cursor:pointer;
           font-weight:900; font-size:1rem; letter-spacing:1px; font-family:inherit; }
@@ -260,30 +302,66 @@ body.is-ready .pb { display:flex; }
                  font-size:.78rem; margin:2px 0 8px; opacity:0; animation:pbTieBanner .5s ease .1s forwards; }
 @keyframes pbTieBanner { to { opacity:1; } }
 
-/* Podium final */
-.pb-podium { display:flex; flex-direction:column; align-items:center; gap:22px; padding:12px 0 4px; flex:1; justify-content:center; }
-.pod-bars { display:flex; align-items:flex-end; gap:12px; width:100%; justify-content:center; }
-.pod-col { display:flex; flex-direction:column; align-items:center; gap:8px; width:88px; opacity:0; transform:translateY(16px); }
-.pod-col.show { animation:podIn .5s cubic-bezier(.2,.8,.2,1) forwards; }
-@keyframes podIn { to { opacity:1; transform:translateY(0); } }
-.pod-name { font-weight:700; font-size:.82rem; color:var(--parchment); text-align:center; overflow-wrap:anywhere; }
-.pod-crown { width:30px; height:22px; opacity:0; }
-.pod-col.show .pod-crown.show { animation:crownIn .4s ease .1s forwards; }
-@keyframes crownIn { from{opacity:0; transform:translateY(-8px) scale(.6);} to{opacity:1; transform:translateY(0) scale(1);} }
-.pod-bar { width:100%; border-radius:10px 10px 0 0; background:linear-gradient(180deg,var(--brass-soft),var(--brass));
-           display:flex; align-items:flex-start; justify-content:center; padding-top:8px;
-           font-family:'Fraunces',Georgia,serif; font-weight:900; color:#2a1c07; box-shadow:0 -4px 18px rgba(217,169,78,.25); }
-.pod-col[data-rank="1"] .pod-bar { height:118px; }
-.pod-col[data-rank="2"] .pod-bar { height:86px; background:linear-gradient(180deg,#d8d8d8,#a9a9a9); box-shadow:0 -4px 18px rgba(180,180,180,.2); }
-.pod-col[data-rank="3"] .pod-bar { height:62px; background:linear-gradient(180deg,#d99a6c,#b06a3c); box-shadow:0 -4px 18px rgba(176,106,60,.2); }
-.pod-score { font-size:.76rem; color:var(--muted); font-variant-numeric:tabular-nums; }
-.pod-rest { display:flex; flex-direction:column; gap:6px; width:100%; max-width:320px; }
-.pod-rest-row { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px;
-                background:rgba(255,255,255,.03); border:1px solid var(--line); font-size:.84rem; opacity:0; }
-.pod-rest-row.show { animation:podIn .4s ease forwards; }
-.pod-rest-row .pr-name { color:var(--parchment); }
-.pod-rest-row .pr-score { margin-left:auto; color:var(--muted); font-variant-numeric:tabular-nums; }
-.pb-podium.tie-final .pod-bars { animation:pbTiePulse 1.4s ease-in-out 3; border-radius:12px; }
+/* Podium final — le classement remonte du dernier au premier, avec des
+   paliers de plus en plus impressionnants pour les 3e, 2e et 1er. */
+.pb-podium { display:flex; flex-direction:column; gap:22px; padding:12px 4px; flex:1; justify-content:center; }
+.pod-list { display:flex; flex-direction:column; gap:8px; width:100%; max-width:360px; margin:0 auto; }
+.pod-row { display:flex; align-items:center; gap:12px; padding:11px 14px; border-radius:12px;
+           background:rgba(255,255,255,.035); border:1px solid var(--line); opacity:0; transform:translateY(14px);
+           font-size:.9rem; }
+.pod-rank { flex:0 0 auto; width:22px; text-align:center; color:var(--muted); font-weight:800; font-variant-numeric:tabular-nums; }
+.pod-crown-slot { display:none; }
+.pod-pname { flex:1; min-width:0; color:var(--parchment); font-weight:700; overflow-wrap:anywhere; }
+.pod-pscore { flex:0 0 auto; color:var(--muted); font-variant-numeric:tabular-nums; }
+
+/* Palier de base (4e place et au-delà) : simple et rapide */
+.pod-row.tier-0.show { animation:podRowIn .34s ease forwards; }
+
+/* 3e place : bronze, un peu plus de présence */
+.pod-row.tier-3 { padding:13px 15px; }
+.pod-row.tier-3.show {
+    animation:podRowInMed .48s cubic-bezier(.2,.85,.3,1.15) forwards;
+    border-color:rgba(176,106,60,.5);
+}
+.pod-row.tier-3.show .pod-rank { color:#c98a52; }
+
+/* 2e place : argent, encore plus marquant */
+.pod-row.tier-2 { padding:15px 16px; font-size:.96rem; }
+.pod-row.tier-2.show {
+    animation:podRowInMed .55s cubic-bezier(.2,.85,.3,1.2) forwards;
+    border-color:rgba(190,190,200,.55); box-shadow:0 8px 20px rgba(190,190,200,.12);
+}
+.pod-row.tier-2.show .pod-rank { color:#c9c9d2; }
+.pod-row.tier-2.show .pod-pname { color:var(--brass-soft); }
+
+/* 1er : le grand moment — couronne, halo, la plus grosse entrée */
+.pod-row.tier-1 { padding:20px 18px; font-size:1.15rem; border-width:2px; }
+.pod-row.tier-1 .pod-crown-slot { display:none; }
+.pod-row.tier-1 svg.pod-crown { width:34px; height:24px; flex:0 0 auto; opacity:0; }
+.pod-row.tier-1.show {
+    animation:podRowInBig .68s cubic-bezier(.25,1.1,.3,1.25) forwards;
+    border-color:var(--brass); background:linear-gradient(165deg, rgba(217,169,78,.14), rgba(217,169,78,.04));
+    box-shadow:0 14px 34px rgba(217,169,78,.28);
+}
+.pod-row.tier-1.show .pod-rank { color:var(--brass-soft); font-size:1.2rem; }
+.pod-row.tier-1.show .pod-pname { color:var(--brass-soft); font-family:'Fraunces',Georgia,serif; font-weight:900; font-size:1.25rem; }
+.pod-row.tier-1.show .pod-pscore { color:var(--brass-soft); font-weight:700; }
+.pod-row.tier-1.show svg.pod-crown.show { animation:crownIn .45s cubic-bezier(.3,1.3,.4,1.2) .28s forwards; }
+
+@keyframes podRowIn { to { opacity:1; transform:translateY(0); } }
+@keyframes podRowInMed {
+    0% { opacity:0; transform:translateY(18px) scale(.94); }
+    70% { opacity:1; transform:translateY(-3px) scale(1.02); }
+    100% { opacity:1; transform:translateY(0) scale(1); }
+}
+@keyframes podRowInBig {
+    0% { opacity:0; transform:translateY(26px) scale(.85); }
+    55% { opacity:1; transform:translateY(-6px) scale(1.05); }
+    75% { transform:translateY(2px) scale(.99); }
+    100% { opacity:1; transform:translateY(0) scale(1); }
+}
+@keyframes crownIn { from{opacity:0; transform:translateY(-10px) scale(.5);} to{opacity:1; transform:translateY(0) scale(1);} }
+.pb-podium.tie-final .pod-row.tier-1.show { animation:podRowInBig .68s cubic-bezier(.25,1.1,.3,1.25) forwards, pbTiePulse 1.3s ease-in-out .68s 2; }
 
 .pb-toast { position:fixed; left:50%; bottom:calc(20px + env(safe-area-inset-bottom)); transform:translateX(-50%);
             background:var(--ink-3); border:1px solid var(--brass); color:var(--parchment); font-size:.85rem;

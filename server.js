@@ -338,7 +338,7 @@ async function mfFlush() {
 async function loadMf() {
     if (redis) {
         try {
-            const keys = [...await redis.keys('mf:*'), ...await redis.keys('rec:*'), ...await redis.keys('motus:*'), ...await redis.keys('mj:*')];
+            const keys = [...await redis.keys('mf:*'), ...await redis.keys('rec:*'), ...await redis.keys('motus:*'), ...await redis.keys('mj:*'), ...await redis.keys('pbac:*')];
             for (let i = 0; i < keys.length; i += 50) {
                 const chunk = keys.slice(i, i + 50);
                 const vals = await redis.mget(...chunk);
@@ -1019,7 +1019,7 @@ app.use('/perudo', requireAuth, express.static(__dirname + '/public/perudo'));
 // ---------------------------------------------------------------------
 //  PETIT BAC — jeu temps réel multijoueur, intégré sous /pbac.
 // ---------------------------------------------------------------------
-const pbacApi = require('./pbac/game')(app, io);
+const pbacApi = require('./pbac/game')(app, io, { get: mfGet, set: mfSet });
 app.use('/pbac', requireAuth, express.static(__dirname + '/public/pbac'));
 
 // ---------------------------------------------------------------------

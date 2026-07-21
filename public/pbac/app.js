@@ -27,12 +27,14 @@ function toast(msg) {
     clearTimeout(el._t); el._t = setTimeout(() => { el.hidden = true; }, 2600);
 }
 function showView(id) {
-    ['v-lobby', 'v-waiting', 'v-choose-letter', 'v-countdown', 'v-writing', 'v-voting', 'v-cat-summary', 'v-round-end', 'v-ended']
+    ['v-lobby', 'v-waiting', 'v-spectator', 'v-choose-letter', 'v-countdown', 'v-writing', 'v-voting', 'v-cat-summary', 'v-round-end', 'v-ended']
         .forEach(v => { $(v).hidden = (v !== id); });
     currentView = id;
 }
 
 // ---------- Connexion ----------
+let lastGameId = null;
+let wasDisconnected = false;
 function connect() {
     socket = io();
     socket.on('connect', () => {
@@ -40,15 +42,22 @@ function connect() {
             if (!res || !res.ok) { toast('Session expirée, retourne au salon.'); return; }
             myPseudo = res.pseudo;
             document.body.className = 'is-ready';
-            socket.emit('pbac_list');
+            if (lastGameId) {
+                socket.emit('pbac_join', { id: lastGameId });
+                if (wasDisconnected) { toast('Reconnecté — partie resynchronisée.'); wasDisconnected = false; }
+            } else {
+                socket.emit('pbac_list');
+                socket.emit('pbac_packs_list');
+            }
         });
     });
     socket.on('pbac_games', renderLobby);
     socket.on('pbac_state', onState);
     socket.on('pbac_card', renderCard);
+    socket.on('pbac_packs', renderPacks);
     socket.on('pbac_error', (msg) => toast(msg || 'Erreur.'));
     socket.on('pbac_closed', () => { toast('La table a été fermée.'); location.href = '/'; });
-    socket.on('disconnect', () => toast('Connexion perdue, on retente…'));
+    socket.on('disconnect', () => { wasDisconnected = true; toast('Connexion perdue, on retente…'); });
 }
 
 // ---------- Lobby ----------
@@ -69,6 +78,8 @@ $('btn-create').addEventListener('click', () => {
     selectedCats = DEFAULT_CATEGORIES.slice();
     renderCatGrid();
     $('cat-custom-input').value = '';
+    $('pack-save-name').value = '';
+    socket.emit('pbac_packs_list');
     $('v-create').hidden = false;
 });
 $('create-cancel').addEventListener('click', () => { $('v-create').hidden = true; });
@@ -122,6 +133,36 @@ function addCustomCategory() {
 $('cat-custom-add').addEventListener('click', addCustomCategory);
 $('cat-custom-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomCategory(); } });
 
+// ---------- Packs de catégories sauvegardés ----------
+let myPacks = [];
+function renderPacks(packs) {
+    myPacks = packs || [];
+    $('packs-empty').hidden = !!myPacks.length;
+    $('packs-row').innerHTML = myPacks.map(p => `
+        <span class="pb-pack-chip">
+            <button type="button" class="pb-pack-apply" data-name="${esc(p.name)}">${esc(p.name)}</button>
+            <button type="button" class="pb-pack-del" data-name="${esc(p.name)}" aria-label="Supprimer">✕</button>
+        </span>`).join('');
+    $('packs-row').querySelectorAll('.pb-pack-apply').forEach(b => b.addEventListener('click', () => {
+        const pack = myPacks.find(p => p.name === b.dataset.name);
+        if (!pack) return;
+        selectedCats = pack.categories.slice();
+        renderCatGrid();
+        toast('Pack « ' + pack.name + ' » appliqué.');
+    }));
+    $('packs-row').querySelectorAll('.pb-pack-del').forEach(b => b.addEventListener('click', () => {
+        socket.emit('pbac_packs_delete', { name: b.dataset.name });
+    }));
+}
+$('pack-save-btn').addEventListener('click', () => {
+    const name = $('pack-save-name').value.trim();
+    if (!name) { toast('Donne un nom à ce pack.'); return; }
+    if (selectedCats.length !== 8) { toast('Choisis exactement 8 catégories avant d\'enregistrer.'); return; }
+    socket.emit('pbac_packs_save', { name, categories: selectedCats });
+    $('pack-save-name').value = '';
+    toast('Pack enregistré.');
+});
+
 $('create-confirm').addEventListener('click', () => {
     if (selectedCats.length !== 8) { toast('Choisis exactement 8 catégories.'); return; }
     const rounds = document.querySelector('#opt-rounds button.on').dataset.v;
@@ -130,9 +171,19 @@ $('create-confirm').addEventListener('click', () => {
     socket.emit('pbac_create', { rounds: Number(rounds), duration, letterMode, categories: selectedCats });
     $('v-create').hidden = true;
 });
+$('btn-leave-spectator').addEventListener('click', () => {
+    socket.emit('pbac_leave');
+    state = null;
+    lastGameId = null;
+    $('pb-sub').textContent = 'Salon des parties';
+    $('pb-round-tag').hidden = true;
+    showView('v-lobby');
+    socket.emit('pbac_list');
+});
 $('btn-leave-lobby').addEventListener('click', () => {
     socket.emit('pbac_leave');
     state = null;
+    lastGameId = null;
     $('pb-sub').textContent = 'Salon des parties';
     $('pb-round-tag').hidden = true;
     showView('v-lobby');
@@ -142,7 +193,21 @@ $('btn-leave-lobby').addEventListener('click', () => {
 // ---------- Dispatch d'état ----------
 function onState(s) {
     state = s;
+    lastGameId = s.id;
     $('pb-sub').textContent = 'Table de ' + s.host;
+
+    const me = s.players.find(p => p.pseudo === myPseudo);
+    const iAmSpectator = !!(me && me.spectator);
+    const interactiveStatuses = ['writing', 'countdown', 'choosing_letter', 'voting'];
+    if (iAmSpectator && interactiveStatuses.includes(s.status)) {
+        $('pb-round-tag').hidden = false;
+        $('pb-round-tag').textContent = 'Manche ' + s.round + ' / ' + s.maxRounds;
+        clearInterval(timerId);
+        renderSpectator(s);
+        showView('v-spectator');
+        return;
+    }
+
     if (s.status === 'lobby') {
         $('pb-round-tag').hidden = true;
         renderWaiting(s);
@@ -179,6 +244,12 @@ function onState(s) {
         renderFinal(s);
         showView('v-ended');
     }
+}
+
+// ---------- Spectateur (rejoint en cours de manche) ----------
+function renderSpectator(s) {
+    $('spectator-letter').textContent = s.letter || '';
+    $('spectator-letter').hidden = !s.letter;
 }
 
 // ---------- Choix de la lettre par l'hôte ----------
@@ -309,6 +380,7 @@ $('btn-stop').addEventListener('click', () => {
 function renderCard(c) {
     $('voting-progress').textContent = `Catégorie ${c.catIndex} / ${c.catTotal} · réponse ${c.cardIndex} / ${c.cardTotal}`;
     $('vote-cat').textContent = c.category;
+    if (c.queueTotal) $('round-progress-fill').style.width = Math.round((c.queueIndex / c.queueTotal) * 100) + '%';
 
     const miss = $('vote-miss');
     const normal = $('vote-normal');
@@ -333,6 +405,16 @@ function renderCard(c) {
     const total = c.eligible || 1;
     $('gauge-yes').style.width = Math.round((c.yes / total) * 100) + '%';
     $('gauge-no').style.width = Math.round((c.no / total) * 100) + '%';
+
+    // Qui a déjà voté (sans révéler quoi) — pour savoir qui on attend encore.
+    const votersRow = $('voters-row');
+    votersRow.hidden = c.resolved;
+    if (!c.resolved) {
+        votersRow.innerHTML = (c.eligiblePseudos || []).map(p => {
+            const voted = (c.votedPseudos || []).includes(p);
+            return `<span class="pb-voter${voted ? ' voted' : ''}">${esc(p)}</span>`;
+        }).join('');
+    }
 
     const btns = $('vote-btns');
     const outcome = $('vote-outcome');
@@ -409,49 +491,53 @@ const CROWN_SVG = `<svg class="pod-crown show" viewBox="0 0 32 22" fill="none" x
 
 function renderFinal(s) {
     const ranked = s.players.slice().sort((a, b) => b.score - a.score);
+    // Le palier (1=or, 2=argent, 3=bronze, 0=le reste) se base sur le SCORE,
+    // pas la position brute : en cas d'égalité, tout le monde partage le même palier.
+    const uniqueScores = [...new Set(ranked.map(p => p.score))].sort((a, b) => b - a);
+    const tierOf = (score) => { const i = uniqueScores.indexOf(score); return i === 0 ? 1 : i === 1 ? 2 : i === 2 ? 3 : 0; };
     const topScore = ranked[0] ? ranked[0].score : 0;
-    const tiedWinners = ranked.filter(p => p.score === topScore);
-    const podiumEl = $('pb-podium');
-    podiumEl.classList.toggle('tie-final', tiedWinners.length > 1);
+    const tiedTop = ranked.filter(p => p.score === topScore).length > 1;
 
-    const top3 = ranked.slice(0, 3);
-    const order = [1, 0, 2].filter(i => top3[i]);   // 2e / 1er / 3e, comme un vrai podium
-    const barsHtml = order.map(i => {
-        const p = top3[i]; const rank = i + 1;
-        return `<div class="pod-col" data-rank="${rank}">
-            <span class="pod-name">${esc(p.pseudo)}${tiedWinners.length > 1 && p.score === topScore ? ' •' : ''}</span>
-            ${rank === 1 ? CROWN_SVG.replace('show', '') : ''}
-            <div class="pod-bar">${rank}</div>
-            <span class="pod-score">${p.score} pts</span>
-        </div>`;
-    }).join('');
-    const restHtml = ranked.slice(3).map((p, i) => `
-        <div class="pod-rest-row" style="--i:${i}"><span class="pr-name">${i + 4}. ${esc(p.pseudo)}</span><span class="pr-score">${p.score} pts</span></div>`).join('');
-
-    const bannerHtml = tiedWinners.length > 1
-        ? `<p class="pb-tie-banner">Égalité pour la victoire : ${tiedWinners.map(p => esc(p.pseudo)).join(' & ')}</p>`
+    const bannerHtml = tiedTop
+        ? `<p class="pb-tie-banner">Égalité pour la victoire : ${ranked.filter(p => p.score === topScore).map(p => esc(p.pseudo)).join(' & ')}</p>`
         : '';
 
-    podiumEl.innerHTML = `${bannerHtml}<div class="pod-bars">${barsHtml}</div><div class="pod-rest">${restHtml}</div>`;
+    const rowsHtml = ranked.map((p, i) => {
+        const tier = tierOf(p.score);
+        return `<div class="pod-row tier-${tier}" data-tier="${tier}">
+            <span class="pod-rank">${i + 1}</span>
+            ${tier === 1 ? CROWN_SVG.replace('show', '') : ''}
+            <span class="pod-pname">${esc(p.pseudo)}</span>
+            <span class="pod-pscore">${p.score} pts</span>
+        </div>`;
+    }).join('');
 
-    // Révélation en cascade : dernier -> premier, pour le suspense
-    const cols = [...podiumEl.querySelectorAll('.pod-col')];
-    const byRank = {}; cols.forEach(c => { byRank[c.dataset.rank] = c; });
-    const revealOrder = [3, 2, 1].filter(r => byRank[r]);
-    revealOrder.forEach((r, idx) => {
-        setTimeout(() => {
-            byRank[r].classList.add('show');
-            if (r === 1) {
-                const crown = byRank[r].querySelector('.pod-crown');
-                if (crown) setTimeout(() => crown.classList.add('show'), 350);
-                spawnConfetti();
-                if (navigator.vibrate) { try { navigator.vibrate([30, 60, 30, 60, 80]); } catch (e) {} }
-            }
-        }, idx * 650);
-    });
-    [...podiumEl.querySelectorAll('.pod-rest-row')].forEach((row, i) => {
-        setTimeout(() => row.classList.add('show'), revealOrder.length * 650 + i * 90);
-    });
+    const podiumEl = $('pb-podium');
+    podiumEl.classList.toggle('tie-final', tiedTop);
+    podiumEl.innerHTML = bannerHtml + `<div class="pod-list">${rowsHtml}</div>`;
+
+    // Révélation qui remonte le classement : dernier -> premier, en ralentissant
+    // et en intensifiant l'animation à mesure qu'on approche du sommet.
+    const rows = [...podiumEl.querySelectorAll('.pod-row')];
+    const buckets = { 0: [], 3: [], 2: [], 1: [] };
+    rows.forEach(r => buckets[Number(r.dataset.tier)].push(r));
+
+    let t = 0;
+    buckets[0].slice().reverse().forEach((row) => { setTimeout(() => row.classList.add('show'), t); t += 220; });
+    t += 450;
+    buckets[3].forEach((row, i) => setTimeout(() => row.classList.add('show'), t + i * 150));
+    t += buckets[3].length * 150 + 700;
+    buckets[2].forEach((row, i) => setTimeout(() => row.classList.add('show'), t + i * 150));
+    t += buckets[2].length * 150 + 900;
+    setTimeout(() => {
+        buckets[1].forEach(row => {
+            row.classList.add('show');
+            const crown = row.querySelector('.pod-crown');
+            if (crown) setTimeout(() => crown.classList.add('show'), 260);
+        });
+        spawnConfetti();
+        if (navigator.vibrate) { try { navigator.vibrate([30, 60, 30, 60, 100]); } catch (e) {} }
+    }, t);
 
     const isHost = s.host === myPseudo;
     $('btn-rematch').hidden = !isHost;
@@ -497,6 +583,28 @@ function tick() {
     requestAnimationFrame(tick);
 }
 requestAnimationFrame(tick);
+
+// ---------- Clavier mobile : garder les boutons visibles quand il s'ouvre ----------
+// Sur les petits écrans (iPhone SE et consorts), le clavier peut recouvrir la
+// moitié de l'écran ; on fait remonter la zone utile dans l'espace visible restant.
+function keepVisibleAboveKeyboard(el, targetEl) {
+    if (!el) return;
+    el.addEventListener('focus', () => {
+        setTimeout(() => { (targetEl || el).scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 320);
+    });
+}
+keepVisibleAboveKeyboard($('step-input'), $('step-prev'));   // fait remonter jusqu'aux boutons Suivant/Précédent
+keepVisibleAboveKeyboard($('cat-custom-input'));
+keepVisibleAboveKeyboard($('pack-save-name'));
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => {
+        const active = document.activeElement;
+        if (active && active.id === 'step-input') { $('step-prev').scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+        else if (active && (active.id === 'cat-custom-input' || active.id === 'pack-save-name')) {
+            active.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
+    });
+}
 
 // ---------- Démarrage ----------
 connect();

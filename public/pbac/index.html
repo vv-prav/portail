@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, interactive-widget=resizes-content">
     <meta name="theme-color" content="#14100b">
     <title>Petit Bac</title>
     <link rel="icon" href="/icon-192.png">
@@ -37,36 +37,48 @@
 
         <!-- Réglages d'une nouvelle table -->
         <div class="pb-overlay" id="v-create" hidden>
-            <div class="pb-card">
+            <div class="pb-card pb-create-card">
                 <h2 class="pb-card-title">Nouvelle table</h2>
-                <p class="pb-field-label">Manches</p>
-                <div class="pb-choice" id="opt-rounds">
-                    <button type="button" data-v="3">3</button>
-                    <button type="button" data-v="5" class="on">5</button>
-                    <button type="button" data-v="7">7</button>
-                </div>
-                <p class="pb-field-label">Durée d'écriture</p>
-                <div class="pb-choice" id="opt-duration">
-                    <button type="button" data-v="court">60 s</button>
-                    <button type="button" data-v="moyen" class="on">90 s</button>
-                    <button type="button" data-v="long">120 s</button>
-                </div>
-                <p class="pb-field-label">Lettre de chaque manche</p>
-                <div class="pb-choice" id="opt-letter-mode">
-                    <button type="button" data-v="random" class="on">Aléatoire</button>
-                    <button type="button" data-v="host">Je choisis</button>
-                </div>
+                <div class="pb-create-scroll">
+                    <p class="pb-field-label">Manches</p>
+                    <div class="pb-choice" id="opt-rounds">
+                        <button type="button" data-v="3">3</button>
+                        <button type="button" data-v="5" class="on">5</button>
+                        <button type="button" data-v="7">7</button>
+                    </div>
+                    <p class="pb-field-label">Durée d'écriture</p>
+                    <div class="pb-choice" id="opt-duration">
+                        <button type="button" data-v="court">60 s</button>
+                        <button type="button" data-v="moyen" class="on">90 s</button>
+                        <button type="button" data-v="long">120 s</button>
+                    </div>
+                    <p class="pb-field-label">Lettre de chaque manche</p>
+                    <div class="pb-choice" id="opt-letter-mode">
+                        <button type="button" data-v="random" class="on">Aléatoire</button>
+                        <button type="button" data-v="host">Je choisis</button>
+                    </div>
 
-                <p class="pb-field-label">Catégories <span id="cat-count">8/8</span></p>
-                <p class="pb-cat-hint">Touche une catégorie pour l'ajouter ou la retirer. Il en faut exactement 8.</p>
-                <div class="pb-cat-grid" id="cat-grid"></div>
-                <div class="pb-cat-custom">
-                    <input id="cat-custom-input" type="text" maxlength="30" placeholder="Une catégorie perso…" autocomplete="off">
-                    <button type="button" id="cat-custom-add">Ajouter</button>
-                </div>
+                    <p class="pb-field-label">Mes packs de catégories</p>
+                    <div class="pb-packs-row" id="packs-row"></div>
+                    <p class="pb-packs-empty" id="packs-empty" hidden>Aucun pack enregistré pour l'instant.</p>
 
-                <button class="pb-btn" id="create-confirm">Créer</button>
-                <button class="pb-btn ghost" id="create-cancel">Annuler</button>
+                    <p class="pb-field-label">Catégories <span id="cat-count">8/8</span></p>
+                    <p class="pb-cat-hint">Touche une catégorie pour l'ajouter ou la retirer. Il en faut exactement 8.</p>
+                    <div class="pb-cat-grid" id="cat-grid"></div>
+                    <div class="pb-cat-custom">
+                        <input id="cat-custom-input" type="text" maxlength="30" placeholder="Une catégorie perso…" autocomplete="off">
+                        <button type="button" id="cat-custom-add">Ajouter</button>
+                    </div>
+
+                    <div class="pb-pack-save-row">
+                        <input id="pack-save-name" type="text" maxlength="24" placeholder="Nom du pack à enregistrer…" autocomplete="off">
+                        <button type="button" id="pack-save-btn">Enregistrer</button>
+                    </div>
+                </div>
+                <div class="pb-create-footer">
+                    <button class="pb-btn" id="create-confirm">Créer</button>
+                    <button class="pb-btn ghost" id="create-cancel">Annuler</button>
+                </div>
             </div>
         </div>
 
@@ -76,6 +88,16 @@
             <p class="pb-hint" id="wait-hint">En attente de l'hôte…</p>
             <button class="pb-btn" id="btn-start" hidden>Lancer la partie</button>
             <button class="pb-btn ghost" id="btn-leave-lobby">Quitter la table</button>
+        </section>
+
+        <!-- SPECTATEUR (rejoint en cours de manche) -->
+        <section class="pb-view" id="v-spectator" hidden>
+            <div class="pb-spectator-box">
+                <p class="pb-spectator-title">Manche en cours</p>
+                <p class="pb-spectator-letter" id="spectator-letter" hidden>A</p>
+                <p class="pb-hint">Tu observes cette manche — tu joueras dès la prochaine !</p>
+            </div>
+            <button class="pb-btn ghost" id="btn-leave-spectator">Quitter la table</button>
         </section>
 
         <!-- CHOIX DE LA LETTRE PAR L'HÔTE -->
@@ -102,11 +124,11 @@
                     </svg>
                     <span class="pb-timer-num" id="timer-num">90</span>
                 </div>
-                <div class="pb-letter" id="round-letter">A</div>
                 <button class="pb-stop-mini" id="btn-stop">STOP</button>
             </header>
 
             <div class="pb-step-card">
+                <div class="pb-letter" id="round-letter">A</div>
                 <div class="pb-dots" id="pb-dots"></div>
                 <p class="pb-step-label" id="step-cat-name">Prénom</p>
                 <input id="step-input" type="text" maxlength="40" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false">
@@ -121,6 +143,7 @@
 
         <!-- VOTE (une réponse à la fois) -->
         <section class="pb-view" id="v-voting" hidden>
+            <div class="pb-round-progress"><div class="pb-round-progress-fill" id="round-progress-fill"></div></div>
             <p class="pb-hint" id="voting-progress">Catégorie 1 / 8</p>
             <div class="pb-vote-card" id="vote-normal">
                 <p class="pv-cat" id="vote-cat">Prénom</p>
@@ -131,6 +154,7 @@
                     <div class="pg-no" id="gauge-no"></div>
                     <span class="pg-spark" id="gauge-spark"></span>
                 </div>
+                <div class="pb-voters-row" id="voters-row"></div>
                 <div class="pb-vote-btns" id="vote-btns">
                     <button class="pv-btn no" id="btn-vote-no">Non</button>
                     <button class="pv-btn yes" id="btn-vote-yes">Oui</button>

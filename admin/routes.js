@@ -7,7 +7,7 @@ const fs = require('fs');
 
 module.exports = function attachAdmin(app, ctx) {
     const { requireAdmin, currentUser, isAdmin, users, saveUsers,
-            hashPassword, makeRecoveryCode, mf, redis, motus, motjuste } = ctx;
+            hashPassword, makeRecoveryCode, mf, redis, motus, motjuste, pbac } = ctx;
 
     // --- Journal des actions (mémoire + persistance légère) ---
     const LOG_KEY = 'mf:adminlog';
@@ -420,6 +420,28 @@ module.exports = function attachAdmin(app, ctx) {
         const api = P(); if (!api) return res.status(400).json({ error: 'Perudo indisponible.' });
         const ok = api.kick(String(req.body.sid || ''), req.body.message);
         if (ok) log(currentUser(req), 'joueur expulsé', String(req.body.pseudo || ''));
+        res.json({ ok });
+    });
+
+    // =================================================================
+    //  PETIT BAC
+    // =================================================================
+    const PB = () => ctx.pbac();
+
+    G('/pbac/overview', (req, res) => {
+        const api = PB();
+        if (!api) return res.json({ available: false });
+        res.json({
+            available: true,
+            tables: api.games(),
+            online: api.online(),
+        });
+    });
+
+    A('/pbac/close', (req, res) => {
+        const api = PB(); if (!api) return res.status(400).json({ error: 'Petit Bac indisponible.' });
+        const ok = api.endGame(String(req.body.id || ''));
+        if (ok) log(currentUser(req), 'table Petit Bac fermée', String(req.body.id || ''));
         res.json({ ok });
     });
 

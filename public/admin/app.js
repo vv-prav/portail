@@ -42,12 +42,13 @@ function fmtDur(sec) {
 // ---------- Onglets ----------
 $('ad-select').addEventListener('change', () => {
     const tab = $('ad-select').value;
-    ['home', 'accounts', 'perudo', 'grids', 'motus', 'motjuste', 'dict', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== tab); });
+    ['home', 'accounts', 'perudo', 'grids', 'motus', 'motjuste', 'pbac', 'dict', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== tab); });
     if (tab === 'accounts') loadAccounts();
     if (tab === 'perudo') loadPerudo();
     if (tab === 'grids') loadGrids();
     if (tab === 'motus') loadMotus();
     if (tab === 'motjuste') loadMotJuste();
+    if (tab === 'pbac') loadPbac();
     if (tab === 'dict') { loadDictStats(); loadDict(); }
     if (tab === 'system') { loadOverview(); loadAdmins(); }
     window.scrollTo(0, 0);
@@ -681,6 +682,34 @@ $('mj-vocab-add').addEventListener('click', async () => {
     $('mj-new-word').value = ''; $('mj-new-like').value = '';
     toast('Mot ajouté au vocabulaire.'); loadMotJusteVocab();
 });
+
+// ---------- Petit Bac ----------
+async function loadPbac() {
+    const { data } = await api('/api/admin/pbac/overview');
+    if (!data || !data.available) {
+        $('pbac-live').innerHTML = '<div class="kv-row"><span>Statut</span><b>indisponible</b></div>';
+        $('pbac-tables').innerHTML = '';
+        return;
+    }
+    $('pbac-live').innerHTML = `<div class="kv-row"><span>Joueurs connectés</span><b>${data.online.length}</b></div>
+        <div class="kv-row"><span>Tables actives</span><b>${data.tables.length}</b></div>`;
+    $('pbac-tables').innerHTML = data.tables.length ? data.tables.map(t => `
+        <div class="row static">
+            <span class="r-main">
+                <span class="r-name">Table de ${esc(t.host)} <i class="badge adm">${esc(t.status)}</i></span>
+                <span class="r-sub">${t.players.map(esc).join(', ') || 'aucun joueur'}</span>
+            </span>
+            <button class="mini danger" data-close="${esc(t.id)}" type="button">Fermer</button>
+        </div>`).join('') : '<p class="empty">Aucune table active.</p>';
+    $('pbac-tables').querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => {
+        ask('🛑', 'Fermer cette table ?', 'Les joueurs seront renvoyés au salon des parties.', [
+            { label: 'Confirmer', danger: true, run: async () => {
+                await api('/api/admin/pbac/close', { id: b.dataset.close });
+                toast('Table fermée.'); loadPbac();
+            } }]);
+    }));
+}
+$('pbac-refresh').addEventListener('click', loadPbac);
 
 // ---------- Administrateurs ----------
 async function loadAdmins() {
