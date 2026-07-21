@@ -14,7 +14,9 @@ app.get('/pbac/healthz', (req, res) => res.status(200).json({ ok: true, t: Date.
 const CATEGORIES = ['Prénom', 'Animal', 'Pays ou ville', 'Fruit ou légume', 'Métier', 'Objet', 'Couleur', 'Sport'];
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const DURATIONS = { court: 60, moyen: 90, long: 120 };
-const CHALLENGE_MS = 25 * 1000;
+const CARD_VOTE_MS = 8 * 1000;       // temps laissé pour voter une réponse
+const CARD_PAUSE_MS = 1100;          // pause après résolution avant la carte suivante
+const CATEGORY_SUMMARY_MS = 2600;    // récap affiché entre deux catégories
 const MAX_PLAYERS = 8;
 const PSEUDO_MAX = 20;
 
@@ -64,6 +66,146 @@ function pickLetter(g) {
     g.usedLetters.push(letter);
     return letter;
 }
+function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+    return a;
+}
+
+// La carte en cours de vote, telle qu'envoyée aux clients (jamais les votes des autres avant résolution).
+function currentCardPublic(g) {
+    if (g.status !== 'voting' || !g.reviewQueue[g.reviewIndex]) return null;
+    const { category, pseudo } = g.reviewQueue[g.reviewIndex];
+    const c = g.cardState;
+    return {
+        category, pseudo, text: g.answers[pseudo][category],
+        catIndex: g.categories.indexOf(category) + 1, catTotal: g.categories.length,
+        cardIndex: g.reviewQueue.slice(0, g.reviewIndex + 1).filter(x => x.category === category).length,
+        cardTotal: g.reviewQueue.filter(x => x.category === category).length,
+        yes: c.votes.filter(v => v === 'yes').length, no: c.votes.filter(v => v === 'no').length,
+        eligible: c.eligible.length, cardEnd: c.end, resolved: c.resolved, accepted: c.accepted,
+        iVoted: null,   // rempli côté envoi individuel (voir sendCardTo)
+    };
+}
+function sendCardTo(g, socket) {
+    const pub = currentCardPublic(g);
+    if (!pub) return;
+    const me = socket.data.pbacPseudo;
+    pub.iVoted = (g.cardState.voters[me]) || null;
+    pub.canVote = g.cardState.eligible.includes(me) && !pub.iVoted && !pub.resolved;
+    socket.emit('pbac_card', pub);
+}
+function broadcastCard(g) {
+    const pub = currentCardPublic(g);
+    if (!pub) return;
+    for (const p of g.players) {
+        const sock = io.sockets.sockets.get(p.sid);
+        if (!sock) continue;
+        const clone = { ...pub };
+        clone.iVoted = g.cardState.voters[p.pseudo] || null;
+        clone.canVote = g.cardState.eligible.includes(p.pseudo) && !clone.iVoted && !clone.resolved;
+        sock.emit('pbac_card', clone);
+    }
+}
+
+function buildReviewQueue(g) {
+    const q = [];
+    for (const cat of g.categories) {
+        const entries = g.players
+            .map(p => p.pseudo)
+            .filter(pseudo => {
+                const raw = (g.answers[pseudo] && g.answers[pseudo][cat]) || '';
+                const n = norm(raw);
+                return n && n[0] === g.letter;
+            });
+        shuffle(entries).forEach(pseudo => q.push({ category: cat, pseudo }));
+    }
+    return q;
+}
+
+function startCard(g) {
+    const entry = g.reviewQueue[g.reviewIndex];
+    if (!entry) { finalizeCategoryOrRound(g); return; }
+    const eligible = g.players.filter(p => p.connected && p.pseudo !== entry.pseudo).map(p => p.pseudo);
+    g.cardState = { votes: [], voters: {}, eligible, resolved: false, accepted: false, end: Date.now() + CARD_VOTE_MS };
+    g.status = 'voting';
+    broadcastCard(g);
+    if (!eligible.length) { resolveCard(g, true); return; }   // personne pour voter : accepté d'office
+    g._timer = setTimeout(() => resolveCard(g), CARD_VOTE_MS);
+}
+function resolveCard(g, forceAccept) {
+    clearTimeout(g._timer);
+    if (!g.cardState || g.cardState.resolved) return;
+    const c = g.cardState;
+    const accepted = typeof forceAccept === 'boolean' ? forceAccept : (c.votes.filter(v => v === 'yes').length > c.votes.filter(v => v === 'no').length);
+    c.resolved = true; c.accepted = accepted;
+    const entry = g.reviewQueue[g.reviewIndex];
+    g.voteOutcomes[entry.category + '|' + entry.pseudo] = accepted;
+    broadcastCard(g);
+    g._timer = setTimeout(() => {
+        g.reviewIndex++;
+        const next = g.reviewQueue[g.reviewIndex];
+        if (!next || next.category !== entry.category) finalizeCategoryOrRound(g, entry.category);
+        else startCard(g);
+    }, CARD_PAUSE_MS);
+}
+
+// Récapitulatif des points d'une catégorie (une fois toutes ses cartes votées),
+// puis passage à la catégorie suivante ou fin de manche.
+function finalizeCategoryOrRound(g, justFinishedCategory) {
+    if (justFinishedCategory) {
+        const pts = {};
+        const counts = {};
+        for (const p of g.players) pts[p.pseudo] = 0;
+        for (const p of g.players) {
+            const raw = (g.answers[p.pseudo] && g.answers[p.pseudo][justFinishedCategory]) || '';
+            const n = norm(raw);
+            const ok = g.voteOutcomes[justFinishedCategory + '|' + p.pseudo];
+            if (ok && n) counts[n] = (counts[n] || 0) + 1;
+        }
+        for (const p of g.players) {
+            const raw = (g.answers[p.pseudo] && g.answers[p.pseudo][justFinishedCategory]) || '';
+            const n = norm(raw);
+            const ok = g.voteOutcomes[justFinishedCategory + '|' + p.pseudo];
+            const gain = ok && n ? (counts[n] === 1 ? 3 : 1) : 0;
+            pts[p.pseudo] = gain;
+            g.categoryPoints[justFinishedCategory] = g.categoryPoints[justFinishedCategory] || {};
+            g.categoryPoints[justFinishedCategory][p.pseudo] = gain;
+        }
+        g.status = 'cat_summary';
+        g.lastCategory = justFinishedCategory;
+        broadcastState(g);
+        g._timer = setTimeout(() => {
+            if (!g.reviewQueue[g.reviewIndex]) finalizeRound(g);
+            else startCard(g);
+        }, CATEGORY_SUMMARY_MS);
+        return;
+    }
+    finalizeRound(g);
+}
+
+function finalizeRound(g) {
+    clearTimeout(g._timer);
+    const rs = {};
+    for (const p of g.players) rs[p.pseudo] = 0;
+    for (const cat of g.categories) {
+        const cp = g.categoryPoints[cat] || {};
+        for (const p of g.players) rs[p.pseudo] += cp[p.pseudo] || 0;
+    }
+    g.roundScores = rs;
+    for (const p of g.players) g.scores[p.pseudo] = (g.scores[p.pseudo] || 0) + rs[p.pseudo];
+    g.status = 'ended_round';
+    broadcastState(g);
+}
+
+function endRoundToVoting(g) {
+    clearTimeout(g._timer);
+    g.reviewQueue = buildReviewQueue(g);
+    g.reviewIndex = 0;
+    g.voteOutcomes = {}; g.categoryPoints = {};
+    if (!g.reviewQueue.length) { finalizeRound(g); return; }
+    startCard(g);
+}
 
 function stateForClient(g) {
     return {
@@ -71,91 +213,35 @@ function stateForClient(g) {
         categories: g.categories, maxRounds: g.maxRounds, round: g.round,
         duration: g.duration, letter: g.letter,
         timerEnd: g.status === 'writing' ? g.timerEnd : null,
-        challengeEnd: g.status === 'challenge' ? g.challengeEnd : null,
-        answers: (g.status === 'reveal' || g.status === 'challenge' || g.status === 'ended') ? g.answers : undefined,
-        breakdown: (g.status === 'reveal' || g.status === 'challenge' || g.status === 'ended') ? computeBreakdown(g) : undefined,
-        challenges: (g.status === 'challenge') ? challengesPublic(g) : undefined,
         stoppedBy: g.stoppedBy || null,
         roundScores: g.roundScores || null,
+        lastCategory: g.status === 'cat_summary' ? g.lastCategory : undefined,
+        categoryPoints: g.status === 'cat_summary' ? (g.categoryPoints[g.lastCategory] || {}) : undefined,
+        answers: g.status === 'cat_summary' ? mapAnswersFor(g, g.lastCategory) : undefined,
+        voteOutcomes: g.status === 'cat_summary' ? filterOutcomesFor(g, g.lastCategory) : undefined,
     };
 }
+function mapAnswersFor(g, cat) {
+    const out = {};
+    for (const p of g.players) out[p.pseudo] = (g.answers[p.pseudo] && g.answers[p.pseudo][cat]) || '';
+    return out;
+}
+function filterOutcomesFor(g, cat) {
+    const out = {};
+    for (const p of g.players) out[p.pseudo] = g.voteOutcomes[cat + '|' + p.pseudo] || false;
+    return out;
+}
 function broadcastState(g) { io.to(roomOf(g)).emit('pbac_state', stateForClient(g)); }
-
-function challengesPublic(g) {
-    const out = {};
-    for (const [k, set] of Object.entries(g.challenges)) out[k] = [...set];
-    return out;
-}
-
-// Calcule, pour chaque catégorie et chaque joueur, le statut de sa réponse
-// (valide/unique, valide/partagée, invalide) en tenant compte des contestations.
-function computeBreakdown(g) {
-    const out = {};
-    for (const cat of g.categories) {
-        const perPlayer = {};
-        const counts = {};
-        for (const p of g.players) {
-            const raw = (g.answers[p.pseudo] && g.answers[p.pseudo][cat]) || '';
-            const n = norm(raw);
-            const startsRight = n && n[0] === g.letter;
-            const key = cat + '|' + p.pseudo;
-            const challenged = (g.challenges[key] || new Set()).size >= Math.max(1, Math.ceil((g.players.length - 1) / 2));
-            const valid = !!(n && startsRight && !challenged);
-            perPlayer[p.pseudo] = { text: raw, normalized: n, valid, challenged: (g.challenges[key] || new Set()).size > 0 };
-            if (valid) counts[n] = (counts[n] || 0) + 1;
-        }
-        let catScore = {};
-        for (const p of g.players) {
-            const e = perPlayer[p.pseudo];
-            let pts = 0;
-            if (e.valid) pts = counts[e.normalized] === 1 ? 3 : 1;
-            e.points = pts;
-        }
-        out[cat] = perPlayer;
-    }
-    return out;
-}
-
-function roundScoresFrom(breakdown, g) {
-    const scores = {};
-    for (const p of g.players) scores[p.pseudo] = 0;
-    for (const cat of g.categories) {
-        for (const p of g.players) scores[p.pseudo] += (breakdown[cat][p.pseudo] || {}).points || 0;
-    }
-    return scores;
-}
-
-function endRoundToReveal(g) {
-    clearTimeout(g._timer);
-    g.status = 'reveal';
-    broadcastState(g);
-}
-function startChallenge(g) {
-    clearTimeout(g._timer);
-    g.status = 'challenge';
-    g.challengeEnd = Date.now() + CHALLENGE_MS;
-    broadcastState(g);
-    g._timer = setTimeout(() => finalizeRound(g), CHALLENGE_MS);
-}
-function finalizeRound(g) {
-    clearTimeout(g._timer);
-    const breakdown = computeBreakdown(g);
-    const rs = roundScoresFrom(breakdown, g);
-    g.roundScores = rs;
-    for (const p of g.players) g.scores[p.pseudo] = (g.scores[p.pseudo] || 0) + rs[p.pseudo];
-    g.status = 'ended_round';
-    broadcastState(g);
-}
 
 function startRound(g) {
     g.round++;
     g.letter = pickLetter(g);
-    g.answers = {}; g.challenges = {}; g.roundScores = null; g.stoppedBy = null;
+    g.answers = {}; g.roundScores = null; g.stoppedBy = null;
     for (const p of g.players) g.answers[p.pseudo] = {};
     g.status = 'writing';
     g.timerEnd = Date.now() + g.duration * 1000;
     broadcastState(g);
-    g._timer = setTimeout(() => { if (g.status === 'writing') endRoundToReveal(g); }, g.duration * 1000);
+    g._timer = setTimeout(() => { if (g.status === 'writing') endRoundToVoting(g); }, g.duration * 1000);
 }
 
 // =====================================================================
@@ -181,7 +267,8 @@ io.on('connection', (socket) => {
             categories: CATEGORIES.slice(),
             maxRounds: [3, 5, 7].includes(Number(rounds)) ? Number(rounds) : 5,
             duration: DURATIONS[duration] || DURATIONS.moyen,
-            round: 0, usedLetters: [], scores: {}, answers: {}, challenges: {},
+            round: 0, usedLetters: [], scores: {}, answers: {},
+            reviewQueue: [], reviewIndex: 0, voteOutcomes: {}, categoryPoints: {}, cardState: null,
         };
         games[id] = g;
         socketGame[socket.id] = id;
@@ -206,6 +293,7 @@ io.on('connection', (socket) => {
         socketGame[socket.id] = g.id;
         socket.join(roomOf(g));
         broadcastState(g);
+        if (g.status === 'voting') sendCardTo(g, socket);
         broadcastLobby();
     });
 
@@ -259,25 +347,20 @@ io.on('connection', (socket) => {
         const pseudo = socket.data.pbacPseudo;
         if (!g || g.status !== 'writing' || !pseudo) return;
         g.stoppedBy = pseudo;
-        endRoundToReveal(g);
+        endRoundToVoting(g);
     });
 
-    socket.on('pbac_go_challenge', () => {
-        const g = games[socketGame[socket.id]];
-        if (!g || g.host !== socket.data.pbacPseudo || g.status !== 'reveal') return;
-        startChallenge(g);
-    });
-
-    socket.on('pbac_challenge', ({ category, pseudo: target }) => {
+    socket.on('pbac_vote', ({ value }) => {
         const g = games[socketGame[socket.id]];
         const me = socket.data.pbacPseudo;
-        if (!g || g.status !== 'challenge' || !me || me === target) return;
-        if (!g.categories.includes(category)) return;
-        const key = category + '|' + target;
-        const set = g.challenges[key] || new Set();
-        if (set.has(me)) set.delete(me); else set.add(me);
-        g.challenges[key] = set;
-        broadcastState(g);
+        if (!g || g.status !== 'voting' || !me || !g.cardState) return;
+        if (value !== 'yes' && value !== 'no') return;
+        const c = g.cardState;
+        if (c.resolved || !c.eligible.includes(me) || c.voters[me]) return;
+        c.voters[me] = value;
+        c.votes.push(value);
+        if (c.votes.length >= c.eligible.length) resolveCard(g);
+        else broadcastCard(g);
     });
 
     socket.on('pbac_next_round', () => {

@@ -64,9 +64,9 @@
             <button class="pb-btn ghost" id="btn-leave-lobby">Quitter la table</button>
         </section>
 
-        <!-- ÉCRITURE -->
+        <!-- ÉCRITURE (un champ à la fois, chrono toujours visible) -->
         <section class="pb-view" id="v-writing" hidden>
-            <div class="pb-letter-row">
+            <header class="pb-write-head">
                 <div class="pb-timering">
                     <svg viewBox="0 0 64 64" class="pb-ring-svg">
                         <circle cx="32" cy="32" r="28" class="ring-bg"></circle>
@@ -75,17 +75,47 @@
                     <span class="pb-timer-num" id="timer-num">90</span>
                 </div>
                 <div class="pb-letter" id="round-letter">A</div>
+                <button class="pb-stop-mini" id="btn-stop">STOP</button>
+            </header>
+
+            <div class="pb-dots" id="pb-dots"></div>
+
+            <div class="pb-step-card">
+                <p class="pb-step-label" id="step-cat-name">Prénom</p>
+                <input id="step-input" type="text" maxlength="40" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false">
+                <div class="pb-step-nav">
+                    <button class="pb-btn ghost" id="step-prev">Précédent</button>
+                    <button class="pb-btn" id="step-next">Suivant</button>
+                </div>
             </div>
-            <div class="pb-fields" id="pb-fields"></div>
-            <button class="pb-stop" id="btn-stop">STOP</button>
+
+            <p class="pb-hint" id="write-done-hint" hidden>Tout est rempli — appuie sur STOP quand tu es prêt.</p>
         </section>
 
-        <!-- RÉVÉLATION / CONTESTATION -->
-        <section class="pb-view" id="v-reveal" hidden>
-            <p class="pb-hint" id="reveal-hint">Manche arrêtée.</p>
-            <div class="pb-challenge-timer" id="challenge-timer" hidden></div>
-            <div class="pb-reveal-list" id="pb-reveal-list"></div>
-            <button class="pb-btn" id="btn-go-challenge">Ouvrir la contestation</button>
+        <!-- VOTE (une réponse à la fois) -->
+        <section class="pb-view" id="v-voting" hidden>
+            <p class="pb-hint" id="voting-progress">Catégorie 1 / 8</p>
+            <div class="pb-vote-card">
+                <p class="pv-cat" id="vote-cat">Prénom</p>
+                <p class="pv-answer" id="vote-answer">Anaïs</p>
+                <p class="pv-author" id="vote-author">proposé par —</p>
+                <div class="pb-gauge">
+                    <div class="pg-yes" id="gauge-yes"></div>
+                    <div class="pg-no" id="gauge-no"></div>
+                </div>
+                <div class="pb-vote-btns" id="vote-btns">
+                    <button class="pv-btn no" id="btn-vote-no">Non</button>
+                    <button class="pv-btn yes" id="btn-vote-yes">Oui</button>
+                </div>
+                <p class="pv-outcome" id="vote-outcome" hidden></p>
+            </div>
+        </section>
+
+        <!-- RÉCAP DE CATÉGORIE -->
+        <section class="pb-view" id="v-cat-summary" hidden>
+            <p class="pb-hint">Catégorie terminée</p>
+            <h2 class="pb-section-title" id="summary-cat-name">Prénom</h2>
+            <div class="pb-summary-list" id="summary-list"></div>
         </section>
 
         <!-- FIN DE MANCHE -->

@@ -19,7 +19,7 @@ function toast(msg) {
     clearTimeout(el._t); el._t = setTimeout(() => { el.hidden = true; }, 2600);
 }
 function showView(id) {
-    ['v-lobby', 'v-waiting', 'v-writing', 'v-reveal', 'v-round-end', 'v-ended'].forEach(v => { $(v).hidden = (v !== id); });
+    ['v-lobby', 'v-waiting', 'v-writing', 'v-voting', 'v-cat-summary', 'v-round-end', 'v-ended'].forEach(v => { $(v).hidden = (v !== id); });
     currentView = id;
 }
 
@@ -36,6 +36,7 @@ function connect() {
     });
     socket.on('pbac_games', renderLobby);
     socket.on('pbac_state', onState);
+    socket.on('pbac_card', renderCard);
     socket.on('pbac_error', (msg) => toast(msg || 'Erreur.'));
     socket.on('pbac_closed', () => { toast('La table a été fermée.'); location.href = '/'; });
     socket.on('disconnect', () => toast('Connexion perdue, on retente…'));
@@ -91,9 +92,12 @@ function onState(s) {
         $('pb-round-tag').textContent = 'Manche ' + s.round + ' / ' + s.maxRounds;
         renderWriting(s);
         showView('v-writing');
-    } else if (s.status === 'reveal' || s.status === 'challenge') {
-        renderReveal(s);
-        showView('v-reveal');
+    } else if (s.status === 'voting') {
+        showView('v-voting');   // le contenu arrive via l'évènement pbac_card
+    } else if (s.status === 'cat_summary') {
+        clearInterval(timerId);
+        renderCatSummary(s);
+        showView('v-cat-summary');
     } else if (s.status === 'ended_round') {
         clearInterval(timerId);
         renderRoundEnd(s);
@@ -118,34 +122,60 @@ function renderWaiting(s) {
 }
 $('btn-start').addEventListener('click', () => socket.emit('pbac_start'));
 
-// ---------- Écriture ----------
+// ---------- Écriture : un champ à la fois, chrono toujours visible ----------
+let stepIndex = 0;
 function renderWriting(s) {
     const isNewRound = !$('round-letter')._letter || $('round-letter')._letter !== s.letter;
     $('round-letter').textContent = s.letter;
     $('round-letter')._letter = s.letter;
     if (isNewRound) {
-        answers = {};
+        answers = {}; stepIndex = 0;
         $('round-letter').classList.remove('pop'); void $('round-letter').offsetWidth;
         $('round-letter').classList.add('pop');
-        $('pb-fields').innerHTML = s.categories.map(cat => `
-            <div class="pb-field" data-cat="${esc(cat)}">
-                <label>${esc(cat)}</label>
-                <input type="text" maxlength="40" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false">
-            </div>`).join('');
-        $('pb-fields').querySelectorAll('input').forEach((inp, i) => {
-            inp.addEventListener('input', () => {
-                const cat = inp.closest('.pb-field').dataset.cat;
-                answers[cat] = inp.value;
-                inp.closest('.pb-field').classList.toggle('filled', !!inp.value.trim());
-                sendAnswersSoon();
-            });
-            if (i === 0) setTimeout(() => inp.focus(), 250);
-        });
+        $('pb-dots').innerHTML = s.categories.map((cat, i) => `<button type="button" class="pb-dot" data-i="${i}" aria-label="${esc(cat)}"></button>`).join('');
+        $('pb-dots').querySelectorAll('.pb-dot').forEach(d => d.addEventListener('click', () => goToStep(Number(d.dataset.i))));
+        goToStep(0);
     }
     clearInterval(timerId);
     updateRing(s.timerEnd);
     timerId = setInterval(() => updateRing(s.timerEnd), 250);
 }
+function goToStep(i) {
+    if (!state) return;
+    const cats = state.categories;
+    stepIndex = Math.max(0, Math.min(cats.length - 1, i));
+    const cat = cats[stepIndex];
+    $('step-cat-name').textContent = cat;
+    $('step-input').value = answers[cat] || '';
+    $('step-prev').style.visibility = stepIndex === 0 ? 'hidden' : 'visible';
+    $('step-next').textContent = stepIndex === cats.length - 1 ? 'Terminé' : 'Suivant';
+    paintDots();
+    setTimeout(() => $('step-input').focus(), 60);
+    checkAllFilled();
+}
+function paintDots() {
+    $('pb-dots').querySelectorAll('.pb-dot').forEach((d, i) => {
+        const cat = state.categories[i];
+        d.classList.toggle('filled', !!(answers[cat] && answers[cat].trim()));
+        d.classList.toggle('current', i === stepIndex);
+    });
+}
+function checkAllFilled() {
+    const all = state.categories.every(c => answers[c] && answers[c].trim());
+    $('write-done-hint').hidden = !all;
+    $('btn-stop').classList.toggle('pulse', all);
+}
+$('step-input').addEventListener('input', () => {
+    const cat = state.categories[stepIndex];
+    answers[cat] = $('step-input').value;
+    paintDots(); checkAllFilled(); sendAnswersSoon();
+});
+$('step-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('step-next').click(); } });
+$('step-prev').addEventListener('click', () => goToStep(stepIndex - 1));
+$('step-next').addEventListener('click', () => {
+    if (stepIndex < state.categories.length - 1) goToStep(stepIndex + 1);
+    else $('step-input').blur();
+});
 let sendT = null;
 function sendAnswersSoon() { clearTimeout(sendT); sendT = setTimeout(() => socket.emit('pbac_update_answers', answers), 350); }
 function updateRing(endTs) {
@@ -163,47 +193,51 @@ $('btn-stop').addEventListener('click', () => {
     if (navigator.vibrate) { try { navigator.vibrate([25, 40, 25]); } catch (e) {} }
 });
 
-// ---------- Révélation / contestation ----------
-function renderReveal(s) {
-    const isHost = s.host === myPseudo;
-    const inChallenge = s.status === 'challenge';
-    $('reveal-hint').textContent = inChallenge
-        ? 'Touche une réponse contestable pour la signaler.'
-        : (s.stoppedBy ? s.stoppedBy + ' a arrêté la manche.' : 'Temps écoulé.');
-    $('challenge-timer').hidden = !inChallenge;
-    $('btn-go-challenge').hidden = !isHost || inChallenge;
+// ---------- Vote : une réponse à la fois, jauge en direct ----------
+function renderCard(c) {
+    $('voting-progress').textContent = `Catégorie ${c.catIndex} / ${c.catTotal} · réponse ${c.cardIndex} / ${c.cardTotal}`;
+    $('vote-cat').textContent = c.category;
+    $('vote-answer').textContent = c.text;
+    $('vote-author').textContent = 'proposé par ' + c.pseudo;
 
-    $('pb-reveal-list').innerHTML = s.categories.map(cat => {
-        const rows = s.players.map(p => {
-            const e = (s.breakdown && s.breakdown[cat] && s.breakdown[cat][p.pseudo]) || { text: '', points: 0, valid: false };
-            const empty = !e.text;
-            const cls = empty ? 'empty' : (e.valid ? 'valid ' + (e.points === 3 ? 'unique' : 'shared') : 'invalid');
-            const challengeable = inChallenge && p.pseudo !== myPseudo && !empty;
-            const flagged = s.challenges && s.challenges[cat + '|' + p.pseudo] && s.challenges[cat + '|' + p.pseudo].length;
-            return `<div class="pr-ans ${cls}${challengeable ? ' challengeable' : ''}" data-cat="${esc(cat)}" data-pseudo="${esc(p.pseudo)}">
-                <span class="pa-name">${esc(p.pseudo)}</span>
-                <span class="pa-text">${esc(e.text) || '—'}</span>
-                ${flagged ? `<span class="pr-flag">${flagged} contestation${flagged > 1 ? 's' : ''}</span>` : ''}
-                <span class="pa-pts">${empty ? '' : (e.valid ? '+' + e.points : '✕')}</span>
-            </div>`;
-        }).join('');
-        return `<div class="pr-cat"><div class="pr-cat-name">${esc(cat)}</div>${rows}</div>`;
-    }).join('');
+    const total = c.eligible || 1;
+    $('gauge-yes').style.width = Math.round((c.yes / total) * 100) + '%';
+    $('gauge-no').style.width = Math.round((c.no / total) * 100) + '%';
 
-    if (inChallenge) {
-        $('pb-reveal-list').querySelectorAll('.challengeable').forEach(el => el.addEventListener('click', () => {
-            socket.emit('pbac_challenge', { category: el.dataset.cat, pseudo: el.dataset.pseudo });
-        }));
-        clearInterval(timerId);
-        const tick = () => {
-            const left = Math.max(0, (s.challengeEnd || 0) - Date.now());
-            $('challenge-timer').style.setProperty('--pct', Math.round(left / 250) + '%');
-            if (left <= 0) clearInterval(timerId);
-        };
-        tick(); timerId = setInterval(tick, 250);
+    const btns = $('vote-btns');
+    const outcome = $('vote-outcome');
+    if (c.resolved) {
+        btns.hidden = true;
+        outcome.hidden = false;
+        outcome.textContent = c.accepted ? 'Accepté' : 'Refusé';
+        outcome.className = 'pv-outcome ' + (c.accepted ? 'accepted' : 'rejected');
+        if (navigator.vibrate) { try { navigator.vibrate(c.accepted ? [20, 30, 20] : 25); } catch (e) {} }
+    } else {
+        outcome.hidden = true;
+        btns.hidden = false;
+        $('btn-vote-yes').disabled = !c.canVote;
+        $('btn-vote-no').disabled = !c.canVote;
+        $('btn-vote-yes').classList.toggle('chosen', c.iVoted === 'yes');
+        $('btn-vote-no').classList.toggle('chosen', c.iVoted === 'no');
     }
 }
-$('btn-go-challenge').addEventListener('click', () => socket.emit('pbac_go_challenge'));
+$('btn-vote-yes').addEventListener('click', () => socket.emit('pbac_vote', { value: 'yes' }));
+$('btn-vote-no').addEventListener('click', () => socket.emit('pbac_vote', { value: 'no' }));
+
+// ---------- Récap de catégorie ----------
+function renderCatSummary(s) {
+    $('summary-cat-name').textContent = s.lastCategory;
+    const ranked = state.players ? state.players.slice() : [];
+    const rows = ranked.map(p => {
+        const text = (s.answers && s.answers[p.pseudo]) || '';
+        const ok = s.voteOutcomes && s.voteOutcomes[p.pseudo];
+        const pts = (s.categoryPoints && s.categoryPoints[p.pseudo]) || 0;
+        const cls = !ok || pts === 0 ? 'zero' : (pts === 3 ? 'unique' : 'shared');
+        return `<div class="sm-row ${cls}"><span class="sm-name">${esc(p.pseudo)}</span><span class="sm-text">${esc(text) || '—'}</span><span class="sm-pts">+${pts}</span></div>`;
+    });
+    $('summary-list').innerHTML = rows.join('');
+    [...$('summary-list').children].forEach((row, i) => setTimeout(() => row.classList.add('show'), i * 90));
+}
 
 // ---------- Fin de manche : liste + animation d'égalité ----------
 function renderRoundEnd(s) {
