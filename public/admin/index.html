@@ -26,6 +26,7 @@
                 <option value="accounts">👥 Comptes</option>
                 <option value="perudo">🎲 Perudo</option>
                 <option value="grids">🧩 Grilles</option>
+                <option value="motus">🟨 Motus</option>
                 <option value="dict">📖 Dictionnaire</option>
                 <option value="system">⚙️ Système</option>
             </select>
@@ -100,6 +101,31 @@
                 <p class="card-sub">Aperçu des 7 prochains jours (non figées, elles peuvent encore changer).</p>
                 <button class="btn ghost" id="gr-next" type="button">Afficher l'aperçu</button>
                 <div class="log" id="gr-upcoming"></div>
+            </div>
+        </section>
+
+        <!-- MOTUS -->
+        <section class="pane" id="pane-motus" hidden>
+            <div class="card">
+                <h2 class="card-title">Difficulté observée (14 jours)</h2>
+                <div class="kv" id="mt-diff"></div>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Mot du jour</h2>
+                <input class="in" id="mt-date" type="date">
+                <div id="mt-word-box"></div>
+                <div id="mt-board-box"></div>
+                <button class="mini danger wide" id="mt-regen" type="button">Régénérer ce mot</button>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Discussion du jour</h2>
+                <div class="log" id="mt-cmts"></div>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Mots à venir</h2>
+                <p class="card-sub">Aperçu des 7 prochains jours (pas encore figés, ils peuvent encore changer).</p>
+                <button class="btn ghost" id="mt-next" type="button">Afficher l'aperçu</button>
+                <div class="log" id="mt-upcoming"></div>
             </div>
         </section>
 

@@ -677,6 +677,22 @@ function motusMarks(guess, answer) {
     }
     return res;
 }
+// Aperçu du mot d'un jour à venir, SANS le figer en base (pour l'admin).
+function motusWordPreview(date) {
+    const cached = mfGet(kMotusWord(date));
+    if (cached) return cached;
+    const pool = (motusDict.words()[MOTUS_LEN] || []).filter(w => w.n <= 2);
+    const recent = new Set();
+    for (let i = 1; i <= MOTUS_KEEP_WORD_DAYS; i++) {
+        const w = mfGet(kMotusWord(mfShiftDay(date, -i)));
+        if (w) recent.add(w);
+    }
+    let candidates = pool.filter(w => !recent.has(w.m));
+    if (!candidates.length) candidates = pool;
+    const rnd = motusRand(motusHashSeed('motus|' + date));
+    const pick = candidates[Math.floor(rnd() * candidates.length)] || pool[0];
+    return pick.m;
+}
 function motusStreak(user) {
     const days = new Set(mfGet(kMotusDays(user)) || []);
     let cur = 0, d = mfTodayId();
@@ -685,7 +701,7 @@ function motusStreak(user) {
     return { current: cur, total: days.size };
 }
 function motusBoard(date) {
-    return (mfGet(kMotusBoard(date)) || []).slice().sort((a, b) => a.tries - b.tries || a.ts - b.ts);
+    return (mfGet(kMotusBoard(date)) || []).filter(e => !e.susp).slice().sort((a, b) => a.tries - b.tries || a.ts - b.ts);
 }
 function motusDefFor(word) {
     const found = motusDict.find(word);
@@ -954,7 +970,7 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
     const motusProg = mfGet(kMotusProg(user, today));
     const motusDone = !!(motusProg && motusProg.solved);
     const motusOver = !!(motusProg && (motusProg.solved || motusProg.gaveUp || (motusProg.guesses || []).length >= MOTUS_TRIES));
-    const motusSolversToday = (mfGet(kMotusBoard(today)) || []).length;
+    const motusSolversToday = motusBoard(today).length;
     res.json({
         mf: { done, total: MF_LEVELS.length, streak }, perudo: { online, games },
         rec: { count: recs.length, fresh: recNew },
@@ -1020,6 +1036,11 @@ require('./admin/routes')(app, {
     mf: { get: mfGet, set: mfSet, del: mfDel, cache: () => mfCache, purge: mfPurge, levels: MF_LEVELS, today: mfTodayId, shift: mfShiftDay },
     redis: () => redis,
     perudo: () => perudoApi,
+    motus: {
+        word: motusWord, wordPreview: motusWordPreview, def: motusDefFor,
+        len: MOTUS_LEN, tries: MOTUS_TRIES,
+        kProg: kMotusProg, kBoard: kMotusBoard, kCmt: kMotusCmt,
+    },
 });
 
 

@@ -7,7 +7,7 @@ const fs = require('fs');
 
 module.exports = function attachAdmin(app, ctx) {
     const { requireAdmin, currentUser, isAdmin, users, saveUsers,
-            hashPassword, makeRecoveryCode, mf, redis } = ctx;
+            hashPassword, makeRecoveryCode, mf, redis, motus } = ctx;
 
     // --- Journal des actions (mémoire + persistance légère) ---
     const LOG_KEY = 'mf:adminlog';
@@ -548,6 +548,105 @@ module.exports = function attachAdmin(app, ctx) {
             delete out[lv].times;
         }
         res.json({ levels: out });
+    });
+
+    // =================================================================
+    //  MOTUS
+    // =================================================================
+    G('/motus/day', (req, res) => {
+        const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mf.today();
+        const word = motus.word(date);
+        const board = (mf.get(motus.kBoard(date)) || []).slice().sort((a, b) => a.tries - b.tries || a.ts - b.ts);
+        let started = 0, solved = 0, lost = 0;
+        for (const [k, v] of Object.entries(mf.cache())) {
+            if (!k.startsWith('motus:prog:') || !k.endsWith(`:${date}`) || !v) continue;
+            started++;
+            if (v.solved) solved++;
+            else if (v.gaveUp || (v.guesses || []).length >= motus.tries) lost++;
+        }
+        res.json({
+            date, today: mf.today(), word, definition: motus.def(word),
+            board: board.map(e => ({ u: e.u, tries: e.tries, susp: !!e.susp })),
+            started, solved, lost,
+        });
+    });
+
+    // Aperçu des mots à venir (pas encore figés)
+    G('/motus/upcoming', (req, res) => {
+        const today = mf.today();
+        const out = [];
+        for (let i = 1; i <= 7; i++) {
+            const date = mf.shift(today, i);
+            out.push({ date, word: motus.wordPreview(date) });
+        }
+        res.json({ days: out });
+    });
+
+    A('/motus/regen', (req, res) => {
+        const date = /^\d{4}-\d{2}-\d{2}$/.test(req.body.date || '') ? req.body.date : mf.today();
+        mf.del(`motus:word:${date}`);
+        for (const k of Object.keys(mf.cache())) if (k.startsWith('motus:prog:') && k.endsWith(`:${date}`)) mf.del(k);
+        mf.del(motus.kBoard(date));
+        log(currentUser(req), 'mot Motus régénéré', date);
+        res.json({ ok: true, word: motus.word(date) });
+    });
+
+    A('/motus/board/remove', (req, res) => {
+        const date = String(req.body.date || mf.today());
+        const pseudo = String(req.body.pseudo || '');
+        const key = motus.kBoard(date);
+        mf.set(key, (mf.get(key) || []).filter(e => e.u !== pseudo));
+        log(currentUser(req), 'score Motus supprimé', pseudo, date);
+        res.json({ ok: true });
+    });
+
+    A('/motus/board/flag', (req, res) => {
+        const date = String(req.body.date || mf.today());
+        const pseudo = String(req.body.pseudo || '');
+        const key = motus.kBoard(date);
+        mf.set(key, (mf.get(key) || []).map(e => (e.u === pseudo ? { ...e, susp: !e.susp } : e)));
+        log(currentUser(req), 'score Motus marqué', pseudo);
+        res.json({ ok: true });
+    });
+
+    A('/motus/progress/reset', (req, res) => {
+        const date = String(req.body.date || mf.today());
+        const pseudo = String(req.body.pseudo || '');
+        mf.del(motus.kProg(pseudo, date));
+        log(currentUser(req), 'progression Motus réinitialisée', pseudo, date);
+        res.json({ ok: true });
+    });
+
+    G('/motus/comments', (req, res) => {
+        const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mf.today();
+        res.json({ date, comments: mf.get(motus.kCmt(date)) || [] });
+    });
+    A('/motus/comments/remove', (req, res) => {
+        const date = String(req.body.date || mf.today());
+        const ts = Number(req.body.ts);
+        const key = motus.kCmt(date);
+        mf.set(key, (mf.get(key) || []).filter(c => c.ts !== ts));
+        log(currentUser(req), 'message Motus supprimé', String(req.body.u || ''));
+        res.json({ ok: true });
+    });
+
+    // Difficulté observée sur 14 jours
+    G('/motus/difficulty', (req, res) => {
+        const today = mf.today();
+        let started = 0, solved = 0, lost = 0;
+        const triesArr = [];
+        for (let i = 0; i < 14; i++) {
+            const date = mf.shift(today, -i);
+            for (const [k, v] of Object.entries(mf.cache())) {
+                if (!k.startsWith('motus:prog:') || !k.endsWith(`:${date}`) || !v) continue;
+                started++;
+                const nTries = (v.guesses || []).length;
+                if (v.solved) { solved++; triesArr.push(nTries); }
+                else if (v.gaveUp || nTries >= motus.tries) lost++;
+            }
+        }
+        const avg = triesArr.length ? Math.round((triesArr.reduce((a, b) => a + b, 0) / triesArr.length) * 10) / 10 : 0;
+        res.json({ started, solved, lost, avgTries: avg, rate: started ? Math.round(solved / started * 100) : 0 });
     });
 
     // =================================================================
