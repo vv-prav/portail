@@ -24,7 +24,7 @@ const I18N = {
         code_sub: "C'est le seul moyen de récupérer ton compte si tu oublies ton mot de passe. Il ne sera plus jamais affiché.",
         forgot_title: "Mot de passe oublié", forgot_sub: "Entre ton nom et le code de récupération noté à l'inscription.",
         forgot_send: "Réinitialiser", cancel: "Annuler",
-        app_perudo_d: "Le jeu de dés des pirates, en ligne.", app_motus_d: "Un mot à deviner en 6 essais.", app_juste_d: "Devine le mot secret à l'intuition.", app_mf_d: "Une nouvelle grille chaque jour.",
+        app_perudo_d: "Le jeu de dés des pirates, en ligne.", app_motus_d: "Un mot à deviner en 6 essais.", app_pbac_d: "Une lettre, huit catégories, à plusieurs.", app_juste_d: "Devine le mot secret à l'intuition.", app_mf_d: "Une nouvelle grille chaque jour.",
         app_recettes_d: "Garde et partage tes recettes.", app_admin_d: "Comptes, données et réglages.",
         b_open: "Ouvert", b_soon: "Bientôt", b_online: "en ligne", b_new_grid: "Nouvelle grille !",
         b_grid_done: "Grille du jour ✓", b_grid_part: "faites aujourd'hui",
@@ -51,7 +51,7 @@ const I18N = {
         code_sub: "It's the only way to recover your account if you forget your password. It will never be shown again.",
         forgot_title: "Forgot password", forgot_sub: "Enter your name and the recovery code from sign-up.",
         forgot_send: "Reset", cancel: "Cancel",
-        app_perudo_d: "The pirates' dice game, online.", app_motus_d: "Guess the word in 6 tries.", app_juste_d: "Guess the secret word by feel.", app_mf_d: "A fresh grid every day.",
+        app_perudo_d: "The pirates' dice game, online.", app_motus_d: "Guess the word in 6 tries.", app_pbac_d: "A letter, eight categories, with friends.", app_juste_d: "Guess the secret word by feel.", app_mf_d: "A fresh grid every day.",
         app_recettes_d: "Keep and share your recipes.", app_admin_d: "Accounts, data and settings.",
         b_open: "Open", b_soon: "Soon", b_online: "online", b_new_grid: "New grid!",
         b_grid_done: "Today's grid ✓", b_grid_part: "done today",
@@ -78,7 +78,7 @@ const I18N = {
         code_sub: "Es la única forma de recuperar tu cuenta si olvidas tu contraseña. No se mostrará nunca más.",
         forgot_title: "Contraseña olvidada", forgot_sub: "Escribe tu nombre y el código de recuperación.",
         forgot_send: "Restablecer", cancel: "Cancelar",
-        app_perudo_d: "El juego de dados pirata, en línea.", app_motus_d: "Adivina la palabra en 6 intentos.", app_juste_d: "Adivina la palabra secreta por intuición.", app_mf_d: "Una cuadrícula nueva cada día.",
+        app_perudo_d: "El juego de dados pirata, en línea.", app_motus_d: "Adivina la palabra en 6 intentos.", app_pbac_d: "Una letra, ocho categorías, en grupo.", app_juste_d: "Adivina la palabra secreta por intuición.", app_mf_d: "Una cuadrícula nueva cada día.",
         app_recettes_d: "Guarda y comparte tus recetas.", app_admin_d: "Cuentas, datos y ajustes.",
         b_open: "Abierto", b_soon: "Pronto", b_online: "en línea", b_new_grid: "¡Nueva cuadrícula!",
         b_grid_done: "Cuadrícula de hoy ✓", b_grid_part: "hechas hoy",
@@ -105,6 +105,7 @@ document.querySelectorAll('#lang-row button').forEach(b => b.addEventListener('c
 // ---------- Apps (Média retiré) ----------
 const GAME_APPS = [
     { id: 'perudo',   name: 'Perudo',       dKey: 'app_perudo_d',   emoji: '🎲', href: '/perudo',       accent: '#d9a94e', status: 'open' },
+    { id: 'pbac',     name: 'Petit Bac',    dKey: 'app_pbac_d',     emoji: '✏️', href: '/pbac',         accent: '#c2513a', status: 'open' },
     { id: 'motus',    name: 'Motus',        dKey: 'app_motus_d',    emoji: '🟨', href: '/motus',        accent: '#c9a24a', status: 'open' },
     { id: 'motjuste', name: 'Le Mot Juste', dKey: 'app_juste_d',    emoji: '🧊', href: '/motjuste',     accent: '#6fb8d9', status: 'open' },
     { id: 'mf',       name: 'Mots Fléchés', dKey: 'app_mf_d',       emoji: '🧩', href: '/mots-fleches', accent: '#5aa87a', status: 'open' },
@@ -145,6 +146,10 @@ function tileBadge(app) {
         if (pulse.motus.over) return `<span class="tile-badge part">${t('b_motus_over')}</span>`;
         if (pulse.motus.solvers > 0) return `<span class="tile-badge live">🟢 ${pulse.motus.solvers} ${t('b_motus_solvers')}</span>`;
         return `<span class="tile-badge new">✨ ${t('b_new_grid')}</span>`;
+    }
+    if (app.id === 'pbac' && pulse && pulse.pbac) {
+        if (pulse.pbac.online > 0) return `<span class="tile-badge live">🟢 ${pulse.pbac.online} ${t('b_online')}</span>`;
+        return `<span class="tile-badge open">${t('b_open')}</span>`;
     }
     if (app.id === 'motjuste' && pulse && pulse.motjuste) {
         if (pulse.motjuste.done) return `<span class="tile-badge done">${t('b_motus_done')}</span>`;

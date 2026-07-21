@@ -1017,6 +1017,12 @@ const perudoApi = require('./perudo/game')(app, io);
 app.use('/perudo', requireAuth, express.static(__dirname + '/public/perudo'));
 
 // ---------------------------------------------------------------------
+//  PETIT BAC — jeu temps réel multijoueur, intégré sous /pbac.
+// ---------------------------------------------------------------------
+const pbacApi = require('./pbac/game')(app, io);
+app.use('/pbac', requireAuth, express.static(__dirname + '/public/pbac'));
+
+// ---------------------------------------------------------------------
 //  RECETTES — carnet partagé du cercle
 //  Stockage : une clé par recette (rec:<id>) via le cache mfGet/mfSet.
 //  Photos : compressées côté client ; le serveur borne (miniature + grande).
@@ -1158,11 +1164,14 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
     const mjDone = !!(mjProg && mjProg.solved);
     const mjOver = !!(mjProg && (mjProg.solved || mjProg.gaveUp));
     const mjSolversToday = mjBoard(today).length;
+    let pbacOnline = 0;
+    try { pbacOnline = pbacApi.online().length; } catch (e) {}
     res.json({
         mf: { done, total: MF_LEVELS.length, streak }, perudo: { online, games },
         rec: { count: recs.length, fresh: recNew },
         motus: { done: motusDone, over: motusOver, solvers: motusSolversToday },
         motjuste: { done: mjDone, over: mjOver, solvers: mjSolversToday },
+        pbac: { online: pbacOnline },
     });
 });
 
@@ -1234,6 +1243,7 @@ require('./admin/routes')(app, {
         kProg: kMjProg, kBoard: kMjBoard, kCmt: kMjCmt,
         engine: mjEngine,
     },
+    pbac: () => pbacApi,
 });
 
 

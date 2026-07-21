@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+    <meta name="theme-color" content="#14100b">
+    <title>Petit Bac</title>
+    <link rel="icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="is-boot">
+
+    <div class="boot"><div class="boot-ring"></div></div>
+
+    <canvas id="fx" class="fx"></canvas>
+
+    <div class="pb" id="pb">
+        <header class="pb-head">
+            <a class="pb-back" href="/" aria-label="Retour au salon">←</a>
+            <div class="pb-titles">
+                <h1 class="pb-title">Petit Bac</h1>
+                <span class="pb-sub" id="pb-sub">Salon des parties</span>
+            </div>
+            <span class="pb-round-tag" id="pb-round-tag" hidden></span>
+        </header>
+
+        <!-- LOBBY : liste des tables -->
+        <section class="pb-view" id="v-lobby">
+            <button class="pb-btn" id="btn-create">Créer une table</button>
+            <p class="pb-list-label" id="lobby-empty-label" hidden>Aucune table ouverte pour l'instant.</p>
+            <div class="pb-tables" id="pb-tables"></div>
+        </section>
+
+        <!-- Réglages d'une nouvelle table -->
+        <div class="pb-overlay" id="v-create" hidden>
+            <div class="pb-card">
+                <h2 class="pb-card-title">Nouvelle table</h2>
+                <p class="pb-field-label">Manches</p>
+                <div class="pb-choice" id="opt-rounds">
+                    <button type="button" data-v="3">3</button>
+                    <button type="button" data-v="5" class="on">5</button>
+                    <button type="button" data-v="7">7</button>
+                </div>
+                <p class="pb-field-label">Durée d'écriture</p>
+                <div class="pb-choice" id="opt-duration">
+                    <button type="button" data-v="court">60 s</button>
+                    <button type="button" data-v="moyen" class="on">90 s</button>
+                    <button type="button" data-v="long">120 s</button>
+                </div>
+                <button class="pb-btn" id="create-confirm">Créer</button>
+                <button class="pb-btn ghost" id="create-cancel">Annuler</button>
+            </div>
+        </div>
+
+        <!-- SALLE D'ATTENTE -->
+        <section class="pb-view" id="v-waiting" hidden>
+            <div class="pb-players" id="wait-players"></div>
+            <p class="pb-hint" id="wait-hint">En attente de l'hôte…</p>
+            <button class="pb-btn" id="btn-start" hidden>Lancer la partie</button>
+            <button class="pb-btn ghost" id="btn-leave-lobby">Quitter la table</button>
+        </section>
+
+        <!-- ÉCRITURE -->
+        <section class="pb-view" id="v-writing" hidden>
+            <div class="pb-letter-row">
+                <div class="pb-timering">
+                    <svg viewBox="0 0 64 64" class="pb-ring-svg">
+                        <circle cx="32" cy="32" r="28" class="ring-bg"></circle>
+                        <circle cx="32" cy="32" r="28" class="ring-fg" id="ring-fg"></circle>
+                    </svg>
+                    <span class="pb-timer-num" id="timer-num">90</span>
+                </div>
+                <div class="pb-letter" id="round-letter">A</div>
+            </div>
+            <div class="pb-fields" id="pb-fields"></div>
+            <button class="pb-stop" id="btn-stop">STOP</button>
+        </section>
+
+        <!-- RÉVÉLATION / CONTESTATION -->
+        <section class="pb-view" id="v-reveal" hidden>
+            <p class="pb-hint" id="reveal-hint">Manche arrêtée.</p>
+            <div class="pb-challenge-timer" id="challenge-timer" hidden></div>
+            <div class="pb-reveal-list" id="pb-reveal-list"></div>
+            <button class="pb-btn" id="btn-go-challenge">Ouvrir la contestation</button>
+        </section>
+
+        <!-- FIN DE MANCHE -->
+        <section class="pb-view" id="v-round-end" hidden>
+            <h2 class="pb-section-title">Résultats de la manche</h2>
+            <div class="pb-score-list" id="round-score-list"></div>
+            <button class="pb-btn" id="btn-next-round">Manche suivante</button>
+        </section>
+
+        <!-- FIN DE PARTIE -->
+        <section class="pb-view" id="v-ended" hidden>
+            <div class="pb-podium" id="pb-podium"></div>
+            <button class="pb-btn" id="btn-rematch">Rejouer</button>
+            <a class="pb-btn ghost" href="/">Retour au salon</a>
+        </section>
+    </div>
+
+    <div class="pb-toast" id="pb-toast" hidden></div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
