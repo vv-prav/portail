@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+    <meta name="theme-color" content="#14100b">
+    <title>Motus du jour</title>
+    <link rel="icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="is-boot">
+
+    <div class="boot"><div class="boot-ring"></div></div>
+
+    <div class="mt" id="mt">
+        <header class="mt-head">
+            <a class="mt-back" href="/" aria-label="Retour au salon">←</a>
+            <div class="mt-titles">
+                <h1 class="mt-title">Motus</h1>
+                <span class="mt-date" id="mt-date"></span>
+            </div>
+            <span class="mt-tries" id="mt-tries">6</span>
+        </header>
+
+        <div class="mt-strip">
+            <span class="chip" id="mt-streak" hidden>🔥 <b>0</b></span>
+            <span class="chip" id="mt-next" title="Prochain mot">🕛 —</span>
+            <span class="chip live-chip" id="mt-live" hidden></span>
+            <span class="chip archive-chip" id="mt-archive-chip" hidden>📅 Archive</span>
+        </div>
+
+        <p class="mt-clue" id="mt-clue" data-i="clue_start">Devine le mot en 6 essais. La première lettre est offerte.</p>
+
+        <div class="mt-grid-wrap" id="mt-grid-wrap">
+            <div class="mt-grid" id="mt-grid"></div>
+            <input class="mt-shadow-input" id="mt-shadow" maxlength="6" autocomplete="off" autocorrect="off"
+                   autocapitalize="characters" spellcheck="false" inputmode="text" enterkeyhint="done"
+                   aria-hidden="true" tabindex="-1">
+            <div class="mt-start" id="mt-start">
+                <div class="mt-start-box">
+                    <div class="mt-start-emoji">🟨</div>
+                    <p class="mt-start-txt" data-i="start_txt">Un mot à deviner, une couleur pour chaque indice.</p>
+                    <button class="mt-btn" id="mt-start-btn" type="button" data-i="start_btn">Commencer</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-keys" id="mt-keys"></div>
+
+        <div class="mt-tools">
+            <button class="tool" id="t-erase"  type="button"><span>🧹</span><em data-i="tool_erase">Effacer</em></button>
+            <button class="tool" id="t-valid"  type="button"><span>✓</span><em data-i="tool_valid">Valider</em></button>
+            <button class="tool" id="t-giveup" type="button"><span>🏳️</span><em data-i="tool_giveup">Rendre</em></button>
+        </div>
+
+        <div class="mt-inline-board" id="mt-inline-board" hidden></div>
+
+        <div class="mt-panels">
+            <button class="panel-toggle" id="btn-comments" type="button">💬 <span data-i="panel_chat">Discussion du jour</span></button>
+            <button class="panel-toggle" id="btn-archive" type="button">📅 <span data-i="panel_arch">Mots précédents</span></button>
+        </div>
+    </div>
+
+    <!-- Fin de partie -->
+    <div class="mt-overlay" id="mt-end" hidden>
+        <div class="mt-card">
+            <div class="mt-end-emoji" id="mt-end-emoji">🎉</div>
+            <h2 class="mt-end-title" id="mt-end-title">Trouvé !</h2>
+            <p class="mt-end-word" id="mt-end-word"></p>
+            <p class="mt-end-def" id="mt-end-def"></p>
+            <p class="mt-end-sub" id="mt-end-sub"></p>
+            <div class="mt-board" id="mt-board"></div>
+            <button class="mt-btn" id="mt-end-close" type="button" data-i="close">Fermer</button>
+            <a class="mt-btn ghost" href="/" data-i="back_salon">Retour au salon</a>
+        </div>
+    </div>
+
+    <!-- Discussion -->
+    <div class="mt-overlay" id="mt-comments" hidden>
+        <div class="mt-card tall">
+            <h2 class="mt-end-title" data-i="panel_chat">Discussion du jour</h2>
+            <p class="mt-end-sub" data-i="chat_sub">Pas de spoilers, restez fair-play 🙂</p>
+            <div class="mt-chat" id="cmt-list"></div>
+            <div class="mt-chat-row">
+                <input id="cmt-input" maxlength="240" data-ph="chat_ph" placeholder="Ton message…" autocomplete="off">
+                <button class="mt-btn" id="cmt-send" type="button" data-i="chat_send">Envoyer</button>
+            </div>
+            <button class="mt-btn ghost" id="cmt-close" type="button" data-i="close">Fermer</button>
+        </div>
+    </div>
+
+    <!-- Archives -->
+    <div class="mt-overlay" id="mt-archive" hidden>
+        <div class="mt-card tall">
+            <h2 class="mt-end-title" data-i="panel_arch">Mots précédents</h2>
+            <p class="mt-end-sub" data-i="arch_sub">Rejouables, mais hors classement.</p>
+            <div class="mt-arch-list" id="arch-list"></div>
+            <button class="mt-btn" id="arch-today" type="button" data-i="arch_today">Revenir à aujourd'hui</button>
+            <button class="mt-btn ghost" id="arch-close" type="button" data-i="close">Fermer</button>
+        </div>
+    </div>
+
+    <!-- Confirmation générique -->
+    <div class="mt-overlay" id="mt-ask" hidden>
+        <div class="mt-card">
+            <div class="mt-end-emoji" id="ask-emoji">🏳️</div>
+            <h2 class="mt-end-title" id="ask-title">—</h2>
+            <p class="mt-end-sub" id="ask-sub">—</p>
+            <div id="ask-acts"></div>
+            <button class="mt-btn ghost" id="ask-cancel" type="button" data-i="cancel">Annuler</button>
+        </div>
+    </div>
+
+    <div class="mt-toast" id="mt-toast" hidden></div>
+    <script src="app.js"></script>
+</body>
+</html>

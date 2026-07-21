@@ -1,5 +1,5 @@
 // Incrémente cette version à CHAQUE changement de fichier statique.
-const CACHE_VERSION = 'salon-v11';
+const CACHE_VERSION = 'salon-v12';
 const CORE = [
     '/', '/index.html', '/app.js', '/style.css', '/manifest.json',
     '/icon-192.png', '/icon-512.png',
@@ -7,6 +7,7 @@ const CORE = [
     '/perudo/', '/perudo/app.js', '/perudo/style.css', '/perudo/glyphs.js',
     '/mots-fleches/', '/mots-fleches/app.js', '/mots-fleches/style.css',
     '/recettes/', '/recettes/app.js', '/recettes/style.css',
+    '/motus/', '/motus/app.js', '/motus/style.css',
 ];
 
 self.addEventListener('install', (e) => {

@@ -1,7 +1,7 @@
 {
   "name": "Le Salon",
   "short_name": "Salon",
-  "description": "Ton salon personnel : jeux, mots fléchés et recettes du cercle.",
+  "description": "Ton salon personnel : jeux, mots du jour et recettes du cercle.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#14100b",

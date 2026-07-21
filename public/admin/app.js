@@ -92,6 +92,7 @@ async function loadOverview() {
         ['🔑', data.mfKeys, 'clés en base'],
     ].map(([i, v, l]) => `<div class="stat"><span class="s-ico">${i}</span><b>${v}</b><em>${l}</em></div>`).join('');
     $('ann-text').value = data.announce || '';
+    $('ann-clear').hidden = !data.announce;
     $('sys-info').innerHTML = [
         ['Stockage', data.storage],
         ['Clés mots fléchés', data.mfKeys],
@@ -137,6 +138,14 @@ $('log-export').addEventListener('click', () => {
 $('ann-save').addEventListener('click', async () => {
     const { ok } = await api('/api/admin/announce', { text: $('ann-text').value });
     toast(ok ? ($('ann-text').value ? 'Annonce publiée.' : 'Annonce retirée.') : 'Erreur.');
+    $('ann-clear').hidden = !$('ann-text').value;
+});
+$('ann-clear').addEventListener('click', async () => {
+    const { ok } = await api('/api/admin/announce', { text: '' });
+    if (!ok) return toast('Erreur.');
+    $('ann-text').value = '';
+    $('ann-clear').hidden = true;
+    toast('Annonce retirée.');
 });
 
 // ---------- Comptes ----------

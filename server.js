@@ -338,7 +338,7 @@ async function mfFlush() {
 async function loadMf() {
     if (redis) {
         try {
-            const keys = [...await redis.keys('mf:*'), ...await redis.keys('rec:*')];
+            const keys = [...await redis.keys('mf:*'), ...await redis.keys('rec:*'), ...await redis.keys('motus:*')];
             for (let i = 0; i < keys.length; i += 50) {
                 const chunk = keys.slice(i, i + 50);
                 const vals = await redis.mget(...chunk);
@@ -355,24 +355,32 @@ async function loadMf() {
 // Ménage : on ne garde pas d'historique inutile
 function mfPurge() {
     const today = mfTodayId();
-    const limitShort = mfShiftDay(today, -MF_KEEP_DAYS);   // classements, messages
-    const limitLong = mfShiftDay(today, -MF_KEEP_GRIDS);   // grilles, progressions
+    const limitShort = mfShiftDay(today, -MF_KEEP_DAYS);              // classements, messages
+    const limitLong = mfShiftDay(today, -MF_KEEP_GRIDS);              // grilles, progressions
+    const limitMotusWord = mfShiftDay(today, -MOTUS_KEEP_WORD_DAYS);  // mots du jour (recul pour la rotation)
+    const limitMotusShort = mfShiftDay(today, -MOTUS_KEEP_SHORT_DAYS);
     let removed = 0;
     for (const k of Object.keys(mfCache)) {
         const parts = k.split(':');
         let date = null, limit = limitLong;
-        if (parts[1] === 'board' || parts[1] === 'cmt') { date = parts[2]; limit = limitShort; }
-        else if (parts[1] === 'grid' || parts[1] === 'hist') date = parts[2];
-        else if (parts[1] === 'prog') date = parts[3];
+        if (parts[0] === 'motus') {
+            if (parts[1] === 'word') { date = parts[2]; limit = limitMotusWord; }
+            else if (parts[1] === 'board' || parts[1] === 'cmt') { date = parts[2]; limit = limitMotusShort; }
+            else if (parts[1] === 'prog') { date = parts[3]; limit = limitMotusShort; }
+        } else {
+            if (parts[1] === 'board' || parts[1] === 'cmt') { date = parts[2]; limit = limitShort; }
+            else if (parts[1] === 'grid' || parts[1] === 'hist') date = parts[2];
+            else if (parts[1] === 'prog') date = parts[3];
+        }
         if (date && /^\d{4}-\d{2}-\d{2}$/.test(date) && date < limit) { mfDel(k); removed++; }
     }
     // les séries de jours ne sont pas datées : on borne leur taille
     for (const k of Object.keys(mfCache)) {
-        if (k.startsWith('mf:days:') && Array.isArray(mfCache[k]) && mfCache[k].length > 400) {
+        if ((k.startsWith('mf:days:') || k.startsWith('motus:days:')) && Array.isArray(mfCache[k]) && mfCache[k].length > 400) {
             mfSet(k, mfCache[k].slice(-400));
         }
     }
-    if (removed) console.log(`🧹 ${removed} clé(s) mots fléchés purgée(s).`);
+    if (removed) console.log(`🧹 ${removed} clé(s) purgée(s).`);
 }
 setInterval(mfPurge, 6 * 3600 * 1000);   // ménage toutes les 6 h
 
@@ -607,6 +615,202 @@ app.post('/api/mf/comments', requireAuth, (req, res) => {
 });
 
 // ---------------------------------------------------------------------
+//  MOTUS — mot du jour en 6 essais, première lettre révélée.
+//  Même infrastructure que les mots fléchés (cache par clés, rotation,
+//  classement, discussion) — juste un autre "jeu du jour".
+// ---------------------------------------------------------------------
+const motusDict = require('./motsfleches/dict');
+const MOTUS_LEN = 6;
+const MOTUS_TRIES = 6;
+const MOTUS_KEEP_WORD_DAYS = 60;    // recul pour éviter les répétitions de mot
+const MOTUS_KEEP_SHORT_DAYS = 15;   // classement / discussion / progression
+
+function motusHashSeed(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h >>> 0;
+}
+function motusRand(seed) {
+    let a = seed | 0;
+    return function () {
+        a = (a + 0x6D2B79F5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+const kMotusWord = (d) => `motus:word:${d}`;
+const kMotusProg = (u, d) => `motus:prog:${u}:${d}`;
+const kMotusBoard = (d) => `motus:board:${d}`;
+const kMotusCmt = (d) => `motus:cmt:${d}`;
+const kMotusDays = (u) => `motus:days:${u}`;
+
+// Mot du jour, déterministe (même mot pour tout le monde), sans répétition récente.
+function motusWord(date) {
+    const cached = mfGet(kMotusWord(date));
+    if (cached) return cached;
+    const pool = (motusDict.words()[MOTUS_LEN] || []).filter(w => w.n <= 2);
+    const recent = new Set();
+    for (let i = 1; i <= MOTUS_KEEP_WORD_DAYS; i++) {
+        const w = mfGet(kMotusWord(mfShiftDay(date, -i)));
+        if (w) recent.add(w);
+    }
+    let candidates = pool.filter(w => !recent.has(w.m));
+    if (!candidates.length) candidates = pool;
+    const rnd = motusRand(motusHashSeed('motus|' + date));
+    const pick = candidates[Math.floor(rnd() * candidates.length)] || pool[0];
+    mfSet(kMotusWord(date), pick.m);
+    return pick.m;
+}
+// Comparaison à la Wordle, robuste aux lettres répétées.
+function motusMarks(guess, answer) {
+    const res = Array(MOTUS_LEN).fill('absent');
+    const counts = {};
+    for (let i = 0; i < MOTUS_LEN; i++) {
+        if (guess[i] === answer[i]) res[i] = 'correct';
+        else counts[answer[i]] = (counts[answer[i]] || 0) + 1;
+    }
+    for (let i = 0; i < MOTUS_LEN; i++) {
+        if (res[i] === 'correct') continue;
+        const ch = guess[i];
+        if (counts[ch] > 0) { res[i] = 'present'; counts[ch]--; }
+    }
+    return res;
+}
+function motusStreak(user) {
+    const days = new Set(mfGet(kMotusDays(user)) || []);
+    let cur = 0, d = mfTodayId();
+    if (!days.has(d)) d = mfShiftDay(d, -1);
+    while (days.has(d)) { cur++; d = mfShiftDay(d, -1); }
+    return { current: cur, total: days.size };
+}
+function motusBoard(date) {
+    return (mfGet(kMotusBoard(date)) || []).slice().sort((a, b) => a.tries - b.tries || a.ts - b.ts);
+}
+function motusDefFor(word) {
+    const found = motusDict.find(word);
+    if (!found || !found.defs || !found.defs.length) return '';
+    return found.defs[0];
+}
+
+app.use('/motus', requireAuth, express.static(__dirname + '/public/motus'));
+
+app.get('/api/motus/today', requireAuth, (req, res) => {
+    const user = currentUser(req), today = mfTodayId();
+    let date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : today;
+    if (date > today) date = today;
+    const word = motusWord(date);
+    const prog = mfGet(kMotusProg(user, date)) || null;
+    const finished = !!(prog && (prog.solved || prog.gaveUp));
+    res.json({
+        date, today, isArchive: date !== today, nextIn: mfSecondsToMidnight(),
+        length: MOTUS_LEN, firstLetter: word[0],
+        progress: prog,
+        answer: finished ? word : undefined,
+        definition: finished ? motusDefFor(word) : undefined,
+    });
+});
+
+app.post('/api/motus/guess', requireAuth, (req, res) => {
+    const b = req.body || {};
+    const user = currentUser(req), today = mfTodayId();
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : today;
+    const word = motusWord(date);
+    const key = kMotusProg(user, date);
+    const prog = mfGet(key) || { guesses: [], solved: false, gaveUp: false, startedAt: Date.now() };
+    if (prog.solved || prog.gaveUp) return res.status(400).json({ error: 'La partie est déjà terminée.' });
+    if (prog.guesses.length >= MOTUS_TRIES) return res.status(400).json({ error: 'Plus de tentative disponible.' });
+
+    let guess = String(b.guess || '').toUpperCase().trim();
+    if (guess.length !== MOTUS_LEN || !/^[A-Z]+$/.test(guess)) return res.status(400).json({ error: `Un mot de ${MOTUS_LEN} lettres, sans accent.` });
+    if (guess[0] !== word[0]) return res.status(400).json({ error: `Le mot commence par ${word[0]}.` });
+    const known = (motusDict.words()[MOTUS_LEN] || []).some(w => w.m === guess);
+    if (!known && guess !== word) return res.status(400).json({ error: "Ce mot n'est pas dans le dictionnaire." });
+
+    const marks = motusMarks(guess, word);
+    const solved = guess === word;
+    prog.guesses.push({ word: guess, marks });
+    if (solved) prog.solved = true;
+    prog.startedAt = prog.startedAt || Date.now();
+    mfSet(key, prog);
+
+    const lost = !solved && prog.guesses.length >= MOTUS_TRIES;
+    let rank = null, board = [];
+    if (solved && date === today) {
+        const list = (mfGet(kMotusBoard(date)) || []).slice();
+        if (!list.some(e => e.u === user)) {
+            list.push({ u: user, tries: prog.guesses.length, ts: Date.now() });
+            mfSet(kMotusBoard(date), list);
+        }
+        const days = (mfGet(kMotusDays(user)) || []).slice();
+        if (!days.includes(date)) { days.push(date); mfSet(kMotusDays(user), days); }
+    }
+    if (solved || lost) {
+        board = motusBoard(date);
+        rank = board.findIndex(e => e.u === user) + 1;
+    }
+    res.json({
+        ok: true, marks, solved, lost,
+        guesses: prog.guesses.length, triesLeft: MOTUS_TRIES - prog.guesses.length,
+        answer: (solved || lost) ? word : undefined,
+        definition: (solved || lost) ? motusDefFor(word) : undefined,
+        rank: rank || undefined, total: board.length || undefined,
+        streak: solved ? motusStreak(user) : undefined,
+    });
+});
+
+app.post('/api/motus/giveup', requireAuth, (req, res) => {
+    const user = currentUser(req);
+    const date = /^\d{4}-\d{2}-\d{2}$/.test((req.body && req.body.date) || '') ? req.body.date : mfTodayId();
+    const word = motusWord(date);
+    const key = kMotusProg(user, date);
+    const prog = mfGet(key) || { guesses: [], solved: false, gaveUp: false };
+    if (!prog.solved) { prog.gaveUp = true; mfSet(key, prog); }
+    res.json({ ok: true, answer: word, definition: motusDefFor(word) });
+});
+
+app.get('/api/motus/board', requireAuth, (req, res) => {
+    const user = currentUser(req);
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mfTodayId();
+    const board = motusBoard(date);
+    res.json({ board: board.map(e => ({ u: e.u, tries: e.tries })), me: board.findIndex(e => e.u === user) + 1 });
+});
+app.get('/api/motus/state', requireAuth, (req, res) => {
+    const user = currentUser(req);
+    const date = mfTodayId();
+    const p = mfGet(kMotusProg(user, date));
+    const state = !p ? 'neuf' : (p.solved ? 'fini' : (p.gaveUp || (p.guesses || []).length >= MOTUS_TRIES ? 'abandon' : 'encours'));
+    res.json({ state, streak: motusStreak(user), nextIn: mfSecondsToMidnight() });
+});
+app.get('/api/motus/archive', requireAuth, (req, res) => {
+    const user = currentUser(req), today = mfTodayId();
+    const out = [];
+    for (let i = 1; i <= 14; i++) {
+        const d = mfShiftDay(today, -i);
+        const p = mfGet(kMotusProg(user, d));
+        out.push({ date: d, solved: !!(p && p.solved), tries: p ? (p.guesses || []).length : 0 });
+    }
+    res.json({ days: out });
+});
+
+app.get('/api/motus/comments', requireAuth, (req, res) => {
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mfTodayId();
+    res.json({ comments: (mfGet(kMotusCmt(date)) || []).slice(-60) });
+});
+app.post('/api/motus/comments', requireAuth, (req, res) => {
+    const user = currentUser(req), date = mfTodayId();
+    const txt = String((req.body && req.body.text) || '').trim().slice(0, 240);
+    if (!txt) return res.status(400).json({ error: 'Message vide.' });
+    const list = (mfGet(kMotusCmt(date)) || []).slice();
+    const last = list.filter(c => c.u === user).slice(-1)[0];
+    if (last && Date.now() - last.ts < 4000) return res.status(429).json({ error: 'Doucement !' });
+    list.push({ u: user, t: escapeHtml(txt), ts: Date.now() });
+    if (list.length > 200) list.splice(0, list.length - 200);
+    mfSet(kMotusCmt(date), list);
+    res.json({ ok: true, comments: list.slice(-60) });
+});
+
+// ---------------------------------------------------------------------
 //  PERUDO — jeu temps réel, intégré au monolithe sous /perudo.
 //  Le front est protégé par le login du salon ; /perudo/healthz reste public.
 // ---------------------------------------------------------------------
@@ -747,7 +951,15 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
     while (days.has(d)) { streak++; d = mfShiftDay(d, -1); }
     const recs = recAll();
     const recNew = recs.filter(r => Date.now() - (r.createdAt || 0) < 7 * 864e5).length;
-    res.json({ mf: { done, total: MF_LEVELS.length, streak }, perudo: { online, games }, rec: { count: recs.length, fresh: recNew } });
+    const motusProg = mfGet(kMotusProg(user, today));
+    const motusDone = !!(motusProg && motusProg.solved);
+    const motusOver = !!(motusProg && (motusProg.solved || motusProg.gaveUp || (motusProg.guesses || []).length >= MOTUS_TRIES));
+    const motusSolversToday = (mfGet(kMotusBoard(today)) || []).length;
+    res.json({
+        mf: { done, total: MF_LEVELS.length, streak }, perudo: { online, games },
+        rec: { count: recs.length, fresh: recNew },
+        motus: { done: motusDone, over: motusOver, solvers: motusSolversToday },
+    });
 });
 
 app.get('/api/salon/profile', requireAuthApi, (req, res) => {
