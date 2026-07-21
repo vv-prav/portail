@@ -28,6 +28,8 @@ const I18N = {
         app_recettes_d: "Garde et partage tes recettes.", app_admin_d: "Comptes, données et réglages.",
         b_open: "Ouvert", b_soon: "Bientôt", b_online: "en ligne", b_new_grid: "Nouvelle grille !",
         b_grid_done: "Grille du jour ✓", b_grid_part: "faites aujourd'hui",
+        folder_games: "Jeux", folder_games_count: "jeux",
+        b_folder_todo: "à jouer", b_folder_done: "tout fait aujourd'hui",
         b_rec_new: "cette semaine", b_rec_count: "recettes",
         b_motus_done: "Trouvé ✓", b_motus_over: "Terminé", b_motus_solvers: "ont trouvé",
     },
@@ -53,6 +55,8 @@ const I18N = {
         app_recettes_d: "Keep and share your recipes.", app_admin_d: "Accounts, data and settings.",
         b_open: "Open", b_soon: "Soon", b_online: "online", b_new_grid: "New grid!",
         b_grid_done: "Today's grid ✓", b_grid_part: "done today",
+        folder_games: "Games", folder_games_count: "games",
+        b_folder_todo: "to play", b_folder_done: "all done today",
         b_rec_new: "this week", b_rec_count: "recipes",
         b_motus_done: "Found ✓", b_motus_over: "Finished", b_motus_solvers: "found it",
     },
@@ -78,6 +82,8 @@ const I18N = {
         app_recettes_d: "Guarda y comparte tus recetas.", app_admin_d: "Cuentas, datos y ajustes.",
         b_open: "Abierto", b_soon: "Pronto", b_online: "en línea", b_new_grid: "¡Nueva cuadrícula!",
         b_grid_done: "Cuadrícula de hoy ✓", b_grid_part: "hechas hoy",
+        folder_games: "Juegos", folder_games_count: "juegos",
+        b_folder_todo: "por jugar", b_folder_done: "todo hecho hoy",
         b_rec_new: "esta semana", b_rec_count: "recetas",
         b_motus_done: "Encontrada ✓", b_motus_over: "Terminado", b_motus_solvers: "lo encontraron",
     },
@@ -97,16 +103,19 @@ document.querySelectorAll('#lang-row button').forEach(b => b.addEventListener('c
 }));
 
 // ---------- Apps (Média retiré) ----------
-const APPS = [
+const GAME_APPS = [
     { id: 'perudo',   name: 'Perudo',       dKey: 'app_perudo_d',   emoji: '🎲', href: '/perudo',       accent: '#d9a94e', status: 'open' },
     { id: 'motus',    name: 'Motus',        dKey: 'app_motus_d',    emoji: '🟨', href: '/motus',        accent: '#c9a24a', status: 'open' },
     { id: 'motjuste', name: 'Le Mot Juste', dKey: 'app_juste_d',    emoji: '🧊', href: '/motjuste',     accent: '#6fb8d9', status: 'open' },
     { id: 'mf',       name: 'Mots Fléchés', dKey: 'app_mf_d',       emoji: '🧩', href: '/mots-fleches', accent: '#5aa87a', status: 'open' },
+];
+const OTHER_APPS = [
     { id: 'recettes', name: 'Recettes',     dKey: 'app_recettes_d', emoji: '🍽️', href: '/recettes',    accent: '#e07a4e', status: 'open' },
 ];
 const ADMIN_APP = { id: 'admin', name: 'Administration', dKey: 'app_admin_d', emoji: '🛡️', href: '/admin', accent: '#c96f6f', status: 'open' };
 let isAdminUser = false;
 let pulse = null;
+let gamesOpen = localStorage.getItem('erquy_games_open') === '1';
 
 async function api(path, body) {
     const res = await fetch(path, {
@@ -151,21 +160,59 @@ function tileBadge(app) {
     }
     return `<span class="tile-badge open">${t('b_open')}</span>`;
 }
+function renderTile(a) {
+    const open = a.status === 'open';
+    const inner = `
+        <span class="tile-mark">${a.emoji}</span>
+        <span class="tile-body">
+            <span class="tile-name">${esc(a.name)}</span>
+            <span class="tile-desc">${t(a.dKey)}</span>
+        </span>
+        ${tileBadge(a)}`;
+    return open
+        ? `<a class="tile" href="${a.href}" style="--accent:${a.accent}">${inner}</a>`
+        : `<div class="tile is-soon" style="--accent:${a.accent}" aria-disabled="true">${inner}</div>`;
+}
+
+// Résumé affiché sur le dossier fermé : priorité au direct, sinon aux nouveautés du jour.
+function folderBadge() {
+    if (pulse && pulse.perudo && pulse.perudo.online > 0) {
+        return `<span class="tile-badge live">🟢 ${pulse.perudo.online} ${t('b_online')}</span>`;
+    }
+    let fresh = 0;
+    if (pulse) {
+        if (pulse.mf && pulse.mf.done < pulse.mf.total) fresh++;
+        if (pulse.motus && !pulse.motus.over) fresh++;
+        if (pulse.motjuste && !pulse.motjuste.over) fresh++;
+    }
+    if (fresh > 0) return `<span class="tile-badge new">✨ ${fresh} ${t('b_folder_todo')}</span>`;
+    return `<span class="tile-badge done">${t('b_folder_done')}</span>`;
+}
+
 function renderTiles() {
-    const list = isAdminUser ? APPS.concat(ADMIN_APP) : APPS;
-    $('tiles').innerHTML = list.map(a => {
-        const open = a.status === 'open';
-        const inner = `
-            <span class="tile-mark">${a.emoji}</span>
+    const gamesInner = GAME_APPS.map((a, i) => `<div class="folder-item" style="--d:${i * 55}ms">${renderTile(a)}</div>`).join('');
+    const folder = `
+        <button class="tile folder-card${gamesOpen ? ' open' : ''}" id="folder-games" type="button" style="--accent:#d9a94e">
+            <span class="tile-mark">🎲</span>
             <span class="tile-body">
-                <span class="tile-name">${esc(a.name)}</span>
-                <span class="tile-desc">${t(a.dKey)}</span>
+                <span class="tile-name">${t('folder_games')}</span>
+                <span class="tile-desc">${GAME_APPS.length} ${t('folder_games_count')}</span>
             </span>
-            ${tileBadge(a)}`;
-        return open
-            ? `<a class="tile" href="${a.href}" style="--accent:${a.accent}">${inner}</a>`
-            : `<div class="tile is-soon" style="--accent:${a.accent}" aria-disabled="true">${inner}</div>`;
-    }).join('');
+            ${folderBadge()}
+            <span class="folder-chevron">⌄</span>
+        </button>
+        <div class="folder-tray${gamesOpen ? ' open' : ''}" id="folder-tray">
+            <div class="folder-tray-inner">${gamesInner}</div>
+        </div>`;
+
+    const rest = OTHER_APPS.map(renderTile).join('') + (isAdminUser ? renderTile(ADMIN_APP) : '');
+    $('tiles').innerHTML = folder + rest;
+
+    $('folder-games').addEventListener('click', () => {
+        gamesOpen = !gamesOpen;
+        localStorage.setItem('erquy_games_open', gamesOpen ? '1' : '0');
+        renderTiles();
+    });
 }
 
 async function loadPulse() {

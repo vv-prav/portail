@@ -116,6 +116,23 @@ body.is-hub   .hub   { display: block; }
 
 .hub-foot { text-align: center; color: #6f6350; font-size: 0.78rem; margin: 26px 0 4px; }
 
+/* --- Dossier "Jeux" dépliable --- */
+.folder-card { width: 100%; cursor: pointer; font-family: inherit; text-align: left; padding-right: 116px; }
+.folder-card .tile-badge { right: 40px; }
+.folder-chevron { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 1rem;
+                  color: var(--muted); transition: transform 0.3s ease; }
+.folder-card.open .folder-chevron { transform: translateY(-50%) rotate(180deg); }
+.folder-card.open { border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
+                     box-shadow: 0 8px 20px rgba(0,0,0,0.32), inset 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent); }
+
+.folder-tray { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); margin-top: -4px; }
+.folder-tray.open { grid-template-rows: 1fr; margin-top: 10px; }
+.folder-tray-inner { overflow: hidden; min-width: 0; display: flex; flex-direction: column; gap: 10px;
+                      padding: 2px 0 2px 18px; border-left: 2px solid color-mix(in srgb, var(--brass) 30%, transparent); }
+.folder-item { opacity: 0; transform: translateY(-6px); }
+.folder-tray.open .folder-item { animation: folderItemIn 0.32s ease forwards; animation-delay: var(--d, 0ms); }
+@keyframes folderItemIn { to { opacity: 1; transform: translateY(0); } }
+
 /* --- Placeholder d'une app --- */
 .app-placeholder { min-height: 100dvh; display: grid; place-items: center; padding: 20px; }
 .ph-card { max-width: 400px; text-align: center; background: linear-gradient(165deg, var(--ink-2), var(--ink)); border: 1px solid var(--line); border-radius: 20px; padding: 40px 26px; box-shadow: var(--shadow); }
