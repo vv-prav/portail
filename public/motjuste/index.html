@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+    <meta name="theme-color" content="#0a1420">
+    <title>Le Mot Juste</title>
+    <link rel="icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="is-boot temp-cold">
+
+    <div class="boot"><div class="boot-ring"></div></div>
+
+    <canvas id="fx" class="fx"></canvas>
+
+    <div class="mj" id="mj">
+        <header class="mj-head">
+            <a class="mj-back" href="/" aria-label="Retour au salon">←</a>
+            <div class="mj-titles">
+                <h1 class="mj-title">Le Mot Juste</h1>
+                <span class="mj-date" id="mj-date"></span>
+            </div>
+            <span class="mj-gauge" id="mj-gauge">
+                <span class="mj-gauge-fill" id="mj-gauge-fill"></span>
+            </span>
+        </header>
+
+        <div class="mj-strip">
+            <span class="chip" id="mj-streak" hidden>🔥 <b>0</b></span>
+            <span class="chip" id="mj-next" title="Prochain mot">🕛 —</span>
+            <span class="chip live-chip" id="mj-live" hidden></span>
+            <span class="chip archive-chip" id="mj-archive-chip" hidden>📅 Archive</span>
+            <span class="chip" id="mj-vocab" title="Taille du vocabulaire">📖 —</span>
+        </div>
+
+        <p class="mj-clue" id="mj-clue" data-i="clue_start">Devine le mot secret : plus tu es proche par le sens, plus c'est chaud.</p>
+
+        <div class="mj-thermo-row">
+            <div class="mj-thermo" id="mj-thermo">
+                <div class="mj-thermo-tube">
+                    <div class="mj-thermo-fill" id="mj-thermo-fill"></div>
+                </div>
+                <div class="mj-thermo-bulb" id="mj-thermo-bulb"><span id="mj-thermo-emoji">🧊</span></div>
+            </div>
+            <div class="mj-last" id="mj-last">
+                <span class="mj-last-word" id="mj-last-word">—</span>
+                <span class="mj-last-score" id="mj-last-score">—</span>
+            </div>
+        </div>
+
+        <form class="mj-search" id="mj-form" autocomplete="off">
+            <input id="mj-input" type="text" data-ph="guess_ph" placeholder="Un mot…" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="30">
+            <button type="submit" data-i="guess_send">Envoyer</button>
+        </form>
+
+        <div class="mj-list-head">
+            <span data-i="list_word">Mot</span><span data-i="list_score">Proximité</span>
+        </div>
+        <div class="mj-list" id="mj-list"></div>
+        <p class="mj-empty" id="mj-empty" data-i="list_empty">Tape un premier mot pour commencer à chercher.</p>
+
+        <div class="mj-tools">
+            <button class="tool" id="t-giveup" type="button"><span>🏳️</span><em data-i="tool_giveup">Rendre</em></button>
+            <button class="panel-toggle" id="btn-comments" type="button">💬 <span data-i="panel_chat">Discussion</span></button>
+            <button class="panel-toggle" id="btn-archive" type="button">📅 <span data-i="panel_arch">Archives</span></button>
+        </div>
+    </div>
+
+    <!-- Fin de partie -->
+    <div class="mj-overlay" id="mj-end" hidden>
+        <div class="mj-card">
+            <div class="mj-end-emoji" id="mj-end-emoji">🎉</div>
+            <h2 class="mj-end-title" id="mj-end-title">Trouvé !</h2>
+            <p class="mj-end-word" id="mj-end-word"></p>
+            <p class="mj-end-sub" id="mj-end-sub"></p>
+            <div class="mj-board" id="mj-board"></div>
+            <button class="mj-btn" id="mj-end-close" type="button" data-i="close">Fermer</button>
+            <a class="mj-btn ghost" href="/" data-i="back_salon">Retour au salon</a>
+        </div>
+    </div>
+
+    <!-- Discussion -->
+    <div class="mj-overlay" id="mj-comments" hidden>
+        <div class="mj-card tall">
+            <h2 class="mj-end-title" data-i="panel_chat">Discussion du jour</h2>
+            <p class="mj-end-sub" data-i="chat_sub">Pas de spoilers, restez fair-play 🙂</p>
+            <div class="mj-chat" id="cmt-list"></div>
+            <div class="mj-chat-row">
+                <input id="cmt-input" maxlength="240" data-ph="chat_ph" placeholder="Ton message…" autocomplete="off">
+                <button class="mj-btn" id="cmt-send" type="button" data-i="chat_send">Envoyer</button>
+            </div>
+            <button class="mj-btn ghost" id="cmt-close" type="button" data-i="close">Fermer</button>
+        </div>
+    </div>
+
+    <!-- Archives -->
+    <div class="mj-overlay" id="mj-archive" hidden>
+        <div class="mj-card tall">
+            <h2 class="mj-end-title" data-i="panel_arch">Mots précédents</h2>
+            <p class="mj-end-sub" data-i="arch_sub">Rejouables, mais hors classement.</p>
+            <div class="mj-arch-list" id="arch-list"></div>
+            <button class="mj-btn" id="arch-today" type="button" data-i="arch_today">Revenir à aujourd'hui</button>
+            <button class="mj-btn ghost" id="arch-close" type="button" data-i="close">Fermer</button>
+        </div>
+    </div>
+
+    <!-- Confirmation -->
+    <div class="mj-overlay" id="mj-ask" hidden>
+        <div class="mj-card">
+            <div class="mj-end-emoji" id="ask-emoji">🏳️</div>
+            <h2 class="mj-end-title" id="ask-title">—</h2>
+            <p class="mj-end-sub" id="ask-sub">—</p>
+            <div id="ask-acts"></div>
+            <button class="mj-btn ghost" id="ask-cancel" type="button" data-i="cancel">Annuler</button>
+        </div>
+    </div>
+
+    <div class="mj-toast" id="mj-toast" hidden></div>
+    <script src="app.js"></script>
+</body>
+</html>

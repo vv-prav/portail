@@ -27,6 +27,7 @@
                 <option value="perudo">🎲 Perudo</option>
                 <option value="grids">🧩 Grilles</option>
                 <option value="motus">🟨 Motus</option>
+                <option value="motjuste">🧊 Le Mot Juste</option>
                 <option value="dict">📖 Dictionnaire</option>
                 <option value="system">⚙️ Système</option>
             </select>
@@ -126,6 +127,41 @@
                 <p class="card-sub">Aperçu des 7 prochains jours (pas encore figés, ils peuvent encore changer).</p>
                 <button class="btn ghost" id="mt-next" type="button">Afficher l'aperçu</button>
                 <div class="log" id="mt-upcoming"></div>
+            </div>
+        </section>
+
+        <!-- LE MOT JUSTE -->
+        <section class="pane" id="pane-motjuste" hidden>
+            <div class="card">
+                <h2 class="card-title">Difficulté observée (14 jours)</h2>
+                <div class="kv" id="mj-diff"></div>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Mot du jour</h2>
+                <input class="in" id="mj-date" type="date">
+                <div id="mj-word-box"></div>
+                <div id="mj-neighbors-box"></div>
+                <div id="mj-board-box"></div>
+                <button class="mini danger wide" id="mj-regen" type="button">Régénérer ce mot</button>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Discussion du jour</h2>
+                <div class="log" id="mj-cmts"></div>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Mots à venir</h2>
+                <p class="card-sub">Aperçu des 7 prochains jours (pas encore figés).</p>
+                <button class="btn ghost" id="mj-next" type="button">Afficher l'aperçu</button>
+                <div class="log" id="mj-upcoming"></div>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Vocabulaire (<span id="mj-vocab-count">—</span> mots)</h2>
+                <p class="card-sub">Ajoute un mot en indiquant le mot déjà connu dont il est le plus proche — sa position dans l'espace sémantique sera calquée dessus.</p>
+                <input class="in" id="mj-new-word" placeholder="Nouveau mot…" autocapitalize="off">
+                <input class="in" id="mj-new-like" placeholder="Mot déjà connu le plus proche…" autocapitalize="off">
+                <button class="btn" id="mj-vocab-add" type="button">Ajouter au vocabulaire</button>
+                <input class="in" id="mj-vocab-q" placeholder="Rechercher dans le vocabulaire…" style="margin-top:14px">
+                <div class="list" id="mj-vocab-list"></div>
             </div>
         </section>
 

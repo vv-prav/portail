@@ -338,7 +338,7 @@ async function mfFlush() {
 async function loadMf() {
     if (redis) {
         try {
-            const keys = [...await redis.keys('mf:*'), ...await redis.keys('rec:*'), ...await redis.keys('motus:*')];
+            const keys = [...await redis.keys('mf:*'), ...await redis.keys('rec:*'), ...await redis.keys('motus:*'), ...await redis.keys('mj:*')];
             for (let i = 0; i < keys.length; i += 50) {
                 const chunk = keys.slice(i, i + 50);
                 const vals = await redis.mget(...chunk);
@@ -349,6 +349,10 @@ async function loadMf() {
     } else {
         try { mfCache = JSON.parse(fs.readFileSync('./mf_data.json', 'utf-8')) || {}; } catch (e) { mfCache = {}; }
     }
+    // Vocabulaire du Mot Juste ajouté depuis l'admin (persisté à part des overrides du dictionnaire)
+    const mjCustom = mfCache['mj:custom'] || {};
+    for (const [word, vec] of Object.entries(mjCustom)) mjEngine.addCustomWord(word, vec);
+    if (Object.keys(mjCustom).length) console.log(`🧊 ${Object.keys(mjCustom).length} mot(s) personnalisé(s) du Mot Juste chargé(s).`);
     mfPurge();
 }
 
@@ -359,6 +363,8 @@ function mfPurge() {
     const limitLong = mfShiftDay(today, -MF_KEEP_GRIDS);              // grilles, progressions
     const limitMotusWord = mfShiftDay(today, -MOTUS_KEEP_WORD_DAYS);  // mots du jour (recul pour la rotation)
     const limitMotusShort = mfShiftDay(today, -MOTUS_KEEP_SHORT_DAYS);
+    const limitMjWord = mfShiftDay(today, -MJ_KEEP_WORD_DAYS);
+    const limitMjShort = mfShiftDay(today, -MJ_KEEP_SHORT_DAYS);
     let removed = 0;
     for (const k of Object.keys(mfCache)) {
         const parts = k.split(':');
@@ -367,6 +373,10 @@ function mfPurge() {
             if (parts[1] === 'word') { date = parts[2]; limit = limitMotusWord; }
             else if (parts[1] === 'board' || parts[1] === 'cmt') { date = parts[2]; limit = limitMotusShort; }
             else if (parts[1] === 'prog') { date = parts[3]; limit = limitMotusShort; }
+        } else if (parts[0] === 'mj') {
+            if (parts[1] === 'word') { date = parts[2]; limit = limitMjWord; }
+            else if (parts[1] === 'board' || parts[1] === 'cmt') { date = parts[2]; limit = limitMjShort; }
+            else if (parts[1] === 'prog') { date = parts[3]; limit = limitMjShort; }
         } else {
             if (parts[1] === 'board' || parts[1] === 'cmt') { date = parts[2]; limit = limitShort; }
             else if (parts[1] === 'grid' || parts[1] === 'hist') date = parts[2];
@@ -376,7 +386,7 @@ function mfPurge() {
     }
     // les séries de jours ne sont pas datées : on borne leur taille
     for (const k of Object.keys(mfCache)) {
-        if ((k.startsWith('mf:days:') || k.startsWith('motus:days:')) && Array.isArray(mfCache[k]) && mfCache[k].length > 400) {
+        if ((k.startsWith('mf:days:') || k.startsWith('motus:days:') || k.startsWith('mj:days:')) && Array.isArray(mfCache[k]) && mfCache[k].length > 400) {
             mfSet(k, mfCache[k].slice(-400));
         }
     }
@@ -827,6 +837,179 @@ app.post('/api/motus/comments', requireAuth, (req, res) => {
 });
 
 // ---------------------------------------------------------------------
+//  LE MOT JUSTE — devine le mot secret à la proximité de sens.
+//  Vocabulaire fait main (motjuste/words.js) + moteur cosinus (engine.js).
+//  Même infrastructure que Motus/Mots fléchés (cache par clés, rotation).
+// ---------------------------------------------------------------------
+const mjEngine = require('./motjuste/engine');
+const MJ_KEEP_WORD_DAYS = 30;       // recul avant répétition (vocabulaire plus petit)
+const MJ_KEEP_SHORT_DAYS = 15;
+
+function mjHashSeed(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function mjRand(seed) {
+    let a = seed | 0;
+    return function () {
+        a = (a + 0x6D2B79F5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+const kMjWord = (d) => `mj:word:${d}`;
+const kMjProg = (u, d) => `mj:prog:${u}:${d}`;
+const kMjBoard = (d) => `mj:board:${d}`;
+const kMjCmt = (d) => `mj:cmt:${d}`;
+const kMjDays = (u) => `mj:days:${u}`;
+
+function mjPickWord(date, forcePersist) {
+    const all = mjEngine.allWords();
+    const recent = new Set();
+    for (let i = 1; i <= MJ_KEEP_WORD_DAYS; i++) {
+        const w = mfGet(kMjWord(mfShiftDay(date, -i)));
+        if (w) recent.add(w);
+    }
+    let candidates = all.filter(w => !recent.has(w));
+    if (!candidates.length) candidates = all;
+    const rnd = mjRand(mjHashSeed('motjuste|' + date));
+    const pick = candidates[Math.floor(rnd() * candidates.length)] || all[0];
+    if (forcePersist) mfSet(kMjWord(date), pick);
+    return pick;
+}
+function mjWord(date) {
+    const cached = mfGet(kMjWord(date));
+    if (cached) return cached;
+    return mjPickWord(date, true);
+}
+function mjWordPreview(date) {
+    const cached = mfGet(kMjWord(date));
+    if (cached) return cached;
+    return mjPickWord(date, false);
+}
+function mjBoard(date) {
+    return (mfGet(kMjBoard(date)) || []).filter(e => !e.susp).slice().sort((a, b) => a.guesses - b.guesses || a.ts - b.ts);
+}
+function mjStreak(user) {
+    const days = new Set(mfGet(kMjDays(user)) || []);
+    let cur = 0, d = mfTodayId();
+    if (!days.has(d)) d = mfShiftDay(d, -1);
+    while (days.has(d)) { cur++; d = mfShiftDay(d, -1); }
+    return { current: cur, total: days.size };
+}
+
+app.use('/motjuste', requireAuth, express.static(__dirname + '/public/motjuste'));
+
+app.get('/api/juste/today', requireAuth, (req, res) => {
+    const user = currentUser(req), today = mfTodayId();
+    let date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : today;
+    if (date > today) date = today;
+    const word = mjWord(date);
+    const prog = mfGet(kMjProg(user, date)) || { guesses: [], solved: false, gaveUp: false };
+    const finished = !!(prog.solved || prog.gaveUp);
+    const guesses = (prog.guesses || []).slice().sort((a, b) => b.score - a.score);
+    res.json({
+        date, today, isArchive: date !== today, nextIn: mfSecondsToMidnight(),
+        vocabCount: mjEngine.count(),
+        solved: !!prog.solved, gaveUp: !!prog.gaveUp,
+        guesses,
+        answer: finished ? word : undefined,
+    });
+});
+
+app.post('/api/juste/guess', requireAuth, (req, res) => {
+    const b = req.body || {};
+    const user = currentUser(req), today = mfTodayId();
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : today;
+    const word = mjWord(date);
+    const key = kMjProg(user, date);
+    const prog = mfGet(key) || { guesses: [], solved: false, gaveUp: false, startedAt: Date.now() };
+    if (prog.solved || prog.gaveUp) return res.status(400).json({ error: 'La partie est déjà terminée.' });
+
+    const raw = String(b.guess || '');
+    const found = mjEngine.findWord(raw);
+    if (!found) return res.json({ ok: true, unknown: true, guess: raw.trim() });
+
+    const already = prog.guesses.find(g => mjEngine.norm(g.word) === mjEngine.norm(found.m));
+    let scoreVal = mjEngine.score(found.m, word);
+    if (!already) {
+        prog.guesses.push({ word: found.m, score: scoreVal });
+        prog.startedAt = prog.startedAt || Date.now();
+    } else {
+        scoreVal = already.score;
+    }
+    const solved = mjEngine.norm(found.m) === mjEngine.norm(word);
+    if (solved) prog.solved = true;
+    mfSet(key, prog);
+
+    let rank, total, streak, board = [];
+    if (solved) {
+        if (date === today) {
+            const list = (mfGet(kMjBoard(date)) || []).slice();
+            if (!list.some(e => e.u === user)) {
+                list.push({ u: user, guesses: prog.guesses.length, ts: Date.now() });
+                mfSet(kMjBoard(date), list);
+            }
+            const days = (mfGet(kMjDays(user)) || []).slice();
+            if (!days.includes(date)) { days.push(date); mfSet(kMjDays(user), days); }
+            streak = mjStreak(user);
+        }
+        board = mjBoard(date);
+        rank = board.findIndex(e => e.u === user) + 1;
+        total = board.length;
+    }
+    res.json({
+        ok: true, unknown: false, word: found.m, score: scoreVal, solved,
+        guesses: prog.guesses.slice().sort((a, c) => c.score - a.score),
+        nGuesses: prog.guesses.length,
+        answer: solved ? word : undefined,
+        rank, total, streak,
+    });
+});
+
+app.post('/api/juste/giveup', requireAuth, (req, res) => {
+    const user = currentUser(req);
+    const date = /^\d{4}-\d{2}-\d{2}$/.test((req.body && req.body.date) || '') ? req.body.date : mfTodayId();
+    const word = mjWord(date);
+    const key = kMjProg(user, date);
+    const prog = mfGet(key) || { guesses: [], solved: false, gaveUp: false };
+    if (!prog.solved) { prog.gaveUp = true; mfSet(key, prog); }
+    res.json({ ok: true, answer: word });
+});
+
+app.get('/api/juste/board', requireAuth, (req, res) => {
+    const user = currentUser(req);
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mfTodayId();
+    const board = mjBoard(date);
+    res.json({ board: board.map(e => ({ u: e.u, guesses: e.guesses })), me: board.findIndex(e => e.u === user) + 1 });
+});
+app.get('/api/juste/archive', requireAuth, (req, res) => {
+    const user = currentUser(req), today = mfTodayId();
+    const out = [];
+    for (let i = 1; i <= 14; i++) {
+        const d = mfShiftDay(today, -i);
+        const p = mfGet(kMjProg(user, d));
+        out.push({ date: d, solved: !!(p && p.solved), guesses: p ? (p.guesses || []).length : 0 });
+    }
+    res.json({ days: out });
+});
+
+app.get('/api/juste/comments', requireAuth, (req, res) => {
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mfTodayId();
+    res.json({ comments: (mfGet(kMjCmt(date)) || []).slice(-60) });
+});
+app.post('/api/juste/comments', requireAuth, (req, res) => {
+    const user = currentUser(req), date = mfTodayId();
+    const txt = String((req.body && req.body.text) || '').trim().slice(0, 240);
+    if (!txt) return res.status(400).json({ error: 'Message vide.' });
+    const list = (mfGet(kMjCmt(date)) || []).slice();
+    const last = list.filter(c => c.u === user).slice(-1)[0];
+    if (last && Date.now() - last.ts < 4000) return res.status(429).json({ error: 'Doucement !' });
+    list.push({ u: user, t: escapeHtml(txt), ts: Date.now() });
+    if (list.length > 200) list.splice(0, list.length - 200);
+    mfSet(kMjCmt(date), list);
+    res.json({ ok: true, comments: list.slice(-60) });
+});
+
+// ---------------------------------------------------------------------
 //  PERUDO — jeu temps réel, intégré au monolithe sous /perudo.
 //  Le front est protégé par le login du salon ; /perudo/healthz reste public.
 // ---------------------------------------------------------------------
@@ -971,10 +1154,15 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
     const motusDone = !!(motusProg && motusProg.solved);
     const motusOver = !!(motusProg && (motusProg.solved || motusProg.gaveUp || (motusProg.guesses || []).length >= MOTUS_TRIES));
     const motusSolversToday = motusBoard(today).length;
+    const mjProg = mfGet(kMjProg(user, today));
+    const mjDone = !!(mjProg && mjProg.solved);
+    const mjOver = !!(mjProg && (mjProg.solved || mjProg.gaveUp));
+    const mjSolversToday = mjBoard(today).length;
     res.json({
         mf: { done, total: MF_LEVELS.length, streak }, perudo: { online, games },
         rec: { count: recs.length, fresh: recNew },
         motus: { done: motusDone, over: motusOver, solvers: motusSolversToday },
+        motjuste: { done: mjDone, over: mjOver, solvers: mjSolversToday },
     });
 });
 
@@ -1040,6 +1228,11 @@ require('./admin/routes')(app, {
         word: motusWord, wordPreview: motusWordPreview, def: motusDefFor,
         len: MOTUS_LEN, tries: MOTUS_TRIES,
         kProg: kMotusProg, kBoard: kMotusBoard, kCmt: kMotusCmt,
+    },
+    motjuste: {
+        word: mjWord, wordPreview: mjWordPreview,
+        kProg: kMjProg, kBoard: kMjBoard, kCmt: kMjCmt,
+        engine: mjEngine,
     },
 });
 

@@ -7,7 +7,7 @@ const fs = require('fs');
 
 module.exports = function attachAdmin(app, ctx) {
     const { requireAdmin, currentUser, isAdmin, users, saveUsers,
-            hashPassword, makeRecoveryCode, mf, redis, motus } = ctx;
+            hashPassword, makeRecoveryCode, mf, redis, motus, motjuste } = ctx;
 
     // --- Journal des actions (mémoire + persistance légère) ---
     const LOG_KEY = 'mf:adminlog';
@@ -647,6 +647,125 @@ module.exports = function attachAdmin(app, ctx) {
         }
         const avg = triesArr.length ? Math.round((triesArr.reduce((a, b) => a + b, 0) / triesArr.length) * 10) / 10 : 0;
         res.json({ started, solved, lost, avgTries: avg, rate: started ? Math.round(solved / started * 100) : 0 });
+    });
+
+    // =================================================================
+    //  LE MOT JUSTE
+    // =================================================================
+    G('/motjuste/day', (req, res) => {
+        const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mf.today();
+        const word = motjuste.word(date);
+        const board = (mf.get(motjuste.kBoard(date)) || []).slice().sort((a, b) => a.guesses - b.guesses || a.ts - b.ts);
+        let started = 0, solved = 0;
+        for (const [k, v] of Object.entries(mf.cache())) {
+            if (!k.startsWith('mj:prog:') || !k.endsWith(`:${date}`) || !v) continue;
+            started++; if (v.solved) solved++;
+        }
+        const neighbors = motjuste.engine.nearest(word, 8);
+        res.json({
+            date, today: mf.today(), word,
+            neighbors: neighbors.map(n => ({ m: n.m, score: n.score })),
+            board: board.map(e => ({ u: e.u, guesses: e.guesses, susp: !!e.susp })),
+            started, solved,
+        });
+    });
+
+    G('/motjuste/upcoming', (req, res) => {
+        const today = mf.today();
+        const out = [];
+        for (let i = 1; i <= 7; i++) { const date = mf.shift(today, i); out.push({ date, word: motjuste.wordPreview(date) }); }
+        res.json({ days: out });
+    });
+
+    A('/motjuste/regen', (req, res) => {
+        const date = /^\d{4}-\d{2}-\d{2}$/.test(req.body.date || '') ? req.body.date : mf.today();
+        mf.del(`mj:word:${date}`);
+        for (const k of Object.keys(mf.cache())) if (k.startsWith('mj:prog:') && k.endsWith(`:${date}`)) mf.del(k);
+        mf.del(motjuste.kBoard(date));
+        log(currentUser(req), 'mot du Mot Juste régénéré', date);
+        res.json({ ok: true, word: motjuste.word(date) });
+    });
+
+    A('/motjuste/board/remove', (req, res) => {
+        const date = String(req.body.date || mf.today());
+        const pseudo = String(req.body.pseudo || '');
+        const key = motjuste.kBoard(date);
+        mf.set(key, (mf.get(key) || []).filter(e => e.u !== pseudo));
+        log(currentUser(req), 'score Mot Juste supprimé', pseudo, date);
+        res.json({ ok: true });
+    });
+    A('/motjuste/board/flag', (req, res) => {
+        const date = String(req.body.date || mf.today());
+        const pseudo = String(req.body.pseudo || '');
+        const key = motjuste.kBoard(date);
+        mf.set(key, (mf.get(key) || []).map(e => (e.u === pseudo ? { ...e, susp: !e.susp } : e)));
+        log(currentUser(req), 'score Mot Juste marqué', pseudo);
+        res.json({ ok: true });
+    });
+
+    G('/motjuste/comments', (req, res) => {
+        const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mf.today();
+        res.json({ date, comments: mf.get(motjuste.kCmt(date)) || [] });
+    });
+    A('/motjuste/comments/remove', (req, res) => {
+        const date = String(req.body.date || mf.today());
+        const ts = Number(req.body.ts);
+        const key = motjuste.kCmt(date);
+        mf.set(key, (mf.get(key) || []).filter(c => c.ts !== ts));
+        log(currentUser(req), 'message Mot Juste supprimé', String(req.body.u || ''));
+        res.json({ ok: true });
+    });
+
+    // Difficulté observée sur 14 jours
+    G('/motjuste/difficulty', (req, res) => {
+        const today = mf.today();
+        let started = 0, solved = 0;
+        const guessCounts = [];
+        for (let i = 0; i < 14; i++) {
+            const date = mf.shift(today, -i);
+            for (const [k, v] of Object.entries(mf.cache())) {
+                if (!k.startsWith('mj:prog:') || !k.endsWith(`:${date}`) || !v) continue;
+                started++;
+                if (v.solved) { solved++; guessCounts.push((v.guesses || []).length); }
+            }
+        }
+        const avg = guessCounts.length ? Math.round((guessCounts.reduce((a, b) => a + b, 0) / guessCounts.length) * 10) / 10 : 0;
+        res.json({ started, solved, avgGuesses: avg, rate: started ? Math.round(solved / started * 100) : 0 });
+    });
+
+    // --- Vocabulaire : ajout / suppression de mots (persistés à part du fichier de base) ---
+    G('/motjuste/vocab', (req, res) => {
+        const q = String(req.query.q || '').toLowerCase();
+        const all = motjuste.engine.allWords()
+            .filter(w => !q || w.toLowerCase().includes(q))
+            .map(w => ({ m: w, custom: motjuste.engine.isCustom(w) }))
+            .sort((a, b) => a.m.localeCompare(b.m, 'fr'));
+        res.json({ count: motjuste.engine.allWords().length, words: all.slice(0, 200) });
+    });
+    A('/motjuste/vocab/add', (req, res) => {
+        const word = String(req.body.word || '').trim();
+        const like = String(req.body.like || '').trim();
+        if (!word) return res.status(400).json({ error: 'Il manque un mot.' });
+        if (motjuste.engine.hasWord(word)) return res.status(409).json({ error: 'Ce mot existe déjà.' });
+        if (!motjuste.engine.hasWord(like)) return res.status(400).json({ error: 'Choisis un mot déjà connu, le plus proche possible du nouveau.' });
+        const vec = motjuste.engine.vectorLike(like);
+        if (!vec || !motjuste.engine.addCustomWord(word, vec)) return res.status(400).json({ error: 'Ajout impossible.' });
+        const custom = mf.get('mj:custom') || {};
+        custom[motjuste.engine.findWord(word).m] = vec;
+        mf.set('mj:custom', custom);
+        log(currentUser(req), 'mot ajouté au Mot Juste', word, 'proche de ' + like);
+        res.json({ ok: true, count: motjuste.engine.allWords().length });
+    });
+    A('/motjuste/vocab/remove', (req, res) => {
+        const word = String(req.body.word || '').trim();
+        if (!motjuste.engine.isCustom(word)) return res.status(400).json({ error: 'Seuls les mots ajoutés depuis l’administration peuvent être retirés.' });
+        const canonical = motjuste.engine.findWord(word).m;
+        motjuste.engine.removeCustomWord(word);
+        const custom = mf.get('mj:custom') || {};
+        delete custom[canonical];
+        mf.set('mj:custom', custom);
+        log(currentUser(req), 'mot retiré du Mot Juste', word);
+        res.json({ ok: true, count: motjuste.engine.allWords().length });
     });
 
     // =================================================================

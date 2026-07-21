@@ -1,5 +1,5 @@
 // Incrémente cette version à CHAQUE changement de fichier statique.
-const CACHE_VERSION = 'salon-v12';
+const CACHE_VERSION = 'salon-v13';
 const CORE = [
     '/', '/index.html', '/app.js', '/style.css', '/manifest.json',
     '/icon-192.png', '/icon-512.png',
@@ -8,6 +8,7 @@ const CORE = [
     '/mots-fleches/', '/mots-fleches/app.js', '/mots-fleches/style.css',
     '/recettes/', '/recettes/app.js', '/recettes/style.css',
     '/motus/', '/motus/app.js', '/motus/style.css',
+    '/motjuste/', '/motjuste/app.js', '/motjuste/style.css',
 ];
 
 self.addEventListener('install', (e) => {
