@@ -29,11 +29,12 @@ const CATEGORY_PRESETS = [
     'Plat ou dessert', 'Moyen de transport', 'Vêtement', 'Boisson', 'Matière scolaire',
     'Expression toute faite', 'Élément de la maison', 'Insecte ou bestiole', 'Chanteur ou groupe', 'Prénom de star',
 ];
-const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');           // alphabet complet (mode « l'hôte choisit »)
+const RANDOM_LETTERS = LETTERS.filter(l => !'WXYZ'.includes(l));   // tirage aléatoire : sans W, X, Y, Z
 const DURATIONS = { court: 60, moyen: 90, long: 120 };
 const COUNTDOWN_MS = 3000;    // le « 3, 2, 1 » avant que la lettre n'apparaisse
 const CARD_PAUSE_MS = 1300;          // pause après résolution avant la carte suivante
-const EMPTY_PAUSE_MS = 1500;         // durée d'affichage d'une case vide (« Loupé »)
+const EMPTY_PAUSE_MS = 2400;         // durée d'affichage d'une case vide (« Loupé »)
 const CATEGORY_SUMMARY_MS = 2600;    // récap affiché entre deux catégories
 const MAX_PLAYERS = 8;
 const PSEUDO_MAX = 20;
@@ -95,8 +96,8 @@ function playerList(g) {
 function roomOf(g) { return 'pbac:' + g.id; }
 
 function pickLetter(g) {
-    let pool = LETTERS.filter(l => !g.usedLetters.includes(l));
-    if (!pool.length) { g.usedLetters = []; pool = LETTERS; }
+    let pool = RANDOM_LETTERS.filter(l => !g.usedLetters.includes(l));
+    if (!pool.length) { g.usedLetters = []; pool = RANDOM_LETTERS; }
     const letter = pool[Math.floor(Math.random() * pool.length)];
     g.usedLetters.push(letter);
     return letter;
@@ -120,11 +121,16 @@ function currentCardPublic(g) {
         queueIndex: g.reviewIndex, queueTotal: g.reviewQueue.length,
     };
     if (type === 'empty') return base;
+    // Réponses déjà acceptées dans cette même catégorie, cette manche : candidates à une fusion (hôte uniquement).
+    const mergeCandidates = g.reviewQueue.slice(0, g.reviewIndex)
+        .filter(e => e.category === category && e.type === 'valid' && g.voteOutcomes[category + '|' + e.pseudo] === true)
+        .map(e => ({ pseudo: e.pseudo, text: (g.answers[e.pseudo] && g.answers[e.pseudo][category]) || '' }));
     return {
         ...base,
         yes: c.votes.filter(v => v === 'yes').length, no: c.votes.filter(v => v === 'no').length,
         eligible: c.eligible.length, eligiblePseudos: c.eligible, votedPseudos: Object.keys(c.voters),
-        resolved: c.resolved, accepted: c.accepted,
+        resolved: c.resolved, accepted: c.accepted, mergedWith: c.mergedWith || null,
+        mergeCandidates,
         iVoted: null,   // rempli côté envoi individuel (voir sendCardTo)
     };
 }
@@ -186,14 +192,15 @@ function startCard(g) {
 }
 // Aucune limite de temps : on attend que tout le monde ait voté (parmi les
 // joueurs toujours connectés) avant de résoudre et d'avancer.
-function resolveCard(g, forceAccept) {
+function resolveCard(g, forceAccept, mergedWith) {
     clearTimeout(g._timer);
     if (!g.cardState || g.cardState.resolved) return;
     const c = g.cardState;
     const accepted = typeof forceAccept === 'boolean' ? forceAccept : (c.votes.filter(v => v === 'yes').length > c.votes.filter(v => v === 'no').length);
-    c.resolved = true; c.accepted = accepted;
+    c.resolved = true; c.accepted = accepted; c.mergedWith = mergedWith || null;
     const entry = g.reviewQueue[g.reviewIndex];
     g.voteOutcomes[entry.category + '|' + entry.pseudo] = accepted;
+    if (mergedWith) g.merges[entry.category + '|' + entry.pseudo] = mergedWith;
     broadcastCard(g);
     g._timer = setTimeout(() => advanceAfterCard(g, entry), CARD_PAUSE_MS);
 }
@@ -208,20 +215,29 @@ function advanceAfterCard(g, entry) {
 // puis passage à la catégorie suivante ou fin de manche.
 function finalizeCategoryOrRound(g, justFinishedCategory) {
     if (justFinishedCategory) {
+        // Une réponse fusionnée par l'hôte rejoint le groupe de sa cible (même en cas de chaîne A->B->C).
+        const rootOf = (pseudo) => {
+            let cur = pseudo, hops = 0;
+            while (g.merges[justFinishedCategory + '|' + cur] && hops++ < 8) cur = g.merges[justFinishedCategory + '|' + cur];
+            return cur;
+        };
+        const groupKeyOf = (pseudo) => {
+            const root = rootOf(pseudo);
+            const rootRaw = (g.answers[root] && g.answers[root][justFinishedCategory]) || '';
+            return norm(rootRaw);
+        };
         const pts = {};
         const counts = {};
         for (const p of g.players) pts[p.pseudo] = 0;
         for (const p of g.players) {
             const raw = (g.answers[p.pseudo] && g.answers[p.pseudo][justFinishedCategory]) || '';
-            const n = norm(raw);
             const ok = g.voteOutcomes[justFinishedCategory + '|' + p.pseudo];
-            if (ok && n) counts[n] = (counts[n] || 0) + 1;
+            if (ok && raw) { const key = groupKeyOf(p.pseudo); counts[key] = (counts[key] || 0) + 1; }
         }
         for (const p of g.players) {
             const raw = (g.answers[p.pseudo] && g.answers[p.pseudo][justFinishedCategory]) || '';
-            const n = norm(raw);
             const ok = g.voteOutcomes[justFinishedCategory + '|' + p.pseudo];
-            const gain = ok && n ? (counts[n] === 1 ? 3 : 1) : 0;
+            const gain = ok && raw ? (counts[groupKeyOf(p.pseudo)] === 1 ? 3 : 1) : 0;
             pts[p.pseudo] = gain;
             g.categoryPoints[justFinishedCategory] = g.categoryPoints[justFinishedCategory] || {};
             g.categoryPoints[justFinishedCategory][p.pseudo] = gain;
@@ -256,7 +272,7 @@ function endRoundToVoting(g) {
     clearTimeout(g._timer);
     g.reviewQueue = buildReviewQueue(g);
     g.reviewIndex = 0;
-    g.voteOutcomes = {}; g.categoryPoints = {};
+    g.voteOutcomes = {}; g.categoryPoints = {}; g.merges = {};
     if (!g.reviewQueue.length) { finalizeRound(g); return; }
     startCard(g);
 }
@@ -375,7 +391,7 @@ io.on('connection', (socket) => {
             duration: DURATIONS[duration] || DURATIONS.moyen,
             letterMode: letterMode === 'host' ? 'host' : 'random',
             round: 0, usedLetters: [], scores: {}, answers: {}, pendingLetter: null,
-            reviewQueue: [], reviewIndex: 0, voteOutcomes: {}, categoryPoints: {}, cardState: null,
+            reviewQueue: [], reviewIndex: 0, voteOutcomes: {}, categoryPoints: {}, cardState: null, merges: {},
         };
         games[id] = g;
         socketGame[socket.id] = id;
@@ -480,6 +496,19 @@ io.on('connection', (socket) => {
         const stillNeeded = c.eligible.filter(p => { const pl = g.players.find(x => x.pseudo === p); return pl && pl.connected; });
         if (!stillNeeded.length || c.votes.length >= stillNeeded.length) resolveCard(g);
         else broadcastCard(g);
+    });
+
+    // Décision réservée à l'hôte : « c'est le même mot » (faute de frappe, accord…),
+    // fusionne avec une réponse déjà acceptée dans la même catégorie cette manche.
+    socket.on('pbac_merge', ({ targetPseudo }) => {
+        const g = games[socketGame[socket.id]];
+        if (!g || g.host !== socket.data.pbacPseudo || g.status !== 'voting' || !g.cardState) return;
+        const entry = g.reviewQueue[g.reviewIndex];
+        if (!entry || entry.type !== 'valid' || g.cardState.resolved) return;
+        const target = String(targetPseudo || '');
+        if (!target || target === entry.pseudo) return;
+        if (g.voteOutcomes[entry.category + '|' + target] !== true) return;   // la cible doit être déjà acceptée
+        resolveCard(g, true, target);
     });
 
     socket.on('pbac_next_round', () => {

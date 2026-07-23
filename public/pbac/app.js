@@ -416,12 +416,28 @@ function renderCard(c) {
         }).join('');
     }
 
+    // Fusion « c'est le même mot » — décision réservée à l'hôte, invisible pour les autres.
+    const isHost = state && state.host === myPseudo;
+    const mergeBox = $('merge-box');
+    const mergeList = $('merge-list');
+    const candidates = c.mergeCandidates || [];
+    mergeBox.hidden = c.resolved || !isHost || !candidates.length;
+    if (!mergeBox.hidden) {
+        mergeList.hidden = true;
+        $('merge-toggle').textContent = 'C\'est le même mot qu\'un déjà accepté ?';
+        mergeList.innerHTML = candidates.map(cand => `<button type="button" class="pb-merge-opt" data-p="${esc(cand.pseudo)}">${esc(cand.text)} <span>(${esc(cand.pseudo)})</span></button>`).join('');
+        mergeList.querySelectorAll('.pb-merge-opt').forEach(b => b.addEventListener('click', () => {
+            socket.emit('pbac_merge', { targetPseudo: b.dataset.p });
+            mergeList.hidden = true;
+        }));
+    }
+
     const btns = $('vote-btns');
     const outcome = $('vote-outcome');
     if (c.resolved) {
         btns.hidden = true;
         outcome.hidden = false;
-        outcome.textContent = c.accepted ? 'Accepté' : 'Refusé';
+        outcome.textContent = c.mergedWith ? ('Fusionné avec ' + c.mergedWith) : (c.accepted ? 'Accepté' : 'Refusé');
         outcome.className = 'pv-outcome ' + (c.accepted ? 'accepted' : 'rejected');
         if (navigator.vibrate) { try { navigator.vibrate(c.accepted ? [20, 30, 20] : 25); } catch (e) {} }
         const unanimous = total > 0 && (c.yes === total || c.no === total);
@@ -441,6 +457,7 @@ function renderCard(c) {
 }
 $('btn-vote-yes').addEventListener('click', () => socket.emit('pbac_vote', { value: 'yes' }));
 $('btn-vote-no').addEventListener('click', () => socket.emit('pbac_vote', { value: 'no' }));
+$('merge-toggle').addEventListener('click', () => { $('merge-list').hidden = !$('merge-list').hidden; });
 
 // ---------- Récap de catégorie ----------
 function renderCatSummary(s) {

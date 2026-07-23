@@ -232,6 +232,17 @@ body.is-ready .pb { display:flex; }
             border:1px solid var(--line); color:var(--muted); }
 .pb-voter.voted { color:var(--good); border-color:rgba(90,168,122,.5); background:rgba(90,168,122,.1); }
 
+/* Fusion « c'est le même mot » — réservée à l'hôte */
+.pb-merge-box { width:100%; max-width:300px; }
+.pb-merge-toggle { width:100%; padding:9px 10px; border-radius:10px; background:none; border:1px dashed var(--line);
+                    color:var(--muted); font-size:.74rem; font-family:inherit; cursor:pointer; }
+.pb-merge-toggle:active { background:rgba(255,255,255,.04); }
+.pb-merge-list { display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+.pb-merge-opt { padding:9px 12px; border-radius:10px; background:rgba(217,169,78,.08); border:1px solid var(--line);
+                color:var(--parchment); font-size:.82rem; font-weight:600; font-family:inherit; cursor:pointer; text-align:left; }
+.pb-merge-opt span { color:var(--muted); font-weight:400; }
+.pb-merge-opt:active { background:rgba(217,169,78,.16); }
+
 .pb-vote-btns { display:flex; gap:14px; margin-top:10px; width:100%; max-width:300px; }
 .pv-btn { flex:1; padding:16px; border-radius:14px; border:2px solid transparent; cursor:pointer;
           font-weight:900; font-size:1rem; letter-spacing:1px; font-family:inherit; }

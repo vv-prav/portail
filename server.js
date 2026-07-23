@@ -630,6 +630,21 @@ app.post('/api/mf/comments', requireAuth, (req, res) => {
 //  classement, discussion) — juste un autre "jeu du jour".
 // ---------------------------------------------------------------------
 const motusDict = require('./motsfleches/dict');
+const motusExtra6 = require('./motus/words6');   // vocabulaire complémentaire (vérifié à la main)
+// Pool complet pour le tirage du mot du jour : les 6-lettres courants du dictionnaire
+// des mots fléchés + le vocabulaire complémentaire, sans doublons.
+function motusPool() {
+    const base = (motusDict.words()[6] || []).filter(w => w.n <= 2).map(w => w.m);
+    const seen = new Set(base);
+    const extra = motusExtra6.filter(w => !seen.has(w));
+    return [...base, ...extra];
+}
+// Mots acceptés en tentative : plus permissif (inclut aussi les 6-lettres rares du
+// dictionnaire), pour ne jamais bloquer un joueur qui propose un mot correct mais rare.
+function motusKnown(guess) {
+    if (motusExtra6.includes(guess)) return true;
+    return (motusDict.words()[6] || []).some(w => w.m === guess);
+}
 const MOTUS_LEN = 6;
 const MOTUS_TRIES = 6;
 const MOTUS_KEEP_WORD_DAYS = 60;    // recul pour éviter les répétitions de mot
@@ -659,18 +674,18 @@ const kMotusDays = (u) => `motus:days:${u}`;
 function motusWord(date) {
     const cached = mfGet(kMotusWord(date));
     if (cached) return cached;
-    const pool = (motusDict.words()[MOTUS_LEN] || []).filter(w => w.n <= 2);
+    const pool = motusPool();
     const recent = new Set();
     for (let i = 1; i <= MOTUS_KEEP_WORD_DAYS; i++) {
         const w = mfGet(kMotusWord(mfShiftDay(date, -i)));
         if (w) recent.add(w);
     }
-    let candidates = pool.filter(w => !recent.has(w.m));
+    let candidates = pool.filter(m => !recent.has(m));
     if (!candidates.length) candidates = pool;
     const rnd = motusRand(motusHashSeed('motus|' + date));
     const pick = candidates[Math.floor(rnd() * candidates.length)] || pool[0];
-    mfSet(kMotusWord(date), pick.m);
-    return pick.m;
+    mfSet(kMotusWord(date), pick);
+    return pick;
 }
 // Comparaison à la Wordle, robuste aux lettres répétées.
 function motusMarks(guess, answer) {
@@ -691,17 +706,17 @@ function motusMarks(guess, answer) {
 function motusWordPreview(date) {
     const cached = mfGet(kMotusWord(date));
     if (cached) return cached;
-    const pool = (motusDict.words()[MOTUS_LEN] || []).filter(w => w.n <= 2);
+    const pool = motusPool();
     const recent = new Set();
     for (let i = 1; i <= MOTUS_KEEP_WORD_DAYS; i++) {
         const w = mfGet(kMotusWord(mfShiftDay(date, -i)));
         if (w) recent.add(w);
     }
-    let candidates = pool.filter(w => !recent.has(w.m));
+    let candidates = pool.filter(m => !recent.has(m));
     if (!candidates.length) candidates = pool;
     const rnd = motusRand(motusHashSeed('motus|' + date));
     const pick = candidates[Math.floor(rnd() * candidates.length)] || pool[0];
-    return pick.m;
+    return pick;
 }
 function motusStreak(user) {
     const days = new Set(mfGet(kMotusDays(user)) || []);
@@ -750,7 +765,7 @@ app.post('/api/motus/guess', requireAuth, (req, res) => {
     let guess = String(b.guess || '').toUpperCase().trim();
     if (guess.length !== MOTUS_LEN || !/^[A-Z]+$/.test(guess)) return res.status(400).json({ error: `Un mot de ${MOTUS_LEN} lettres, sans accent.` });
     if (guess[0] !== word[0]) return res.status(400).json({ error: `Le mot commence par ${word[0]}.` });
-    const known = (motusDict.words()[MOTUS_LEN] || []).some(w => w.m === guess);
+    const known = motusKnown(guess);
     if (!known && guess !== word) return res.status(400).json({ error: "Ce mot n'est pas dans le dictionnaire." });
 
     const marks = motusMarks(guess, word);
