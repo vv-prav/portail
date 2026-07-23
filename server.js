@@ -1044,6 +1044,12 @@ const undercoverApi = require('./undercover/game')(app, io, requireAuth);
 app.use('/undercover', requireAuth, express.static(__dirname + '/public/undercover'));
 
 // ---------------------------------------------------------------------
+//  ROUGE OU NOIR — jeu de cartes local, purement statique (aucun état
+//  serveur : c'est la personne qui tient le téléphone qui joue).
+// ---------------------------------------------------------------------
+app.use('/rougenoir', requireAuth, express.static(__dirname + '/public/rougenoir'));
+
+// ---------------------------------------------------------------------
 //  RECETTES — carnet partagé du cercle
 //  Stockage : une clé par recette (rec:<id>) via le cache mfGet/mfSet.
 //  Photos : compressées côté client ; le serveur borne (miniature + grande).

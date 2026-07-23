@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+    <meta name="theme-color" content="#14100b">
+    <title>Rouge ou Noir</title>
+    <link rel="icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="is-boot">
+    <div class="boot"><div class="boot-ring"></div></div>
+
+    <div class="rn" id="rn">
+        <header class="rn-head">
+            <a class="rn-back" href="/" aria-label="Retour au salon">←</a>
+            <div class="rn-titles">
+                <h1 class="rn-title">Rouge ou Noir</h1>
+                <span class="rn-sub" id="rn-deck-count">52 cartes restantes</span>
+            </div>
+            <button class="rn-settings-btn" id="btn-settings" aria-label="Réglages">⚙</button>
+        </header>
+
+        <p class="rn-hint">Le téléphone à la main devine, puis retourne la carte.</p>
+
+        <div class="rn-table">
+            <div class="rn-card-slot">
+                <div class="rn-card" id="rn-card">
+                    <div class="rn-card-face rn-card-back"></div>
+                    <div class="rn-card-face rn-card-front" id="rn-card-front"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="rn-guess-row" id="rn-guess-row">
+            <button class="rn-guess-btn red" id="btn-guess-red">Rouge</button>
+            <button class="rn-guess-btn black" id="btn-guess-black">Noir</button>
+        </div>
+
+        <div class="rn-result" id="rn-result" hidden>
+            <p class="rn-result-text" id="rn-result-text">—</p>
+            <button class="rn-btn" id="btn-next">Carte suivante</button>
+        </div>
+
+        <div class="rn-stats" id="rn-stats">
+            <div class="rn-stat"><b id="stat-correct">0</b><em>bonnes pioches</em></div>
+            <div class="rn-stat"><b id="stat-wrong">0</b><em>mauvaises</em></div>
+            <div class="rn-stat"><b id="stat-sips">0</b><em>gorgées données</em></div>
+        </div>
+
+        <p class="rn-note">Un petit rappel amical : gardez un verre d'eau à côté. 🙂</p>
+    </div>
+
+    <!-- Réglages -->
+    <div class="rn-overlay" id="v-settings" hidden>
+        <div class="rn-card-panel">
+            <h2 class="rn-panel-title">Réglages</h2>
+            <p class="rn-field-label">Gorgées par bonne pioche</p>
+            <div class="rn-choice" id="opt-sips-correct">
+                <button type="button" data-v="1">1</button>
+                <button type="button" data-v="2" class="on">2</button>
+                <button type="button" data-v="3">3</button>
+            </div>
+            <p class="rn-field-label">Gorgées si tu te trompes</p>
+            <div class="rn-choice" id="opt-sips-wrong">
+                <button type="button" data-v="1" class="on">1</button>
+                <button type="button" data-v="2">2</button>
+                <button type="button" data-v="3">3</button>
+            </div>
+            <button class="rn-btn ghost" id="btn-reset-stats">Réinitialiser les statistiques</button>
+            <button class="rn-btn" id="btn-settings-close">Fermer</button>
+        </div>
+    </div>
+
+    <div class="rn-toast" id="rn-toast" hidden></div>
+    <script src="app.js"></script>
+</body>
+</html>

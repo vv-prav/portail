@@ -28,7 +28,9 @@ const I18N = {
         app_recettes_d: "Garde et partage tes recettes.", app_admin_d: "Comptes, données et réglages.",
         b_open: "Ouvert", b_soon: "Bientôt", b_online: "en ligne", b_new_grid: "Nouvelle grille !",
         b_grid_done: "Grille du jour ✓", b_grid_part: "faites aujourd'hui",
-        folder_games: "Jeux", folder_games_count: "jeux",
+        folder_games: "Jeux", folder_games_count: "jeux", folder_drinks: "Jeux d'alcool", folder_drinks_count: "jeux",
+        app_rn_d: "Devine la couleur avant le retournement.", app_auto_d: "Avance sur la route, gorgée à la clé.",
+        app_roi_d: "52 cartes, 52 règles, une soirée entière.", app_bus_d: "Deux manches, une pyramide, un chauffeur.",
         b_folder_todo: "à jouer", b_folder_done: "tout fait aujourd'hui",
         b_rec_new: "cette semaine", b_rec_count: "recettes",
         b_motus_done: "Trouvé ✓", b_motus_over: "Terminé", b_motus_solvers: "ont trouvé",
@@ -55,7 +57,9 @@ const I18N = {
         app_recettes_d: "Keep and share your recipes.", app_admin_d: "Accounts, data and settings.",
         b_open: "Open", b_soon: "Soon", b_online: "online", b_new_grid: "New grid!",
         b_grid_done: "Today's grid ✓", b_grid_part: "done today",
-        folder_games: "Games", folder_games_count: "games",
+        folder_games: "Games", folder_games_count: "games", folder_drinks: "Drinking games", folder_drinks_count: "games",
+        app_rn_d: "Guess the colour before the flip.", app_auto_d: "Move down the road, one sip at a time.",
+        app_roi_d: "52 cards, 52 rules, one whole night.", app_bus_d: "Two rounds, a pyramid, one driver." ,
         b_folder_todo: "to play", b_folder_done: "all done today",
         b_rec_new: "this week", b_rec_count: "recipes",
         b_motus_done: "Found ✓", b_motus_over: "Finished", b_motus_solvers: "found it",
@@ -82,7 +86,9 @@ const I18N = {
         app_recettes_d: "Guarda y comparte tus recetas.", app_admin_d: "Cuentas, datos y ajustes.",
         b_open: "Abierto", b_soon: "Pronto", b_online: "en línea", b_new_grid: "¡Nueva cuadrícula!",
         b_grid_done: "Cuadrícula de hoy ✓", b_grid_part: "hechas hoy",
-        folder_games: "Juegos", folder_games_count: "juegos",
+        folder_games: "Juegos", folder_games_count: "juegos", folder_drinks: "Juegos de beber", folder_drinks_count: "juegos",
+        app_rn_d: "Adivina el color antes de voltear.", app_auto_d: "Avanza por la carretera, trago a trago.",
+        app_roi_d: "52 cartas, 52 reglas, toda una noche.", app_bus_d: "Dos rondas, una pirámide, un conductor.",
         b_folder_todo: "por jugar", b_folder_done: "todo hecho hoy",
         b_rec_new: "esta semana", b_rec_count: "recetas",
         b_motus_done: "Encontrada ✓", b_motus_over: "Terminado", b_motus_solvers: "lo encontraron",
@@ -111,13 +117,26 @@ const GAME_APPS = [
     { id: 'motjuste', name: 'Le Mot Juste', dKey: 'app_juste_d',    emoji: '🧊', href: '/motjuste',     accent: '#6fb8d9', status: 'open' },
     { id: 'mf',       name: 'Mots Fléchés', dKey: 'app_mf_d',       emoji: '🧩', href: '/mots-fleches', accent: '#5aa87a', status: 'open' },
 ];
+const DRINK_APPS = [
+    { id: 'rougenoir',  name: 'Rouge ou Noir', dKey: 'app_rn_d',   emoji: '🃏', href: '/rougenoir', accent: '#b7454a', status: 'open' },
+    { id: 'autoroute',  name: 'Autoroute',     dKey: 'app_auto_d', emoji: '🛣️', href: '/autoroute', accent: '#b7454a', status: 'soon' },
+    { id: 'roidescons', name: 'Roi des Cons',  dKey: 'app_roi_d',  emoji: '👑', href: '/roidescons', accent: '#b7454a', status: 'soon' },
+    { id: 'lebus',      name: 'Le Bus',        dKey: 'app_bus_d',  emoji: '🚌', href: '/lebus',      accent: '#b7454a', status: 'soon' },
+];
 const OTHER_APPS = [
     { id: 'recettes', name: 'Recettes',     dKey: 'app_recettes_d', emoji: '🍽️', href: '/recettes',    accent: '#e07a4e', status: 'open' },
 ];
 const ADMIN_APP = { id: 'admin', name: 'Administration', dKey: 'app_admin_d', emoji: '🛡️', href: '/admin', accent: '#c96f6f', status: 'open' };
+const FOLDERS = [
+    { id: 'games',  emoji: '🎲', accent: '#d9a94e', nameKey: 'folder_games',  countKey: 'folder_games_count',  apps: GAME_APPS },
+    { id: 'drinks', emoji: '🍻', accent: '#b7454a', nameKey: 'folder_drinks', countKey: 'folder_drinks_count', apps: DRINK_APPS },
+];
 let isAdminUser = false;
 let pulse = null;
-let gamesOpen = localStorage.getItem('erquy_games_open') === '1';
+let openFolders = new Set(JSON.parse(localStorage.getItem('erquy_folders_open') || '[]'));
+if (!localStorage.getItem('erquy_folders_open') && localStorage.getItem('erquy_games_open') === '1') {
+    openFolders.add('games');   // migration douce depuis l'ancien système à un seul dossier
+}
 
 async function api(path, body) {
     const res = await fetch(path, {
@@ -180,8 +199,13 @@ function renderTile(a) {
         : `<div class="tile is-soon" style="--accent:${a.accent}" aria-disabled="true">${inner}</div>`;
 }
 
-// Résumé affiché sur le dossier fermé : priorité au direct, sinon aux nouveautés du jour.
-function folderBadge() {
+// Résumé affiché sur un dossier fermé : priorité au direct, sinon aux nouveautés du jour
+// (seulement pertinent pour le dossier Jeux, qui a des tuiles vivantes ; sinon un simple compte).
+function folderBadge(folder) {
+    if (folder.id !== 'games') {
+        const openCount = folder.apps.filter(a => a.status === 'open').length;
+        return `<span class="tile-badge open">${openCount} ${t(folder.countKey)}</span>`;
+    }
     if (pulse && pulse.perudo && pulse.perudo.online > 0) {
         return `<span class="tile-badge live">🟢 ${pulse.perudo.online} ${t('b_online')}</span>`;
     }
@@ -195,30 +219,35 @@ function folderBadge() {
     return `<span class="tile-badge done">${t('b_folder_done')}</span>`;
 }
 
-function renderTiles() {
-    const gamesInner = GAME_APPS.map((a, i) => `<div class="folder-item" style="--d:${i * 55}ms">${renderTile(a)}</div>`).join('');
-    const folder = `
-        <button class="tile folder-card${gamesOpen ? ' open' : ''}" id="folder-games" type="button" style="--accent:#d9a94e">
-            <span class="tile-mark">🎲</span>
+function renderFolder(folder) {
+    const open = openFolders.has(folder.id);
+    const inner = folder.apps.map((a, i) => `<div class="folder-item" style="--d:${i * 55}ms">${renderTile(a)}</div>`).join('');
+    return `
+        <button class="tile folder-card${open ? ' open' : ''}" data-folder="${folder.id}" type="button" style="--accent:${folder.accent}">
+            <span class="tile-mark">${folder.emoji}</span>
             <span class="tile-body">
-                <span class="tile-name">${t('folder_games')}</span>
-                <span class="tile-desc">${GAME_APPS.length} ${t('folder_games_count')}</span>
+                <span class="tile-name">${t(folder.nameKey)}</span>
+                <span class="tile-desc">${folder.apps.length} ${t(folder.countKey)}</span>
             </span>
-            ${folderBadge()}
+            ${folderBadge(folder)}
             <span class="folder-chevron">⌄</span>
         </button>
-        <div class="folder-tray${gamesOpen ? ' open' : ''}" id="folder-tray">
-            <div class="folder-tray-inner">${gamesInner}</div>
+        <div class="folder-tray${open ? ' open' : ''}" id="folder-tray-${folder.id}">
+            <div class="folder-tray-inner">${inner}</div>
         </div>`;
+}
 
+function renderTiles() {
+    const folders = FOLDERS.map(renderFolder).join('');
     const rest = OTHER_APPS.map(renderTile).join('') + (isAdminUser ? renderTile(ADMIN_APP) : '');
-    $('tiles').innerHTML = folder + rest;
+    $('tiles').innerHTML = folders + rest;
 
-    $('folder-games').addEventListener('click', () => {
-        gamesOpen = !gamesOpen;
-        localStorage.setItem('erquy_games_open', gamesOpen ? '1' : '0');
+    document.querySelectorAll('[data-folder]').forEach(btn => btn.addEventListener('click', () => {
+        const id = btn.dataset.folder;
+        if (openFolders.has(id)) openFolders.delete(id); else openFolders.add(id);
+        localStorage.setItem('erquy_folders_open', JSON.stringify([...openFolders]));
         renderTiles();
-    });
+    }));
 }
 
 async function loadPulse() {
