@@ -1,0 +1,112 @@
+/* =====================================================================
+   AUTOROUTE — mobile-first, DA du salon (nuit chaude + laiton)
+   ===================================================================== */
+:root {
+    --ink:#14100b; --ink-2:#1d1710; --ink-3:#241b12;
+    --brass:#d9a94e; --brass-soft:#ecca82; --parchment:#efe4cf;
+    --muted:#a08f74; --line:rgba(217,169,78,0.20);
+    --card-red:#c2453a; --card-red-soft:#e07a6e; --card-black:#1a1712;
+    --good:#5aa87a;
+}
+* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html { -webkit-text-size-adjust:100%; }
+html,body { margin:0; padding:0; }
+body {
+    min-height:100dvh; overflow-x:hidden;
+    font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; color:var(--parchment);
+    background:radial-gradient(130% 70% at 50% -8%, #2b2013 0%, transparent 55%), var(--ink);
+    background-attachment:fixed; -webkit-font-smoothing:antialiased;
+}
+.boot,.au { display:none; }
+body.is-boot .boot { display:grid; place-items:center; position:fixed; inset:0; }
+body.is-ready .au { display:flex; }
+.boot-ring { width:34px; height:34px; border-radius:50%; border:3px solid var(--line); border-top-color:var(--brass); animation:spin .8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+.au { flex-direction:column; min-height:100dvh; max-width:520px; margin:0 auto;
+      padding:max(10px,env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom)); gap:12px; }
+
+.au-head { display:flex; align-items:center; gap:10px; }
+.au-back { flex:0 0 auto; width:44px; height:44px; display:grid; place-items:center; border-radius:12px;
+           background:rgba(255,255,255,0.07); border:1px solid var(--line); color:var(--brass-soft);
+           text-decoration:none; font-size:1.3rem; }
+.au-back:active { transform:scale(.93); }
+.au-titles { flex:1; min-width:0; text-align:center; }
+.au-title { font-family:'Fraunces',Georgia,serif; font-weight:900; font-size:1.28rem; margin:0; color:var(--brass-soft); line-height:1.1; }
+.au-sub { display:block; font-size:.72rem; color:var(--muted); }
+.au-settings-btn { flex:0 0 auto; width:44px; height:44px; display:grid; place-items:center; border-radius:12px;
+                    background:rgba(255,255,255,0.07); border:1px solid var(--line); color:var(--brass-soft);
+                    font-size:1.2rem; cursor:pointer; }
+.au-settings-btn:active { transform:scale(.93); }
+
+.au-hint { text-align:center; color:var(--muted); font-size:.84rem; margin:0; }
+
+/* Route : ligne de bornes, comme un compteur de progression stylisé */
+.au-road { display:flex; align-items:center; gap:5px; padding:10px 6px; overflow-x:auto; scrollbar-width:none; }
+.au-road::-webkit-scrollbar { display:none; }
+.au-marker { flex:0 0 auto; width:14px; height:14px; border-radius:50%; background:rgba(255,255,255,.08);
+             border:1.5px solid var(--line); transition:all .3s; }
+.au-marker.done { background:var(--brass); border-color:var(--brass); }
+.au-marker.current { width:22px; height:22px; background:var(--brass-soft); border-color:var(--brass-soft);
+                      box-shadow:0 0 14px rgba(217,169,78,.5); }
+.au-road-line { flex:1; height:2px; background:var(--line); min-width:8px; }
+.au-road-line.done { background:var(--brass); }
+
+.au-table { flex:1; display:flex; align-items:center; justify-content:center; min-height:200px; perspective:1200px; }
+.au-card-slot { width:150px; height:210px; }
+.au-card { width:100%; height:100%; position:relative; transform-style:preserve-3d; transition:transform .6s cubic-bezier(.3,.9,.3,1.1); }
+.au-card.flipped { transform:rotateY(180deg); }
+.au-card-face { position:absolute; inset:0; border-radius:16px; backface-visibility:hidden;
+                 display:flex; align-items:center; justify-content:center; box-shadow:0 14px 34px rgba(0,0,0,.5); }
+.au-card-back { background:
+        repeating-linear-gradient(45deg, rgba(217,169,78,.14) 0 8px, transparent 8px 16px),
+        linear-gradient(165deg,var(--ink-3),var(--ink-2));
+    border:2.5px solid var(--brass); }
+.au-card-back::after { content:'🛣️'; font-size:2rem; opacity:.55; }
+.au-card-front { background:var(--parchment); transform:rotateY(180deg); border:2.5px solid #d8cba9; flex-direction:column; gap:4px; }
+.au-card-front .au-rank { font-family:'Fraunces',Georgia,serif; font-weight:900; font-size:2.6rem; line-height:1; }
+.au-card-front .au-suit { font-size:2.4rem; line-height:1; }
+.au-card-front.is-red .au-rank, .au-card-front.is-red .au-suit { color:var(--card-red); }
+.au-card-front.is-black .au-rank, .au-card-front.is-black .au-suit { color:var(--card-black); }
+
+.au-btn { display:block; width:100%; padding:16px; border-radius:14px; font-size:1rem; font-weight:800;
+          font-family:inherit; cursor:pointer; border:none; text-align:center; text-decoration:none;
+          background:linear-gradient(180deg,var(--brass-soft),var(--brass)); color:#2a1c07; }
+.au-btn[hidden] { display:none !important; }
+.au-btn.ghost { background:transparent; border:1px solid var(--line); color:var(--brass-soft); font-weight:700; font-size:.9rem; }
+.au-btn:active { transform:scale(.98); }
+
+.au-result { display:flex; flex-direction:column; gap:10px; align-items:center; }
+.au-result[hidden] { display:none !important; }
+.au-result-title { font-family:'Fraunces',Georgia,serif; font-weight:900; font-size:1.3rem; margin:0; color:var(--brass-soft); text-align:center; }
+.au-result-text { font-size:.92rem; color:var(--parchment); text-align:center; margin:0; line-height:1.4; }
+
+.au-stats { display:grid; grid-template-columns:repeat(2, 1fr); gap:8px; }
+.au-stat { background:rgba(0,0,0,.22); border:1px solid var(--line); border-radius:12px; padding:10px 4px; text-align:center; }
+.au-stat b { display:block; font-size:1.2rem; color:var(--brass-soft); font-family:'Fraunces',Georgia,serif; }
+.au-stat em { font-style:normal; font-size:.64rem; color:var(--muted); display:block; margin-top:2px; }
+
+.au-note { text-align:center; color:var(--muted); font-size:.72rem; margin:0; opacity:.8; }
+
+/* Réglages */
+.au-overlay { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.78); display:flex;
+              align-items:center; justify-content:center; padding:16px; }
+.au-overlay[hidden] { display:none; }
+.au-card-panel { width:100%; max-width:380px; background:linear-gradient(165deg,var(--ink-3),var(--ink-2));
+           border:2px solid var(--brass); border-radius:20px; padding:24px 22px; box-shadow:0 20px 50px rgba(0,0,0,.6); }
+.au-panel-title { font-family:'Fraunces',Georgia,serif; font-weight:900; color:var(--brass-soft); text-align:center; margin:0 0 16px; font-size:1.25rem; }
+.au-field-label { font-size:.7rem; text-transform:uppercase; letter-spacing:1.4px; color:var(--brass); margin:14px 0 8px; }
+.au-choice { display:flex; gap:8px; }
+.au-choice button { flex:1; padding:11px 4px; border-radius:10px; background:rgba(255,255,255,.05); border:1px solid var(--line);
+                     color:var(--muted); font-weight:700; font-family:inherit; cursor:pointer; font-size:.86rem; }
+.au-choice button.on { background:linear-gradient(180deg,var(--brass-soft),var(--brass)); color:#2a1c07; border-color:transparent; }
+.au-card-panel .au-btn { margin-top:18px; }
+.au-card-panel .au-btn + .au-btn { margin-top:9px; }
+
+.au-toast { position:fixed; left:50%; bottom:calc(20px + env(safe-area-inset-bottom)); transform:translateX(-50%);
+            background:var(--ink-3); border:1px solid var(--brass); color:var(--parchment); font-size:.85rem;
+            padding:12px 18px; border-radius:999px; z-index:400; box-shadow:0 8px 24px rgba(0,0,0,.5);
+            max-width:90vw; text-align:center; }
+.au-toast[hidden] { display:none; }
+
+@media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.001ms !important; transition-duration:.001ms !important; } }

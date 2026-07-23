@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+    <meta name="theme-color" content="#14100b">
+    <title>Purple</title>
+    <link rel="icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="is-boot">
+    <div class="boot"><div class="boot-ring"></div></div>
+
+    <div class="pu" id="pu">
+        <header class="pu-head">
+            <a class="pu-back" href="/" aria-label="Retour au salon">←</a>
+            <div class="pu-titles">
+                <h1 class="pu-title">Purple</h1>
+                <span class="pu-sub" id="pu-deck-count">52 cartes restantes</span>
+            </div>
+        </header>
+
+        <p class="pu-hint">Tirez une carte, décidez ensemble à l'oral qui boit et combien.</p>
+
+        <div class="pu-table">
+            <div class="pu-card-slot">
+                <div class="pu-card" id="pu-card">
+                    <div class="pu-card-face pu-card-back"></div>
+                    <div class="pu-card-face pu-card-front" id="pu-card-front"></div>
+                </div>
+            </div>
+        </div>
+
+        <button class="pu-btn" id="btn-draw">Tirer une carte</button>
+
+        <div class="pu-stats" id="pu-stats">
+            <div class="pu-stat"><b id="stat-drawn">0</b><em>cartes tirées</em></div>
+            <div class="pu-stat"><b id="stat-decks">0</b><em>paquets épuisés</em></div>
+        </div>
+        <button class="pu-btn ghost" id="btn-reset-stats">Réinitialiser</button>
+
+        <p class="pu-note">Un petit rappel amical : gardez un verre d'eau à côté. 🙂</p>
+    </div>
+
+    <div class="pu-toast" id="pu-toast" hidden></div>
+    <script src="app.js"></script>
+</body>
+</html>

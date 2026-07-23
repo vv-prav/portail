@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+    <meta name="theme-color" content="#14100b">
+    <title>Autoroute</title>
+    <link rel="icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="is-boot">
+    <div class="boot"><div class="boot-ring"></div></div>
+
+    <div class="au" id="au">
+        <header class="au-head">
+            <a class="au-back" href="/" aria-label="Retour au salon">←</a>
+            <div class="au-titles">
+                <h1 class="au-title">Autoroute</h1>
+                <span class="au-sub" id="au-progress">Borne 1 / 12</span>
+            </div>
+            <button class="au-settings-btn" id="btn-settings" aria-label="Réglages">⚙</button>
+        </header>
+
+        <p class="au-hint">Le téléphone à la main avance, retourne, applique l'effet.</p>
+
+        <div class="au-road" id="au-road"></div>
+
+        <div class="au-table">
+            <div class="au-card-slot">
+                <div class="au-card" id="au-card">
+                    <div class="au-card-face au-card-back"></div>
+                    <div class="au-card-face au-card-front" id="au-card-front"></div>
+                </div>
+            </div>
+        </div>
+
+        <button class="au-btn" id="btn-flip">Retourner la carte</button>
+
+        <div class="au-result" id="au-result" hidden>
+            <p class="au-result-title" id="au-result-title">—</p>
+            <p class="au-result-text" id="au-result-text">—</p>
+            <button class="au-btn" id="btn-next">Continuer sur la route</button>
+        </div>
+
+        <div class="au-stats" id="au-stats">
+            <div class="au-stat"><b id="stat-routes">0</b><em>routes terminées</em></div>
+            <div class="au-stat"><b id="stat-sips">0</b><em>gorgées au total</em></div>
+        </div>
+
+        <p class="au-note">Un petit rappel amical : gardez un verre d'eau à côté. 🙂</p>
+    </div>
+
+    <!-- Réglages -->
+    <div class="au-overlay" id="v-settings" hidden>
+        <div class="au-card-panel">
+            <h2 class="au-panel-title">Réglages</h2>
+            <p class="au-field-label">Intensité</p>
+            <div class="au-choice" id="opt-intensity">
+                <button type="button" data-v="0.5">Douce</button>
+                <button type="button" data-v="1" class="on">Normale</button>
+                <button type="button" data-v="1.5">Forte</button>
+            </div>
+            <p class="au-field-label">Longueur de la route</p>
+            <div class="au-choice" id="opt-length">
+                <button type="button" data-v="8">8</button>
+                <button type="button" data-v="12" class="on">12</button>
+                <button type="button" data-v="16">16</button>
+            </div>
+            <button class="au-btn ghost" id="btn-reset-stats">Réinitialiser les statistiques</button>
+            <button class="au-btn" id="btn-settings-close">Fermer</button>
+        </div>
+    </div>
+
+    <div class="au-toast" id="au-toast" hidden></div>
+    <script src="app.js"></script>
+</body>
+</html>

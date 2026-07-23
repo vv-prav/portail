@@ -1044,10 +1044,16 @@ const undercoverApi = require('./undercover/game')(app, io, requireAuth);
 app.use('/undercover', requireAuth, express.static(__dirname + '/public/undercover'));
 
 // ---------------------------------------------------------------------
-//  ROUGE OU NOIR — jeu de cartes local, purement statique (aucun état
-//  serveur : c'est la personne qui tient le téléphone qui joue).
+//  PURPLE — tirage de carte aléatoire, purement statique (aucun état
+//  serveur : c'est la personne qui tient le téléphone qui tire).
 // ---------------------------------------------------------------------
-app.use('/rougenoir', requireAuth, express.static(__dirname + '/public/rougenoir'));
+app.use('/purple', requireAuth, express.static(__dirname + '/public/purple'));
+
+// ---------------------------------------------------------------------
+//  AUTOROUTE — jeu de cartes local, purement statique (même principe que
+//  Rouge ou Noir : pas d'état serveur, la personne au téléphone joue).
+// ---------------------------------------------------------------------
+app.use('/autoroute', requireAuth, express.static(__dirname + '/public/autoroute'));
 
 // ---------------------------------------------------------------------
 //  RECETTES — carnet partagé du cercle
