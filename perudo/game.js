@@ -1150,15 +1150,16 @@ function startRound(gameId) {
     const alivePlayers = game.players.filter(p => p.dice > 0);
     game.isPalifico = false;
     game.palificoFace = null;   // face verrouillée du palifico (fixée à la 1ère mise)
-    if (!game.palificoDone) game.palificoDone = {};   // pseudos ayant DÉJÀ eu leur palifico (persiste toute la partie)
     let palificoStarterId = null;
     let palificoPlayerName = "";
     const palificoEnabled = !game.options || game.options.palifico !== false;
 
     alivePlayers.forEach(p => {
-        if (palificoEnabled && p.dice === 1 && !game.palificoDone[p.pseudo]) {
+        // Le palifico se redéclenche À CHAQUE FOIS qu'un joueur RETOMBE à 1 dé (pas une seule
+        // fois par partie) : on détecte une vraie transition depuis >1 dé, pas juste "être à 1 dé".
+        // Un joueur qui remonte à 2 dés (Calza réussi) puis en reperd un déclenche un nouveau palifico.
+        if (palificoEnabled && p.dice === 1 && p._diceBeforeRound !== 1) {
             game.isPalifico = true;
-            game.palificoDone[p.pseudo] = true;
             p.hasBeenPalifico = true;
             palificoStarterId = p.id;
             palificoPlayerName = p.pseudo;
@@ -1166,6 +1167,9 @@ function startRound(gameId) {
         game.hands[p.id] = rollDice(p.dice);
         if (!p.isBot) game.hands[p.id].forEach(f => addStatFace(p.pseudo, 'rolledFaces', f));
     });
+    // Mémorise l'état pour détecter la prochaine transition (y compris les joueurs éliminés,
+    // pour que leur compteur reste correct s'ils reviennent en jeu via une règle spéciale).
+    game.players.forEach(p => { p._diceBeforeRound = p.dice; });
 
     // Modificateur "malédiction" : palifico permanent (le starter est le joueur du tour)
     if (game.forcePalifico && !game.isPalifico) {
@@ -2131,8 +2135,7 @@ io.on('connection', (socket) => {
         // Démarrage immédiat (pas d'attente d'autres joueurs)
         const game = activeGames[gameId];
         game.started = true;
-        game.players.forEach(p => { p.dice = options.startDice; p.hasBeenPalifico = false; });
-        game.palificoDone = {};
+        game.players.forEach(p => { p.dice = options.startDice; p.hasBeenPalifico = false; p._diceBeforeRound = options.startDice; });
         game.eliminationOrder = [];
         game.humanCount = 1;
         const u = registeredUsers[players[socket.id].pseudo];
@@ -2540,7 +2543,7 @@ io.on('connection', (socket) => {
                 }
                 if (interleaved.length === game.players.length) game.players = interleaved;
             }
-            game.palificoDone = {};
+            game.players.forEach(p => { p._diceBeforeRound = p.dice; });
             io.emit('update_games', getPublicGames());
             io.to(gameId).emit('game_log', isDuo ? `🎲 Partie en DUO ! Les équipes sont formées.` : `🎲 La partie commence !`);
 
