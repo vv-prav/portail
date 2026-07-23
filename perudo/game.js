@@ -20,7 +20,7 @@ const DEFAULT_STYLE = { bgColor: '#ffffff', dotColor: '#000000', shape: 'square'
 // À garder synchronisé avec winsRequired dans le catalogue SKINS de app.js.
 // Pour rendre un nouveau skin payant : ajoute une ligne ici (ex: dragon: 5).
 const SKIN_LOCKS = { forge: 5, gold: 10 };
-const MAX_PLAYERS = 10;
+const MAX_PLAYERS = 12;
 const START_DICE = 5;
 const TURN_TIMEOUT_MS = 90 * 1000; // 90s avant action automatique (anti-blocage)
 const PSEUDO_REGEX = /^[\p{L}\p{N} _'-]{3,16}$/u; // lettres/chiffres/espaces, 3-16 car.

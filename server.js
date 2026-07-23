@@ -1038,6 +1038,12 @@ const pbacApi = require('./pbac/game')(app, io, { get: mfGet, set: mfSet });
 app.use('/pbac', requireAuth, express.static(__dirname + '/public/pbac'));
 
 // ---------------------------------------------------------------------
+//  INFILTRÉ — jeu social de déduction, intégré sous /undercover.
+// ---------------------------------------------------------------------
+const undercoverApi = require('./undercover/game')(app, io, requireAuth);
+app.use('/undercover', requireAuth, express.static(__dirname + '/public/undercover'));
+
+// ---------------------------------------------------------------------
 //  RECETTES — carnet partagé du cercle
 //  Stockage : une clé par recette (rec:<id>) via le cache mfGet/mfSet.
 //  Photos : compressées côté client ; le serveur borne (miniature + grande).
@@ -1259,6 +1265,7 @@ require('./admin/routes')(app, {
         engine: mjEngine,
     },
     pbac: () => pbacApi,
+    undercover: () => undercoverApi,
 });
 
 

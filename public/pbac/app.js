@@ -27,14 +27,19 @@ function toast(msg) {
     clearTimeout(el._t); el._t = setTimeout(() => { el.hidden = true; }, 2600);
 }
 function showView(id) {
-    ['v-lobby', 'v-waiting', 'v-spectator', 'v-choose-letter', 'v-countdown', 'v-writing', 'v-voting', 'v-cat-summary', 'v-round-end', 'v-ended']
+    ['v-lobby', 'v-waiting', 'v-spectator', 'v-choose-letter', 'v-countdown', 'v-writing', 'v-voting', 'v-parallel', 'v-cat-summary', 'v-round-end', 'v-ended']
         .forEach(v => { $(v).hidden = (v !== id); });
     currentView = id;
 }
 
 // ---------- Connexion ----------
-let lastGameId = null;
+let lastGameId = localStorage.getItem('pbac_last_game') || null;
 let wasDisconnected = false;
+function setLastGameId(id) {
+    lastGameId = id;
+    if (id) localStorage.setItem('pbac_last_game', id);
+    else localStorage.removeItem('pbac_last_game');
+}
 function connect() {
     socket = io();
     socket.on('connect', () => {
@@ -54,9 +59,20 @@ function connect() {
     socket.on('pbac_games', renderLobby);
     socket.on('pbac_state', onState);
     socket.on('pbac_card', renderCard);
+    socket.on('pbac_parallel', renderParallel);
     socket.on('pbac_packs', renderPacks);
-    socket.on('pbac_error', (msg) => toast(msg || 'Erreur.'));
-    socket.on('pbac_closed', () => { toast('La table a été fermée.'); location.href = '/'; });
+    socket.on('pbac_error', (msg) => {
+        toast(msg || 'Erreur.');
+        // La table mémorisée n'existe plus (fermée, expirée…) : on efface et on repasse au lobby.
+        if (lastGameId && /existe plus/i.test(msg || '')) {
+            setLastGameId(null);
+            state = null;
+            showView('v-lobby');
+            socket.emit('pbac_list');
+            socket.emit('pbac_packs_list');
+        }
+    });
+    socket.on('pbac_closed', () => { toast('La table a été fermée.'); setLastGameId(null); location.href = '/'; });
     socket.on('disconnect', () => { wasDisconnected = true; toast('Connexion perdue, on retente…'); });
 }
 
@@ -91,6 +107,9 @@ document.querySelectorAll('#opt-duration button').forEach(b => b.addEventListene
 }));
 document.querySelectorAll('#opt-letter-mode button').forEach(b => b.addEventListener('click', () => {
     document.querySelectorAll('#opt-letter-mode button').forEach(x => x.classList.toggle('on', x === b));
+}));
+document.querySelectorAll('#opt-vote-mode button').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('#opt-vote-mode button').forEach(x => x.classList.toggle('on', x === b));
 }));
 
 // ---------- Catégories personnalisables ----------
@@ -168,13 +187,14 @@ $('create-confirm').addEventListener('click', () => {
     const rounds = document.querySelector('#opt-rounds button.on').dataset.v;
     const duration = document.querySelector('#opt-duration button.on').dataset.v;
     const letterMode = document.querySelector('#opt-letter-mode button.on').dataset.v;
-    socket.emit('pbac_create', { rounds: Number(rounds), duration, letterMode, categories: selectedCats });
+    const voteMode = document.querySelector('#opt-vote-mode button.on').dataset.v;
+    socket.emit('pbac_create', { rounds: Number(rounds), duration, letterMode, voteMode, categories: selectedCats });
     $('v-create').hidden = true;
 });
 $('btn-leave-spectator').addEventListener('click', () => {
     socket.emit('pbac_leave');
     state = null;
-    lastGameId = null;
+    setLastGameId(null);
     $('pb-sub').textContent = 'Salon des parties';
     $('pb-round-tag').hidden = true;
     showView('v-lobby');
@@ -183,7 +203,7 @@ $('btn-leave-spectator').addEventListener('click', () => {
 $('btn-leave-lobby').addEventListener('click', () => {
     socket.emit('pbac_leave');
     state = null;
-    lastGameId = null;
+    setLastGameId(null);
     $('pb-sub').textContent = 'Salon des parties';
     $('pb-round-tag').hidden = true;
     showView('v-lobby');
@@ -193,7 +213,7 @@ $('btn-leave-lobby').addEventListener('click', () => {
 // ---------- Dispatch d'état ----------
 function onState(s) {
     state = s;
-    lastGameId = s.id;
+    setLastGameId(s.id);
     $('pb-sub').textContent = 'Table de ' + s.host;
 
     const me = s.players.find(p => p.pseudo === myPseudo);
@@ -230,7 +250,8 @@ function onState(s) {
         showView('v-writing');
     } else if (s.status === 'voting') {
         clearInterval(timerId);
-        showView('v-voting');   // le contenu arrive via l'évènement pbac_card
+        if (s.voteMode === 'parallel') showView('v-parallel');   // contenu via pbac_parallel
+        else showView('v-voting');   // contenu via pbac_card
     } else if (s.status === 'cat_summary') {
         clearInterval(timerId);
         renderCatSummary(s);
@@ -458,6 +479,54 @@ function renderCard(c) {
 $('btn-vote-yes').addEventListener('click', () => socket.emit('pbac_vote', { value: 'yes' }));
 $('btn-vote-no').addEventListener('click', () => socket.emit('pbac_vote', { value: 'no' }));
 $('merge-toggle').addEventListener('click', () => { $('merge-list').hidden = !$('merge-list').hidden; });
+
+// ---------- Vote parallèle : toute la catégorie affichée d'un coup ----------
+function renderParallel(data) {
+    const isHost = state && state.host === myPseudo;
+    $('parallel-progress').textContent = `Catégorie ${data.catIndex} / ${data.catTotal}`;
+    $('parallel-progress-fill').style.width = Math.round(((data.catIndex - 1) / data.catTotal) * 100) + '%';
+    $('parallel-cat-name').textContent = data.category;
+
+    $('parallel-list').innerHTML = data.cards.map(c => {
+        if (c.type === 'empty') {
+            return `<div class="pp-row empty"><div class="pp-top"><span class="pp-name">${esc(c.pseudo)}</span></div><p class="pp-empty-text">${c.text ? '« ' + esc(c.text) + ' » invalide' : "n'a rien écrit"}</p></div>`;
+        }
+        const total = c.eligible || 1;
+        const yesPct = Math.round((c.yes / total) * 100);
+        const noPct = Math.round((c.no / total) * 100);
+        let bottom;
+        if (c.resolved) {
+            const label = c.mergedWith ? 'Fusionné avec ' + esc(c.mergedWith) : (c.accepted ? 'Accepté' : 'Refusé');
+            bottom = `<p class="pp-outcome ${c.accepted ? 'accepted' : 'rejected'}">${label}</p>`;
+        } else {
+            bottom = `<div class="pp-btns">
+                <button type="button" class="pp-btn no${c.iVoted === 'no' ? ' chosen' : ''}" data-p="${esc(c.pseudo)}" data-v="no" ${!c.canVote ? 'disabled' : ''}>Non</button>
+                <button type="button" class="pp-btn yes${c.iVoted === 'yes' ? ' chosen' : ''}" data-p="${esc(c.pseudo)}" data-v="yes" ${!c.canVote ? 'disabled' : ''}>Oui</button>
+            </div>`;
+        }
+        const mergeHtml = (isHost && !c.resolved && c.mergeCandidates && c.mergeCandidates.length) ? `
+            <button type="button" class="pp-merge-toggle" data-toggle="${esc(c.pseudo)}">C'est le même mot qu'un déjà accepté ?</button>
+            <div class="pp-merge-list" id="pp-merge-${esc(c.pseudo)}" hidden>
+                ${c.mergeCandidates.map(cand => `<button type="button" class="pp-merge-opt" data-of="${esc(c.pseudo)}" data-target="${esc(cand.pseudo)}">${esc(cand.text)} <span>(${esc(cand.pseudo)})</span></button>`).join('')}
+            </div>` : '';
+        return `<div class="pp-row">
+            <div class="pp-top"><span class="pp-name">${esc(c.pseudo)}</span><span class="pp-text">${esc(c.text)}</span></div>
+            <div class="pp-gauge"><div class="pp-gauge-yes" style="width:${yesPct}%"></div><div class="pp-gauge-no" style="width:${noPct}%"></div></div>
+            ${bottom}${mergeHtml}
+        </div>`;
+    }).join('');
+
+    $('parallel-list').querySelectorAll('.pp-btn').forEach(b => b.addEventListener('click', () => {
+        socket.emit('pbac_vote_parallel', { pseudo: b.dataset.p, value: b.dataset.v });
+    }));
+    $('parallel-list').querySelectorAll('.pp-merge-toggle').forEach(b => b.addEventListener('click', () => {
+        const list = $('pp-merge-' + b.dataset.toggle);
+        if (list) list.hidden = !list.hidden;
+    }));
+    $('parallel-list').querySelectorAll('.pp-merge-opt').forEach(b => b.addEventListener('click', () => {
+        socket.emit('pbac_merge_parallel', { pseudo: b.dataset.of, mergeWith: b.dataset.target });
+    }));
+}
 
 // ---------- Récap de catégorie ----------
 function renderCatSummary(s) {

@@ -36,7 +36,7 @@ const COUNTDOWN_MS = 3000;    // le « 3, 2, 1 » avant que la lettre n'apparais
 const CARD_PAUSE_MS = 1300;          // pause après résolution avant la carte suivante
 const EMPTY_PAUSE_MS = 2400;         // durée d'affichage d'une case vide (« Loupé »)
 const CATEGORY_SUMMARY_MS = 2600;    // récap affiché entre deux catégories
-const MAX_PLAYERS = 8;
+const MAX_PLAYERS = 12;
 const PSEUDO_MAX = 20;
 
 const SALON_SECRET = process.env.SESSION_SECRET || 'dev-secret-a-changer';
@@ -213,35 +213,37 @@ function advanceAfterCard(g, entry) {
 
 // Récapitulatif des points d'une catégorie (une fois toutes ses cartes votées),
 // puis passage à la catégorie suivante ou fin de manche.
+// Calcule les points d'une catégorie une fois toutes ses réponses tranchées (votées ou fusionnées).
+// Commun aux deux modes de vote (séquentiel et parallèle).
+function computeCategoryPoints(g, cat) {
+    const rootOf = (pseudo) => {
+        let cur = pseudo, hops = 0;
+        while (g.merges[cat + '|' + cur] && hops++ < 8) cur = g.merges[cat + '|' + cur];
+        return cur;
+    };
+    const groupKeyOf = (pseudo) => {
+        const root = rootOf(pseudo);
+        const rootRaw = (g.answers[root] && g.answers[root][cat]) || '';
+        return norm(rootRaw);
+    };
+    const counts = {};
+    for (const p of g.players) {
+        const raw = (g.answers[p.pseudo] && g.answers[p.pseudo][cat]) || '';
+        const ok = g.voteOutcomes[cat + '|' + p.pseudo];
+        if (ok && raw) { const key = groupKeyOf(p.pseudo); counts[key] = (counts[key] || 0) + 1; }
+    }
+    g.categoryPoints[cat] = g.categoryPoints[cat] || {};
+    for (const p of g.players) {
+        const raw = (g.answers[p.pseudo] && g.answers[p.pseudo][cat]) || '';
+        const ok = g.voteOutcomes[cat + '|' + p.pseudo];
+        const gain = ok && raw ? (counts[groupKeyOf(p.pseudo)] === 1 ? 3 : 1) : 0;
+        g.categoryPoints[cat][p.pseudo] = gain;
+    }
+}
+
 function finalizeCategoryOrRound(g, justFinishedCategory) {
     if (justFinishedCategory) {
-        // Une réponse fusionnée par l'hôte rejoint le groupe de sa cible (même en cas de chaîne A->B->C).
-        const rootOf = (pseudo) => {
-            let cur = pseudo, hops = 0;
-            while (g.merges[justFinishedCategory + '|' + cur] && hops++ < 8) cur = g.merges[justFinishedCategory + '|' + cur];
-            return cur;
-        };
-        const groupKeyOf = (pseudo) => {
-            const root = rootOf(pseudo);
-            const rootRaw = (g.answers[root] && g.answers[root][justFinishedCategory]) || '';
-            return norm(rootRaw);
-        };
-        const pts = {};
-        const counts = {};
-        for (const p of g.players) pts[p.pseudo] = 0;
-        for (const p of g.players) {
-            const raw = (g.answers[p.pseudo] && g.answers[p.pseudo][justFinishedCategory]) || '';
-            const ok = g.voteOutcomes[justFinishedCategory + '|' + p.pseudo];
-            if (ok && raw) { const key = groupKeyOf(p.pseudo); counts[key] = (counts[key] || 0) + 1; }
-        }
-        for (const p of g.players) {
-            const raw = (g.answers[p.pseudo] && g.answers[p.pseudo][justFinishedCategory]) || '';
-            const ok = g.voteOutcomes[justFinishedCategory + '|' + p.pseudo];
-            const gain = ok && raw ? (counts[groupKeyOf(p.pseudo)] === 1 ? 3 : 1) : 0;
-            pts[p.pseudo] = gain;
-            g.categoryPoints[justFinishedCategory] = g.categoryPoints[justFinishedCategory] || {};
-            g.categoryPoints[justFinishedCategory][p.pseudo] = gain;
-        }
+        computeCategoryPoints(g, justFinishedCategory);
         g.status = 'cat_summary';
         g.lastCategory = justFinishedCategory;
         broadcastState(g);
@@ -274,14 +276,92 @@ function endRoundToVoting(g) {
     g.reviewIndex = 0;
     g.voteOutcomes = {}; g.categoryPoints = {}; g.merges = {};
     if (!g.reviewQueue.length) { finalizeRound(g); return; }
-    startCard(g);
+    if (g.voteMode === 'parallel') { g.parallelCatIndex = 0; startCategoryParallel(g, g.categories[0]); }
+    else startCard(g);
+}
+
+// =====================================================================
+//  MODE DE VOTE « PARALLÈLE » — toute la catégorie d'un coup, votes simultanés
+//  sur chaque réponse. Beaucoup plus rapide à grand nombre de joueurs.
+// =====================================================================
+function resolveParallelCard(g, pseudo, forceAccept, mergedWith) {
+    const c = g.parallelCards[pseudo];
+    if (!c || c.resolved) return;
+    const accepted = typeof forceAccept === 'boolean' ? forceAccept : (c.votes.filter(v => v === 'yes').length > c.votes.filter(v => v === 'no').length);
+    c.resolved = true; c.accepted = accepted; c.mergedWith = mergedWith || null;
+    g.voteOutcomes[g.parallelCategory + '|' + pseudo] = accepted;
+    if (mergedWith) g.merges[g.parallelCategory + '|' + pseudo] = mergedWith;
+}
+function startCategoryParallel(g, cat) {
+    clearTimeout(g._timer);
+    g.status = 'voting';
+    g.parallelCategory = cat;
+    g.parallelCards = {};
+    const entries = g.reviewQueue.filter(e => e.category === cat);
+    for (const e of entries) {
+        if (e.type === 'empty') { g.voteOutcomes[cat + '|' + e.pseudo] = false; continue; }
+        const eligible = g.players.filter(p => p.connected && !p.spectator && p.pseudo !== e.pseudo).map(p => p.pseudo);
+        g.parallelCards[e.pseudo] = { votes: [], voters: {}, eligible, resolved: false, accepted: false };
+        if (!eligible.length) resolveParallelCard(g, e.pseudo, true);   // personne pour voter : accepté d'office
+    }
+    broadcastParallel(g);
+    checkParallelDone(g);
+}
+function checkParallelDone(g) {
+    if (g.status !== 'voting' || !g.parallelCategory) return;
+    const entries = g.reviewQueue.filter(e => e.category === g.parallelCategory);
+    const allDone = entries.every(e => e.type === 'empty' || (g.parallelCards[e.pseudo] && g.parallelCards[e.pseudo].resolved));
+    if (!allDone) return;
+    computeCategoryPoints(g, g.parallelCategory);
+    g.status = 'cat_summary';
+    g.lastCategory = g.parallelCategory;
+    broadcastState(g);
+    g._timer = setTimeout(() => {
+        g.parallelCatIndex++;
+        if (g.parallelCatIndex >= g.categories.length) finalizeRound(g);
+        else startCategoryParallel(g, g.categories[g.parallelCatIndex]);
+    }, CATEGORY_SUMMARY_MS);
+}
+function buildParallelCardsFor(g, viewerPseudo) {
+    const entries = g.reviewQueue.filter(e => e.category === g.parallelCategory);
+    const isHost = viewerPseudo === g.host;
+    return entries.map(e => {
+        if (e.type === 'empty') return { pseudo: e.pseudo, type: 'empty', text: (g.answers[e.pseudo] && g.answers[e.pseudo][g.parallelCategory]) || '' };
+        const c = g.parallelCards[e.pseudo] || { votes: [], voters: {}, eligible: [], resolved: false };
+        const mergeCandidates = isHost
+            ? entries.filter(x => x.type === 'valid' && x.pseudo !== e.pseudo && g.voteOutcomes[g.parallelCategory + '|' + x.pseudo] === true)
+                .map(x => ({ pseudo: x.pseudo, text: (g.answers[x.pseudo] && g.answers[x.pseudo][g.parallelCategory]) || '' }))
+            : [];
+        return {
+            pseudo: e.pseudo, type: 'valid', text: (g.answers[e.pseudo] && g.answers[e.pseudo][g.parallelCategory]) || '',
+            yes: c.votes.filter(v => v === 'yes').length, no: c.votes.filter(v => v === 'no').length,
+            eligible: c.eligible.length, votedPseudos: Object.keys(c.voters),
+            resolved: c.resolved, accepted: c.accepted, mergedWith: c.mergedWith || null,
+            iVoted: c.voters[viewerPseudo] || null, canVote: c.eligible.includes(viewerPseudo) && !c.voters[viewerPseudo] && !c.resolved,
+            mergeCandidates,
+        };
+    });
+}
+function sendParallelTo(g, socket) {
+    const pseudo = socket.data.pbacPseudo;
+    socket.emit('pbac_parallel', {
+        category: g.parallelCategory,
+        catIndex: g.categories.indexOf(g.parallelCategory) + 1, catTotal: g.categories.length,
+        cards: buildParallelCardsFor(g, pseudo),
+    });
+}
+function broadcastParallel(g) {
+    for (const p of g.players) {
+        const sock = io.sockets.sockets.get(p.sid);
+        if (sock) sendParallelTo(g, sock);
+    }
 }
 
 function stateForClient(g) {
     return {
         id: g.id, host: g.host, status: g.status, players: playerList(g),
         categories: g.categories, maxRounds: g.maxRounds, round: g.round,
-        duration: g.duration, letter: g.letter, letterMode: g.letterMode,
+        duration: g.duration, letter: g.letter, letterMode: g.letterMode, voteMode: g.voteMode,
         timerEnd: g.status === 'writing' ? g.timerEnd : null,
         countdownEnd: g.status === 'countdown' ? g.countdownEnd : null,
         stoppedBy: g.stoppedBy || null,
@@ -379,7 +459,7 @@ io.on('connection', (socket) => {
         socket.emit('pbac_packs', packs);
     });
 
-    socket.on('pbac_create', ({ rounds, duration, categories, letterMode }) => {
+    socket.on('pbac_create', ({ rounds, duration, categories, letterMode, voteMode }) => {
         const pseudo = socket.data.pbacPseudo;
         if (!pseudo) return socket.emit('pbac_error', 'Session expirée, reviens au salon.');
         const id = 'p' + (nextId++);
@@ -390,8 +470,10 @@ io.on('connection', (socket) => {
             maxRounds: [3, 5, 7].includes(Number(rounds)) ? Number(rounds) : 5,
             duration: DURATIONS[duration] || DURATIONS.moyen,
             letterMode: letterMode === 'host' ? 'host' : 'random',
+            voteMode: voteMode === 'parallel' ? 'parallel' : 'sequential',
             round: 0, usedLetters: [], scores: {}, answers: {}, pendingLetter: null,
             reviewQueue: [], reviewIndex: 0, voteOutcomes: {}, categoryPoints: {}, cardState: null, merges: {},
+            parallelCategory: null, parallelCards: {}, parallelCatIndex: 0,
         };
         games[id] = g;
         socketGame[socket.id] = id;
@@ -417,7 +499,10 @@ io.on('connection', (socket) => {
         socketGame[socket.id] = g.id;
         socket.join(roomOf(g));
         broadcastState(g);
-        if (g.status === 'voting') sendCardTo(g, socket);
+        if (g.status === 'voting') {
+            if (g.voteMode === 'parallel') sendParallelTo(g, socket);
+            else sendCardTo(g, socket);
+        }
         broadcastLobby();
     });
 
@@ -509,6 +594,34 @@ io.on('connection', (socket) => {
         if (!target || target === entry.pseudo) return;
         if (g.voteOutcomes[entry.category + '|' + target] !== true) return;   // la cible doit être déjà acceptée
         resolveCard(g, true, target);
+    });
+
+    // ---- Mode de vote parallèle : toute la catégorie d'un coup ----
+    socket.on('pbac_vote_parallel', ({ pseudo: targetPseudo, value }) => {
+        const g = games[socketGame[socket.id]];
+        const me = socket.data.pbacPseudo;
+        if (!g || g.status !== 'voting' || g.voteMode !== 'parallel' || !me) return;
+        if (value !== 'yes' && value !== 'no') return;
+        const c = g.parallelCards[targetPseudo];
+        if (!c || c.resolved || !c.eligible.includes(me) || c.voters[me]) return;
+        c.voters[me] = value;
+        c.votes.push(value);
+        const stillNeeded = c.eligible.filter(p => { const pl = g.players.find(x => x.pseudo === p); return pl && pl.connected; });
+        if (!stillNeeded.length || c.votes.length >= stillNeeded.length) resolveParallelCard(g, targetPseudo);
+        broadcastParallel(g);
+        checkParallelDone(g);
+    });
+    socket.on('pbac_merge_parallel', ({ pseudo: targetOfPseudo, mergeWith }) => {
+        const g = games[socketGame[socket.id]];
+        if (!g || g.host !== socket.data.pbacPseudo || g.status !== 'voting' || g.voteMode !== 'parallel') return;
+        const c = g.parallelCards[targetOfPseudo];
+        if (!c || c.resolved) return;
+        const target = String(mergeWith || '');
+        if (!target || target === targetOfPseudo) return;
+        if (g.voteOutcomes[g.parallelCategory + '|' + target] !== true) return;
+        resolveParallelCard(g, targetOfPseudo, true, target);
+        broadcastParallel(g);
+        checkParallelDone(g);
     });
 
     socket.on('pbac_next_round', () => {

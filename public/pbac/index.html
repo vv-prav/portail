@@ -57,6 +57,12 @@
                         <button type="button" data-v="random" class="on">Aléatoire</button>
                         <button type="button" data-v="host">Je choisis</button>
                     </div>
+                    <p class="pb-field-label">Vote</p>
+                    <div class="pb-choice" id="opt-vote-mode">
+                        <button type="button" data-v="sequential" class="on">Une réponse à la fois</button>
+                        <button type="button" data-v="parallel">Toute la catégorie</button>
+                    </div>
+                    <p class="pb-cat-hint">« Toute la catégorie » affiche toutes les réponses d'un coup et les votes se font en même temps — beaucoup plus rapide à grand nombre de joueurs.</p>
 
                     <p class="pb-field-label">Mes packs de catégories</p>
                     <div class="pb-packs-row" id="packs-row"></div>
@@ -170,6 +176,14 @@
                 <p class="pm-name" id="miss-name">—</p>
                 <p class="pm-sub" id="miss-sub">n'a rien écrit ici</p>
             </div>
+        </section>
+
+        <!-- VOTE PARALLÈLE (toute la catégorie d'un coup) -->
+        <section class="pb-view" id="v-parallel" hidden>
+            <div class="pb-round-progress"><div class="pb-round-progress-fill" id="parallel-progress-fill"></div></div>
+            <p class="pb-hint" id="parallel-progress">Catégorie 1 / 8</p>
+            <p class="pb-section-title" id="parallel-cat-name">Prénom</p>
+            <div class="pb-parallel-list" id="parallel-list"></div>
         </section>
 
         <!-- RÉCAP DE CATÉGORIE -->

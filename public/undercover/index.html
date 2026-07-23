@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, interactive-widget=resizes-content">
+    <meta name="theme-color" content="#14100b">
+    <title>Infiltré</title>
+    <link rel="icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="is-boot">
+    <div class="boot"><div class="boot-ring"></div></div>
+
+    <div class="uc" id="uc">
+        <header class="uc-head">
+            <a class="uc-back" href="/" aria-label="Retour au salon">←</a>
+            <div class="uc-titles">
+                <h1 class="uc-title">Infiltré</h1>
+                <span class="uc-sub" id="uc-sub">Choisis comment jouer</span>
+            </div>
+            <span class="uc-round-tag" id="uc-round-tag" hidden></span>
+        </header>
+
+        <!-- CHOIX DU MODE -->
+        <section class="uc-view" id="v-mode" >
+            <button class="uc-mode-card" id="mode-remote">
+                <span class="uc-mode-title">Chacun sur son tél</span>
+                <span class="uc-mode-desc">Chacun voit son mot en privé sur son téléphone. Idéal si vous êtes chacun sur votre appareil.</span>
+            </button>
+            <button class="uc-mode-card" id="mode-local">
+                <span class="uc-mode-title">Sur place, un seul appareil</span>
+                <span class="uc-mode-desc">Un téléphone passe de main en main pour découvrir son mot. Idéal en soirée, tout le monde autour de la table.</span>
+            </button>
+        </section>
+
+        <!-- ===================== MODE À DISTANCE ===================== -->
+
+        <section class="uc-view" id="v-lobby" hidden>
+            <button class="uc-btn" id="btn-create">Créer une table</button>
+            <p class="uc-list-label" id="lobby-empty-label" hidden>Aucune table ouverte pour l'instant.</p>
+            <div class="uc-tables" id="uc-tables"></div>
+            <button class="uc-btn ghost" id="btn-mode-back">← Changer de mode</button>
+        </section>
+
+        <section class="uc-view" id="v-waiting" hidden>
+            <div class="uc-players" id="wait-players"></div>
+            <div class="uc-uc-count" id="uc-count-box" hidden>
+                <p class="uc-field-label">Nombre d'infiltrés</p>
+                <div class="uc-choice" id="opt-uc-count"></div>
+            </div>
+            <p class="uc-hint" id="wait-hint">En attente de l'hôte…</p>
+            <button class="uc-btn" id="btn-start" hidden>Lancer la partie</button>
+            <button class="uc-btn ghost" id="btn-leave-lobby">Quitter la table</button>
+        </section>
+
+        <!-- Bandeau persistant : mon mot (visible tout le round côté distant) -->
+        <div class="uc-myword-band" id="myword-band" hidden>
+            <span class="uc-myword-label">Ton mot</span>
+            <span class="uc-myword-text" id="myword-text">—</span>
+        </div>
+
+        <section class="uc-view" id="v-speaking" hidden>
+            <p class="uc-hint">Chacun décrit son mot à voix haute, sans le dire, dans l'ordre.</p>
+            <div class="uc-turn-order" id="turn-order"></div>
+            <button class="uc-btn" id="btn-next-turn" hidden>Joueur suivant</button>
+            <button class="uc-btn ghost" id="btn-go-vote" hidden>Lancer le vote</button>
+        </section>
+
+        <section class="uc-view" id="v-voting" hidden>
+            <p class="uc-hint">Qui soupçonnes-tu d'être l'infiltré ?</p>
+            <div class="uc-vote-grid" id="vote-grid"></div>
+            <p class="uc-hint" id="vote-progress"></p>
+        </section>
+
+        <section class="uc-view" id="v-result" hidden>
+            <div class="uc-result-box" id="result-box"></div>
+        </section>
+
+        <section class="uc-view" id="v-ended" hidden>
+            <div class="uc-ended-box" id="ended-box"></div>
+            <button class="uc-btn" id="btn-rematch" hidden>Rejouer</button>
+            <a class="uc-btn ghost" href="/">Retour au salon</a>
+        </section>
+
+        <!-- ===================== MODE LOCAL (passe le téléphone) ===================== -->
+
+        <section class="uc-view" id="v-local-setup" hidden>
+            <p class="uc-field-label">Joueurs (3 à 12)</p>
+            <div class="uc-name-list" id="local-name-list"></div>
+            <button class="uc-btn ghost" id="local-add-name">Ajouter un joueur</button>
+            <p class="uc-field-label">Nombre d'infiltrés</p>
+            <div class="uc-choice" id="local-uc-count"></div>
+            <button class="uc-btn" id="local-start">Lancer</button>
+            <button class="uc-btn ghost" id="btn-mode-back-2">← Changer de mode</button>
+        </section>
+
+        <section class="uc-view" id="v-local-reveal" hidden>
+            <div class="uc-pass-box">
+                <p class="uc-pass-title">Passe le téléphone à</p>
+                <p class="uc-pass-name" id="local-reveal-name">—</p>
+                <button class="uc-btn" id="local-reveal-show">Voir mon mot</button>
+                <div class="uc-word-reveal" id="local-word-reveal" hidden>
+                    <p class="uc-word-big" id="local-word-big">—</p>
+                    <button class="uc-btn" id="local-reveal-next">C'est vu, passer au suivant</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="uc-view" id="v-local-speaking" hidden>
+            <p class="uc-hint">Chacun décrit son mot à voix haute, sans le dire, dans l'ordre.</p>
+            <div class="uc-turn-order" id="local-turn-order"></div>
+            <button class="uc-btn" id="local-next-turn">Joueur suivant</button>
+            <button class="uc-btn ghost" id="local-go-vote">Lancer le vote</button>
+        </section>
+
+        <section class="uc-view" id="v-local-vote-pass" hidden>
+            <div class="uc-pass-box">
+                <p class="uc-pass-title">Passe le téléphone à</p>
+                <p class="uc-pass-name" id="local-voter-name">—</p>
+                <button class="uc-btn" id="local-vote-show">C'est à moi de voter</button>
+                <div class="uc-vote-grid" id="local-vote-grid" hidden></div>
+            </div>
+        </section>
+
+        <section class="uc-view" id="v-local-result" hidden>
+            <div class="uc-result-box" id="local-result-box"></div>
+            <button class="uc-btn" id="local-result-continue">Continuer</button>
+        </section>
+
+        <section class="uc-view" id="v-local-ended" hidden>
+            <div class="uc-ended-box" id="local-ended-box"></div>
+            <button class="uc-btn" id="local-rematch">Rejouer (mêmes joueurs)</button>
+            <button class="uc-btn ghost" id="local-new-game">Nouvelle partie</button>
+        </section>
+    </div>
+
+    <div class="uc-toast" id="uc-toast" hidden></div>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
