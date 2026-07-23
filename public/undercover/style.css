@@ -82,6 +82,19 @@ body.is-ready .uc { display:flex; }
                      color:var(--muted); font-weight:700; font-family:inherit; cursor:pointer; }
 .uc-choice button.on { background:linear-gradient(180deg,var(--brass-soft),var(--brass)); color:#2a1c07; border-color:transparent; }
 
+.uc-check-row { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border-radius:10px;
+                background:rgba(255,255,255,.03); border:1px solid var(--line); margin-bottom:8px; cursor:pointer; }
+.uc-check-row input { margin-top:3px; flex:0 0 auto; width:18px; height:18px; accent-color:var(--brass); }
+.uc-check-row span { font-size:.84rem; color:var(--parchment); line-height:1.35; }
+.uc-check-row span i { color:var(--muted); font-style:normal; }
+
+.uc-mrwhite-guess { display:flex; flex-direction:column; gap:10px; align-items:center; padding:14px;
+                     border-radius:14px; background:rgba(210,98,74,.08); border:1.5px solid rgba(210,98,74,.4); }
+.uc-mrwhite-guess[hidden] { display:none !important; }
+.uc-mrwhite-guess input { width:100%; padding:12px; border-radius:10px; background:rgba(255,255,255,.06);
+                           border:1px solid var(--line); color:var(--parchment); font-size:16px; text-align:center; font-family:inherit; }
+.uc-mrwhite-guess input:focus { outline:none; border-color:var(--bad); }
+
 /* Bandeau "Ton mot" (mode à distance, persistant) */
 .uc-myword-band { display:flex; align-items:center; justify-content:center; gap:10px; padding:12px;
                    border-radius:14px; background:linear-gradient(165deg, rgba(217,169,78,.14), rgba(217,169,78,.05));
@@ -115,9 +128,11 @@ body.is-ready .uc { display:flex; }
 .ur-role { font-weight:800; font-size:1.1rem; margin:4px 0; }
 .ur-role.civil { color:var(--good); }
 .ur-role.undercover { color:var(--bad); }
+.ur-role.mrwhite { color:var(--tie); }
 .ue-winner { font-family:'Fraunces',Georgia,serif; font-weight:900; font-size:1.9rem; margin:0 0 6px; }
 .ue-winner.civils { color:var(--good); }
 .ue-winner.infiltres { color:var(--bad); }
+.ue-winner.mrwhite { color:var(--tie); }
 .ue-reveal-list { display:flex; flex-direction:column; gap:6px; width:100%; max-width:320px; margin-top:10px; }
 .ue-reveal-row { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px;
                  background:rgba(255,255,255,.03); border:1px solid var(--line); font-size:.84rem; }
@@ -125,6 +140,8 @@ body.is-ready .uc { display:flex; }
 .ue-reveal-row .er-word { margin-left:auto; color:var(--muted); }
 .ue-reveal-row.undercover { border-color:rgba(210,98,74,.4); }
 .ue-reveal-row.undercover .er-word { color:var(--bad); }
+.ue-reveal-row.mrwhite { border-color:rgba(201,162,74,.4); }
+.ue-reveal-row.mrwhite .er-word { color:var(--tie); }
 
 /* Mode local : passe le téléphone */
 .uc-name-list { display:flex; flex-direction:column; gap:8px; }

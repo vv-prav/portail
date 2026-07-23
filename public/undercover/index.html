@@ -51,6 +51,9 @@
             <div class="uc-uc-count" id="uc-count-box" hidden>
                 <p class="uc-field-label">Nombre d'infiltrés</p>
                 <div class="uc-choice" id="opt-uc-count"></div>
+                <p class="uc-field-label">Options</p>
+                <label class="uc-check-row"><input type="checkbox" id="opt-mrwhite"> <span>Mr Blanc <i>(un joueur sans mot du tout, doit bluffer)</i></span></label>
+                <label class="uc-check-row"><input type="checkbox" id="opt-subgroups"> <span>Sous-groupes d'infiltrés <i>(ils n'ont pas tous le même mot)</i></span></label>
             </div>
             <p class="uc-hint" id="wait-hint">En attente de l'hôte…</p>
             <button class="uc-btn" id="btn-start" hidden>Lancer la partie</button>
@@ -78,6 +81,12 @@
 
         <section class="uc-view" id="v-result" hidden>
             <div class="uc-result-box" id="result-box"></div>
+            <div class="uc-mrwhite-guess" id="mrwhite-guess-box" hidden>
+                <p class="uc-hint" id="mrwhite-guess-hint">Mr Blanc, tente ta chance : devine le mot des civils !</p>
+                <input type="text" id="mrwhite-guess-input" maxlength="30" placeholder="Ton mot…" autocomplete="off">
+                <button class="uc-btn" id="mrwhite-guess-submit">Deviner</button>
+                <button class="uc-btn ghost" id="mrwhite-guess-skip" hidden>Passer (hôte)</button>
+            </div>
         </section>
 
         <section class="uc-view" id="v-ended" hidden>
@@ -94,6 +103,9 @@
             <button class="uc-btn ghost" id="local-add-name">Ajouter un joueur</button>
             <p class="uc-field-label">Nombre d'infiltrés</p>
             <div class="uc-choice" id="local-uc-count"></div>
+            <p class="uc-field-label">Options</p>
+            <label class="uc-check-row"><input type="checkbox" id="local-opt-mrwhite"> <span>Mr Blanc <i>(un joueur sans mot du tout, doit bluffer)</i></span></label>
+            <label class="uc-check-row"><input type="checkbox" id="local-opt-subgroups"> <span>Sous-groupes d'infiltrés <i>(ils n'ont pas tous le même mot)</i></span></label>
             <button class="uc-btn" id="local-start">Lancer</button>
             <button class="uc-btn ghost" id="btn-mode-back-2">← Changer de mode</button>
         </section>
@@ -128,6 +140,11 @@
 
         <section class="uc-view" id="v-local-result" hidden>
             <div class="uc-result-box" id="local-result-box"></div>
+            <div class="uc-mrwhite-guess" id="local-mrwhite-guess-box" hidden>
+                <p class="uc-hint">Passe le téléphone à <b id="local-mrwhite-name">—</b> pour deviner le mot des civils.</p>
+                <input type="text" id="local-mrwhite-input" maxlength="30" placeholder="Son mot…" autocomplete="off">
+                <button class="uc-btn" id="local-mrwhite-submit">Deviner</button>
+            </div>
             <button class="uc-btn" id="local-result-continue">Continuer</button>
         </section>
 

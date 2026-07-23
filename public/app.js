@@ -16,9 +16,9 @@ const I18N = {
         prof_tap: "Touche l'avatar pour le changer",
         prof_member: "Membre depuis le", prof_lastvisit: "dernière visite",
         sec_mf: "Mots fléchés", sec_perudo: "Perudo",
-        st_solved: "grilles résolues", st_best: "meilleur temps", st_streak: "jours d'affilée", st_days: "jours joués",
+        st_solved: "grilles résolues", st_best: "meilleur temps", st_streak: "jours d'affilée", st_days: "jours joués", st_best_tries: "meilleur score", st_avg_tries: "essais en moyenne",
         st_wins: "victoires", st_played: "parties", st_points: "points",
-        prof_none: "Pas encore joué — la taverne t'attend !",
+        prof_none: "Pas encore joué", prof_soon: "Pas encore de suivi pour ce jeu.",
         prof_code: "Nouveau code de récupération", btn_logout: "Se déconnecter",
         code_title: "Note ce code", code_copy: "Copier le code", code_ok: "C'est noté", code_copied: "Copié ✓",
         code_sub: "C'est le seul moyen de récupérer ton compte si tu oublies ton mot de passe. Il ne sera plus jamais affiché.",
@@ -43,9 +43,9 @@ const I18N = {
         prof_tap: "Tap the avatar to change it",
         prof_member: "Member since", prof_lastvisit: "last visit",
         sec_mf: "Crosswords", sec_perudo: "Perudo",
-        st_solved: "grids solved", st_best: "best time", st_streak: "day streak", st_days: "days played",
+        st_solved: "grids solved", st_best: "best time", st_streak: "day streak", st_days: "days played", st_best_tries: "best score", st_avg_tries: "average tries",
         st_wins: "wins", st_played: "games", st_points: "points",
-        prof_none: "Not played yet — the tavern awaits!",
+        prof_none: "Not played yet", prof_soon: "No tracking for this game yet.",
         prof_code: "New recovery code", btn_logout: "Log out",
         code_title: "Write this code down", code_copy: "Copy code", code_ok: "Got it", code_copied: "Copied ✓",
         code_sub: "It's the only way to recover your account if you forget your password. It will never be shown again.",
@@ -70,9 +70,9 @@ const I18N = {
         prof_tap: "Toca el avatar para cambiarlo",
         prof_member: "Miembro desde el", prof_lastvisit: "última visita",
         sec_mf: "Crucigramas", sec_perudo: "Perudo",
-        st_solved: "cuadrículas resueltas", st_best: "mejor tiempo", st_streak: "días seguidos", st_days: "días jugados",
+        st_solved: "cuadrículas resueltas", st_best: "mejor tiempo", st_streak: "días seguidos", st_days: "días jugados", st_best_tries: "mejor puntuación", st_avg_tries: "intentos promedio",
         st_wins: "victorias", st_played: "partidas", st_points: "puntos",
-        prof_none: "Aún no has jugado — ¡la taberna te espera!",
+        prof_none: "Aún no has jugado", prof_soon: "Sin seguimiento para este juego todavía.",
         prof_code: "Nuevo código de recuperación", btn_logout: "Cerrar sesión",
         code_title: "Apunta este código", code_copy: "Copiar código", code_ok: "Anotado", code_copied: "Copiado ✓",
         code_sub: "Es la única forma de recuperar tu cuenta si olvidas tu contraseña. No se mostrará nunca más.",
@@ -260,6 +260,44 @@ async function loadMiniProfile() {
 }
 function mmss(s) { return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 
+// Une carte par jeu : nom + couleur d'accent + petites stats claires. Cache proprement
+// les jeux jamais joués (au lieu d'afficher des zéros), et signale les jeux sans suivi.
+function gameCard(emoji, name, accent, streak, stats, note) {
+    const streakBadge = streak ? `<span class="pg-streak">🔥 ${streak}</span>` : '';
+    const body = stats && stats.length
+        ? `<div class="pg-grid${stats.length <= 2 ? ' cols2' : ''}">${stats.map(([v, l]) => `<div class="pg-stat"><b>${v}</b><em>${l}</em></div>`).join('')}</div>`
+        : `<p class="pg-empty">${t('prof_none')}</p>`;
+    return `<div class="prof-game" style="--acc:${accent}">
+        <div class="pg-head"><span class="pg-emoji">${emoji}</span><span class="pg-name">${esc(name)}</span>${streakBadge}</div>
+        ${body}${note ? `<p class="pg-soon">${note}</p>` : ''}
+    </div>`;
+}
+function buildGameCards(p) {
+    const cards = [];
+    // Perudo
+    cards.push(gameCard('🎲', 'Perudo', '#d9a94e', p.perudo ? p.perudo.currentStreak : 0, p.perudo ? [
+        [p.perudo.wins, t('st_wins')], [p.perudo.played, t('st_played')], [p.perudo.rankPoints, t('st_points')],
+    ] : null));
+    // Mots fléchés
+    cards.push(gameCard('🧩', 'Mots Fléchés', '#5aa87a', p.mf.streak, p.mf.solved ? [
+        [p.mf.solved, t('st_solved')], [p.mf.best ? mmss(p.mf.best) : '—', t('st_best')], [p.mf.days, t('st_days')],
+    ] : null));
+    // Motus
+    cards.push(gameCard('🟨', 'Motus', '#c9a24a', p.motus && p.motus.streak, p.motus && p.motus.solved ? [
+        [p.motus.solved, t('st_solved')], [p.motus.bestTries ?? '—', t('st_best_tries')],
+        [p.motus.avgTries ?? '—', t('st_avg_tries')], [p.motus.days, t('st_days')],
+    ] : null));
+    // Le Mot Juste
+    cards.push(gameCard('🧊', 'Le Mot Juste', '#6fb8d9', p.motjuste && p.motjuste.streak, p.motjuste && p.motjuste.solved ? [
+        [p.motjuste.solved, t('st_solved')], [p.motjuste.bestTries ?? '—', t('st_best_tries')],
+        [p.motjuste.avgTries ?? '—', t('st_avg_tries')], [p.motjuste.days, t('st_days')],
+    ] : null));
+    // Petit Bac / Infiltré : pas encore de suivi persistant — on le dit clairement plutôt que de rien afficher.
+    cards.push(gameCard('✏️', 'Petit Bac', '#c2513a', 0, null, t('prof_soon')));
+    cards.push(gameCard('🕵️', 'Infiltré', '#6f7bb0', 0, null, t('prof_soon')));
+    return cards.join('');
+}
+
 function openProfile() {
     if (!myProfile) return;
     const p = myProfile;
@@ -268,18 +306,7 @@ function openProfile() {
     const created = p.created ? new Date(p.created).toLocaleDateString(LANG === 'en' ? 'en-GB' : (LANG === 'es' ? 'es-ES' : 'fr-FR'), { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
     const prev = p.prevLogin ? new Date(p.prevLogin).toLocaleDateString(LANG === 'en' ? 'en-GB' : (LANG === 'es' ? 'es-ES' : 'fr-FR'), { day: 'numeric', month: 'short' }) : null;
     $('prof-meta').textContent = t('prof_member') + ' ' + created + (prev ? ' · ' + t('prof_lastvisit') + ' ' + prev : '');
-    // stats mots fléchés
-    $('prof-mf').innerHTML = [
-        [p.mf.solved, t('st_solved')],
-        [p.mf.best ? mmss(p.mf.best) : '—', t('st_best')],
-        ['🔥 ' + p.mf.streak, t('st_streak')],
-        [p.mf.days, t('st_days')],
-    ].map(([v, l]) => `<div class="ps"><b>${v}</b><em>${l}</em></div>`).join('');
-    // stats perudo
-    $('prof-perudo').innerHTML = p.perudo
-        ? [[p.perudo.wins, t('st_wins')], [p.perudo.played, t('st_played')], [p.perudo.rankPoints, t('st_points')]]
-            .map(([v, l]) => `<div class="ps"><b>${v}</b><em>${l}</em></div>`).join('')
-        : `<p class="prof-none">${t('prof_none')}</p>`;
+    $('prof-games').innerHTML = buildGameCards(p);
     // grille d'avatars
     $('avatar-grid').innerHTML = (p.avatars || []).map(a =>
         `<button type="button" class="av${a === p.avatar ? ' on' : ''}" data-av="${a}">${a}</button>`).join('');

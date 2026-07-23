@@ -1196,6 +1196,27 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
     });
 });
 
+// Agrège les stats d'un jeu "mot du jour" (Motus, Le Mot Juste) à partir de ses
+// clés de progression par utilisateur — même forme pour les deux jeux.
+function dailyGameStats(prefix, pseudo, daysKey, streakFn) {
+    let solved = 0, gaveUp = 0, bestTries = null, totalTries = 0;
+    for (const [k, v] of Object.entries(mfCache)) {
+        if (!k.startsWith(`${prefix}:${pseudo}:`) || !v) continue;
+        if (v.solved) {
+            solved++;
+            const tries = (v.guesses || []).length;
+            totalTries += tries;
+            if (!bestTries || tries < bestTries) bestTries = tries;
+        } else if (v.gaveUp) gaveUp++;
+    }
+    const days = new Set(mfGet(daysKey(pseudo)) || []);
+    return {
+        solved, gaveUp, bestTries,
+        avgTries: solved ? Math.round((totalTries / solved) * 10) / 10 : null,
+        days: days.size, streak: streakFn(pseudo).current,
+    };
+}
+
 app.get('/api/salon/profile', requireAuthApi, (req, res) => {
     const user = registeredUsers[currentUser(req)];
     if (!user) return res.status(404).json({ error: 'Compte introuvable.' });
@@ -1207,22 +1228,28 @@ app.get('/api/salon/profile', requireAuthApi, (req, res) => {
         solved++;
         if (v.seconds && (!best || v.seconds < best)) best = v.seconds;
     }
-    const days = new Set(mfGet(`mf:days:${pseudo}`) || []);
-    let streak = 0, d = mfTodayId();
-    if (!days.has(d)) d = mfShiftDay(d, -1);
-    while (days.has(d)) { streak++; d = mfShiftDay(d, -1); }
+    const mfDays = new Set(mfGet(`mf:days:${pseudo}`) || []);
+    let mfStreak = 0, d = mfTodayId();
+    if (!mfDays.has(d)) d = mfShiftDay(d, -1);
+    while (mfDays.has(d)) { mfStreak++; d = mfShiftDay(d, -1); }
     // stats perudo
     let perudo = null;
     try {
         const pu = perudoApi.users()[pseudo];
-        if (pu) perudo = { wins: pu.wins || 0, played: pu.played || 0, rankPoints: pu.rankPoints || 0 };
+        if (pu) perudo = {
+            wins: pu.wins || 0, played: pu.played || 0, rankPoints: pu.rankPoints || 0,
+            currentStreak: pu.currentStreak || 0, bestStreak: pu.bestStreak || 0,
+        };
     } catch (e) {}
+    // stats motus / le mot juste (même forme de données par utilisateur)
+    const motus = dailyGameStats('motus:prog', pseudo, u => kMotusDays(u), u => motusStreak(u));
+    const motjuste = dailyGameStats('mj:prog', pseudo, u => kMjDays(u), u => mjStreak(u));
     res.json({
         pseudo, avatar: user.avatar || '',
         created: user.created || 0, prevLogin: user.prevLogin || 0,
         isAdmin: isAdmin(pseudo),
-        mf: { solved, best, streak, days: days.size },
-        perudo,
+        mf: { solved, best, streak: mfStreak, days: mfDays.size },
+        perudo, motus, motjuste,
         avatars: SALON_AVATARS,
     });
 });

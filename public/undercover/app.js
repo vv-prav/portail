@@ -115,6 +115,8 @@ function renderWaiting(s) {
     $('btn-start').hidden = !isHost;
     $('wait-hint').hidden = isHost;
     $('uc-count-box').hidden = !isHost;
+    $('opt-mrwhite').checked = !!s.mrWhiteEnabled;
+    $('opt-subgroups').checked = !!s.subgroupsEnabled;
     if (isHost) {
         const n = s.players.length;
         const maxUc = Math.max(1, n - 2);
@@ -125,8 +127,12 @@ function renderWaiting(s) {
             socket.emit('uc_set_undercover_count', { count: Number(b.dataset.v) });
         }));
     }
+    $('opt-mrwhite').disabled = !isHost;
+    $('opt-subgroups').disabled = !isHost || (s.undercoverCount || 1) < 2;
 }
 $('btn-start').addEventListener('click', () => socket.emit('uc_start'));
+$('opt-mrwhite').addEventListener('change', () => socket.emit('uc_set_mrwhite', { enabled: $('opt-mrwhite').checked }));
+$('opt-subgroups').addEventListener('change', () => socket.emit('uc_set_subgroups', { enabled: $('opt-subgroups').checked }));
 
 function renderSpeaking(s) {
     $('turn-order').innerHTML = (s.speakOrder || []).map(p => `<span class="ut-chip${p === s.turnPseudo ? ' current' : ''}">${esc(p)}</span>`).join('');
@@ -148,23 +154,49 @@ function renderVoting(s) {
     $('vote-progress').textContent = `${(s.votedPseudos || []).length} / ${s.eligibleCount || 0} ont voté`;
 }
 
+function roleLabel(role) {
+    if (role === 'undercover') return 'était Infiltré !';
+    if (role === 'mrwhite') return 'était Mr Blanc !';
+    return 'était civil…';
+}
 function renderResult(s) {
     const r = s.result || {};
     let html;
     if (r.tie) html = `<p class="ur-title">Égalité</p><p class="ur-sub">Personne n'est éliminé cette fois.</p>`;
     else if (r.eliminated) html = `<p class="ur-title">${esc(r.eliminated)}</p>
-        <p class="ur-role ${r.role === 'undercover' ? 'undercover' : 'civil'}">${r.role === 'undercover' ? 'était Infiltré !' : 'était civil…'}</p>
-        <p class="ur-sub">Son mot était « ${esc(r.word)} »</p>`;
+        <p class="ur-role ${r.role}">${roleLabel(r.role)}</p>
+        ${r.role === 'mrwhite' ? '' : `<p class="ur-sub">Son mot était « ${esc(r.word)} »</p>`}`;
     else html = `<p class="ur-title">Aucune élimination</p>`;
     $('result-box').innerHTML = html;
-}
 
+    const awaiting = s.awaitingMrWhiteGuess;
+    $('mrwhite-guess-box').hidden = !awaiting;
+    if (awaiting) {
+        const isMe = awaiting === myPseudo;
+        $('mrwhite-guess-hint').textContent = isMe ? 'Mr Blanc, tente ta chance : devine le mot des civils !' : `On attend que ${esc(awaiting)} devine le mot des civils…`;
+        $('mrwhite-guess-input').hidden = !isMe;
+        $('mrwhite-guess-submit').hidden = !isMe;
+        if (isMe) setTimeout(() => $('mrwhite-guess-input').focus(), 200);
+        $('mrwhite-guess-skip').hidden = s.host !== myPseudo || isMe;
+    }
+}
+$('mrwhite-guess-submit').addEventListener('click', () => {
+    socket.emit('uc_mrwhite_guess', { guess: $('mrwhite-guess-input').value });
+    $('mrwhite-guess-input').value = '';
+});
+$('mrwhite-guess-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('mrwhite-guess-submit').click(); } });
+$('mrwhite-guess-skip').addEventListener('click', () => socket.emit('uc_mrwhite_skip'));
+
+function winnerLabel(winner) {
+    if (winner === 'infiltres') return 'Les Infiltrés gagnent !';
+    if (winner === 'mrwhite') return 'Mr Blanc gagne tout seul !';
+    return 'Les Civils gagnent !';
+}
 function renderEnded(s) {
-    const win = s.winner === 'infiltres';
     $('ended-box').innerHTML = `
-        <p class="ue-winner ${win ? 'infiltres' : 'civils'}">${win ? 'Les Infiltrés gagnent !' : 'Les Civils gagnent !'}</p>
+        <p class="ue-winner ${s.winner}">${winnerLabel(s.winner)}</p>
         <div class="ue-reveal-list">${(s.finalReveal || []).map(p => `
-            <div class="ue-reveal-row ${p.role}"><span class="er-name">${esc(p.pseudo)}</span><span class="er-word">${esc(p.word)}</span></div>`).join('')}</div>`;
+            <div class="ue-reveal-row ${p.role}"><span class="er-name">${esc(p.pseudo)}</span><span class="er-word">${p.word ? esc(p.word) : '(aucun mot)'}</span></div>`).join('')}</div>`;
     $('btn-rematch').hidden = s.host !== myPseudo;
 }
 $('btn-rematch').addEventListener('click', () => socket.emit('uc_rematch'));
@@ -189,11 +221,15 @@ async function ensurePairs() {
     return PAIRS;
 }
 
+function norm(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
+
 function initLocalSetup() {
     ensurePairs();
     if (!$('local-name-list').children.length) {
         for (let i = 0; i < 4; i++) addLocalNameRow();
     }
+    $('local-opt-mrwhite').checked = localMrWhiteEnabled;
+    $('local-opt-subgroups').checked = localSubgroupsEnabled;
     renderLocalUcCount();
 }
 function addLocalNameRow(value) {
@@ -212,6 +248,7 @@ function localFilledNames() {
     return [...$('local-name-list').querySelectorAll('input')].map(i => i.value.trim()).filter(Boolean);
 }
 let localUcCountChoice = null;
+let localMrWhiteEnabled = false, localSubgroupsEnabled = false, localCivilWord = null;
 function renderLocalUcCount() {
     const n = Math.max(0, localFilledNames().length);
     const maxUc = Math.max(1, n - 2);
@@ -221,6 +258,37 @@ function renderLocalUcCount() {
     $('local-uc-count').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
         localUcCountChoice = Number(b.dataset.v); renderLocalUcCount();
     }));
+    $('local-opt-subgroups').disabled = localUcCountChoice < 2;
+}
+$('local-opt-mrwhite').addEventListener('change', () => { localMrWhiteEnabled = $('local-opt-mrwhite').checked; });
+$('local-opt-subgroups').addEventListener('change', () => { localSubgroupsEnabled = $('local-opt-subgroups').checked; });
+
+// Répartit les rôles (civils / infiltrés / Mr Blanc) sur une liste de joueurs déjà créée.
+function assignLocalRoles(players) {
+    const n = players.length;
+    const mrWhiteCount = localMrWhiteEnabled && n >= 4 ? 1 : 0;
+    let ucCount = Math.min(localUcCountChoice || suggestUcCount(n), Math.max(1, n - 2 - mrWhiteCount));
+    if (ucCount + mrWhiteCount > n - 2) ucCount = Math.max(1, n - 2 - mrWhiteCount);
+    const pair = PAIRS[Math.floor(Math.random() * PAIRS.length)];
+    let pair2 = null;
+    if (localSubgroupsEnabled && ucCount >= 2) {
+        let tries = 0;
+        do { pair2 = PAIRS[Math.floor(Math.random() * PAIRS.length)]; } while (pair2[1] === pair[1] && tries++ < 10);
+    }
+    const order = players.map((_, i) => i).sort(() => Math.random() - 0.5);
+    let idx = 0;
+    for (let i = 0; i < ucCount; i++) {
+        const p = players[order[idx++]];
+        p.role = 'undercover';
+        p.word = (pair2 && i % 2 === 1) ? pair2[1] : pair[1];
+    }
+    for (let i = 0; i < mrWhiteCount; i++) {
+        const p = players[order[idx++]];
+        p.role = 'mrwhite';
+        p.word = null;
+    }
+    for (; idx < order.length; idx++) { players[order[idx]].role = 'civil'; players[order[idx]].word = pair[0]; }
+    localCivilWord = pair[0];
 }
 
 $('local-start').addEventListener('click', async () => {
@@ -229,11 +297,8 @@ $('local-start').addEventListener('click', async () => {
     const uniq = new Set(names.map(n => n.toLowerCase()));
     if (uniq.size !== names.length) { toast('Deux joueurs ont le même prénom — précise-les un peu.'); return; }
     await ensurePairs();
-    const pair = PAIRS[Math.floor(Math.random() * PAIRS.length)];
-    const ucCount = Math.min(localUcCountChoice || suggestUcCount(names.length), Math.max(1, names.length - 2));
-    const order = names.map((name, i) => ({ name, i })).sort(() => Math.random() - 0.5);
-    localPlayers = names.map(name => ({ name, alive: true, role: 'civil', word: pair[0] }));
-    order.slice(0, ucCount).forEach(o => { localPlayers[o.i].role = 'undercover'; localPlayers[o.i].word = pair[1]; });
+    localPlayers = names.map(name => ({ name, alive: true, role: 'civil', word: null }));
+    assignLocalRoles(localPlayers);
     localRound = 1; localTurnIndex = 0; localRevealIndex = 0; localVotes = {};
     startLocalReveal();
 });
@@ -252,7 +317,7 @@ function renderLocalReveal() {
 }
 $('local-reveal-show').addEventListener('click', () => {
     const p = localPlayers[localRevealIndex];
-    $('local-word-big').textContent = p.word;
+    $('local-word-big').textContent = p.role === 'mrwhite' ? 'Aucun mot — improvise !' : p.word;
     $('local-word-reveal').hidden = false;
     $('local-reveal-show').hidden = true;
 });
@@ -305,6 +370,11 @@ $('local-vote-show').addEventListener('click', () => {
     }));
 });
 
+function localRoleLabel(role) {
+    if (role === 'undercover') return 'était Infiltré !';
+    if (role === 'mrwhite') return 'était Mr Blanc !';
+    return 'était civil…';
+}
 function resolveLocalVotes() {
     const counts = {};
     for (const target of Object.values(localVotes)) counts[target] = (counts[target] || 0) + 1;
@@ -321,21 +391,45 @@ function resolveLocalVotes() {
     let html;
     if (!top || tie) html = `<p class="ur-title">Égalité</p><p class="ur-sub">Personne n'est éliminé cette fois.</p>`;
     else html = `<p class="ur-title">${esc(eliminated.name)}</p>
-        <p class="ur-role ${eliminated.role === 'undercover' ? 'undercover' : 'civil'}">${eliminated.role === 'undercover' ? 'était Infiltré !' : 'était civil…'}</p>
-        <p class="ur-sub">Son mot était « ${esc(eliminated.word)} »</p>`;
+        <p class="ur-role ${eliminated.role}">${localRoleLabel(eliminated.role)}</p>
+        ${eliminated.role === 'mrwhite' ? '' : `<p class="ur-sub">Son mot était « ${esc(eliminated.word)} »</p>`}`;
     $('local-result-box').innerHTML = html;
+
+    $('local-mrwhite-guess-box').hidden = true;
+    $('local-result-continue').hidden = false;
+    if (eliminated && eliminated.role === 'mrwhite') {
+        $('local-mrwhite-name').textContent = eliminated.name;
+        $('local-mrwhite-guess-box').hidden = false;
+        $('local-result-continue').hidden = true;
+    }
     showView('v-local-result');
+}
+$('local-mrwhite-submit').addEventListener('click', () => {
+    const guess = $('local-mrwhite-input').value;
+    const correct = !!guess && norm(guess) === norm(localCivilWord);
+    $('local-mrwhite-input').value = '';
+    $('local-mrwhite-guess-box').hidden = true;
+    if (correct) { renderLocalEnded('mrwhite'); showView('v-local-ended'); return; }
+    $('local-result-continue').hidden = false;
+});
+
+function localWinnerLabel(winner) {
+    if (winner === 'infiltres') return 'Les Infiltrés gagnent !';
+    if (winner === 'mrwhite') return 'Mr Blanc gagne tout seul !';
+    return 'Les Civils gagnent !';
+}
+function renderLocalEnded(winner) {
+    $('local-ended-box').innerHTML = `
+        <p class="ue-winner ${winner}">${localWinnerLabel(winner)}</p>
+        <div class="ue-reveal-list">${localPlayers.map(p => `
+            <div class="ue-reveal-row ${p.role}"><span class="er-name">${esc(p.name)}</span><span class="er-word">${p.word ? esc(p.word) : '(aucun mot)'}</span></div>`).join('')}</div>`;
 }
 $('local-result-continue').addEventListener('click', () => {
     const a = aliveLocal();
-    const ucAlive = a.filter(p => p.role === 'undercover').length;
-    const civAlive = a.length - ucAlive;
-    if (ucAlive === 0 || ucAlive >= civAlive) {
-        const win = ucAlive > 0;
-        $('local-ended-box').innerHTML = `
-            <p class="ue-winner ${win ? 'infiltres' : 'civils'}">${win ? 'Les Infiltrés gagnent !' : 'Les Civils gagnent !'}</p>
-            <div class="ue-reveal-list">${localPlayers.map(p => `
-                <div class="ue-reveal-row ${p.role}"><span class="er-name">${esc(p.name)}</span><span class="er-word">${esc(p.word)}</span></div>`).join('')}</div>`;
+    const impostors = a.filter(p => p.role === 'undercover' || p.role === 'mrwhite').length;
+    const civAlive = a.length - impostors;
+    if (impostors === 0 || impostors >= civAlive) {
+        renderLocalEnded(impostors > 0 ? 'infiltres' : 'civils');
         showView('v-local-ended');
         return;
     }
@@ -346,12 +440,8 @@ $('local-result-continue').addEventListener('click', () => {
 });
 $('local-rematch').addEventListener('click', async () => {
     await ensurePairs();
-    const pair = PAIRS[Math.floor(Math.random() * PAIRS.length)];
-    const n = localPlayers.length;
-    const ucCount = Math.min(localUcCountChoice || suggestUcCount(n), Math.max(1, n - 2));
-    const order = localPlayers.map((p, i) => ({ i })).sort(() => Math.random() - 0.5);
-    localPlayers.forEach(p => { p.alive = true; p.role = 'civil'; p.word = pair[0]; });
-    order.slice(0, ucCount).forEach(o => { localPlayers[o.i].role = 'undercover'; localPlayers[o.i].word = pair[1]; });
+    localPlayers.forEach(p => { p.alive = true; });
+    assignLocalRoles(localPlayers);
     localRound = 1; localVotes = {};
     startLocalReveal();
 });

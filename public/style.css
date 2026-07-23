@@ -219,13 +219,24 @@ body.is-hub   .hub   { display: block; }
       border: 1.5px solid var(--line); border-radius: 12px; cursor: pointer; font-family: inherit; }
 .av.on { border-color: var(--brass); background: rgba(217,169,78,0.16); box-shadow: 0 0 0 2px rgba(217,169,78,0.25); }
 .av:active { transform: scale(0.92); }
-.prof-sec { color: var(--brass); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1.8px;
-            margin: 14px 0 8px; text-align: left; }
-.prof-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 7px; }
-.ps { background: rgba(0,0,0,0.28); border: 1px solid var(--line); border-radius: 11px; padding: 10px 8px; text-align: center; }
-.ps b { display: block; font-size: 1.15rem; color: var(--brass-soft); line-height: 1.25; }
-.ps em { font-style: normal; font-size: 0.64rem; color: var(--muted); line-height: 1.2; display: block; margin-top: 2px; }
-.prof-none { color: var(--muted); font-size: 0.8rem; margin: 0; padding: 8px 0; }
+
+/* Cartes de statistiques par jeu — une par jeu, couleur d'accent propre, état vide soigné */
+.prof-games { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; text-align: left; }
+.prof-game { border: 1px solid var(--line); border-radius: 14px; padding: 12px 13px;
+             background: linear-gradient(165deg, rgba(255,255,255,0.03), rgba(0,0,0,0.15));
+             border-left: 3px solid var(--acc, var(--brass)); }
+.pg-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.pg-emoji { font-size: 1.05rem; }
+.pg-name { font-weight: 700; font-size: 0.86rem; color: var(--parchment); flex: 1; }
+.pg-streak { font-size: 0.72rem; font-weight: 700; color: var(--acc, var(--brass));
+             background: rgba(255,255,255,0.06); padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+.pg-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.pg-grid.cols2 { grid-template-columns: repeat(2, 1fr); }
+.pg-stat { background: rgba(0,0,0,0.22); border-radius: 10px; padding: 8px 4px; text-align: center; }
+.pg-stat b { display: block; font-size: 1.05rem; color: var(--acc, var(--brass-soft)); line-height: 1.2; }
+.pg-stat em { font-style: normal; font-size: 0.62rem; color: var(--muted); line-height: 1.15; display: block; margin-top: 2px; }
+.pg-empty { color: var(--muted); font-size: 0.78rem; margin: 0; padding: 4px 0; }
+.pg-soon { color: var(--muted); font-size: 0.72rem; margin: 2px 0 0; font-style: italic; }
 .prof-card .btn { margin-top: 10px; }
 .btn.logout { color: #c9a08f; border-color: rgba(224,122,95,0.35); }
 

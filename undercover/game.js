@@ -27,6 +27,22 @@ const PAIRS = [
     ['Bonbon', 'Chocolat noir'], ['Piano', 'Violon'], ['Basket', 'Handball'], ['Tennis', 'Badminton'],
     ['Ski', 'Snowboard'], ['Natation', 'Plongée'], ['Perroquet', 'Toucan'], ['Dauphin', 'Baleine'],
     ['Robot', 'Extraterrestre'], ['Astronaute', 'Pilote'],
+    // ---- entre potes : plus marrant, plus vécu ----
+    ['Ex', 'Crush'], ['Beau-frère', 'Belle-mère'], ['Ronflement', 'Pet'], ['Gueule de bois', 'Insomnie'],
+    ['Tinder', 'Instagram'], ['WhatsApp', 'SMS'], ['Chef', 'Stagiaire'], ['Karaoké', 'Playback'],
+    ['Anniversaire', 'Enterrement de vie de garçon'], ['Croisière', 'Camping sauvage'], ['Selfie', 'Portrait'],
+    ['Influenceur', 'Youtubeur'], ['Poker', 'Loto'], ['Barbecue', 'Fondue savoyarde'], ['Apéro', 'Digestif'],
+    ['Sieste', 'Grasse matinée'], ['Ronfleur', 'Somnambule'], ['Boomer', 'Millenial'], ['Playstation', 'Nintendo Switch'],
+    ['TikTok', 'Snapchat'], ['Uber', 'Taxi'], ['Deliveroo', 'Fait maison'], ['Colocataire', 'Voisin bruyant'],
+    ['Régime', 'Jeûne'], ['Salle de sport', 'Yoga'], ['Marathon', 'Randonnée'], ['Coup de foudre', 'Coup de bol'],
+    ['Chirurgien esthétique', 'Coiffeur'], ['Horoscope', 'Tarot'], ['Fantôme (ghosting)', 'Silence radio'],
+    ['Alcootest', 'Test de grossesse'], ['Divorce', 'Rupture'], ['Speed dating', 'Colonie de vacances'],
+    ['Sosie', 'Jumeau'], ['Cauchemar', 'Insomnie récurrente'], ['Podcast', 'Audiobook'], ['Cryptomonnaie', 'Casino'],
+    ['Télétravail', 'Chômage'], ['Patron toxique', 'Belle-mère envahissante'], ['Vegan', 'Intolérant au gluten'],
+    ['Chihuahua', 'Chat de gouttière'], ['Camping-car', 'Van aménagé'], ['Fête foraine', 'Parc d\u2019attractions'],
+    ['Chirurgien', 'Boucher'], ['Astrologue', 'Voyante'], ['Gendre idéal', 'Belle-fille parfaite'],
+    ['Insta-parfait', 'Filtré'], ['Blind test', 'Karaoké raté'], ['Notaire', 'Huissier'], ['Impôts', 'Amende'],
+    ['Colique', 'Migraine'], ['Anniversaire surprise', 'Enterrement surprise'], ['Playlist', 'Mixtape'],
 ];
 
 module.exports = function attachUndercover(app, io, requireAuth) {
@@ -74,21 +90,26 @@ function playerList(g) {
     return g.players.map(p => ({ pseudo: p.pseudo, connected: p.connected, alive: p.alive, host: p.pseudo === g.host }));
 }
 
+function norm(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
+
 function stateForClient(g, viewerPseudo) {
     const me = g.players.find(p => p.pseudo === viewerPseudo);
     const base = {
         id: g.id, host: g.host, status: g.status, players: playerList(g),
         round: g.round, undercoverCount: g.undercoverCount,
+        mrWhiteEnabled: !!g.mrWhiteEnabled, subgroupsEnabled: !!g.subgroupsEnabled,
         turnPseudo: g.status === 'speaking' ? (alive(g)[g.turnIndex] || {}).pseudo : null,
         speakOrder: g.status === 'speaking' ? alive(g).map(p => p.pseudo) : undefined,
         votedPseudos: g.status === 'voting' ? Object.keys(g.votes) : undefined,
         eligibleCount: g.status === 'voting' ? alive(g).length : undefined,
         myVote: g.status === 'voting' ? (g.votes[viewerPseudo] || null) : undefined,
         result: g.status === 'result' ? g.lastResult : undefined,
+        awaitingMrWhiteGuess: g.status === 'result' ? (g.awaitingMrWhiteGuess || null) : undefined,
         winner: g.status === 'ended' ? g.winner : undefined,
         finalReveal: g.status === 'ended' ? g.players.map(p => ({ pseudo: p.pseudo, role: p.role, word: p.word })) : undefined,
     };
     if (me && me.word) base.myWord = me.word;
+    if (me && me.role === 'mrwhite') base.myRole = 'mrwhite';   // pas de mot, mais on sait qu'on doit bluffer
     return base;
 }
 function broadcastState(g) {
@@ -100,28 +121,54 @@ function broadcastState(g) {
 
 function startGame(g) {
     const n = g.players.length;
-    const ucCount = Math.min(g.undercoverCount || suggestUndercoverCount(n), Math.max(1, n - 2));
+    const mrWhiteCount = g.mrWhiteEnabled && n >= 4 ? 1 : 0;
+    let ucCount = Math.min(g.undercoverCount || suggestUndercoverCount(n), Math.max(1, n - 2 - mrWhiteCount));
+    if (ucCount + mrWhiteCount > n - 2) ucCount = Math.max(1, n - 2 - mrWhiteCount);
     const pair = PAIRS[Math.floor(Math.random() * PAIRS.length)];
+    // Sous-groupes : les infiltrés se répartissent sur DEUX mots proches au lieu d'un seul —
+    // ils ne savent même pas si les autres infiltrés ont le même mot qu'eux.
+    let pair2 = null;
+    if (g.subgroupsEnabled && ucCount >= 2) {
+        let tries = 0;
+        do { pair2 = PAIRS[Math.floor(Math.random() * PAIRS.length)]; } while (pair2[1] === pair[1] && tries++ < 10);
+    }
     const shuffled = g.players.slice().sort(() => Math.random() - 0.5);
-    shuffled.forEach((p, i) => {
-        p.role = i < ucCount ? 'undercover' : 'civil';
-        p.word = i < ucCount ? pair[1] : pair[0];
-        p.alive = true;
-    });
+    let idx = 0;
+    for (let i = 0; i < ucCount; i++) {
+        const p = shuffled[idx++];
+        p.role = 'undercover';
+        p.word = (pair2 && i % 2 === 1) ? pair2[1] : pair[1];
+    }
+    for (let i = 0; i < mrWhiteCount; i++) {
+        const p = shuffled[idx++];
+        p.role = 'mrwhite';
+        p.word = null;
+    }
+    for (; idx < shuffled.length; idx++) { shuffled[idx].role = 'civil'; shuffled[idx].word = pair[0]; }
+    g.civilWord = pair[0];
     g.round = 1;
     g.turnIndex = 0;
     g.votes = {};
+    g.awaitingMrWhiteGuess = null;
     g.status = 'speaking';
     broadcastState(g);
 }
 
 function checkWin(g) {
     const a = alive(g);
-    const ucAlive = a.filter(p => p.role === 'undercover').length;
-    const civAlive = a.length - ucAlive;
-    if (ucAlive === 0) { g.status = 'ended'; g.winner = 'civils'; return true; }
-    if (ucAlive >= civAlive) { g.status = 'ended'; g.winner = 'infiltres'; return true; }
+    const impostors = a.filter(p => p.role === 'undercover' || p.role === 'mrwhite').length;
+    const civAlive = a.length - impostors;
+    if (impostors === 0) { g.status = 'ended'; g.winner = 'civils'; return true; }
+    if (impostors >= civAlive) { g.status = 'ended'; g.winner = 'infiltres'; return true; }
     return false;
+}
+function advanceAfterResult(g) {
+    if (checkWin(g)) { broadcastState(g); broadcastLobby(); return; }
+    g.round++;
+    g.turnIndex = 0;
+    g.votes = {};
+    g.status = 'speaking';
+    broadcastState(g);
 }
 
 function resolveVote(g) {
@@ -141,15 +188,15 @@ function resolveVote(g) {
         ? { eliminated: eliminated.pseudo, role: eliminated.role, word: eliminated.word, tie: false }
         : { eliminated: null, tie };
     g.status = 'result';
-    broadcastState(g);
-    g._timer = setTimeout(() => {
-        if (checkWin(g)) { broadcastState(g); broadcastLobby(); return; }
-        g.round++;
-        g.turnIndex = 0;
-        g.votes = {};
-        g.status = 'speaking';
+    // Mr Blanc démasqué : une dernière chance de deviner le mot des civils avant de continuer.
+    if (eliminated && eliminated.role === 'mrwhite') {
+        g.awaitingMrWhiteGuess = eliminated.pseudo;
         broadcastState(g);
-    }, 4500);
+        return;
+    }
+    g.awaitingMrWhiteGuess = null;
+    broadcastState(g);
+    g._timer = setTimeout(() => advanceAfterResult(g), 4500);
 }
 
 io.on('connection', (socket) => {
@@ -170,6 +217,7 @@ io.on('connection', (socket) => {
             id, host: pseudo, status: 'lobby',
             players: [{ sid: socket.id, pseudo, connected: true, alive: true, role: null, word: null }],
             undercoverCount: 0, round: 0, turnIndex: 0, votes: {},
+            mrWhiteEnabled: false, subgroupsEnabled: false, awaitingMrWhiteGuess: null, civilWord: null,
         };
         socketGame[socket.id] = id;
         socket.join(roomOf(games[id]));
@@ -228,6 +276,18 @@ io.on('connection', (socket) => {
         g.undercoverCount = n;
         broadcastState(g);
     });
+    socket.on('uc_set_mrwhite', ({ enabled }) => {
+        const g = games[socketGame[socket.id]];
+        if (!g || g.host !== socket.data.ucPseudo || g.status !== 'lobby') return;
+        g.mrWhiteEnabled = !!enabled;
+        broadcastState(g);
+    });
+    socket.on('uc_set_subgroups', ({ enabled }) => {
+        const g = games[socketGame[socket.id]];
+        if (!g || g.host !== socket.data.ucPseudo || g.status !== 'lobby') return;
+        g.subgroupsEnabled = !!enabled;
+        broadcastState(g);
+    });
 
     socket.on('uc_start', () => {
         const g = games[socketGame[socket.id]];
@@ -267,6 +327,30 @@ io.on('connection', (socket) => {
         broadcastState(g);
         const stillNeeded = alive(g).filter(p => p.connected).length;
         if (Object.keys(g.votes).length >= stillNeeded) resolveVote(g);
+    });
+
+    socket.on('uc_mrwhite_guess', ({ guess }) => {
+        const g = games[socketGame[socket.id]];
+        const me = socket.data.ucPseudo;
+        if (!g || g.status !== 'result' || !g.awaitingMrWhiteGuess || me !== g.awaitingMrWhiteGuess) return;
+        const correct = !!guess && norm(guess) === norm(g.civilWord);
+        g.awaitingMrWhiteGuess = null;
+        if (correct) {
+            clearTimeout(g._timer);
+            g.status = 'ended'; g.winner = 'mrwhite';
+            broadcastState(g); broadcastLobby();
+            return;
+        }
+        broadcastState(g);
+        g._timer = setTimeout(() => advanceAfterResult(g), 2200);
+    });
+    // L'hôte peut passer si Mr Blanc ne répond pas (ne bloque jamais la partie).
+    socket.on('uc_mrwhite_skip', () => {
+        const g = games[socketGame[socket.id]];
+        if (!g || g.host !== socket.data.ucPseudo || g.status !== 'result' || !g.awaitingMrWhiteGuess) return;
+        g.awaitingMrWhiteGuess = null;
+        broadcastState(g);
+        g._timer = setTimeout(() => advanceAfterResult(g), 300);
     });
 
     socket.on('uc_rematch', () => {
