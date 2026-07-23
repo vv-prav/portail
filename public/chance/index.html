@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+    <meta name="theme-color" content="#14100b">
+    <title>Chance</title>
+    <link rel="icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="is-boot">
+    <div class="boot"><div class="boot-ring"></div></div>
+
+    <div class="ch" id="ch">
+        <header class="ch-head">
+            <a class="ch-back" href="/" aria-label="Retour au salon">←</a>
+            <div class="ch-titles">
+                <h1 class="ch-title">Chance</h1>
+                <span class="ch-sub">Un choix vite fait, au hasard</span>
+            </div>
+        </header>
+
+        <div class="ch-modes" id="ch-modes">
+            <button type="button" class="ch-mode on" data-mode="dice">🎲 Dé</button>
+            <button type="button" class="ch-mode" data-mode="card">🃏 Carte</button>
+            <button type="button" class="ch-mode" data-mode="coin">🪙 Pièce</button>
+        </div>
+
+        <div class="ch-stage">
+            <!-- Dé -->
+            <div class="ch-panel" id="panel-dice">
+                <div class="ch-die" id="ch-die">
+                    <div class="ch-pip" data-p="1"></div><div class="ch-pip" data-p="2"></div><div class="ch-pip" data-p="3"></div>
+                    <div class="ch-pip" data-p="4"></div><div class="ch-pip" data-p="5"></div><div class="ch-pip" data-p="6"></div>
+                    <div class="ch-pip" data-p="7"></div><div class="ch-pip" data-p="8"></div><div class="ch-pip" data-p="9"></div>
+                </div>
+            </div>
+            <!-- Carte -->
+            <div class="ch-panel" id="panel-card" hidden>
+                <div class="ch-card-slot">
+                    <div class="ch-card" id="ch-card">
+                        <div class="ch-card-face ch-card-back"></div>
+                        <div class="ch-card-face ch-card-front" id="ch-card-front"></div>
+                    </div>
+                </div>
+            </div>
+            <!-- Pièce -->
+            <div class="ch-panel" id="panel-coin" hidden>
+                <div class="ch-coin-slot">
+                    <div class="ch-coin" id="ch-coin">
+                        <div class="ch-coin-face ch-coin-pile">Pile</div>
+                        <div class="ch-coin-face ch-coin-face2">Face</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <p class="ch-result" id="ch-result">&nbsp;</p>
+
+        <button class="ch-btn" id="btn-go">Lancer le dé</button>
+
+        <p class="ch-note">Rechargez la page si vous doutez de nous — c'est vraiment aléatoire à chaque fois.</p>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

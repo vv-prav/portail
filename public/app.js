@@ -31,6 +31,7 @@ const I18N = {
         folder_games: "Jeux", folder_games_count: "jeux", folder_drinks: "Jeux d'alcool", folder_drinks_count: "jeux",
         app_rn_d: "Tire une carte au hasard, décidez à l'oral.", app_auto_d: "Avance sur la route, gorgée à la clé.",
         app_roi_d: "52 cartes, 52 règles, une soirée entière.", app_bus_d: "Deux manches, une pyramide, un chauffeur.",
+        app_ch_d: "Dé, carte ou pièce : tranchez au hasard.",
         b_folder_todo: "à jouer", b_folder_done: "tout fait aujourd'hui",
         b_rec_new: "cette semaine", b_rec_count: "recettes",
         b_motus_done: "Trouvé ✓", b_motus_over: "Terminé", b_motus_solvers: "ont trouvé",
@@ -59,7 +60,8 @@ const I18N = {
         b_grid_done: "Today's grid ✓", b_grid_part: "done today",
         folder_games: "Games", folder_games_count: "games", folder_drinks: "Drinking games", folder_drinks_count: "games",
         app_rn_d: "Draw a random card, decide out loud.", app_auto_d: "Move down the road, one sip at a time.",
-        app_roi_d: "52 cards, 52 rules, one whole night.", app_bus_d: "Two rounds, a pyramid, one driver." ,
+        app_roi_d: "52 cards, 52 rules, one whole night.", app_bus_d: "Two rounds, a pyramid, one driver.",
+        app_ch_d: "Dice, card or coin: let chance decide.",
         b_folder_todo: "to play", b_folder_done: "all done today",
         b_rec_new: "this week", b_rec_count: "recipes",
         b_motus_done: "Found ✓", b_motus_over: "Finished", b_motus_solvers: "found it",
@@ -89,6 +91,7 @@ const I18N = {
         folder_games: "Juegos", folder_games_count: "juegos", folder_drinks: "Juegos de beber", folder_drinks_count: "juegos",
         app_rn_d: "Saca una carta al azar, decidid en voz alta.", app_auto_d: "Avanza por la carretera, trago a trago.",
         app_roi_d: "52 cartas, 52 reglas, toda una noche.", app_bus_d: "Dos rondas, una pirámide, un conductor.",
+        app_ch_d: "Dado, carta o moneda: que decida el azar.",
         b_folder_todo: "por jugar", b_folder_done: "todo hecho hoy",
         b_rec_new: "esta semana", b_rec_count: "recetas",
         b_motus_done: "Encontrada ✓", b_motus_over: "Terminado", b_motus_solvers: "lo encontraron",
@@ -120,7 +123,8 @@ const GAME_APPS = [
 const DRINK_APPS = [
     { id: 'purple',     name: 'Purple',        dKey: 'app_rn_d',   emoji: '🃏', href: '/purple',    accent: '#9b6fc7', status: 'open' },
     { id: 'autoroute',  name: 'Autoroute',     dKey: 'app_auto_d', emoji: '🛣️', href: '/autoroute', accent: '#b7454a', status: 'open' },
-    { id: 'roidescons', name: 'Roi des Cons',  dKey: 'app_roi_d',  emoji: '👑', href: '/roidescons', accent: '#b7454a', status: 'soon' },
+    { id: 'roidescons', name: 'Roi des Cons',  dKey: 'app_roi_d',  emoji: '👑', href: '/roidescons', accent: '#a8563d', status: 'open' },
+    { id: 'chance',     name: 'Chance',        dKey: 'app_ch_d',   emoji: '🎲', href: '/chance',     accent: '#c9a24a', status: 'open' },
     { id: 'lebus',      name: 'Le Bus',        dKey: 'app_bus_d',  emoji: '🚌', href: '/lebus',      accent: '#b7454a', status: 'soon' },
 ];
 const OTHER_APPS = [

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, interactive-widget=resizes-content">
+    <meta name="theme-color" content="#14100b">
+    <title>Roi des Cons</title>
+    <link rel="icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="is-boot">
+    <div class="boot"><div class="boot-ring"></div></div>
+
+    <div class="rc" id="rc">
+        <header class="rc-head">
+            <a class="rc-back" href="/" aria-label="Retour au salon">←</a>
+            <div class="rc-titles">
+                <h1 class="rc-title">Roi des Cons</h1>
+                <span class="rc-sub" id="rc-deck-count">52 cartes restantes</span>
+            </div>
+            <button class="rc-status-btn" id="btn-status" aria-label="Règles actives">📜</button>
+        </header>
+
+        <p class="rc-hint">Tirez une carte, chaque rang a sa règle. Certaines durent toute la soirée.</p>
+
+        <!-- Coupe du Roi -->
+        <div class="rc-cup-row" id="rc-cup-row">
+            <span class="rc-cup-label">Coupe du Roi</span>
+            <div class="rc-cup" id="rc-cup">
+                <span class="rc-cup-icon">🍷</span>
+                <div class="rc-cup-dots">
+                    <span class="rc-cup-dot" data-i="0"></span>
+                    <span class="rc-cup-dot" data-i="1"></span>
+                    <span class="rc-cup-dot" data-i="2"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="rc-table">
+            <div class="rc-card-slot">
+                <div class="rc-card" id="rc-card">
+                    <div class="rc-card-face rc-card-back"></div>
+                    <div class="rc-card-face rc-card-front" id="rc-card-front"></div>
+                </div>
+            </div>
+        </div>
+
+        <button class="rc-btn" id="btn-draw">Tirer une carte</button>
+
+        <div class="rc-result" id="rc-result" hidden>
+            <p class="rc-result-title" id="rc-result-title">—</p>
+            <p class="rc-result-text" id="rc-result-text">—</p>
+            <div class="rc-input-row" id="rc-input-row" hidden>
+                <input type="text" id="rc-input" maxlength="60" placeholder="…" autocomplete="off">
+                <button class="rc-btn ghost small" id="btn-input-save">Enregistrer</button>
+            </div>
+            <button class="rc-btn" id="btn-next">Carte suivante</button>
+        </div>
+
+        <button class="rc-btn ghost" id="btn-new-game">Nouvelle partie</button>
+        <p class="rc-note">Un petit rappel amical : gardez un verre d'eau à côté. 🙂</p>
+    </div>
+
+    <!-- Règles & statuts actifs -->
+    <div class="rc-overlay" id="v-status" hidden>
+        <div class="rc-card-panel">
+            <h2 class="rc-panel-title">Règles actives ce soir</h2>
+            <div class="rc-status-sec">
+                <p class="rc-status-label">Règles instaurées</p>
+                <div class="rc-status-list" id="status-rules"><p class="rc-status-empty">Aucune pour l'instant.</p></div>
+            </div>
+            <div class="rc-status-sec">
+                <p class="rc-status-label">Maître des Questions</p>
+                <div class="rc-status-list" id="status-qm"><p class="rc-status-empty">Personne pour l'instant.</p></div>
+            </div>
+            <div class="rc-status-sec">
+                <p class="rc-status-label">Duos liés</p>
+                <div class="rc-status-list" id="status-duos"><p class="rc-status-empty">Aucun pour l'instant.</p></div>
+            </div>
+            <button class="rc-btn" id="btn-status-close">Fermer</button>
+        </div>
+    </div>
+
+    <!-- 4e Roi : la coupe est pleine -->
+    <div class="rc-overlay" id="v-cup-full" hidden>
+        <div class="rc-cup-full-box">
+            <p class="rc-cup-full-emoji">🍷</p>
+            <p class="rc-cup-full-title">La coupe est pleine !</p>
+            <p class="rc-cup-full-text">Le 4<sup>e</sup> Roi est tombé — à celui qui vient de le tirer de boire toute la coupe du Roi.</p>
+            <button class="rc-btn" id="btn-cup-full-ok">La coupe est vidée</button>
+        </div>
+    </div>
+
+    <div class="rc-toast" id="rc-toast" hidden></div>
+    <script src="app.js"></script>
+</body>
+</html>

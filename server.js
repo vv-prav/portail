@@ -1056,6 +1056,17 @@ app.use('/purple', requireAuth, express.static(__dirname + '/public/purple'));
 app.use('/autoroute', requireAuth, express.static(__dirname + '/public/autoroute'));
 
 // ---------------------------------------------------------------------
+//  ROI DES CONS — jeu de cartes local, purement statique (même principe
+//  que les autres jeux d'alcool : aucun état serveur).
+// ---------------------------------------------------------------------
+app.use('/roidescons', requireAuth, express.static(__dirname + '/public/roidescons'));
+
+// ---------------------------------------------------------------------
+//  CHANCE — dé, carte ou pièce pour trancher au hasard, purement statique.
+// ---------------------------------------------------------------------
+app.use('/chance', requireAuth, express.static(__dirname + '/public/chance'));
+
+// ---------------------------------------------------------------------
 //  RECETTES — carnet partagé du cercle
 //  Stockage : une clé par recette (rec:<id>) via le cache mfGet/mfSet.
 //  Photos : compressées côté client ; le serveur borne (miniature + grande).

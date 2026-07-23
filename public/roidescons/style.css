@@ -1,0 +1,120 @@
+/* =====================================================================
+   ROI DES CONS — mobile-first, DA du salon (nuit chaude + laiton)
+   ===================================================================== */
+:root {
+    --ink:#14100b; --ink-2:#1d1710; --ink-3:#241b12;
+    --brass:#d9a94e; --brass-soft:#ecca82; --parchment:#efe4cf;
+    --muted:#a08f74; --line:rgba(217,169,78,0.20);
+    --card-red:#c2453a; --card-black:#1a1712;
+    --royal:#a8563d; --royal-soft:#d98a6b;
+}
+* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html { -webkit-text-size-adjust:100%; }
+html,body { margin:0; padding:0; }
+body {
+    min-height:100dvh; overflow-x:hidden;
+    font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; color:var(--parchment);
+    background:radial-gradient(130% 70% at 50% -8%, #2b2013 0%, transparent 55%), var(--ink);
+    background-attachment:fixed; -webkit-font-smoothing:antialiased;
+}
+.boot,.rc { display:none; }
+body.is-boot .boot { display:grid; place-items:center; position:fixed; inset:0; }
+body.is-ready .rc { display:flex; }
+.boot-ring { width:34px; height:34px; border-radius:50%; border:3px solid var(--line); border-top-color:var(--brass); animation:spin .8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+.rc { flex-direction:column; min-height:100dvh; max-width:520px; margin:0 auto;
+      padding:max(10px,env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom)); gap:12px; }
+
+.rc-head { display:flex; align-items:center; gap:10px; }
+.rc-back { flex:0 0 auto; width:44px; height:44px; display:grid; place-items:center; border-radius:12px;
+           background:rgba(255,255,255,0.07); border:1px solid var(--line); color:var(--brass-soft);
+           text-decoration:none; font-size:1.3rem; }
+.rc-back:active { transform:scale(.93); }
+.rc-titles { flex:1; min-width:0; text-align:center; }
+.rc-title { font-family:'Fraunces',Georgia,serif; font-weight:900; font-size:1.22rem; margin:0; color:var(--brass-soft); line-height:1.1; }
+.rc-sub { display:block; font-size:.72rem; color:var(--muted); }
+.rc-status-btn { flex:0 0 auto; width:44px; height:44px; display:grid; place-items:center; border-radius:12px;
+                  background:rgba(255,255,255,0.07); border:1px solid var(--line); color:var(--brass-soft);
+                  font-size:1.15rem; cursor:pointer; }
+.rc-status-btn:active { transform:scale(.93); }
+
+.rc-hint { text-align:center; color:var(--muted); font-size:.82rem; margin:0; line-height:1.4; }
+
+/* Coupe du Roi */
+.rc-cup-row { display:flex; align-items:center; justify-content:center; gap:10px; padding:8px; }
+.rc-cup-label { font-size:.72rem; text-transform:uppercase; letter-spacing:1.4px; color:var(--royal-soft); }
+.rc-cup { display:flex; align-items:center; gap:8px; }
+.rc-cup-icon { font-size:1.1rem; }
+.rc-cup-dots { display:flex; gap:5px; }
+.rc-cup-dot { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,.08); border:1.5px solid var(--line); }
+.rc-cup-dot.filled { background:var(--royal); border-color:var(--royal-soft); box-shadow:0 0 8px rgba(168,86,61,.5); }
+
+.rc-table { flex:1; display:flex; align-items:center; justify-content:center; min-height:190px; perspective:1200px; }
+.rc-card-slot { width:145px; height:203px; }
+.rc-card { width:100%; height:100%; position:relative; transform-style:preserve-3d; transition:transform .55s cubic-bezier(.3,.9,.3,1.1); }
+.rc-card.flipped { transform:rotateY(180deg); }
+.rc-card-face { position:absolute; inset:0; border-radius:16px; backface-visibility:hidden;
+                 display:flex; align-items:center; justify-content:center; box-shadow:0 14px 34px rgba(0,0,0,.5); }
+.rc-card-back { background:
+        repeating-linear-gradient(45deg, rgba(217,169,78,.14) 0 8px, transparent 8px 16px),
+        linear-gradient(165deg,var(--ink-3),var(--ink-2));
+    border:2.5px solid var(--brass); }
+.rc-card-back::after { content:'♛'; color:var(--brass-soft); font-size:2rem; opacity:.6; }
+.rc-card-front { background:var(--parchment); transform:rotateY(180deg); border:2.5px solid #d8cba9; flex-direction:column; gap:4px; }
+.rc-card-front .rc-rank { font-family:'Fraunces',Georgia,serif; font-weight:900; font-size:2.4rem; line-height:1; }
+.rc-card-front .rc-suit { font-size:2.2rem; line-height:1; }
+.rc-card-front.is-red .rc-rank, .rc-card-front.is-red .rc-suit { color:var(--card-red); }
+.rc-card-front.is-black .rc-rank, .rc-card-front.is-black .rc-suit { color:var(--card-black); }
+
+.rc-btn { display:block; width:100%; padding:16px; border-radius:14px; font-size:1rem; font-weight:800;
+          font-family:inherit; cursor:pointer; border:none; text-align:center; text-decoration:none;
+          background:linear-gradient(180deg,var(--brass-soft),var(--brass)); color:#2a1c07; }
+.rc-btn[hidden] { display:none !important; }
+.rc-btn.ghost { background:transparent; border:1px solid var(--line); color:var(--brass-soft); font-weight:700; }
+.rc-btn.small { padding:10px; font-size:.84rem; }
+.rc-btn:active { transform:scale(.98); }
+
+.rc-result { display:flex; flex-direction:column; gap:10px; align-items:center; }
+.rc-result[hidden] { display:none !important; }
+.rc-result-title { font-family:'Fraunces',Georgia,serif; font-weight:900; font-size:1.35rem; margin:0; color:var(--royal-soft); text-align:center; }
+.rc-result-text { font-size:.92rem; color:var(--parchment); text-align:center; margin:0; line-height:1.45; }
+.rc-input-row { display:flex; gap:8px; width:100%; }
+.rc-input-row[hidden] { display:none !important; }
+.rc-input-row input { flex:1; min-width:0; padding:12px; border-radius:10px; background:rgba(255,255,255,.06);
+                       border:1px solid var(--line); color:var(--parchment); font-size:16px; font-family:inherit; }
+.rc-input-row input:focus { outline:none; border-color:var(--brass); }
+
+.rc-note { text-align:center; color:var(--muted); font-size:.7rem; margin:2px 0 0; opacity:.8; }
+
+/* Règles & statuts */
+.rc-overlay { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.8); display:flex;
+              align-items:center; justify-content:center; padding:16px; }
+.rc-overlay[hidden] { display:none; }
+.rc-card-panel { width:100%; max-width:400px; max-height:88dvh; overflow-y:auto;
+           background:linear-gradient(165deg,var(--ink-3),var(--ink-2));
+           border:2px solid var(--brass); border-radius:20px; padding:24px 22px; box-shadow:0 20px 50px rgba(0,0,0,.6); }
+.rc-panel-title { font-family:'Fraunces',Georgia,serif; font-weight:900; color:var(--brass-soft); text-align:center; margin:0 0 16px; font-size:1.2rem; }
+.rc-status-sec { margin-bottom:16px; }
+.rc-status-label { font-size:.68rem; text-transform:uppercase; letter-spacing:1.4px; color:var(--brass); margin:0 0 8px; }
+.rc-status-list { display:flex; flex-direction:column; gap:6px; }
+.rc-status-empty { color:var(--muted); font-size:.8rem; margin:0; }
+.rc-status-item { padding:9px 12px; border-radius:10px; background:rgba(255,255,255,.04); border:1px solid var(--line);
+                   color:var(--parchment); font-size:.84rem; }
+.rc-card-panel .rc-btn { margin-top:6px; }
+
+/* Coupe pleine — moment fort */
+.rc-cup-full-box { width:100%; max-width:360px; text-align:center; background:linear-gradient(165deg,var(--ink-3),var(--ink-2));
+                    border:2.5px solid var(--royal); border-radius:20px; padding:32px 24px; box-shadow:0 20px 60px rgba(168,86,61,.35); }
+.rc-cup-full-emoji { font-size:3rem; margin:0 0 10px; animation:rcCupPulse 1s ease-in-out infinite; }
+@keyframes rcCupPulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.12);} }
+.rc-cup-full-title { font-family:'Fraunces',Georgia,serif; font-weight:900; font-size:1.5rem; color:var(--royal-soft); margin:0 0 8px; }
+.rc-cup-full-text { color:var(--parchment); font-size:.9rem; line-height:1.5; margin:0 0 18px; }
+
+.rc-toast { position:fixed; left:50%; bottom:calc(20px + env(safe-area-inset-bottom)); transform:translateX(-50%);
+            background:var(--ink-3); border:1px solid var(--brass); color:var(--parchment); font-size:.85rem;
+            padding:12px 18px; border-radius:999px; z-index:400; box-shadow:0 8px 24px rgba(0,0,0,.5);
+            max-width:90vw; text-align:center; }
+.rc-toast[hidden] { display:none; }
+
+@media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.001ms !important; transition-duration:.001ms !important; } }
