@@ -22,23 +22,32 @@
             </div>
         </header>
 
-        <nav class="ad-nav">
-            <select class="ad-select" id="ad-select" aria-label="Section">
-                <option value="home">📊 Vue d'ensemble</option>
-                <option value="accounts">👥 Comptes</option>
-                <option value="perudo">🎲 Perudo</option>
-                <option value="grids">🧩 Grilles</option>
-                <option value="motus">🟨 Motus</option>
-                <option value="motjuste">🧊 Le Mot Juste</option>
-                <option value="pbac">✏️ Petit Bac</option>
-                <option value="dict">📖 Dictionnaire</option>
-                <option value="system">⚙️ Système</option>
-            </select>
+        <nav class="ad-nav" id="ad-nav">
+            <button class="ad-tile on" data-tab="home" type="button"><span class="ad-tile-emoji">📊</span><span>Vue d'ensemble</span></button>
+            <button class="ad-tile" data-tab="accounts" type="button"><span class="ad-tile-emoji">👥</span><span>Comptes</span></button>
+            <button class="ad-tile" data-tab="perudo" type="button"><span class="ad-tile-emoji">🎲</span><span>Perudo</span></button>
+            <button class="ad-tile" data-tab="grids" type="button"><span class="ad-tile-emoji">🧩</span><span>Grilles</span></button>
+            <button class="ad-tile" data-tab="motus" type="button"><span class="ad-tile-emoji">🟨</span><span>Motus</span></button>
+            <button class="ad-tile" data-tab="motjuste" type="button"><span class="ad-tile-emoji">🧊</span><span>Le Mot Juste</span></button>
+            <button class="ad-tile" data-tab="pbac" type="button"><span class="ad-tile-emoji">✏️</span><span>Petit Bac</span></button>
+            <button class="ad-tile" data-tab="dict" type="button"><span class="ad-tile-emoji">📖</span><span>Dictionnaire</span></button>
+            <button class="ad-tile" data-tab="system" type="button"><span class="ad-tile-emoji">⚙️</span><span>Système</span></button>
         </nav>
 
         <!-- VUE D'ENSEMBLE -->
         <section class="pane" id="pane-home">
+            <div class="card">
+                <h2 class="card-title">Trouver quelqu'un vite</h2>
+                <p class="card-sub">Pour réinitialiser un mot de passe, voir ses infos ou lui envoyer un message.</p>
+                <input class="in" id="home-search" placeholder="Tape un pseudo…" autocapitalize="off">
+                <button class="btn" id="home-search-go" type="button">Chercher dans les comptes</button>
+            </div>
             <div class="stats" id="ad-stats"></div>
+            <div class="card">
+                <h2 class="card-title">En ligne maintenant</h2>
+                <p class="card-sub">Se met à jour à chaque ouverture de cette page (~90 secondes de délai).</p>
+                <div class="list" id="ad-online"></div>
+            </div>
             <div class="card">
                 <h2 class="card-title">Annonce du salon</h2>
                 <p class="card-sub">Affichée à tous en haut du salon. Laisser vide pour la retirer.</p>

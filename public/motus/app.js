@@ -86,7 +86,8 @@ function applyI18n() {
 }
 
 // ---------- État ----------
-const WORD_LEN = 6, MAX_TRIES = 6;
+let WORD_LEN = 6;
+const MAX_TRIES = 6;
 const KEY_ROWS = [['A','Z','E','R','T','Y','U','I','O','P'], ['Q','S','D','F','G','H','J','K','L','M'], ['W','X','C','V','B','N']];
 let P = null;
 let viewDate = null, isArchive = false;
@@ -140,6 +141,7 @@ function fitGrid() {
     if (w < 10 || h < 10) return;
     const gap = 6;
     const cell = Math.floor(Math.min((w - gap * (WORD_LEN - 1)) / WORD_LEN, (h - gap * (MAX_TRIES - 1)) / MAX_TRIES));
+    $('mt-grid').style.setProperty('--cols', WORD_LEN);
     $('mt-grid').style.setProperty('--cell', Math.max(30, Math.min(cell, 64)) + 'px');
     positionShadow();
 }
@@ -491,6 +493,8 @@ async function load() {
     P = data;
     isArchive = !!P.isArchive;
     nextIn = P.nextIn || 0;
+    WORD_LEN = P.length || 6;
+    draft = Array(WORD_LEN).fill('');
     draft[0] = P.firstLetter;
     $('mt-date').textContent = new Date(P.date + 'T12:00:00').toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
     $('mt-archive-chip').hidden = !isArchive;

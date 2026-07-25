@@ -63,7 +63,8 @@ body.is-hub   .hub   { display: block; }
     animation: rise 0.45s ease both;
 }
 @keyframes rise { from { opacity: 0; transform: translateY(12px); } }
-.crest { width: 46px; height: 46px; margin: 0 auto 14px; border-radius: 50%; display: grid; place-items: center; color: var(--ink); background: radial-gradient(circle at 38% 30%, var(--brass-soft), var(--brass) 70%); font-size: 1.25rem; box-shadow: 0 6px 16px rgba(217,169,78,0.4); }
+.crest { width: 64px; height: 64px; margin: 0 auto 14px; border-radius: 50%; display: grid; place-items: center; color: var(--ink); background: radial-gradient(circle at 38% 30%, var(--brass-soft), var(--brass) 70%); box-shadow: 0 6px 16px rgba(217,169,78,0.4); overflow: hidden; }
+.crest-logo { width: 76%; height: 76%; object-fit: contain; }
 .entry-title { font-family: 'Fraunces', Georgia, serif; font-weight: 900; font-size: 2.4rem; margin: 0; color: var(--brass-soft); letter-spacing: 0.4px; line-height: 1.05; }
 .entry-sub { margin: 6px 0 22px; color: var(--muted); font-size: 0.94rem; }
 .input {
@@ -162,6 +163,13 @@ body.is-hub   .hub   { display: block; }
 .ov-card { width:100%; max-width:400px; max-height:90vh; overflow-y:auto; text-align:center;
            background:linear-gradient(165deg,var(--ink-2),var(--ink)); border:2px solid var(--brass);
            border-radius:20px; padding:28px 22px; box-shadow:var(--shadow); }
+/* Motif réutilisable : quand une popup peut devenir longue (contenu qui grandit), on sépare
+   le contenu défilant du bouton de fermeture, qui reste toujours accessible en bas. */
+.ov-card-sticky { display:flex; flex-direction:column; padding:0; overflow:hidden; }
+.ov-card-sticky .ov-scroll { overflow-y:auto; padding:28px 22px 4px; flex:1; min-height:0; }
+.ov-card-sticky .ov-footer { flex:0 0 auto; padding:14px 22px calc(16px + env(safe-area-inset-bottom));
+                              border-top:1px solid var(--line); background:var(--ink-2); }
+.ov-card-sticky .ov-footer .btn { margin-top:0; }
 .ov-emoji { font-size:2.6rem; }
 .ov-title { font-family:'Fraunces',Georgia,serif; font-weight:900; color:var(--brass-soft); margin:8px 0 10px; font-size:1.5rem; }
 .ov-sub { color:var(--muted); font-size:.88rem; line-height:1.5; margin:0 0 18px; }
@@ -202,10 +210,6 @@ body.is-hub   .hub   { display: block; }
 
 /* ===== Panneau profil ===== */
 .prof-card { position: relative; text-align: center; }
-.prof-close { position: absolute; top: 12px; right: 12px; width: 38px; height: 38px; display: grid; place-items: center;
-              background: rgba(255,255,255,0.06); border: 1px solid var(--line); border-radius: 50%;
-              color: var(--muted); font-size: 1rem; cursor: pointer; font-family: inherit; }
-.prof-close:active { transform: scale(0.92); }
 .prof-avatar { width: 84px; height: 84px; margin: 4px auto 0; display: grid; place-items: center; font-size: 2.6rem;
                background: linear-gradient(165deg, var(--ink-3), var(--ink-2)); border: 2px solid var(--brass);
                border-radius: 50%; cursor: pointer; font-family: inherit; box-shadow: 0 6px 20px rgba(0,0,0,0.45); }
@@ -238,6 +242,36 @@ body.is-hub   .hub   { display: block; }
 .pg-empty { color: var(--muted); font-size: 0.78rem; margin: 0; padding: 4px 0; }
 .pg-soon { color: var(--muted); font-size: 0.72rem; margin: 2px 0 0; font-style: italic; }
 .prof-card .btn { margin-top: 10px; }
+
+/* ===== Profil : ajustements dédiés aux petits écrans (iPhone SE et téléphones étroits) ===== */
+@media (max-width: 380px) {
+    .ov { padding: 10px; }
+    .ov-card { padding: 20px 15px; border-radius: 16px; }
+    .ov-card-sticky { padding: 0; border-radius: 16px; }
+    .ov-card-sticky .ov-scroll { padding: 20px 15px 4px; }
+    .ov-card-sticky .ov-footer { padding: 12px 15px calc(14px + env(safe-area-inset-bottom)); }
+    .prof-avatar { width: 72px; height: 72px; font-size: 2.15rem; }
+    .avatar-grid { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .pg-grid { grid-template-columns: repeat(2, 1fr); }
+    .prof-game { padding: 10px 11px; }
+    .pg-stat { padding: 9px 4px; }
+    .pg-stat b { font-size: 1.1rem; }
+    .pg-stat em { font-size: 0.66rem; }
+    .code-box { font-size: 1rem; padding: 14px 8px; }
+}
+@media (max-width: 340px) {
+    .ov-title { font-size: 1.32rem; }
+    .pg-name { font-size: 0.8rem; }
+    .prof-meta { font-size: 0.72rem; }
+}
+/* Téléphones très larges / tablettes en portrait : laisser la carte respirer davantage */
+@media (min-width: 480px) {
+    .ov-card { max-width: 430px; padding: 32px 28px; }
+    .ov-card-sticky { padding: 0; }
+    .ov-card-sticky .ov-scroll { padding: 32px 28px 4px; }
+    .ov-card-sticky .ov-footer { padding: 16px 28px calc(18px + env(safe-area-inset-bottom)); }
+    .pg-grid { gap: 8px; }
+}
 .btn.logout { color: #c9a08f; border-color: rgba(224,122,95,0.35); }
 
 /* ===== Sélecteur de langue (écran d'entrée) ===== */

@@ -85,8 +85,13 @@ let nextId = 1;
 
 function publicGames() {
     return Object.values(games)
-        .filter(g => g.status === 'lobby')
-        .map(g => ({ id: g.id, host: g.host, players: g.players.length, maxPlayers: MAX_PLAYERS, rounds: g.maxRounds, duration: g.duration }));
+        .filter(g => g.status !== 'ended')
+        .map(g => ({
+            id: g.id, host: g.host, status: g.status,
+            players: g.players.length, maxPlayers: MAX_PLAYERS,
+            rounds: g.maxRounds, duration: g.duration,
+            round: g.round, alive: g.players.filter(p => p.connected).length,
+        }));
 }
 function broadcastLobby() { io.emit('pbac_games', publicGames()); }
 

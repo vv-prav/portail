@@ -40,9 +40,10 @@ function fmtDur(sec) {
 }
 
 // ---------- Onglets ----------
-$('ad-select').addEventListener('change', () => {
-    const tab = $('ad-select').value;
+function switchTab(tab) {
     ['home', 'accounts', 'perudo', 'grids', 'motus', 'motjuste', 'pbac', 'dict', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== tab); });
+    document.querySelectorAll('.ad-tile').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+    if (tab === 'home') loadOverview();
     if (tab === 'accounts') loadAccounts();
     if (tab === 'perudo') loadPerudo();
     if (tab === 'grids') loadGrids();
@@ -52,7 +53,13 @@ $('ad-select').addEventListener('change', () => {
     if (tab === 'dict') { loadDictStats(); loadDict(); }
     if (tab === 'system') { loadOverview(); loadAdmins(); }
     window.scrollTo(0, 0);
+}
+document.querySelectorAll('.ad-tile').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+$('home-search-go').addEventListener('click', () => {
+    $('acc-q').value = $('home-search').value.trim();
+    switchTab('accounts');
 });
+$('home-search').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('home-search-go').click(); } });
 
 // ---------- Boîte générique ----------
 function ask(emoji, title, sub, actions, code, confirmText) {
@@ -92,8 +99,10 @@ async function loadOverview() {
         ['✨', data.newThisWeek, 'nouveaux (7 j)'],
         ['🧩', data.solvedToday, 'grilles réussies aujourd’hui'],
         ['⛔', data.banned, 'suspendus'],
-        ['🔑', data.mfKeys, 'clés en base'],
     ].map(([i, v, l]) => `<div class="stat"><span class="s-ico">${i}</span><b>${v}</b><em>${l}</em></div>`).join('');
+    $('ad-online').innerHTML = (data.onlineNow || []).length
+        ? data.onlineNow.map(p => `<div class="row static"><span class="r-main"><span class="r-name">🟢 ${esc(p)}</span></span></div>`).join('')
+        : '<p class="empty">Personne pour l\u2019instant.</p>';
     $('ann-text').value = data.announce || '';
     $('ann-clear').hidden = !data.announce;
     $('sys-info').innerHTML = [
@@ -168,8 +177,8 @@ async function loadAccounts() {
     $('acc-list').innerHTML = list.length ? list.map(u => `
         <button class="row" data-p="${esc(u.pseudo)}">
             <span class="r-main">
-                <span class="r-name">${esc(u.pseudo)}${u.admin ? ' <i class="badge adm">admin</i>' : ''}${u.banned ? ' <i class="badge ban">suspendu</i>' : ''}</span>
-                <span class="r-sub">inscrit ${fmtDate(u.created)} · vu ${fmtAgo(u.lastLogin)}</span>
+                <span class="r-name">${esc(u.pseudo)}${u.online ? ' <i class="badge online">🟢 en ligne</i>' : ''}${u.admin ? ' <i class="badge adm">admin</i>' : ''}${u.banned ? ' <i class="badge ban">suspendu</i>' : ''}</span>
+                <span class="r-sub">inscrit ${fmtDate(u.created)} · vu ${fmtAgo(u.lastSeen)}</span>
             </span>
             <span class="r-go">›</span>
         </button>`).join('') : '<p class="empty">Aucun compte trouvé.</p>';
@@ -184,7 +193,7 @@ async function openAccount(pseudo) {
     $('acc-detail').innerHTML = [
         ['Statut', data.admin ? 'Administrateur' : (data.banned ? 'Suspendu' : 'Actif')],
         ['Inscrit le', fmtDate(data.created)],
-        ['Dernière connexion', fmtAgo(data.lastLogin)],
+        ['Dernière présence', (data.online ? '🟢 en ligne maintenant · ' : '') + fmtAgo(data.lastSeen)],
         ['Code de récupération', data.hasRecovery ? 'défini' : 'aucun'],
         ['Mots fléchés', `${mfs.solved || 0} réussies · ${mfs.gaveUp || 0} abandons · ${mfs.daysPlayed || 0} jours`],
         ['Meilleur temps', mfs.best ? Math.floor(mfs.best / 60) + ':' + String(mfs.best % 60).padStart(2, '0') : '—'],
@@ -533,7 +542,7 @@ async function loadMotusDay() {
     const { data } = await api('/api/admin/motus/day?date=' + encodeURIComponent(date));
     if (!data) return;
     $('mt-word-box').innerHTML = `
-        <div class="kv-row"><span>Mot du jour</span><b>${esc(data.word)}</b></div>
+        <div class="kv-row"><span>Mot du jour</span><b>${esc(data.word)} <i class="card-sub" style="font-style:normal">(${data.word.length} lettres)</i></b></div>
         ${data.definition ? `<div class="kv-row"><span>Définition</span><b>${esc(data.definition)}</b></div>` : ''}
         <div class="kv-row"><span>Parties</span><b>${data.started} commencées · ${data.solved} trouvées · ${data.lost} échouées</b></div>`;
     $('mt-board-box').innerHTML = (data.board || []).length ? data.board.map((e, i) => `
@@ -581,7 +590,7 @@ $('mt-next').addEventListener('click', async () => {
     const days = (data && data.days) || [];
     $('mt-upcoming').innerHTML = days.map(d => `
         <div class="log-row up"><span class="lg-a">${new Date(d.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
-        <span class="lg-t">${esc(d.word)}</span></div>`).join('');
+        <span class="lg-t">${esc(d.word)} <i class="card-sub" style="font-style:normal">(${d.word.length})</i></span></div>`).join('');
 });
 
 // ---------- Le Mot Juste ----------
@@ -747,3 +756,4 @@ $('sys-purge').addEventListener('click', () => ask('🧹', 'Lancer le ménage ?'
     } }]));
 
 loadOverview();
+setInterval(() => { if (!$('pane-home').hidden) loadOverview(); }, 30000);

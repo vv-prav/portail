@@ -60,7 +60,23 @@ body.is-ready .pb { display:flex; }
                 color:var(--parchment); font-family:inherit; cursor:pointer; text-align:left; width:100%; }
 .pb-table-row:active { transform:scale(.98); }
 .pb-table-row b { color:var(--brass-soft); }
-.pb-table-row .pt-meta { margin-left:auto; font-size:.76rem; color:var(--muted); text-align:right; }
+.pt-main { display:flex; flex-direction:column; gap:3px; min-width:0; flex:1; }
+.pt-title { font-size:.92rem; }
+.pb-table-row .pt-meta { font-size:.76rem; color:var(--muted); }
+
+/* Partie déjà lancée : bien plus visible qu'une simple table en attente */
+.pb-table-row.live { padding:15px 16px; border:1.5px solid rgba(90,168,122,.5);
+                      background:linear-gradient(165deg, rgba(90,168,122,.14), var(--ink-2));
+                      box-shadow:0 8px 22px rgba(90,168,122,.15); }
+.pt-live-dot { flex:0 0 auto; width:11px; height:11px; border-radius:50%; background:var(--good);
+               box-shadow:0 0 0 0 rgba(90,168,122,.6); animation:pbLivePulse 1.6s ease-out infinite; }
+@keyframes pbLivePulse {
+    0% { box-shadow:0 0 0 0 rgba(90,168,122,.55); }
+    70% { box-shadow:0 0 0 9px rgba(90,168,122,0); }
+    100% { box-shadow:0 0 0 0 rgba(90,168,122,0); }
+}
+.pb-table-row.live .pt-meta { color:#9ec9ad; font-weight:600; }
+.pt-join-hint { flex:0 0 auto; font-size:.72rem; color:var(--good); font-weight:700; white-space:nowrap; }
 
 /* Overlay création */
 .pb-overlay { position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.78); display:flex;

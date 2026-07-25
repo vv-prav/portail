@@ -62,7 +62,8 @@ body.is-ready .au { display:flex; }
         repeating-linear-gradient(45deg, rgba(217,169,78,.14) 0 8px, transparent 8px 16px),
         linear-gradient(165deg,var(--ink-3),var(--ink-2));
     border:2.5px solid var(--brass); }
-.au-card-back::after { content:'🛣️'; font-size:2rem; opacity:.55; }
+.au-card-back::after { content:''; display:block; width:58px; height:58px; background-image:url(/logo-bretagne.svg);
+                        background-size:contain; background-repeat:no-repeat; background-position:center; opacity:.7; }
 .au-card-front { background:var(--parchment); transform:rotateY(180deg); border:2.5px solid #d8cba9; flex-direction:column; gap:4px; }
 .au-card-front .au-rank { font-family:'Fraunces',Georgia,serif; font-weight:900; font-size:2.6rem; line-height:1; }
 .au-card-front .au-suit { font-size:2.4rem; line-height:1; }

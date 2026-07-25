@@ -19,7 +19,7 @@
     <!-- SAS D'ENTRÉE -->
     <main class="entry" id="entry">
         <form class="entry-card" id="entry-form" autocomplete="on" novalidate>
-            <div class="crest">✦</div>
+            <div class="crest"><img src="/logo-bretagne.svg" alt="Erquy" class="crest-logo"></div>
             <h1 class="entry-title">Le Salon</h1>
             <p class="entry-sub" data-i="entry_sub">Un nom, un mot de passe, et la porte s'ouvre.</p>
             <input class="input" id="pseudo" type="text" data-ph="ph_name" placeholder="Ton nom" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="20">
@@ -61,16 +61,20 @@
 
     <!-- PROFIL -->
     <div class="ov" id="ov-profile" hidden>
-        <div class="ov-card prof-card">
-            <button class="prof-close" id="prof-close" type="button" aria-label="Fermer">✕</button>
-            <button class="prof-avatar" id="prof-avatar" type="button" aria-label="Changer d'avatar">✦</button>
-            <p class="prof-avatar-hint" data-i="prof_tap">Touche l'avatar pour le changer</p>
-            <h2 class="ov-title" id="prof-name">—</h2>
-            <p class="prof-meta" id="prof-meta">—</p>
-            <div class="avatar-grid" id="avatar-grid" hidden></div>
-            <div class="prof-games" id="prof-games"></div>
-            <button class="btn btn-ghost" id="prof-code" type="button" data-i="prof_code">Nouveau code de récupération</button>
-            <button class="btn btn-ghost logout" id="btn-logout" type="button" data-i="btn_logout">Se déconnecter</button>
+        <div class="ov-card prof-card ov-card-sticky">
+            <div class="ov-scroll">
+                <button class="prof-avatar" id="prof-avatar" type="button" aria-label="Changer d'avatar">✦</button>
+                <p class="prof-avatar-hint" data-i="prof_tap">Touche l'avatar pour le changer</p>
+                <h2 class="ov-title" id="prof-name">—</h2>
+                <p class="prof-meta" id="prof-meta">—</p>
+                <div class="avatar-grid" id="avatar-grid" hidden></div>
+                <div class="prof-games" id="prof-games"></div>
+                <button class="btn btn-ghost" id="prof-code" type="button" data-i="prof_code">Nouveau code de récupération</button>
+                <button class="btn btn-ghost logout" id="btn-logout" type="button" data-i="btn_logout">Se déconnecter</button>
+            </div>
+            <div class="ov-footer">
+                <button class="btn" id="prof-close" type="button">Fermer</button>
+            </div>
         </div>
     </div>
 

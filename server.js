@@ -183,14 +183,31 @@ function setSessionCookie(res, pseudo) {
 
 // Pour les routes d'API : réponse JSON plutôt qu'une redirection
 function requireAuthApi(req, res, next) {
-    if (currentUser(req)) return next();
-    return res.status(401).json({ error: 'Non connecté.' });
+    const u = currentUser(req);
+    if (!u) return res.status(401).json({ error: 'Non connecté.' });
+    // Le salon interroge /api/salon/pulse toutes les 60s tant que la page est ouverte :
+    // s'en servir pour un vrai statut « en ligne maintenant », précis à ~90s près.
+    const user = registeredUsers[u];
+    if (user && (!user.lastSeen || Date.now() - user.lastSeen > 30 * 1000)) {
+        user.lastSeen = Date.now();
+        saveUsers();
+    }
+    return next();
 }
 
 // Middleware : protège les pages d'apps (redirige vers le salon si non connecté)
 function requireAuth(req, res, next) {
-    if (currentUser(req)) return next();
-    return res.redirect('/');
+    const u = currentUser(req);
+    if (!u) return res.redirect('/');
+    // « Vu pour la dernière fois » doit refléter l'usage réel, pas juste le moment où on a
+    // tapé son mot de passe (le cookie de session dure des semaines, donc l'immense majorité
+    // des visites ne repassent jamais par /api/login). Mise à jour discrète, pas à chaque requête.
+    const user = registeredUsers[u];
+    if (user && (!user.lastSeen || Date.now() - user.lastSeen > 5 * 60 * 1000)) {
+        user.lastSeen = Date.now();
+        saveUsers();
+    }
+    return next();
 }
 
 // ---------------------------------------------------------------------
@@ -630,25 +647,36 @@ app.post('/api/mf/comments', requireAuth, (req, res) => {
 //  classement, discussion) — juste un autre "jeu du jour".
 // ---------------------------------------------------------------------
 const motusDict = require('./motsfleches/dict');
-const motusExtra6 = require('./motus/words6');   // vocabulaire complémentaire (vérifié à la main)
-// Pool complet pour le tirage du mot du jour : les 6-lettres courants du dictionnaire
-// des mots fléchés + le vocabulaire complémentaire, sans doublons.
-function motusPool() {
-    const base = (motusDict.words()[6] || []).filter(w => w.n <= 2).map(w => w.m);
-    const seen = new Set(base);
-    const extra = motusExtra6.filter(w => !seen.has(w));
-    return [...base, ...extra];
-}
-// Mots acceptés en tentative : plus permissif (inclut aussi les 6-lettres rares du
-// dictionnaire), pour ne jamais bloquer un joueur qui propose un mot correct mais rare.
-function motusKnown(guess) {
-    if (motusExtra6.includes(guess)) return true;
-    return (motusDict.words()[6] || []).some(w => w.m === guess);
-}
-const MOTUS_LEN = 6;
+const motusExtra6 = require('./motus/words6');   // vocabulaire complémentaire (vérifié à la main, 6 lettres)
+const MOTUS_LENGTHS = [4, 5, 6, 7];               // longueur du mot du jour, variable
 const MOTUS_TRIES = 6;
 const MOTUS_KEEP_WORD_DAYS = 60;    // recul pour éviter les répétitions de mot
 const MOTUS_KEEP_SHORT_DAYS = 15;   // classement / discussion / progression
+
+// Pool complet pour le tirage du mot du jour, pour une longueur donnée : les mots
+// courants du dictionnaire des mots fléchés (déjà vérifiés, utilisés en production pour
+// les grilles) + le vocabulaire complémentaire pour les 6 lettres, sans doublons.
+function motusPool(len) {
+    const base = (motusDict.words()[len] || []).filter(w => w.n <= 2).map(w => w.m);
+    const seen = new Set(base);
+    const extra = len === 6 ? motusExtra6.filter(w => !seen.has(w)) : [];
+    return [...base, ...extra];
+}
+// Mots acceptés en tentative : plus permissif (inclut aussi les mots rares du
+// dictionnaire pour cette longueur), pour ne jamais bloquer un joueur qui propose
+// un mot correct mais rare.
+function motusKnown(guess) {
+    const len = guess.length;
+    if (len === 6 && motusExtra6.includes(guess)) return true;
+    return (motusDict.words()[len] || []).some(w => w.m === guess);
+}
+// La longueur du jour est déterministe (même seed que le choix du mot), pour que tout
+// le monde ait la même longueur ce jour-là — pas de vrai MOTUS_LEN fixe, on calcule à
+// la volée pour chaque date demandée.
+function motusLenForDate(date) {
+    const rnd = motusRand(motusHashSeed('motuslen|' + date));
+    return MOTUS_LENGTHS[Math.floor(rnd() * MOTUS_LENGTHS.length)];
+}
 
 function motusHashSeed(str) {
     let h = 2166136261;
@@ -674,7 +702,7 @@ const kMotusDays = (u) => `motus:days:${u}`;
 function motusWord(date) {
     const cached = mfGet(kMotusWord(date));
     if (cached) return cached;
-    const pool = motusPool();
+    const pool = motusPool(motusLenForDate(date));
     const recent = new Set();
     for (let i = 1; i <= MOTUS_KEEP_WORD_DAYS; i++) {
         const w = mfGet(kMotusWord(mfShiftDay(date, -i)));
@@ -689,13 +717,14 @@ function motusWord(date) {
 }
 // Comparaison à la Wordle, robuste aux lettres répétées.
 function motusMarks(guess, answer) {
-    const res = Array(MOTUS_LEN).fill('absent');
+    const len = answer.length;
+    const res = Array(len).fill('absent');
     const counts = {};
-    for (let i = 0; i < MOTUS_LEN; i++) {
+    for (let i = 0; i < len; i++) {
         if (guess[i] === answer[i]) res[i] = 'correct';
         else counts[answer[i]] = (counts[answer[i]] || 0) + 1;
     }
-    for (let i = 0; i < MOTUS_LEN; i++) {
+    for (let i = 0; i < len; i++) {
         if (res[i] === 'correct') continue;
         const ch = guess[i];
         if (counts[ch] > 0) { res[i] = 'present'; counts[ch]--; }
@@ -706,7 +735,7 @@ function motusMarks(guess, answer) {
 function motusWordPreview(date) {
     const cached = mfGet(kMotusWord(date));
     if (cached) return cached;
-    const pool = motusPool();
+    const pool = motusPool(motusLenForDate(date));
     const recent = new Set();
     for (let i = 1; i <= MOTUS_KEEP_WORD_DAYS; i++) {
         const w = mfGet(kMotusWord(mfShiftDay(date, -i)));
@@ -745,7 +774,7 @@ app.get('/api/motus/today', requireAuth, (req, res) => {
     const finished = !!(prog && (prog.solved || prog.gaveUp));
     res.json({
         date, today, isArchive: date !== today, nextIn: mfSecondsToMidnight(),
-        length: MOTUS_LEN, firstLetter: word[0],
+        length: word.length, firstLetter: word[0],
         progress: prog,
         answer: finished ? word : undefined,
         definition: finished ? motusDefFor(word) : undefined,
@@ -763,7 +792,7 @@ app.post('/api/motus/guess', requireAuth, (req, res) => {
     if (prog.guesses.length >= MOTUS_TRIES) return res.status(400).json({ error: 'Plus de tentative disponible.' });
 
     let guess = String(b.guess || '').toUpperCase().trim();
-    if (guess.length !== MOTUS_LEN || !/^[A-Z]+$/.test(guess)) return res.status(400).json({ error: `Un mot de ${MOTUS_LEN} lettres, sans accent.` });
+    if (guess.length !== word.length || !/^[A-Z]+$/.test(guess)) return res.status(400).json({ error: `Un mot de ${word.length} lettres, sans accent.` });
     if (guess[0] !== word[0]) return res.status(400).json({ error: `Le mot commence par ${word[0]}.` });
     const known = motusKnown(guess);
     if (!known && guess !== word) return res.status(400).json({ error: "Ce mot n'est pas dans le dictionnaire." });
@@ -1306,7 +1335,7 @@ require('./admin/routes')(app, {
     perudo: () => perudoApi,
     motus: {
         word: motusWord, wordPreview: motusWordPreview, def: motusDefFor,
-        len: MOTUS_LEN, tries: MOTUS_TRIES,
+        lenForDate: motusLenForDate, lengths: MOTUS_LENGTHS, tries: MOTUS_TRIES,
         kProg: kMotusProg, kBoard: kMotusBoard, kCmt: kMotusCmt,
     },
     motjuste: {

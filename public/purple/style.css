@@ -47,7 +47,8 @@ body.is-ready .pu { display:flex; }
         repeating-linear-gradient(45deg, rgba(155,111,199,.16) 0 8px, transparent 8px 16px),
         linear-gradient(165deg,var(--ink-3),var(--ink-2));
     border:2.5px solid var(--purple); }
-.pu-card-back::after { content:'✦'; color:var(--purple-soft); font-size:2rem; opacity:.65; }
+.pu-card-back::after { content:''; display:block; width:58px; height:58px; background-image:url(/logo-bretagne.svg);
+                        background-size:contain; background-repeat:no-repeat; background-position:center; opacity:.75; }
 .pu-card-front { background:var(--parchment); transform:rotateY(180deg); border:2.5px solid #d8cba9; flex-direction:column; gap:4px; }
 .pu-card-front .pu-rank { font-family:'Fraunces',Georgia,serif; font-weight:900; font-size:2.6rem; line-height:1; }
 .pu-card-front .pu-suit { font-size:2.4rem; line-height:1; }

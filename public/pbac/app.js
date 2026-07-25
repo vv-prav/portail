@@ -77,14 +77,28 @@ function connect() {
 }
 
 // ---------- Lobby ----------
+const STATUS_LABEL = {
+    lobby: 'En attente de joueurs', writing: 'Écriture en cours', voting: 'Vote en cours',
+    cat_summary: 'Entre deux catégories', ended_round: 'Entre deux manches',
+    countdown: 'Ça va commencer…', choosing_letter: "L'hôte choisit la lettre",
+};
 function renderLobby(games) {
     if (currentView !== 'lobby' && state) return;   // on ne repasse pas au lobby si on est déjà en partie
     $('lobby-empty-label').hidden = !!(games && games.length);
-    $('pb-tables').innerHTML = (games || []).map(g => `
-        <button class="pb-table-row" data-id="${g.id}">
-            <span>Table de <b>${esc(g.host)}</b></span>
-            <span class="pt-meta">${g.players}/${g.maxPlayers} joueurs · ${g.rounds} manches · ${g.duration} s</span>
-        </button>`).join('');
+    $('pb-tables').innerHTML = (games || []).map(g => {
+        const live = g.status !== 'lobby';
+        const statusText = STATUS_LABEL[g.status] || 'En cours';
+        return `<button class="pb-table-row${live ? ' live' : ''}" data-id="${g.id}">
+            ${live ? '<span class="pt-live-dot"></span>' : ''}
+            <span class="pt-main">
+                <span class="pt-title">Table de <b>${esc(g.host)}</b></span>
+                <span class="pt-meta">${live
+                    ? `🔴 ${esc(statusText)} · Manche ${g.round}/${g.rounds} · ${g.alive} connecté${g.alive > 1 ? 's' : ''}`
+                    : `${g.players}/${g.maxPlayers} joueurs · ${g.rounds} manches · ${g.duration} s`}</span>
+            </span>
+            ${live ? '<span class="pt-join-hint">Rejoindre en spectateur ›</span>' : ''}
+        </button>`;
+    }).join('');
     $('pb-tables').querySelectorAll('.pb-table-row').forEach(b => b.addEventListener('click', () => {
         socket.emit('pbac_join', { id: b.dataset.id });
     }));
@@ -694,6 +708,7 @@ if (window.visualViewport) {
 
 // ---------- Démarrage ----------
 connect();
+setInterval(() => { if (currentView === 'lobby' && socket && socket.connected) socket.emit('pbac_list'); }, 6000);
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
 }

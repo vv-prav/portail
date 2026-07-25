@@ -51,7 +51,7 @@ body.is-ready .mt { display:flex; }
 
 /* Grille 6x6 */
 .mt-grid-wrap { position:relative; display:flex; justify-content:center; align-items:center; flex:1; min-height:0; }
-.mt-grid { display:grid; grid-template-columns:repeat(6, var(--cell,44px)); grid-auto-rows:var(--cell,44px);
+.mt-grid { display:grid; grid-template-columns:repeat(var(--cols,6), var(--cell,44px)); grid-auto-rows:var(--cell,44px);
            gap:6px; }
 .mt-tile {
     width:var(--cell,44px); height:var(--cell,44px); display:grid; place-items:center; position:relative;
