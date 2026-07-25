@@ -33,13 +33,17 @@ module.exports = function attachAdmin(app, ctx) {
             solvedToday += Object.keys(cache).filter(k => k.startsWith(`mf:prog:`) && k.endsWith(`:${today}:${lv}`) && (cache[k] || {}).solved).length;
         }
         const day = 864e5;
+        const ONLINE_WINDOW = 90 * 1000;   // cohérent avec le pulse du salon (60s) + marge
+        const seenOf = (u) => u.lastSeen || u.lastLogin || 0;
         res.json({
             you: currentUser(req),
             accounts: all.length,
             admins: ctx.allAdmins(),
             banned: all.filter(u => u.banned).length,
             newThisWeek: all.filter(u => u.created && Date.now() - u.created < 7 * day).length,
-            activeThisWeek: all.filter(u => u.lastLogin && Date.now() - u.lastLogin < 7 * day).length,
+            activeThisWeek: all.filter(u => seenOf(u) && Date.now() - seenOf(u) < 7 * day).length,
+            onlineNow: all.filter(u => u.lastSeen && Date.now() - u.lastSeen < ONLINE_WINDOW)
+                .sort((a, b) => b.lastSeen - a.lastSeen).map(u => u.pseudo),
             solvedToday,
             mfKeys: Object.keys(cache).length,
             uptime: Math.floor(process.uptime()),
@@ -55,10 +59,11 @@ module.exports = function attachAdmin(app, ctx) {
     G('/accounts', (req, res) => {
         const q = String(req.query.q || '').toLowerCase().trim();
         const sort = req.query.sort || 'recent';
+        const seenOf = (u) => u.lastSeen || u.lastLogin || 0;
         let list = Object.values(users()).filter(u => !q || u.pseudo.toLowerCase().includes(q));
         const sorters = {
             recent: (a, b) => (b.created || 0) - (a.created || 0),
-            active: (a, b) => (b.lastLogin || 0) - (a.lastLogin || 0),
+            active: (a, b) => seenOf(b) - seenOf(a),
             name: (a, b) => a.pseudo.localeCompare(b.pseudo),
         };
         list.sort(sorters[sort] || sorters.recent);
@@ -67,7 +72,8 @@ module.exports = function attachAdmin(app, ctx) {
             accounts: list.slice(0, 100).map(u => ({
                 pseudo: u.pseudo,
                 created: u.created || 0,
-                lastLogin: u.lastLogin || 0,
+                lastSeen: seenOf(u),
+                online: !!(u.lastSeen && Date.now() - u.lastSeen < 90 * 1000),
                 banned: !!u.banned,
                 admin: isAdmin(u.pseudo),
                 hasRecovery: !!u.recoveryHash,
@@ -97,7 +103,8 @@ module.exports = function attachAdmin(app, ctx) {
         res.json({
             pseudo: u.pseudo,
             created: u.created || 0,
-            lastLogin: u.lastLogin || 0,
+            lastSeen: u.lastSeen || u.lastLogin || 0,
+            online: !!(u.lastSeen && Date.now() - u.lastSeen < 90 * 1000),
             banned: !!u.banned,
             admin: isAdmin(u.pseudo),
             hasRecovery: !!u.recoveryHash,
