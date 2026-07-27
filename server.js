@@ -1108,18 +1108,65 @@ app.use('/voyages', requireAuth, express.static(__dirname + '/public/voyages'));
 //  que des dizaines de petites routes pour un usage entre trois amis.
 // ---------------------------------------------------------------------
 function defaultGearCategories() {
-    return [{
-        id: 'cat-commun', name: 'Matériel commun',
-        items: [
-            { id: 'g1', name: 'Tente', person: '' },
-            { id: 'g2', name: 'Popote', person: '' },
-            { id: 'g3', name: 'Réchaud et gaz', person: '' },
-            { id: 'g4', name: 'Trousse de secours', person: '' },
-            { id: 'g5', name: 'Filtre ou pastilles à eau', person: '' },
-            { id: 'g6', name: 'Carte papier et boussole', person: '' },
-            { id: 'g7', name: 'Corde et sangles', person: '' },
-        ],
-    }];
+    return [
+        {
+            id: 'cat-abris', name: 'Abris',
+            items: [
+                { id: 'g1', name: 'Tente 2 places, avec sardines et sangles', person: '', packed: false },
+                { id: 'g2', name: 'Tente 1 place, avec sardines et sangles', person: '', packed: false },
+                { id: 'g3', name: 'Piquets de rechange', person: '', packed: false },
+            ],
+        },
+        {
+            id: 'cat-cuisine', name: 'Cuisine et eau',
+            items: [
+                { id: 'g4', name: 'Réchaud à gaz', person: '', packed: false },
+                { id: 'g5', name: 'Cartouche de gaz de rechange', person: '', packed: false },
+                { id: 'g6', name: 'Popote (casserole ou gamelle)', person: '', packed: false },
+                { id: 'g7', name: 'Briquet', person: '', packed: false },
+                { id: 'g8', name: 'Allumettes étanches', person: '', packed: false },
+                { id: 'g9', name: 'Filtre à eau ou pastilles de purification', person: '', packed: false },
+                { id: 'g10', name: 'Éponge ou chiffon pour la vaisselle', person: '', packed: false },
+                { id: 'g11', name: 'Sacs poubelle pour redescendre les déchets', person: '', packed: false },
+            ],
+        },
+        {
+            id: 'cat-securite', name: 'Sécurité et navigation',
+            items: [
+                { id: 'g12', name: 'Trousse de premiers secours commune', person: '', packed: false },
+                { id: 'g13', name: 'Carte IGN 0617 OT papier', person: '', packed: false },
+                { id: 'g14', name: 'Boussole', person: '', packed: false },
+                { id: 'g15', name: 'Couverture de survie', person: '', packed: false },
+                { id: 'g16', name: 'Sifflet', person: '', packed: false },
+                { id: 'g17', name: 'Corde et sangles pour dépanner', person: '', packed: false },
+                { id: 'g18', name: 'Lampe frontale de secours, avec piles à part', person: '', packed: false },
+            ],
+        },
+        {
+            id: 'cat-reparation', name: 'Réparation',
+            items: [
+                { id: 'g19', name: 'Couteau multifonction', person: '', packed: false },
+                { id: 'g20', name: 'Kit de réparation tente (rustines, fil, aiguille)', person: '', packed: false },
+                { id: 'g21', name: 'Adhésif toilé enroulé sur un bout de carton', person: '', packed: false },
+                { id: 'g22', name: 'Cordelette supplémentaire', person: '', packed: false },
+            ],
+        },
+        {
+            id: 'cat-electronique', name: 'Électronique partagée',
+            items: [
+                { id: 'g23', name: 'Batterie externe de secours pour le groupe', person: '', packed: false },
+                { id: 'g24', name: 'Câbles de charge', person: '', packed: false },
+            ],
+        },
+        {
+            id: 'cat-divers', name: 'Divers',
+            items: [
+                { id: 'g25', name: 'Papier toilette', person: '', packed: false },
+                { id: 'g26', name: 'Petite pelle', person: '', packed: false },
+                { id: 'g27', name: 'Répulsif anti-moustique et anti-tique', person: '', packed: false },
+            ],
+        },
+    ];
 }
 app.get('/api/voyages/gear', requireAuthApi, (req, res) => {
     res.json({ categories: mfGet('voyages:gear') || defaultGearCategories() });
@@ -1133,6 +1180,7 @@ app.post('/api/voyages/gear', requireAuthApi, (req, res) => {
             id: String(it.id || '').slice(0, 40) || ('g-' + Date.now() + Math.random().toString(36).slice(2, 6)),
             name: String(it.name || '').trim().slice(0, 60),
             person: String(it.person || '').trim().slice(0, 24),
+            packed: !!it.packed,
         })).filter(it => it.name) : [],
     }));
     mfSet('voyages:gear', clean);
