@@ -405,19 +405,6 @@ function dropFootprint(x, y) {
 window.addEventListener('pointermove', (e) => { if (e.pointerType === 'touch' || e.buttons) dropFootprint(e.clientX, e.clientY); }, { passive: true });
 window.addEventListener('touchmove', (e) => { const t = e.touches[0]; if (t) dropFootprint(t.clientX, t.clientY); }, { passive: true });
 
-// =====================================================================
-//  LE GRAIN DE VIEUX PAPIER s'intensifie en descendant la page.
-// =====================================================================
-const paperLayer = $('paperLayer');
-function updatePaper() {
-    if (!paperLayer) return;
-    const doc = document.documentElement;
-    const max = doc.scrollHeight - doc.clientHeight;
-    const p = max > 0 ? Math.min(1, window.scrollY / max) : 0;
-    paperLayer.style.opacity = (p * 0.55).toFixed(2);
-}
-window.addEventListener('scroll', () => { requestAnimationFrame(updatePaper); }, { passive: true });
-updatePaper();
 
 // =====================================================================
 //  COMPTE À REBOURS jusqu'au départ, le 10 août.
