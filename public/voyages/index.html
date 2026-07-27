@@ -123,7 +123,7 @@
     </div>
 
     <!-- ============ AVANT-PROPOS ============ -->
-    <section class="vy-section vy-intro" data-reveal>
+    <section class="vy-section vy-intro" data-mood="intro" data-reveal>
         <p class="vy-kicker">Le projet</p>
         <p class="vy-intro-text">On part à trois. Cinq jours pour boucler un des plus beaux sentiers de la Bretagne
             intérieure, celui qui traverse les Monts d'Arrée d'un bout à l'autre avant de revenir sur ses pas.
@@ -136,7 +136,7 @@
     <div class="vy-parchment" data-reveal aria-hidden="true"><span></span></div>
 
     <!-- ============ LOGISTIQUE ============ -->
-    <section class="vy-section vy-logistics" data-reveal>
+    <section class="vy-section vy-logistics" data-mood="logi" data-reveal>
         <p class="vy-kicker">Avant de partir</p>
         <h2 class="vy-h2">Logistique et accès</h2>
         <div class="vy-logi-grid">
@@ -163,7 +163,7 @@
     <div class="vy-parchment" data-reveal aria-hidden="true"><span></span></div>
 
     <!-- ============ CARTE ============ -->
-    <section class="vy-section vy-map-section" data-reveal>
+    <section class="vy-section vy-map-section" data-mood="carte" data-reveal>
         <p class="vy-kicker">Se repérer</p>
         <h2 class="vy-h2">La carte du parcours</h2>
         <p class="vy-map-note">Les cinq villages d'étape (en violet) et les trois sommets traversés (en ambre) sont
@@ -201,6 +201,11 @@
             <span class="vy-progress-track"><i id="progressFill"></i></span>
         </div>
 
+        <div class="vy-steps" id="stepsWidget" aria-hidden="true">
+            <span class="vy-steps-num" id="stepsNum">0</span>
+            <span class="vy-steps-label">pas parcourus</span>
+        </div>
+
         <div class="vy-walkers" id="walkers" aria-hidden="true">
             <div class="vy-walker" data-walker="0"><img src="photos/ami-1.png" alt="" onerror="this.parentElement.classList.add('vy-walker-empty')"></div>
             <div class="vy-walker" data-walker="1"><img src="photos/ami-2.png" alt="" onerror="this.parentElement.classList.add('vy-walker-empty')"></div>
@@ -210,6 +215,7 @@
         <article class="vy-day" data-day="1" data-mood="foret" data-reveal>
             <div class="vy-day-node"><span>1</span></div>
             <div class="vy-day-card">
+                <div class="vy-leaves" id="leavesLayer1" aria-hidden="true"></div>
                 <div class="vy-day-photo">
                     <img src="photos/jour-1.jpg" alt="Forêt de Huelgoat" onerror="this.parentElement.classList.add('vy-photo-empty')">
                 </div>
@@ -395,6 +401,7 @@
         <article class="vy-day" data-day="5" data-mood="retour" data-reveal>
             <div class="vy-day-node"><span>5</span></div>
             <div class="vy-day-card">
+                <div class="vy-leaves" id="leavesLayer5" aria-hidden="true"></div>
                 <div class="vy-day-photo">
                     <img src="photos/jour-5.avif" alt="Retour vers Huelgoat" onerror="this.parentElement.classList.add('vy-photo-empty')">
                 </div>
@@ -435,7 +442,7 @@
     <div class="vy-parchment" data-reveal aria-hidden="true"><span></span></div>
 
     <!-- ============ SÉCURITÉ / PRÉPARATION ============ -->
-    <section class="vy-section vy-prep" data-reveal>
+    <section class="vy-section vy-prep" data-mood="prep" data-reveal>
         <p class="vy-kicker">À prévoir</p>
         <h2 class="vy-h2">Prérequis et sécurité</h2>
         <div class="vy-prep-grid">
@@ -460,7 +467,7 @@
     <div class="vy-parchment" data-reveal aria-hidden="true"><span></span></div>
 
     <!-- ============ PORTAIL PRIVÉ ============ -->
-    <section class="vy-section vy-lockgate-section" id="lockGateSection" data-reveal>
+    <section class="vy-section vy-lockgate-section" id="lockGateSection" data-mood="prive" data-reveal>
         <div class="vy-lockgate" id="lockGate">
             <p class="vy-kicker">Réservé à nous trois</p>
             <h2 class="vy-h2">La suite est privée</h2>

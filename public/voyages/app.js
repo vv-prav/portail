@@ -33,18 +33,20 @@ document.querySelectorAll('.vy-num').forEach((el, i) => {
     setTimeout(() => animateCount(el, target, 1200), 600 + i * 120);
 });
 
-// ---------- Ambiance colorée par étape ----------
+// ---------- Ambiance colorée par section (jours du sentier + reste de la page) ----------
 const MOODS = {
     foret: '#3a2d52', tourbiere: '#332c48', crete: '#2c2c4a', lande: '#40304a', retour: '#4a3540',
+    intro: '#241c36', logi: '#291f38', carte: '#20263a', prep: '#3a2a28', prive: '#2a2038',
 };
 const moodLayer = $('moodLayer');
 const dayEls = [...document.querySelectorAll('.vy-day')];
+const moodEls = [...document.querySelectorAll('[data-mood]')];
 let currentMood = null;
 function updateMood() {
     const vh = window.innerHeight || document.documentElement.clientHeight;
     const centerY = vh * 0.5;
     let closest = null, closestDist = Infinity;
-    dayEls.forEach(el => {
+    moodEls.forEach(el => {
         const r = el.getBoundingClientRect();
         const mid = r.top + r.height / 2;
         const dist = Math.abs(mid - centerY);
@@ -107,10 +109,18 @@ function updateTrailProgress() {
 
     trailPath.style.strokeDashoffset = trailLen * (1 - progress);
 
+    // Raideur approximative de chaque jour (dénivelé pour 1 km parcouru), pour
+    // faire pencher les marcheurs en avant sur les montées, détendus sur le plat.
+    const STEEPNESS = { 1: 10, 2: 22.9, 3: 28.75, 4: 12, 5: 6.9 };
+    const dayForLean = Math.min(5, Math.max(1, Math.round(progress * dayEls.length) || 1));
+    const leanDeg = Math.round((STEEPNESS[dayForLean] / 28.75) * 14);
+
     walkers.forEach((w, i) => {
         const p = Math.max(0, progress - WALKER_LAG[i]);
         w.style.top = (p * trailHeight) + 'px';
         w.classList.toggle('vy-walker-visible', progress > 0.015 && progress < 0.995);
+        const img = w.querySelector('img');
+        if (img) img.style.transform = `rotate(${-leanDeg}deg)`;
     });
 
     // L'indicateur d'étape reste visible tant qu'on est dans le sentier.
@@ -367,6 +377,75 @@ function combinedScroll() {
 }
 window.addEventListener('scroll', combinedScroll, { passive: true });
 combinedScroll();
+
+// =====================================================================
+//  COMPTEUR DE PAS DÉCORATIF : s'affole pendant qu'on scrolle vite,
+//  se stabilise sur une valeur cohérente une fois le scroll ralenti.
+// =====================================================================
+const stepsNum = $('stepsNum');
+const TOTAL_TRAIL_M = 74000;
+const STEPS_PER_M = 1.3;
+let lastStepsScrollY = window.scrollY, lastStepsTime = performance.now();
+function updateSteps() {
+    if (!stepsNum || !trail) return;
+    const rect = trail.getBoundingClientRect();
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    const total = rect.height + vh * 0.6;
+    const traveled = vh * 0.85 - rect.top;
+    const progress = Math.max(0, Math.min(1, total > 0 ? traveled / total : 0));
+    const realSteps = Math.round(progress * TOTAL_TRAIL_M * STEPS_PER_M);
+
+    const now = performance.now();
+    const dt = Math.max(1, now - lastStepsTime);
+    const velocity = Math.abs(window.scrollY - lastStepsScrollY) / dt;
+    lastStepsScrollY = window.scrollY; lastStepsTime = now;
+
+    if (!reduceMotion && velocity > 1.1) {
+        const jitter = Math.round((Math.random() - 0.5) * 500);
+        stepsNum.textContent = Math.max(0, realSteps + jitter).toLocaleString('fr-FR');
+        stepsNum.classList.add('vy-steps-wild');
+    } else {
+        stepsNum.textContent = realSteps.toLocaleString('fr-FR');
+        stepsNum.classList.remove('vy-steps-wild');
+    }
+}
+window.addEventListener('scroll', () => requestAnimationFrame(updateSteps), { passive: true });
+updateSteps();
+
+// =====================================================================
+//  FEUILLES QUI TOMBENT, sur les journées de forêt (jour 1 et jour 5).
+// =====================================================================
+function spawnLeaves(hostId) {
+    const host = $(hostId);
+    if (!host || reduceMotion) return;
+    const colors = ['#c9935a', '#8b6ba8', '#a98cc2', '#6b5687'];
+    function drop() {
+        if (!document.body.contains(host)) return;
+        const leaf = document.createElement('span');
+        leaf.className = 'vy-leaf';
+        const size = 7 + Math.random() * 6;
+        leaf.style.width = size + 'px';
+        leaf.style.height = (size * 0.75) + 'px';
+        leaf.style.left = (Math.random() * 96) + '%';
+        leaf.style.background = colors[Math.floor(Math.random() * colors.length)];
+        leaf.style.setProperty('--leaf-x', (Math.random() * 60 - 30) + 'px');
+        leaf.style.setProperty('--leaf-rot', (200 + Math.random() * 260) + 'deg');
+        leaf.style.animationDuration = (5 + Math.random() * 4) + 's';
+        host.appendChild(leaf);
+        setTimeout(() => leaf.remove(), 9500);
+    }
+    let leafTimer = null;
+    const io = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+            if (e.isIntersecting) {
+                if (!leafTimer) { drop(); leafTimer = setInterval(drop, 700); }
+            } else if (leafTimer) { clearInterval(leafTimer); leafTimer = null; }
+        });
+    }, { threshold: 0.15 });
+    io.observe(host.closest('.vy-day'));
+}
+spawnLeaves('leavesLayer1');
+spawnLeaves('leavesLayer5');
 
 // =====================================================================
 //  EMPREINTES DE PAS sous le doigt, façon boue fraîche.

@@ -156,7 +156,7 @@ body {
     0%,100% { transform:translateX(var(--tx,0)) translateY(0); }
     50% { transform:translateX(var(--tx,0)) translateY(-4px); }
 }
-.vy-walker img { width:100%; height:100%; object-fit:contain; display:block;
+.vy-walker img { width:100%; height:100%; object-fit:contain; display:block; transition:transform .5s ease-out;
     filter:drop-shadow(0 0 5px rgba(201,147,90,.9)) drop-shadow(0 0 16px rgba(201,147,90,.55)) drop-shadow(0 0 26px rgba(139,107,168,.4)); }
 .vy-walker.vy-walker-empty { background:radial-gradient(circle, rgba(201,147,90,.4), transparent 70%); border-radius:50%; }
 .vy-walker.vy-walker-empty img { display:none; }
@@ -667,6 +667,34 @@ body:not(.vy-loading) .vy-loader { opacity:0; visibility:hidden; pointer-events:
     .vy-btn:hover, .vy-tab:hover, .vy-avatar-btn:hover { transform:translateY(-2px); box-shadow:0 8px 18px rgba(0,0,0,.35); }
     .vy-day-node:hover, .vy-gear-avatar:hover, .vy-cairn-btn:hover { transform:scale(1.08); }
     .vy-back:hover, .vy-key-btn:hover { background:rgba(139,107,168,.25); }
+}
+
+/* ===================== COMPTEUR DE PAS DÉCORATIF ===================== */
+.vy-steps { display:flex; flex-direction:column; align-items:center; gap:2px; margin:0 0 22px; }
+.vy-steps-num { font-family:var(--font-mono); font-weight:700; font-size:1.3rem; color:var(--parchment);
+    font-variant-numeric:tabular-nums; transition:color .2s; }
+.vy-steps-num.vy-steps-wild { color:var(--ember-soft); }
+.vy-steps-label { font-size:.62rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); }
+
+/* ===================== FEUILLES QUI TOMBENT (jours 1 et 5) ===================== */
+.vy-leaves { position:absolute; inset:0; z-index:1; pointer-events:none; overflow:hidden; border-radius:inherit; }
+.vy-leaf { position:absolute; top:-16px; border-radius:0 60% 0 60%; animation:vyLeafFall linear forwards; }
+@keyframes vyLeafFall {
+    0% { transform:translate(0,0) rotate(0deg); opacity:0; }
+    8% { opacity:.85; }
+    92% { opacity:.75; }
+    100% { transform:translate(var(--leaf-x,20px), 340px) rotate(var(--leaf-rot,180deg)); opacity:0; }
+}
+
+/* ===================== LA CARTE QUI SE DÉPLIE COMME DU PAPIER ===================== */
+.vy-map { opacity:0; transform:scale(.42) rotate(-9deg); filter:blur(3px); transform-origin:center center; }
+.vy-map-section.in-view .vy-map {
+    animation:vyMapUnfold 1.15s cubic-bezier(.16,1,.3,1) forwards;
+}
+@keyframes vyMapUnfold {
+    0% { opacity:0; transform:scale(.42) rotate(-9deg); filter:blur(3px); }
+    55% { opacity:1; transform:scale(1.035) rotate(1.5deg); filter:blur(0); }
+    100% { opacity:1; transform:scale(1) rotate(0deg); filter:blur(0); }
 }
 
 @media (prefers-reduced-motion:reduce) {
