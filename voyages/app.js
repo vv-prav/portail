@@ -1182,26 +1182,6 @@ window.addEventListener('scroll', () => requestAnimationFrame(updateTopbar), { p
 updateTopbar();
 
 // =====================================================================
-//  FLOU DE MOUVEMENT pendant un défilement rapide, comme un vrai
-//  mouvement de caméra plutôt qu'un défilement de navigateur brut.
-// =====================================================================
-const motionLayer = $('motionLayer');
-let lastScrollY = window.scrollY, lastScrollTime = performance.now(), blurTimeout = null;
-window.addEventListener('scroll', () => {
-    if (!motionLayer || reduceMotion) return;
-    const now = performance.now();
-    const dt = Math.max(1, now - lastScrollTime);
-    const dy = Math.abs(window.scrollY - lastScrollY);
-    const velocity = dy / dt; // px/ms
-    lastScrollY = window.scrollY; lastScrollTime = now;
-    if (velocity > 1.8) {
-        motionLayer.classList.add('vy-blurring');
-        clearTimeout(blurTimeout);
-        blurTimeout = setTimeout(() => motionLayer.classList.remove('vy-blurring'), 160);
-    }
-}, { passive: true });
-
-// =====================================================================
 //  CURSEUR PERSONNALISÉ (ordinateur uniquement, jamais sur tactile).
 // =====================================================================
 const customCursor = $('customCursor');

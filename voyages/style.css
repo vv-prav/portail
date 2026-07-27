@@ -636,10 +636,6 @@ body:not(.vy-loading) .vy-loader { opacity:0; visibility:hidden; pointer-events:
     transition-delay:calc(var(--i,0) * 65ms); }
 [data-reveal].in-view .vy-word, .in-view .vy-word { opacity:1; transform:translateY(0); filter:blur(0); }
 
-/* ===================== FLOU DE MOUVEMENT AU DÉFILEMENT RAPIDE ===================== */
-.vy-motion-layer { transition:filter .18s ease-out; }
-.vy-motion-layer.vy-blurring { filter:blur(3px); }
-
 /* ===================== SURVOL ET TAP SOIGNÉS PARTOUT ===================== */
 .vy-btn, .vy-tab, .vy-avatar-btn, .vy-gear-avatar, .vy-day-node, .vy-cairn-btn, .vy-back, .vy-key-btn,
 .vy-lightbox-nav, .vy-lightbox-close, .vy-gear-cat-del, .vy-gear-del, .vy-check-del, .vy-expense-del {
