@@ -315,21 +315,6 @@ function showKorrigan() {
     setTimeout(() => korrigan.classList.remove('vy-korrigan-on'), 1600);
 }
 
-// =====================================================================
-//  LA ROCHE TREMBLANTE (jour 1) : on la fait vraiment vaciller au tap.
-// =====================================================================
-const roche = $('rocheTremblante');
-if (roche) {
-    const photo = roche.closest('.vy-day-card')?.querySelector('.vy-day-photo');
-    const rock = () => {
-        if (!photo) return;
-        photo.classList.remove('vy-rocking');
-        void photo.getBoundingClientRect();
-        photo.classList.add('vy-rocking');
-        if (navigator.vibrate) { try { navigator.vibrate(15); } catch (e) {} }
-    };
-    roche.addEventListener('click', rock);
-}
 
 // =====================================================================
 //  LA BRUME DU JOUR 2 : se dissipe littéralement au défilement.
@@ -736,6 +721,7 @@ document.querySelectorAll('.vy-guess').forEach((box) => {
 // =====================================================================
 let groupNames = [];
 let gearCategories = [];
+let activeGearCat = null;
 let editingExpenseId = null;
 let expSplitSelection = [];
 
@@ -796,7 +782,14 @@ function renderGear() {
         host.innerHTML = '<p class="vy-empty-note">Aucune catégorie pour l\u2019instant, créez-en une ci-dessous.</p>';
         return;
     }
-    host.innerHTML = gearCategories.map(cat => `
+    if (!activeGearCat || !gearCategories.some(c => c.id === activeGearCat)) activeGearCat = gearCategories[0].id;
+    const cat = gearCategories.find(c => c.id === activeGearCat);
+
+    const tabs = `<div class="vy-tabs vy-gear-tabs">${gearCategories.map(c => `
+        <button type="button" class="vy-tab${c.id === activeGearCat ? ' vy-tab-on' : ''}" data-gearcat="${c.id}">${esc(c.name)}</button>
+    `).join('')}</div>`;
+
+    const body = `
         <div class="vy-gear-cat" data-cat="${cat.id}">
             <div class="vy-gear-cat-head">
                 <span class="vy-gear-cat-name">${esc(cat.name)}</span>
@@ -809,27 +802,43 @@ function renderGear() {
                         <span class="vy-gear-handle" data-handle="${it.id}">⠿</span>
                         <span class="vy-gear-name">${esc(it.name)}</span>
                         <div class="vy-gear-people">${groupNames.length ? groupNames.map((n, i) => `
-                            <button type="button" class="vy-gear-avatar${it.person === n ? ' vy-gear-assigned' : ''}" data-cat="${cat.id}" data-item="${it.id}" data-person="${esc(n)}">${avatarChip(i, n)}</button>
+                            <button type="button" class="vy-gear-avatar${it.person === n ? (it.packed ? ' vy-gear-packed' : ' vy-gear-assigned') : ''}" data-cat="${cat.id}" data-item="${it.id}" data-person="${esc(n)}">${avatarChip(i, n)}</button>
                         `).join('') : '<span class="vy-gear-noname">prénoms non renseignés</span>'}</div>
                         <button type="button" class="vy-gear-del" data-cat="${cat.id}" data-itemdel="${it.id}" aria-label="Retirer">✕</button>
                     </div>`;
-                }).join('')}
+                }).join('') || '<p class="vy-empty-note">Aucun objet dans cette catégorie pour l\u2019instant.</p>'}
             </div>
             <div class="vy-gear-item-add">
                 <input type="text" maxlength="60" placeholder="Ajouter un objet" data-catnew="${cat.id}">
                 <button type="button" data-catnewbtn="${cat.id}">Ajouter</button>
             </div>
-        </div>`).join('');
+        </div>`;
 
+    host.innerHTML = tabs + body;
+
+    host.querySelectorAll('[data-gearcat]').forEach(b => b.addEventListener('click', () => {
+        activeGearCat = b.dataset.gearcat;
+        renderGear();
+    }));
     host.querySelectorAll('[data-catdel]').forEach(b => b.addEventListener('click', () => {
         gearCategories = gearCategories.filter(c => c.id !== b.dataset.catdel);
+        if (activeGearCat === b.dataset.catdel) activeGearCat = null;
         saveGear().then(renderGear);
     }));
     host.querySelectorAll('.vy-gear-avatar').forEach(b => b.addEventListener('click', () => {
         const cat = gearCategories.find(c => c.id === b.dataset.cat);
         const item = cat && cat.items.find(i => i.id === b.dataset.item);
         if (!item) return;
-        item.person = item.person === b.dataset.person ? '' : b.dataset.person;
+        if (item.person !== b.dataset.person) {
+            // Personne différente ou objet libre : on se l'attribue.
+            item.person = b.dataset.person; item.packed = false;
+        } else if (!item.packed) {
+            // Déjà attribué à soi : on confirme qu'on l'a vraiment, ça passe au vert.
+            item.packed = true;
+        } else {
+            // Déjà confirmé : un clic de plus le libère complètement.
+            item.person = ''; item.packed = false;
+        }
         saveGear().then(renderGear);
     }));
     host.querySelectorAll('[data-itemdel]').forEach(b => b.addEventListener('click', () => {
@@ -907,11 +916,36 @@ if (catAddBtn) {
         const input = $('catInput');
         const name = input.value.trim();
         if (!name) return;
-        gearCategories.push({ id: 'cat-' + Date.now(), name, items: [] });
+        const newId = 'cat-' + Date.now();
+        gearCategories.push({ id: newId, name, items: [] });
+        activeGearCat = newId;
         input.value = '';
         saveGear().then(renderGear);
     });
     if (catInputEl) catInputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); catAddBtn.click(); } });
+}
+
+const FULL_GEAR_LIST = [
+    { name: 'Abris', items: ['Tente 2 places, avec sardines et sangles', 'Tente 1 place, avec sardines et sangles', 'Piquets de rechange'] },
+    { name: 'Cuisine et eau', items: ['Réchaud à gaz', 'Cartouche de gaz de rechange', 'Popote (casserole ou gamelle)', 'Briquet', 'Allumettes étanches', 'Filtre à eau ou pastilles de purification', 'Éponge ou chiffon pour la vaisselle', 'Sacs poubelle pour redescendre les déchets'] },
+    { name: 'Sécurité et navigation', items: ['Trousse de premiers secours commune', 'Carte IGN 0617 OT papier', 'Boussole', 'Couverture de survie', 'Sifflet', 'Corde et sangles pour dépanner', 'Lampe frontale de secours, avec piles à part'] },
+    { name: 'Réparation', items: ['Couteau multifonction', 'Kit de réparation tente (rustines, fil, aiguille)', 'Adhésif toilé enroulé sur un bout de carton', 'Cordelette supplémentaire'] },
+    { name: 'Électronique partagée', items: ['Batterie externe de secours pour le groupe', 'Câbles de charge'] },
+    { name: 'Divers', items: ['Papier toilette', 'Petite pelle', 'Répulsif anti-moustique et anti-tique'] },
+];
+const gearResetBtn = $('gearResetBtn');
+if (gearResetBtn) {
+    gearResetBtn.addEventListener('click', () => {
+        const ok = confirm('Ça remplace tout le matériel actuel (catégories, objets, attributions) par la liste complète. Continuer ?');
+        if (!ok) return;
+        gearCategories = FULL_GEAR_LIST.map((cat, ci) => ({
+            id: 'cat-' + Date.now() + '-' + ci,
+            name: cat.name,
+            items: cat.items.map((name, ii) => ({ id: 'g-' + Date.now() + '-' + ci + '-' + ii, name, person: '', packed: false })),
+        }));
+        activeGearCat = null;
+        saveGear().then(renderGear);
+    });
 }
 
 // ---------- LES FRAIS ----------
@@ -1061,9 +1095,37 @@ function unlockPrivateZone(remember) {
     lockGate.hidden = true;
     privateZone.hidden = false;
     keyJump.hidden = false;
-    Promise.all([loadNames(), loadChecklists()]).then(() => {
+    Promise.all([loadNames(), loadChecklists()]).then(async () => {
+        let filled = false;
+        groupNames.forEach(n => {
+            if (!checklistsCache[n] || checklistsCache[n].length === 0) {
+                checklistsCache[n] = DEFAULT_CHECKLIST.map(t => ({ text: t, done: false }));
+                filled = true;
+            }
+        });
+        if (filled) await saveChecklists();
         loadGear(); loadExpenses(); renderChecklistTabs();
     });
+    startLiveSync();
+}
+
+// Actualise en tâche de fond ce que les deux autres ont pu changer de leur côté,
+// sans jamais couper une saisie en cours (on attend que le champ perde le focus).
+let liveSyncTimer = null;
+function isTypingInPrivateZone() {
+    const el = document.activeElement;
+    return !!(el && privateZone.contains(el) && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA'));
+}
+function startLiveSync() {
+    if (liveSyncTimer) return;
+    liveSyncTimer = setInterval(async () => {
+        if (privateZone.hidden || isTypingInPrivateZone()) return;
+        await loadNames();
+        loadGear();
+        if (!editingExpenseId) loadExpenses();
+        await loadChecklists();
+        renderChecklistTabs();
+    }, 6000);
 }
 const lockSubmitBtn = $('lockSubmit');
 const lockInput = $('lockInput');
@@ -1093,8 +1155,36 @@ if (localStorage.getItem('vy_unlocked') === '1') unlockPrivateZone(false);
 // =====================================================================
 let checklistsCache = {};
 let activeChecklistTab = null;
-const DEFAULT_CHECKLIST = ['Chaussures de randonnée montantes', 'Veste imperméable', 'Polaire', 'Gourde 2 litres',
-    'Trousse de premiers soins personnelle', 'Chargeur et batterie externe', 'Cartes hors ligne téléchargées', 'Lampe frontale'];
+const DEFAULT_CHECKLIST = [
+    'Sac à dos de randonnée, autour de 40 à 50 litres',
+    'Housse de pluie pour le sac',
+    'Sac de couchage adapté à la saison',
+    'Matelas de sol ou gonflable',
+    'Chaussures de randonnée montantes, déjà rodées',
+    'Sandales ou chaussures légères pour le soir',
+    'Chaussettes de randonnée, plusieurs paires',
+    'Veste imperméable',
+    'Polaire ou doudoune légère',
+    'Tee-shirts techniques, un par jour ou presque',
+    'Pantalon de randonnée',
+    'Sous-vêtements pour les cinq jours',
+    'Bonnet ou casquette selon la météo',
+    'Gourde ou poche à eau, 2 litres minimum',
+    'Trousse de toilette (savon biodégradable, brosse à dents)',
+    'Serviette microfibre',
+    'Trousse de premiers soins personnelle',
+    'Médicaments personnels si besoin',
+    'Crème solaire',
+    'Lunettes de soleil',
+    'Chargeur et câble personnels',
+    'Batterie externe personnelle',
+    'Papiers d\u2019identité et carte vitale',
+    'Un peu d\u2019argent liquide',
+    'Cartes hors ligne téléchargées sur le téléphone',
+    'Lampe frontale personnelle',
+    'Couverts et gobelet léger',
+    'En-cas et barres énergétiques pour la marche',
+];
 
 async function loadChecklists() {
     const { data } = await api('/api/voyages/checklists');
@@ -1129,10 +1219,11 @@ function renderChecklist() {
         <div class="vy-check-item${it.done ? ' vy-checked' : ''}" data-i="${i}">
             <span class="vy-check-box"></span>
             <span class="vy-check-label">${esc(it.text)}</span>
+            <button type="button" class="vy-check-edit" data-edit="${i}" aria-label="Modifier">✎</button>
             <button type="button" class="vy-check-del" data-del="${i}" aria-label="Retirer">✕</button>
         </div>`).join('');
     host.querySelectorAll('.vy-check-item').forEach(row => row.addEventListener('click', (e) => {
-        if (e.target.closest('.vy-check-del')) return;
+        if (e.target.closest('.vy-check-del') || e.target.closest('.vy-check-edit')) return;
         const items2 = currentChecklistItems();
         const i = Number(row.dataset.i);
         items2[i].done = !items2[i].done;
@@ -1142,6 +1233,17 @@ function renderChecklist() {
     }));
     host.querySelectorAll('.vy-check-del').forEach(b => b.addEventListener('click', () => {
         currentChecklistItems().splice(Number(b.dataset.del), 1);
+        saveChecklists();
+        renderChecklist();
+    }));
+    host.querySelectorAll('.vy-check-edit').forEach(b => b.addEventListener('click', () => {
+        const items2 = currentChecklistItems();
+        const i = Number(b.dataset.edit);
+        const next = prompt('Modifier cet élément', items2[i].text);
+        if (next === null) return;
+        const trimmed = next.trim();
+        if (!trimmed) return;
+        items2[i].text = trimmed;
         saveChecklists();
         renderChecklist();
     }));
@@ -1158,6 +1260,22 @@ if (checklistAddBtn) {
         renderChecklist();
     });
     $('checklistInput').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); checklistAddBtn.click(); } });
+}
+const checklistFillBtn = $('checklistFillBtn');
+if (checklistFillBtn) {
+    checklistFillBtn.addEventListener('click', async () => {
+        let filled = 0;
+        groupNames.forEach(n => {
+            if (!checklistsCache[n] || checklistsCache[n].length === 0) {
+                checklistsCache[n] = DEFAULT_CHECKLIST.map(t => ({ text: t, done: false }));
+                filled++;
+            }
+        });
+        if (!filled) { alert('Toutes les listes ont déjà du contenu, rien n\u2019a été touché.'); return; }
+        await saveChecklists();
+        renderChecklist();
+        alert(filled + ' liste(s) remplie(s) avec la liste type.');
+    });
 }
 
 // =====================================================================
@@ -1180,26 +1298,6 @@ function updateTopbar() {
 }
 window.addEventListener('scroll', () => requestAnimationFrame(updateTopbar), { passive: true });
 updateTopbar();
-
-// =====================================================================
-//  FLOU DE MOUVEMENT pendant un défilement rapide, comme un vrai
-//  mouvement de caméra plutôt qu'un défilement de navigateur brut.
-// =====================================================================
-const motionLayer = $('motionLayer');
-let lastScrollY = window.scrollY, lastScrollTime = performance.now(), blurTimeout = null;
-window.addEventListener('scroll', () => {
-    if (!motionLayer || reduceMotion) return;
-    const now = performance.now();
-    const dt = Math.max(1, now - lastScrollTime);
-    const dy = Math.abs(window.scrollY - lastScrollY);
-    const velocity = dy / dt; // px/ms
-    lastScrollY = window.scrollY; lastScrollTime = now;
-    if (velocity > 1.8) {
-        motionLayer.classList.add('vy-blurring');
-        clearTimeout(blurTimeout);
-        blurTimeout = setTimeout(() => motionLayer.classList.remove('vy-blurring'), 160);
-    }
-}, { passive: true });
 
 // =====================================================================
 //  CURSEUR PERSONNALISÉ (ordinateur uniquement, jamais sur tactile).
