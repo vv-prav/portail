@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+    <meta name="theme-color" content="#14100b">
+    <title>Le Salon</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body class="is-boot">
+
+    <div class="boot" id="boot"><div class="boot-ring"></div></div>
+
+    <!-- SAS D'ENTRÉE -->
+    <main class="entry" id="entry">
+        <form class="entry-card" id="entry-form" autocomplete="on" novalidate>
+            <div class="crest"><img src="/logo-bretagne.svg" alt="Erquy" class="crest-logo"></div>
+            <h1 class="entry-title">Le Salon</h1>
+            <p class="entry-sub" data-i="entry_sub">Un nom, un mot de passe, et la porte s'ouvre.</p>
+            <input class="input" id="pseudo" type="text" data-ph="ph_name" placeholder="Ton nom" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="20">
+            <input class="input" id="password" type="password" data-ph="ph_pass" placeholder="Ton mot de passe" autocomplete="current-password">
+            <p class="hint" data-i="entry_hint">6 caractères minimum. Choisis un mot de passe unique, pas un que tu utilises ailleurs.</p>
+            <button class="btn btn-primary" id="btn-login" type="submit" data-i="btn_enter">Entrer</button>
+            <button class="btn btn-ghost" id="btn-register" type="button" data-i="btn_register">Créer un compte</button>
+            <button class="link-btn" id="btn-forgot" type="button" data-i="btn_forgot">Mot de passe oublié ?</button>
+            <div class="lang-row" id="lang-row">
+                <button type="button" data-lang="fr">FR</button><button type="button" data-lang="en">EN</button><button type="button" data-lang="es">ES</button>
+            </div>
+            <div class="entry-error" id="entry-error" role="alert" aria-live="polite"></div>
+        </form>
+    </main>
+
+    <!-- LE SALON -->
+    <main class="hub" id="hub">
+        <div class="hub-inner">
+            <header class="hub-head">
+                <button class="hub-me" id="hub-me" type="button" aria-label="Profil">
+                    <span class="me-avatar" id="me-avatar">✦</span>
+                    <span class="me-txt">
+                        <span class="hub-eyebrow" data-i="hub_welcome">Bienvenue</span>
+                        <span class="hub-name" id="hub-name">—</span>
+                    </span>
+                </button>
+                <span class="me-chip" id="me-streak" hidden>🔥 <b>0</b></span>
+            </header>
+
+            <p class="hub-announce" id="hub-announce" hidden></p>
+
+            <div class="rule" aria-hidden="true"></div>
+
+            <section class="tiles" id="tiles" aria-label="Applications"></section>
+
+            <p class="hub-foot" data-i="hub_foot">D'autres pièces ouvriront bientôt.</p>
+        </div>
+    </main>
+
+    <!-- PROFIL -->
+    <div class="ov" id="ov-profile" hidden>
+        <div class="ov-card prof-card ov-card-sticky">
+            <div class="ov-scroll">
+                <button class="prof-avatar" id="prof-avatar" type="button" aria-label="Changer d'avatar">✦</button>
+                <p class="prof-avatar-hint" data-i="prof_tap">Touche l'avatar pour le changer</p>
+                <h2 class="ov-title" id="prof-name">—</h2>
+                <p class="prof-meta" id="prof-meta">—</p>
+                <div class="avatar-grid" id="avatar-grid" hidden></div>
+                <div class="prof-games" id="prof-games"></div>
+                <button class="btn btn-ghost" id="prof-code" type="button" data-i="prof_code">Nouveau code de récupération</button>
+                <button class="btn btn-ghost logout" id="btn-logout" type="button" data-i="btn_logout">Se déconnecter</button>
+            </div>
+            <div class="ov-footer">
+                <button class="btn" id="prof-close" type="button">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Code de récupération -->
+    <div class="ov" id="ov-code" hidden>
+        <div class="ov-card">
+            <div class="ov-emoji">🔑</div>
+            <h2 class="ov-title" data-i="code_title">Note ce code</h2>
+            <p class="ov-sub" data-i="code_sub">C'est le seul moyen de récupérer ton compte si tu oublies ton mot de passe. Il ne sera plus jamais affiché.</p>
+            <div class="code-box" id="code-box">—</div>
+            <button class="btn btn-ghost" id="code-copy" type="button" data-i="code_copy">Copier le code</button>
+            <button class="btn btn-primary" id="code-ok" type="button" data-i="code_ok">C'est noté</button>
+        </div>
+    </div>
+
+    <!-- Mot de passe oublié -->
+    <div class="ov" id="ov-forgot" hidden>
+        <div class="ov-card">
+            <div class="ov-emoji">🔓</div>
+            <h2 class="ov-title" data-i="forgot_title">Mot de passe oublié</h2>
+            <p class="ov-sub" data-i="forgot_sub">Entre ton nom et le code de récupération noté à l'inscription.</p>
+            <input class="input" id="f-pseudo" type="text" data-ph="ph_name" placeholder="Ton nom" autocapitalize="off" autocorrect="off">
+            <input class="input" id="f-code" type="text" placeholder="XXXX-XXXX-XXXX-XXXX" autocapitalize="characters" autocorrect="off">
+            <input class="input" id="f-pass" type="password" data-ph="ph_newpass" placeholder="Nouveau mot de passe">
+            <div class="entry-error" id="f-error" role="alert"></div>
+            <button class="btn btn-primary" id="f-send" type="button" data-i="forgot_send">Réinitialiser</button>
+            <button class="btn btn-ghost" id="f-cancel" type="button" data-i="cancel">Annuler</button>
+        </div>
+    </div>
+
+    <script src="/app.js"></script>
+</body>
+</html>
