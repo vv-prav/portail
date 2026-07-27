@@ -1096,6 +1096,93 @@ app.use('/roidescons', requireAuth, express.static(__dirname + '/public/roidesco
 app.use('/chance', requireAuth, express.static(__dirname + '/public/chance'));
 
 // ---------------------------------------------------------------------
+//  VOYAGES — présentation de voyage, purement statique.
+// ---------------------------------------------------------------------
+app.use('/voyages', requireAuth, express.static(__dirname + '/public/voyages'));
+
+// ---------------------------------------------------------------------
+//  VOYAGES — matériel, frais et listes personnelles, vus par les trois
+//  en même temps (même infrastructure de clés que les mots fléchés).
+//  Chaque fonctionnalité se lit et s'écrit d'un bloc : le client modifie
+//  sa copie locale puis renvoie l'état complet, plus simple et plus sûr
+//  que des dizaines de petites routes pour un usage entre trois amis.
+// ---------------------------------------------------------------------
+function defaultGearCategories() {
+    return [{
+        id: 'cat-commun', name: 'Matériel commun',
+        items: [
+            { id: 'g1', name: 'Tente', person: '' },
+            { id: 'g2', name: 'Popote', person: '' },
+            { id: 'g3', name: 'Réchaud et gaz', person: '' },
+            { id: 'g4', name: 'Trousse de secours', person: '' },
+            { id: 'g5', name: 'Filtre ou pastilles à eau', person: '' },
+            { id: 'g6', name: 'Carte papier et boussole', person: '' },
+            { id: 'g7', name: 'Corde et sangles', person: '' },
+        ],
+    }];
+}
+app.get('/api/voyages/gear', requireAuthApi, (req, res) => {
+    res.json({ categories: mfGet('voyages:gear') || defaultGearCategories() });
+});
+app.post('/api/voyages/gear', requireAuthApi, (req, res) => {
+    const cats = Array.isArray((req.body || {}).categories) ? req.body.categories : [];
+    const clean = cats.slice(0, 20).map(c => ({
+        id: String(c.id || '').slice(0, 40) || ('cat-' + Date.now()),
+        name: String(c.name || 'Catégorie').trim().slice(0, 40),
+        items: Array.isArray(c.items) ? c.items.slice(0, 60).map(it => ({
+            id: String(it.id || '').slice(0, 40) || ('g-' + Date.now() + Math.random().toString(36).slice(2, 6)),
+            name: String(it.name || '').trim().slice(0, 60),
+            person: String(it.person || '').trim().slice(0, 24),
+        })).filter(it => it.name) : [],
+    }));
+    mfSet('voyages:gear', clean);
+    res.json({ ok: true, categories: clean });
+});
+
+app.get('/api/voyages/expenses', requireAuthApi, (req, res) => {
+    res.json({ expenses: mfGet('voyages:expenses') || [] });
+});
+app.post('/api/voyages/expenses', requireAuthApi, (req, res) => {
+    const list = Array.isArray((req.body || {}).expenses) ? req.body.expenses : [];
+    const clean = list.slice(0, 300).map(e => ({
+        id: Number(e.id) || (Date.now() + Math.floor(Math.random() * 1000)),
+        label: String(e.label || '').trim().slice(0, 60),
+        amount: Math.max(0, Math.round((Number(e.amount) || 0) * 100) / 100),
+        paidBy: String(e.paidBy || '').trim().slice(0, 24),
+        splitWith: Array.isArray(e.splitWith) ? e.splitWith.map(n => String(n).trim().slice(0, 24)).filter(Boolean).slice(0, 10) : [],
+        ts: Number(e.ts) || Date.now(),
+    })).filter(e => e.label && e.paidBy && e.amount > 0);
+    mfSet('voyages:expenses', clean);
+    res.json({ ok: true, expenses: clean });
+});
+
+app.get('/api/voyages/checklists', requireAuthApi, (req, res) => {
+    res.json({ lists: mfGet('voyages:checklists') || {} });
+});
+app.post('/api/voyages/checklists', requireAuthApi, (req, res) => {
+    const lists = (req.body || {}).lists;
+    if (!lists || typeof lists !== 'object') return res.status(400).json({ error: 'Format invalide.' });
+    const clean = {};
+    for (const [name, items] of Object.entries(lists).slice(0, 3)) {
+        if (!Array.isArray(items)) continue;
+        clean[String(name).trim().slice(0, 24)] = items.slice(0, 60).map(it => ({
+            text: String(it.text || '').trim().slice(0, 60), done: !!it.done,
+        })).filter(it => it.text);
+    }
+    mfSet('voyages:checklists', clean);
+    res.json({ ok: true, lists: clean });
+});
+
+app.get('/api/voyages/names', requireAuthApi, (req, res) => {
+    res.json({ names: mfGet('voyages:names') || [] });
+});
+app.post('/api/voyages/names', requireAuthApi, (req, res) => {
+    const names = Array.isArray((req.body || {}).names) ? req.body.names.map(n => String(n).trim().slice(0, 24)).filter(Boolean).slice(0, 3) : [];
+    mfSet('voyages:names', names);
+    res.json({ ok: true, names });
+});
+
+// ---------------------------------------------------------------------
 //  RECETTES — carnet partagé du cercle
 //  Stockage : une clé par recette (rec:<id>) via le cache mfGet/mfSet.
 //  Photos : compressées côté client ; le serveur borne (miniature + grande).
