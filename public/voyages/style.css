@@ -420,16 +420,24 @@ body {
     box-shadow:0 0 24px 6px rgba(201,147,90,.35); }
 .vy-eclipse-moon { position:absolute; width:44px; height:44px; border-radius:50%; background:var(--night);
     border:1.5px solid rgba(201,184,220,.5); box-shadow:0 0 8px 1px rgba(0,0,0,.5);
-    animation:vyEclipseCross 9s linear infinite; }
+    animation:vyEclipseCross 11s ease-in-out infinite; }
 @keyframes vyEclipseCross {
-    0% { left:calc(50% + 74px); }
-    100% { left:calc(50% - 74px); }
+    0%   { left:calc(50% + 74px); }
+    18%  { left:calc(50% - 22px); }
+    32%  { left:calc(50% - 22px); }
+    50%  { left:calc(50% - 74px); }
+    68%  { left:calc(50% - 22px); }
+    82%  { left:calc(50% - 22px); }
+    100% { left:calc(50% + 74px); }
 }
 .vy-eclipse-corona { position:absolute; width:44px; height:44px; border-radius:50%; left:calc(50% - 22px);
-    animation:vyEclipseGlow 9s linear infinite; }
+    animation:vyEclipseGlow 11s ease-in-out infinite; }
 @keyframes vyEclipseGlow {
-    0%, 38%, 62%, 100% { opacity:0; box-shadow:0 0 0 0 rgba(243,233,245,0); }
-    50% { opacity:1; box-shadow:0 0 26px 10px rgba(243,233,245,.4); }
+    0%, 10% { opacity:0; box-shadow:0 0 0 0 rgba(243,233,245,0); }
+    18%, 32% { opacity:1; box-shadow:0 0 26px 10px rgba(243,233,245,.4); }
+    41%, 59% { opacity:0; box-shadow:0 0 0 0 rgba(243,233,245,0); }
+    68%, 82% { opacity:1; box-shadow:0 0 26px 10px rgba(243,233,245,.4); }
+    90%, 100% { opacity:0; box-shadow:0 0 0 0 rgba(243,233,245,0); }
 }
 
 /* ===================== DEVINER LE DÉNIVELÉ ===================== */
@@ -484,11 +492,17 @@ body {
 /* ===================== QUI PORTE QUOI ===================== */
 .vy-gear-filter { margin-bottom:18px; }
 .vy-gear-categories { display:flex; flex-direction:column; gap:16px; }
-.vy-gear-cat { border-radius:16px; background:var(--night-2); border:1px solid var(--line); padding:14px; }
-.vy-gear-cat.vy-cat-dim { opacity:.35; }
-.vy-gear-cat-head { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+.vy-gear-cat { border-radius:16px; background:var(--night-2); border:1px solid var(--line); overflow:hidden; }
+.vy-gear-cat-head { display:flex; align-items:center; gap:8px; padding:14px; cursor:pointer; }
+.vy-gear-cat-chevron { flex:0 0 auto; display:inline-block; font-size:1.1rem; color:var(--muted);
+    transform:rotate(0deg); transition:transform .25s ease; }
+.vy-gear-cat-chevron-open { transform:rotate(90deg); color:var(--ember-soft); }
 .vy-gear-cat-name { flex:1; font-family:var(--font-display); font-weight:700; font-size:1.05rem; color:var(--parchment); }
-.vy-gear-cat-del { background:none; border:none; color:var(--muted); font-size:.85rem; cursor:pointer; padding:4px 6px; }
+.vy-gear-cat-count { flex:0 0 auto; font-family:var(--font-mono); font-size:.7rem; color:var(--muted);
+    background:rgba(255,255,255,.06); border-radius:999px; padding:2px 8px; }
+.vy-gear-cat-del { background:none; border:none; color:var(--muted); font-size:.85rem; cursor:pointer; padding:4px 6px; flex:0 0 auto; }
+.vy-gear-cat-body { max-height:0; overflow:hidden; transition:max-height .35s ease; padding:0 14px; }
+.vy-gear-cat-body-open { max-height:2000px; padding:0 14px 14px; }
 .vy-gear-items { display:flex; flex-direction:column; gap:8px; margin-bottom:10px; }
 .vy-gear-item { display:flex; align-items:center; gap:8px; padding:10px 10px 10px 4px; border-radius:12px;
     background:rgba(255,255,255,.03); border:1px solid var(--line); touch-action:pan-y; }
@@ -537,8 +551,7 @@ body {
 
 /* ===================== ONGLETS DE LISTES ===================== */
 .vy-tabs { display:flex; gap:8px; margin-bottom:16px; }
-.vy-gear-tabs { overflow-x:auto; padding-bottom:2px; }
-.vy-gear-tabs .vy-tab { flex:0 0 auto; white-space:nowrap; padding:8px 14px; }
+
 .vy-tab { flex:1; padding:8px 6px; border-radius:10px; background:rgba(255,255,255,.04); border:1px solid var(--line);
     color:var(--muted); font-family:inherit; font-weight:700; font-size:.78rem; cursor:pointer; text-align:center;
     display:flex; flex-direction:column; align-items:center; gap:5px; }

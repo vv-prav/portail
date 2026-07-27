@@ -782,45 +782,49 @@ function renderGear() {
         host.innerHTML = '<p class="vy-empty-note">Aucune catégorie pour l\u2019instant, créez-en une ci-dessous.</p>';
         return;
     }
-    if (!activeGearCat || !gearCategories.some(c => c.id === activeGearCat)) activeGearCat = gearCategories[0].id;
-    const cat = gearCategories.find(c => c.id === activeGearCat);
+    // activeGearCat peut être null : dans ce cas, tout est replié.
+    if (activeGearCat && !gearCategories.some(c => c.id === activeGearCat)) activeGearCat = null;
 
-    const tabs = `<div class="vy-tabs vy-gear-tabs">${gearCategories.map(c => `
-        <button type="button" class="vy-tab${c.id === activeGearCat ? ' vy-tab-on' : ''}" data-gearcat="${c.id}">${esc(c.name)}</button>
-    `).join('')}</div>`;
-
-    const body = `
-        <div class="vy-gear-cat" data-cat="${cat.id}">
-            <div class="vy-gear-cat-head">
+    host.innerHTML = gearCategories.map(cat => {
+        const open = cat.id === activeGearCat;
+        return `
+        <div class="vy-gear-cat">
+            <div class="vy-gear-cat-head" data-gearcat="${cat.id}">
+                <span class="vy-gear-cat-chevron${open ? ' vy-gear-cat-chevron-open' : ''}">›</span>
                 <span class="vy-gear-cat-name">${esc(cat.name)}</span>
+                <span class="vy-gear-cat-count">${cat.items.length}</span>
                 <button type="button" class="vy-gear-cat-del" data-catdel="${cat.id}" aria-label="Supprimer la catégorie">✕</button>
             </div>
-            <div class="vy-gear-items" data-catitems="${cat.id}">
-                ${cat.items.map(it => {
-                    const dim = gearFilterPerson && it.person !== gearFilterPerson;
-                    return `<div class="vy-gear-item${dim ? ' vy-item-dim' : ''}" draggable="false" data-item="${it.id}" data-cat="${cat.id}">
-                        <span class="vy-gear-handle" data-handle="${it.id}">⠿</span>
-                        <span class="vy-gear-name">${esc(it.name)}</span>
-                        <div class="vy-gear-people">${groupNames.length ? groupNames.map((n, i) => `
-                            <button type="button" class="vy-gear-avatar${it.person === n ? (it.packed ? ' vy-gear-packed' : ' vy-gear-assigned') : ''}" data-cat="${cat.id}" data-item="${it.id}" data-person="${esc(n)}">${avatarChip(i, n)}</button>
-                        `).join('') : '<span class="vy-gear-noname">prénoms non renseignés</span>'}</div>
-                        <button type="button" class="vy-gear-del" data-cat="${cat.id}" data-itemdel="${it.id}" aria-label="Retirer">✕</button>
-                    </div>`;
-                }).join('') || '<p class="vy-empty-note">Aucun objet dans cette catégorie pour l\u2019instant.</p>'}
-            </div>
-            <div class="vy-gear-item-add">
-                <input type="text" maxlength="60" placeholder="Ajouter un objet" data-catnew="${cat.id}">
-                <button type="button" data-catnewbtn="${cat.id}">Ajouter</button>
+            <div class="vy-gear-cat-body${open ? ' vy-gear-cat-body-open' : ''}">
+                <div class="vy-gear-items" data-catitems="${cat.id}">
+                    ${cat.items.map(it => {
+                        const dim = gearFilterPerson && it.person !== gearFilterPerson;
+                        return `<div class="vy-gear-item${dim ? ' vy-item-dim' : ''}" draggable="false" data-item="${it.id}" data-cat="${cat.id}">
+                            <span class="vy-gear-handle" data-handle="${it.id}">⠿</span>
+                            <span class="vy-gear-name">${esc(it.name)}</span>
+                            <div class="vy-gear-people">${groupNames.length ? groupNames.map((n, i) => `
+                                <button type="button" class="vy-gear-avatar${it.person === n ? (it.packed ? ' vy-gear-packed' : ' vy-gear-assigned') : ''}" data-cat="${cat.id}" data-item="${it.id}" data-person="${esc(n)}">${avatarChip(i, n)}</button>
+                            `).join('') : '<span class="vy-gear-noname">prénoms non renseignés</span>'}</div>
+                            <button type="button" class="vy-gear-del" data-cat="${cat.id}" data-itemdel="${it.id}" aria-label="Retirer">✕</button>
+                        </div>`;
+                    }).join('') || '<p class="vy-empty-note">Aucun objet dans cette catégorie pour l\u2019instant.</p>'}
+                </div>
+                <div class="vy-gear-item-add">
+                    <input type="text" maxlength="60" placeholder="Ajouter un objet" data-catnew="${cat.id}">
+                    <button type="button" data-catnewbtn="${cat.id}">Ajouter</button>
+                </div>
             </div>
         </div>`;
+    }).join('');
 
-    host.innerHTML = tabs + body;
-
-    host.querySelectorAll('[data-gearcat]').forEach(b => b.addEventListener('click', () => {
-        activeGearCat = b.dataset.gearcat;
+    host.querySelectorAll('[data-gearcat]').forEach(b => b.addEventListener('click', (e) => {
+        if (e.target.closest('[data-catdel]')) return;
+        const id = b.dataset.gearcat;
+        activeGearCat = activeGearCat === id ? null : id;
         renderGear();
     }));
-    host.querySelectorAll('[data-catdel]').forEach(b => b.addEventListener('click', () => {
+    host.querySelectorAll('[data-catdel]').forEach(b => b.addEventListener('click', (e) => {
+        e.stopPropagation();
         gearCategories = gearCategories.filter(c => c.id !== b.dataset.catdel);
         if (activeGearCat === b.dataset.catdel) activeGearCat = null;
         saveGear().then(renderGear);
