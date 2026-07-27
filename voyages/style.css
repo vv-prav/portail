@@ -83,6 +83,9 @@ body {
 .vy-hero-path-label.end { right:0; }
 
 .vy-hero-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+@media (max-width:380px) {
+    .vy-hero-stats { grid-template-columns:repeat(2,1fr); gap:10px 6px; }
+}
 .vy-stat { display:flex; flex-direction:column; align-items:center; gap:2px; }
 .vy-stat b { font-family:var(--font-mono); font-size:1.5rem; font-weight:600; color:var(--parchment); }
 .vy-stat span { font-size:.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; line-height:1.3; }
@@ -131,7 +134,9 @@ body {
 .vy-progress-track i { display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--ember),var(--heather-soft));
                         transition:width .15s linear; }
 
-.vy-totals { display:flex; justify-content:center; gap:24px; margin:0 0 30px; }
+.vy-global-totals { max-width:640px; margin:0 auto; padding:0 22px 10px; text-align:center; }
+.vy-global-totals .vy-kicker { text-align:center; }
+.vy-totals { display:flex; justify-content:center; gap:24px; margin:0; }
 .vy-total-item { display:flex; flex-direction:column; align-items:center; gap:2px; }
 .vy-total-item b { font-family:var(--font-mono); font-size:1.1rem; font-weight:600; color:var(--ember-soft); }
 .vy-total-item span { font-size:.66rem; color:var(--muted); text-align:center; }
@@ -187,15 +192,6 @@ body {
 [data-reveal].in-view .vy-day-photo img:not([style*="display: none"]) { animation:vyPhotoIn 1s cubic-bezier(.16,1,.3,1) both; }
 @keyframes vyPhotoIn { from { opacity:0; transform:scale(1.1); } to { opacity:1; transform:scale(1.02); } }
 [data-reveal].in-view .vy-day-photo img { transform:scale(1.1); }
-.vy-day-photo.vy-rocking { animation:vyRock 1.3s cubic-bezier(.36,.07,.19,.97); }
-@keyframes vyRock {
-    0%,100% { transform:rotate(0deg); }
-    15% { transform:rotate(-2.4deg); }
-    35% { transform:rotate(1.8deg); }
-    55% { transform:rotate(-1deg); }
-    75% { transform:rotate(.5deg); }
-    90% { transform:rotate(-.2deg); }
-}
 
 .vy-day-tag { font-family:var(--font-mono); font-size:.7rem; text-transform:uppercase; letter-spacing:1.4px;
               color:var(--ember-soft); margin:0 0 10px; }
@@ -422,12 +418,19 @@ body {
 .vy-eclipse-stage { position:relative; height:64px; margin:4px 0 6px; display:flex; align-items:center; justify-content:center; overflow:hidden; }
 .vy-eclipse-sun { width:44px; height:44px; border-radius:50%; background:radial-gradient(circle at 35% 30%, var(--ember-soft), var(--ember) 75%);
     box-shadow:0 0 24px 6px rgba(201,147,90,.35); }
-.vy-eclipse-moon { position:absolute; width:44px; height:44px; border-radius:50%; background:var(--night); left:calc(50% - 66px);
-    transition:left 1.8s cubic-bezier(.4,0,.2,1); }
-.in-view .vy-eclipse-moon { left:calc(50% - 22px); }
-.vy-eclipse-corona { position:absolute; width:44px; height:44px; border-radius:50%; left:calc(50% - 22px); opacity:0;
-    box-shadow:0 0 0 0 rgba(243,233,245,0); transition:opacity 1.8s .3s, box-shadow 1.8s .3s; }
-.in-view .vy-eclipse-corona { opacity:1; box-shadow:0 0 26px 10px rgba(243,233,245,.4); }
+.vy-eclipse-moon { position:absolute; width:44px; height:44px; border-radius:50%; background:var(--night);
+    border:1.5px solid rgba(201,184,220,.5); box-shadow:0 0 8px 1px rgba(0,0,0,.5);
+    animation:vyEclipseCross 9s linear infinite; }
+@keyframes vyEclipseCross {
+    0% { left:calc(50% + 74px); }
+    100% { left:calc(50% - 74px); }
+}
+.vy-eclipse-corona { position:absolute; width:44px; height:44px; border-radius:50%; left:calc(50% - 22px);
+    animation:vyEclipseGlow 9s linear infinite; }
+@keyframes vyEclipseGlow {
+    0%, 38%, 62%, 100% { opacity:0; box-shadow:0 0 0 0 rgba(243,233,245,0); }
+    50% { opacity:1; box-shadow:0 0 26px 10px rgba(243,233,245,.4); }
+}
 
 /* ===================== DEVINER LE DÉNIVELÉ ===================== */
 .vy-guess { margin-top:0; margin-bottom:8px; padding:16px; border-radius:14px; background:rgba(255,255,255,.03); border:1px solid var(--line); }
@@ -504,6 +507,9 @@ body {
 .vy-gear-avatar:active { transform:scale(.88); }
 .vy-gear-avatar.vy-gear-assigned { background:linear-gradient(155deg,var(--heather-soft),var(--heather)); color:var(--night); border-color:transparent; }
 .vy-gear-avatar.vy-gear-assigned .vy-avatar-chip { background:transparent; color:var(--night); }
+.vy-gear-avatar.vy-gear-packed { background:linear-gradient(155deg,#a8d9b8,#5fa877); color:var(--night); border-color:transparent;
+    box-shadow:0 0 0 2px rgba(95,168,119,.35); }
+.vy-gear-avatar.vy-gear-packed .vy-avatar-chip { background:transparent; color:var(--night); }
 .vy-gear-del { background:none; border:none; color:var(--muted); font-size:.85rem; cursor:pointer; padding:4px 6px; flex:0 0 auto; }
 .vy-gear-item-add { display:flex; flex-direction:column; gap:6px; }
 .vy-gear-item-add input { width:100%; padding:9px 10px; border-radius:9px; background:rgba(255,255,255,.04);
@@ -531,6 +537,8 @@ body {
 
 /* ===================== ONGLETS DE LISTES ===================== */
 .vy-tabs { display:flex; gap:8px; margin-bottom:16px; }
+.vy-gear-tabs { overflow-x:auto; padding-bottom:2px; }
+.vy-gear-tabs .vy-tab { flex:0 0 auto; white-space:nowrap; padding:8px 14px; }
 .vy-tab { flex:1; padding:8px 6px; border-radius:10px; background:rgba(255,255,255,.04); border:1px solid var(--line);
     color:var(--muted); font-family:inherit; font-weight:700; font-size:.78rem; cursor:pointer; text-align:center;
     display:flex; flex-direction:column; align-items:center; gap:5px; }
@@ -550,6 +558,7 @@ body {
 .vy-check-item.vy-checked .vy-check-label { color:var(--muted); text-decoration:line-through; }
 .vy-check-item.vy-crumple { animation:vyCrumple .4s ease-out; }
 @keyframes vyCrumple { 30% { transform:scale(.94) rotate(-1deg); } 60% { transform:scale(.97) rotate(1deg); } 100% { transform:scale(1) rotate(0); } }
+.vy-check-edit { background:none; border:none; color:var(--muted); font-size:.85rem; cursor:pointer; padding:4px 6px; }
 .vy-check-del { background:none; border:none; color:var(--muted); font-size:.9rem; cursor:pointer; }
 .vy-checklist-add { display:flex; flex-direction:column; gap:8px; }
 .vy-offline-status { font-size:.8rem; color:var(--ember-soft); text-align:center; margin:10px 0 0; min-height:1.2em; }

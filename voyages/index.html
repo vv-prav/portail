@@ -174,6 +174,14 @@
 
     <div class="vy-parchment" data-reveal aria-hidden="true"><span></span></div>
 
+    <div class="vy-global-totals" id="trailTotals" data-reveal>
+        <p class="vy-kicker">Sur les cinq jours</p>
+        <div class="vy-totals">
+            <div class="vy-total-item"><b id="totalElev">...</b><span>de dénivelé cumulé</span></div>
+            <div class="vy-total-item"><b id="totalTime">...</b><span>de marche estimées</span></div>
+        </div>
+    </div>
+
     <!-- ============ LE SENTIER (scrollytelling) ============ -->
     <section class="vy-trail" id="trail">
         <svg class="vy-trail-svg" id="trailSvg" preserveAspectRatio="none">
@@ -191,11 +199,6 @@
         <div class="vy-progress" id="progressPill">
             <span class="vy-progress-label">Étape <b id="progressCur">1</b> sur 5</span>
             <span class="vy-progress-track"><i id="progressFill"></i></span>
-        </div>
-
-        <div class="vy-totals" id="trailTotals">
-            <div class="vy-total-item"><b id="totalElev">...</b><span>de dénivelé cumulé</span></div>
-            <div class="vy-total-item"><b id="totalTime">...</b><span>de marche estimées</span></div>
         </div>
 
         <div class="vy-walkers" id="walkers" aria-hidden="true">
@@ -227,7 +230,6 @@
                     <div class="vy-guess-row"><span class="vy-guess-val">300</span><span class="vy-guess-unit">mètres</span><button type="button" class="vy-guess-btn">Vérifier</button></div>
                     <p class="vy-guess-result" hidden></p>
                 </div>
-                <button type="button" class="vy-btn ghost" id="rocheTremblante">Faire vaciller la Roche Tremblante</button>
                 <div class="vy-cairn-zone">
                     <div class="vy-cairn" id="cairnStack" aria-hidden="true"></div>
                     <button type="button" class="vy-cairn-btn" id="cairnBtn">Poser une pierre sur le cairn</button>
@@ -487,7 +489,8 @@
     <div class="vy-section vy-gear-section">
         <p class="vy-kicker">À se répartir</p>
         <h2 class="vy-h2">Qui porte quoi</h2>
-        <p class="vy-map-note">Touchez un prénom pour vous attribuer l'objet, glissez la poignée pour réordonner,
+        <p class="vy-map-note">Touchez un prénom pour vous attribuer l'objet, retouchez pour confirmer que vous l'avez
+            vraiment (ça passe au vert), une troisième fois pour libérer l'objet. Glissez la poignée pour réordonner,
             créez vos propres catégories si besoin.</p>
         <div class="vy-gear-filter" id="gearFilter"></div>
         <div class="vy-gear-categories" id="gearCategories"></div>
@@ -495,6 +498,7 @@
             <input type="text" id="catInput" maxlength="40" placeholder="Nouvelle catégorie">
             <button type="button" class="vy-btn ghost" id="catAdd">Créer</button>
         </div>
+        <button type="button" class="vy-btn ghost" id="gearResetBtn">Remplacer par la liste complète de matériel</button>
     </div>
 
     <!-- ============ LES FRAIS ============ -->
@@ -528,6 +532,7 @@
             <input type="text" id="checklistInput" maxlength="40" placeholder="Ajouter un élément">
             <button type="button" class="vy-btn ghost" id="checklistAdd">Ajouter</button>
         </div>
+        <button type="button" class="vy-btn ghost" id="checklistFillBtn">Remplir avec la liste type (sans écraser ce qui existe déjà)</button>
     </div>
 
     <div class="vy-section vy-offline-section">
