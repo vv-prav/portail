@@ -721,6 +721,7 @@ document.querySelectorAll('.vy-guess').forEach((box) => {
 // =====================================================================
 let groupNames = [];
 let gearCategories = [];
+let activeGearCat = null;
 let editingExpenseId = null;
 let expSplitSelection = [];
 
@@ -781,7 +782,14 @@ function renderGear() {
         host.innerHTML = '<p class="vy-empty-note">Aucune catégorie pour l\u2019instant, créez-en une ci-dessous.</p>';
         return;
     }
-    host.innerHTML = gearCategories.map(cat => `
+    if (!activeGearCat || !gearCategories.some(c => c.id === activeGearCat)) activeGearCat = gearCategories[0].id;
+    const cat = gearCategories.find(c => c.id === activeGearCat);
+
+    const tabs = `<div class="vy-tabs vy-gear-tabs">${gearCategories.map(c => `
+        <button type="button" class="vy-tab${c.id === activeGearCat ? ' vy-tab-on' : ''}" data-gearcat="${c.id}">${esc(c.name)}</button>
+    `).join('')}</div>`;
+
+    const body = `
         <div class="vy-gear-cat" data-cat="${cat.id}">
             <div class="vy-gear-cat-head">
                 <span class="vy-gear-cat-name">${esc(cat.name)}</span>
@@ -798,16 +806,23 @@ function renderGear() {
                         `).join('') : '<span class="vy-gear-noname">prénoms non renseignés</span>'}</div>
                         <button type="button" class="vy-gear-del" data-cat="${cat.id}" data-itemdel="${it.id}" aria-label="Retirer">✕</button>
                     </div>`;
-                }).join('')}
+                }).join('') || '<p class="vy-empty-note">Aucun objet dans cette catégorie pour l\u2019instant.</p>'}
             </div>
             <div class="vy-gear-item-add">
                 <input type="text" maxlength="60" placeholder="Ajouter un objet" data-catnew="${cat.id}">
                 <button type="button" data-catnewbtn="${cat.id}">Ajouter</button>
             </div>
-        </div>`).join('');
+        </div>`;
 
+    host.innerHTML = tabs + body;
+
+    host.querySelectorAll('[data-gearcat]').forEach(b => b.addEventListener('click', () => {
+        activeGearCat = b.dataset.gearcat;
+        renderGear();
+    }));
     host.querySelectorAll('[data-catdel]').forEach(b => b.addEventListener('click', () => {
         gearCategories = gearCategories.filter(c => c.id !== b.dataset.catdel);
+        if (activeGearCat === b.dataset.catdel) activeGearCat = null;
         saveGear().then(renderGear);
     }));
     host.querySelectorAll('.vy-gear-avatar').forEach(b => b.addEventListener('click', () => {
@@ -901,7 +916,9 @@ if (catAddBtn) {
         const input = $('catInput');
         const name = input.value.trim();
         if (!name) return;
-        gearCategories.push({ id: 'cat-' + Date.now(), name, items: [] });
+        const newId = 'cat-' + Date.now();
+        gearCategories.push({ id: newId, name, items: [] });
+        activeGearCat = newId;
         input.value = '';
         saveGear().then(renderGear);
     });
@@ -926,6 +943,7 @@ if (gearResetBtn) {
             name: cat.name,
             items: cat.items.map((name, ii) => ({ id: 'g-' + Date.now() + '-' + ci + '-' + ii, name, person: '', packed: false })),
         }));
+        activeGearCat = null;
         saveGear().then(renderGear);
     });
 }

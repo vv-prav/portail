@@ -419,6 +419,7 @@ body {
 .vy-eclipse-sun { width:44px; height:44px; border-radius:50%; background:radial-gradient(circle at 35% 30%, var(--ember-soft), var(--ember) 75%);
     box-shadow:0 0 24px 6px rgba(201,147,90,.35); }
 .vy-eclipse-moon { position:absolute; width:44px; height:44px; border-radius:50%; background:var(--night);
+    border:1.5px solid rgba(201,184,220,.5); box-shadow:0 0 8px 1px rgba(0,0,0,.5);
     animation:vyEclipseCross 9s linear infinite; }
 @keyframes vyEclipseCross {
     0% { left:calc(50% + 74px); }
@@ -536,6 +537,8 @@ body {
 
 /* ===================== ONGLETS DE LISTES ===================== */
 .vy-tabs { display:flex; gap:8px; margin-bottom:16px; }
+.vy-gear-tabs { overflow-x:auto; padding-bottom:2px; }
+.vy-gear-tabs .vy-tab { flex:0 0 auto; white-space:nowrap; padding:8px 14px; }
 .vy-tab { flex:1; padding:8px 6px; border-radius:10px; background:rgba(255,255,255,.04); border:1px solid var(--line);
     color:var(--muted); font-family:inherit; font-weight:700; font-size:.78rem; cursor:pointer; text-align:center;
     display:flex; flex-direction:column; align-items:center; gap:5px; }

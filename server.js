@@ -355,7 +355,7 @@ async function mfFlush() {
 async function loadMf() {
     if (redis) {
         try {
-            const keys = [...await redis.keys('mf:*'), ...await redis.keys('rec:*'), ...await redis.keys('motus:*'), ...await redis.keys('mj:*'), ...await redis.keys('pbac:*')];
+            const keys = [...await redis.keys('mf:*'), ...await redis.keys('rec:*'), ...await redis.keys('motus:*'), ...await redis.keys('mj:*'), ...await redis.keys('pbac:*'), ...await redis.keys('voyages:*')];
             for (let i = 0; i < keys.length; i += 50) {
                 const chunk = keys.slice(i, i + 50);
                 const vals = await redis.mget(...chunk);
@@ -1222,7 +1222,7 @@ app.post('/api/voyages/checklists', requireAuthApi, (req, res) => {
 });
 
 app.get('/api/voyages/names', requireAuthApi, (req, res) => {
-    res.json({ names: mfGet('voyages:names') || [] });
+    res.json({ names: mfGet('voyages:names') || ['Victor', 'Swann', 'Pierre'] });
 });
 app.post('/api/voyages/names', requireAuthApi, (req, res) => {
     const names = Array.isArray((req.body || {}).names) ? req.body.names.map(n => String(n).trim().slice(0, 24)).filter(Boolean).slice(0, 3) : [];
