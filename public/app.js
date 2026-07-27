@@ -25,7 +25,7 @@ const I18N = {
         forgot_title: "Mot de passe oublié", forgot_sub: "Entre ton nom et le code de récupération noté à l'inscription.",
         forgot_send: "Réinitialiser", cancel: "Annuler",
         app_perudo_d: "Le jeu de dés des pirates, en ligne.", app_motus_d: "Un mot à deviner en 6 essais.", app_pbac_d: "Une lettre, huit catégories, à plusieurs.", app_uc_d: "Démasque l'infiltré parmi vous.", app_juste_d: "Devine le mot secret à l'intuition.", app_mf_d: "Une nouvelle grille chaque jour.",
-        app_recettes_d: "Garde et partage tes recettes.", app_admin_d: "Comptes, données et réglages.",
+        app_recettes_d: "Garde et partage tes recettes.", app_voyages_d: "La rando dans les Monts d'Arrée.", app_admin_d: "Comptes, données et réglages.",
         b_open: "Ouvert", b_soon: "Bientôt", b_online: "en ligne", b_new_grid: "Nouvelle grille !",
         b_grid_done: "Grille du jour ✓", b_grid_part: "faites aujourd'hui",
         folder_games: "Jeux", folder_games_count: "jeux", folder_drinks: "Jeux d'alcool", folder_drinks_count: "jeux",
@@ -55,7 +55,7 @@ const I18N = {
         forgot_title: "Forgot password", forgot_sub: "Enter your name and the recovery code from sign-up.",
         forgot_send: "Reset", cancel: "Cancel",
         app_perudo_d: "The pirates' dice game, online.", app_motus_d: "Guess the word in 6 tries.", app_pbac_d: "A letter, eight categories, with friends.", app_uc_d: "Unmask the impostor among you.", app_juste_d: "Guess the secret word by feel.", app_mf_d: "A fresh grid every day.",
-        app_recettes_d: "Keep and share your recipes.", app_admin_d: "Accounts, data and settings.",
+        app_recettes_d: "Keep and share your recipes.", app_voyages_d: "The Monts d'Arrée hiking trip.", app_admin_d: "Accounts, data and settings.",
         b_open: "Open", b_soon: "Soon", b_online: "online", b_new_grid: "New grid!",
         b_grid_done: "Today's grid ✓", b_grid_part: "done today",
         folder_games: "Games", folder_games_count: "games", folder_drinks: "Drinking games", folder_drinks_count: "games",
@@ -85,7 +85,7 @@ const I18N = {
         forgot_title: "Contraseña olvidada", forgot_sub: "Escribe tu nombre y el código de recuperación.",
         forgot_send: "Restablecer", cancel: "Cancelar",
         app_perudo_d: "El juego de dados pirata, en línea.", app_motus_d: "Adivina la palabra en 6 intentos.", app_pbac_d: "Una letra, ocho categorías, en grupo.", app_uc_d: "Descubre al infiltrado entre vosotros.", app_juste_d: "Adivina la palabra secreta por intuición.", app_mf_d: "Una cuadrícula nueva cada día.",
-        app_recettes_d: "Guarda y comparte tus recetas.", app_admin_d: "Cuentas, datos y ajustes.",
+        app_recettes_d: "Guarda y comparte tus recetas.", app_voyages_d: "La ruta por los Monts d'Arrée.", app_admin_d: "Cuentas, datos y ajustes.",
         b_open: "Abierto", b_soon: "Pronto", b_online: "en línea", b_new_grid: "¡Nueva cuadrícula!",
         b_grid_done: "Cuadrícula de hoy ✓", b_grid_part: "hechas hoy",
         folder_games: "Juegos", folder_games_count: "juegos", folder_drinks: "Juegos de beber", folder_drinks_count: "juegos",
@@ -129,6 +129,7 @@ const DRINK_APPS = [
 ];
 const OTHER_APPS = [
     { id: 'recettes', name: 'Recettes',     dKey: 'app_recettes_d', emoji: '🍽️', href: '/recettes',    accent: '#e07a4e', status: 'open' },
+    { id: 'voyages',  name: 'Voyages',      dKey: 'app_voyages_d',  emoji: '🥾', href: '/voyages',     accent: '#8b6ba8', status: 'open' },
 ];
 const ADMIN_APP = { id: 'admin', name: 'Administration', dKey: 'app_admin_d', emoji: '🛡️', href: '/admin', accent: '#c96f6f', status: 'open' };
 const FOLDERS = [
