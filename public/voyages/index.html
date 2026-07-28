@@ -412,23 +412,7 @@
                     <p class="vy-legend-text">Les alignements de pierres du plateau seraient, selon la tradition orale, d'anciens soldats pétrifiés un jour de bataille oubliée. D'autres racontent plutôt qu'il s'agissait de fées veillant sur la lande, changées en menhirs à l'aube.</p>
                     <canvas class="vy-legend-canvas" data-legend="4"></canvas>
                 </div>
-                <div class="vy-dawn-scene" id="dawnScene">
-                    <svg viewBox="0 0 300 100" class="vy-dawn-svg" id="dawnSvg">
-                        <rect id="dawnSky" x="0" y="0" width="300" height="100" fill="#241c34"/>
-                        <circle id="dawnSun" cx="40" cy="90" r="16" fill="#e0b483" opacity="0"/>
-                        <path d="M0,74 Q150,62 300,74 L300,100 L0,100 Z" fill="#2a2138"/>
-                        <circle class="vy-fairy" data-fairy="0" cx="70" cy="45" r="2.6" fill="#e0b483"/>
-                        <circle class="vy-fairy" data-fairy="1" cx="150" cy="35" r="2.6" fill="#c9b8dc"/>
-                        <circle class="vy-fairy" data-fairy="2" cx="225" cy="48" r="2.6" fill="#e0b483"/>
-                        <rect class="vy-menhir" data-menhir="0" x="65" y="74" width="9" height="0" rx="2" fill="#5a5265" opacity="0"/>
-                        <rect class="vy-menhir" data-menhir="1" x="145" y="74" width="9" height="0" rx="2" fill="#5a5265" opacity="0"/>
-                        <rect class="vy-menhir" data-menhir="2" x="220" y="74" width="9" height="0" rx="2" fill="#5a5265" opacity="0"/>
-                        <g id="tumulusMound"></g>
-                    </svg>
-                    <button type="button" class="vy-btn ghost" id="dawnBtn">Voir l'aube se lever</button>
-                    <button type="button" class="vy-btn ghost" id="tumulusBtn" hidden>Construire un tumulus avec les menhirs</button>
-                    <p class="vy-dawn-caption" id="dawnCaption" hidden></p>
-                </div>
+                <button type="button" class="vy-btn ghost" id="dawnBtn">Voir l'aube se lever</button>
 
                 <p class="vy-day-arrival">Arrivée à <b>La Feuillée</b>.</p>
             </div>
@@ -601,6 +585,38 @@
     </div>
 
     <div class="vy-fullscreen-meteors" id="fullscreenMeteors" aria-hidden="true"></div>
+
+    <div class="vy-fs-dawn" id="fsDawn" aria-hidden="true">
+        <button type="button" class="vy-fs-eclipse-close" id="fsDawnClose" aria-label="Fermer">✕</button>
+        <svg class="vy-fs-dawn-svg" id="dawnSvg" viewBox="0 0 400 240" preserveAspectRatio="xMidYMid meet">
+            <defs>
+                <radialGradient id="dawnBurstGrad" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="#fff3d6" stop-opacity=".95"/>
+                    <stop offset="100%" stop-color="#fff3d6" stop-opacity="0"/>
+                </radialGradient>
+            </defs>
+            <rect id="dawnSky" x="0" y="0" width="400" height="240" fill="#191428"/>
+            <g id="dawnStars">
+                <circle cx="30" cy="24" r="1.1"/><circle cx="70" cy="14" r="1.4"/><circle cx="110" cy="30" r="1"/>
+                <circle cx="150" cy="16" r="1.3"/><circle cx="190" cy="26" r="1"/><circle cx="230" cy="12" r="1.4"/>
+                <circle cx="270" cy="22" r="1.1"/><circle cx="310" cy="16" r="1.3"/><circle cx="350" cy="28" r="1"/>
+                <circle cx="380" cy="14" r="1.2"/><circle cx="50" cy="50" r="1"/><circle cx="330" cy="48" r="1.1"/>
+            </g>
+            <circle id="dawnFlash" cx="200" cy="120" r="0" fill="url(#dawnBurstGrad)" opacity="0"/>
+            <path d="M0,178 Q100,158 200,176 T400,178 L400,240 L0,240 Z" fill="#241d34"/>
+            <path d="M0,192 Q100,176 200,190 T400,190 L400,240 L0,240 Z" fill="#2c2440" opacity=".8"/>
+            <g id="dawnBirds" opacity="0">
+                <path d="M0,0 Q4,-5 8,0 Q4,-5 0,0" stroke="#0d0a14" stroke-width="1.4" fill="none"/>
+            </g>
+            <g id="dawnFairies"></g>
+            <g id="dawnBursts"></g>
+            <g id="dawnMenhirs"></g>
+            <g id="tumulusMound"></g>
+            <g id="tumulusDust"></g>
+        </svg>
+        <button type="button" class="vy-btn ghost" id="tumulusBtn" hidden>Construire un tumulus avec les menhirs</button>
+        <p class="vy-dawn-caption" id="dawnCaption">Le ciel pâlit doucement sur la lande</p>
+    </div>
 
     <div class="vy-fs-day5" id="fsDay5" aria-hidden="true">
         <button type="button" class="vy-fs-eclipse-close" id="fsDay5Close" aria-label="Fermer">✕</button>

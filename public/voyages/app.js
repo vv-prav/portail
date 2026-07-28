@@ -714,81 +714,207 @@ if (cairnBtn && cairnStack) {
 // =====================================================================
 (function dawnScene() {
     const dawnBtn = $('dawnBtn');
+    const stage = $('fsDawn');
+    const svg = $('dawnSvg');
     const tumulusBtn = $('tumulusBtn');
     const dawnSky = $('dawnSky');
-    const dawnSun = $('dawnSun');
+    const dawnFlash = $('dawnFlash');
     const caption = $('dawnCaption');
     const mound = $('tumulusMound');
-    if (!dawnBtn || !dawnSky) return;
+    const dust = $('tumulusDust');
+    const fairyHost = $('dawnFairies');
+    const menhirHost = $('dawnMenhirs');
+    const burstHost = $('dawnBursts');
+    const birdHost = $('dawnBirds');
+    const stars = svg ? [...svg.querySelectorAll('#dawnStars circle')] : [];
+    if (!dawnBtn || !stage || !svg || !dawnSky) return;
 
-    const fairies = [0, 1, 2].map(i => document.querySelector(`.vy-fairy[data-fairy="${i}"]`)).filter(Boolean);
-    const menhirs = [0, 1, 2].map(i => document.querySelector(`.vy-menhir[data-menhir="${i}"]`)).filter(Boolean);
-    const NIGHT = [36, 28, 52], DAWN = [232, 179, 138]; // couleurs RVB : nuit profonde vers aube ambrée
+    const SVGNS = 'http://www.w3.org/2000/svg';
+    const FAIRY_COUNT = 5;
+    const FAIRY_X = [70, 130, 200, 270, 330];
+    const FAIRY_Y = [90, 75, 95, 78, 92];
+    const FAIRY_COLORS = ['#e0b483', '#c9b8dc', '#e0b483', '#a98cc2', '#f0c98e'];
+    const GROUND_Y = 178;
 
-    function lerpColor(a, b, p) {
-        return `rgb(${Math.round(a[0] + (b[0] - a[0]) * p)},${Math.round(a[1] + (b[1] - a[1]) * p)},${Math.round(a[2] + (b[2] - a[2]) * p)})`;
+    // Le ciel traverse plusieurs teintes, pas un simple aller d'une couleur à l'autre.
+    const SKY_STOPS = [
+        [25, 20, 40], [46, 34, 66], [92, 58, 92], [176, 104, 118], [232, 168, 132], [247, 205, 168],
+    ];
+    function skyColorAt(p) {
+        const seg = p * (SKY_STOPS.length - 1);
+        const i = Math.min(SKY_STOPS.length - 2, Math.floor(seg));
+        const local = seg - i;
+        const a = SKY_STOPS[i], b = SKY_STOPS[i + 1];
+        return `rgb(${Math.round(a[0] + (b[0] - a[0]) * local)},${Math.round(a[1] + (b[1] - a[1]) * local)},${Math.round(a[2] + (b[2] - a[2]) * local)})`;
     }
 
-    dawnBtn.addEventListener('click', () => {
-        if (dawnBtn.disabled) return;
+    function buildFairiesAndMenhirs() {
+        fairyHost.innerHTML = ''; menhirHost.innerHTML = '';
+        for (let i = 0; i < FAIRY_COUNT; i++) {
+            const fairy = document.createElementNS(SVGNS, 'circle');
+            fairy.setAttribute('class', 'vy-fairy vy-fairy-fly');
+            fairy.setAttribute('data-fairy', i);
+            fairy.setAttribute('cx', FAIRY_X[i]);
+            fairy.setAttribute('cy', FAIRY_Y[i]);
+            fairy.setAttribute('r', 3);
+            fairy.setAttribute('fill', FAIRY_COLORS[i]);
+            fairy.style.color = FAIRY_COLORS[i];
+            fairy.style.animationDelay = (i * 0.35) + 's';
+            fairyHost.appendChild(fairy);
+
+            const menhir = document.createElementNS(SVGNS, 'rect');
+            menhir.setAttribute('class', 'vy-menhir');
+            menhir.setAttribute('data-menhir', i);
+            menhir.setAttribute('x', FAIRY_X[i] - 5);
+            menhir.setAttribute('y', GROUND_Y);
+            menhir.setAttribute('width', 10);
+            menhir.setAttribute('height', 0);
+            menhir.setAttribute('rx', 2);
+            menhir.setAttribute('fill', '#5a5265');
+            menhir.setAttribute('opacity', 0);
+            menhirHost.appendChild(menhir);
+        }
+    }
+
+    function spawnBurst(x, y) {
+        const ring = document.createElementNS(SVGNS, 'circle');
+        ring.setAttribute('class', 'vy-burst-ring');
+        ring.setAttribute('cx', x);
+        ring.setAttribute('cy', y);
+        ring.setAttribute('r', 2);
+        burstHost.appendChild(ring);
+        setTimeout(() => ring.remove(), 1100);
+    }
+
+    function spawnBirds() {
+        if (reduceMotion) return;
+        for (let i = 0; i < 3; i++) {
+            const bird = document.createElementNS(SVGNS, 'path');
+            bird.setAttribute('class', 'vy-bird');
+            bird.setAttribute('d', 'M0,0 Q4,-5 8,0 Q4,-5 0,0');
+            bird.setAttribute('stroke', 'rgba(20,16,28,.7)');
+            bird.setAttribute('stroke-width', '1.4');
+            bird.setAttribute('fill', 'none');
+            bird.setAttribute('transform', `translate(0,${20 + i * 14})`);
+            bird.style.animationDelay = (i * 0.5) + 's';
+            birdHost.appendChild(bird);
+            setTimeout(() => bird.remove(), 4200);
+        }
+    }
+
+    function reset() {
+        stars.forEach(s => s.classList.remove('vy-star-out'));
+        fairyHost.innerHTML = ''; menhirHost.innerHTML = ''; burstHost.innerHTML = ''; birdHost.innerHTML = '';
+        mound.innerHTML = ''; dust.innerHTML = '';
+        dawnSky.setAttribute('fill', skyColorAt(0));
+        dawnFlash.setAttribute('r', 0); dawnFlash.style.opacity = 0;
+        if (tumulusBtn) { tumulusBtn.hidden = true; tumulusBtn.disabled = false; tumulusBtn.textContent = 'Construire un tumulus avec les menhirs'; }
+        dawnBtn.disabled = false;
+        dawnBtn.textContent = 'Voir l\u2019aube se lever';
+        if (caption) caption.textContent = 'Le ciel pâlit doucement sur la lande';
+        buildFairiesAndMenhirs();
+    }
+
+    function runDawn() {
         dawnBtn.disabled = true;
         dawnBtn.textContent = 'L\u2019aube se lève...';
-        if (caption) { caption.hidden = false; caption.textContent = 'Le ciel pâlit doucement sur la lande'; }
-
-        const DURATION = reduceMotion ? 0 : 6000;
+        const DURATION = reduceMotion ? 10 : 8000;
         const start = performance.now();
+
         function skyFrame(now) {
-            const p = DURATION ? Math.min(1, (now - start) / DURATION) : 1;
-            dawnSky.setAttribute('fill', lerpColor(NIGHT, DAWN, p));
-            if (dawnSun) dawnSun.style.opacity = p;
+            const p = Math.min(1, (now - start) / DURATION);
+            dawnSky.setAttribute('fill', skyColorAt(p));
+            if (p > 0.3) stars.forEach((s, i) => { if (p > 0.3 + i * 0.01) s.classList.add('vy-star-out'); });
+            if (p >= 0.8 && p < 0.82) spawnBirds();
             if (p < 1) requestAnimationFrame(skyFrame);
+            else {
+                dawnFlash.style.opacity = .8;
+                dawnFlash.setAttribute('r', 260);
+                setTimeout(() => { dawnFlash.style.opacity = 0; }, 700);
+                dawnBtn.textContent = 'L\u2019aube s\u2019est levée';
+                if (caption) caption.textContent = 'Les fées se sont figées avec la lumière';
+                if (tumulusBtn) tumulusBtn.hidden = false;
+            }
         }
         requestAnimationFrame(skyFrame);
 
-        // Chaque fée se fige en menhir à son propre moment, l'une après l'autre.
+        const fairies = [...fairyHost.querySelectorAll('.vy-fairy')];
+        const menhirs = [...menhirHost.querySelectorAll('.vy-menhir')];
         fairies.forEach((fairy, i) => {
             setTimeout(() => {
                 fairy.classList.add('vy-fairy-frozen');
                 const menhir = menhirs[i];
                 if (!menhir) return;
-                const groundY = 74;
-                const h = 16 + i * 2;
+                const h = 20 + (i % 3) * 6;
                 menhir.setAttribute('height', h);
-                menhir.setAttribute('y', groundY - h);
+                menhir.setAttribute('y', GROUND_Y - h);
                 menhir.classList.add('vy-menhir-up');
+                spawnBurst(Number(fairy.getAttribute('cx')), Number(fairy.getAttribute('cy')));
                 if (navigator.vibrate) { try { navigator.vibrate(10); } catch (e) {} }
-            }, reduceMotion ? 0 : 1500 + i * 1400);
+            }, reduceMotion ? 0 : 1200 + i * 1300);
         });
+    }
 
-        setTimeout(() => {
-            dawnBtn.textContent = 'L\u2019aube s\u2019est levée';
+    dawnBtn.addEventListener('click', () => {
+        stage.classList.add('vy-fs-dawn-on');
+        reset();
+        if (reduceMotion) {
+            const fairies = [...fairyHost.querySelectorAll('.vy-fairy')];
+            const menhirs = [...menhirHost.querySelectorAll('.vy-menhir')];
+            fairies.forEach((f, i) => { f.classList.add('vy-fairy-frozen'); menhirs[i].setAttribute('height', 24); menhirs[i].setAttribute('y', GROUND_Y - 24); menhirs[i].classList.add('vy-menhir-up'); });
+            dawnSky.setAttribute('fill', skyColorAt(1));
             if (caption) caption.textContent = 'Les fées se sont figées avec la lumière';
             if (tumulusBtn) tumulusBtn.hidden = false;
-        }, reduceMotion ? 0 : 1500 + fairies.length * 1400 + 600);
+            return;
+        }
+        runDawn();
     });
 
     if (tumulusBtn && mound) {
         tumulusBtn.addEventListener('click', () => {
             const layer = mound.children.length;
             if (layer >= 5) return;
-            const bit = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
-            const rx = 46 - layer * 7, ry = 5;
-            bit.setAttribute('cx', 150);
-            bit.setAttribute('cy', 74 - layer * 4.5);
-            bit.setAttribute('rx', rx);
-            bit.setAttribute('ry', ry);
+            const cx = 200, cy = GROUND_Y - layer * 5;
+            const rx = 52 - layer * 8, ry = 6;
+            const bit = document.createElementNS(SVGNS, 'ellipse');
+            bit.setAttribute('cx', cx); bit.setAttribute('cy', cy);
+            bit.setAttribute('rx', rx); bit.setAttribute('ry', ry);
             bit.setAttribute('fill', layer % 2 === 0 ? '#4a4256' : '#544a5f');
             bit.style.opacity = 0;
+            bit.style.transition = 'opacity .4s';
             mound.appendChild(bit);
             requestAnimationFrame(() => { bit.style.opacity = 1; });
-            if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
+
+            // Un vrai nuage de poussière au moment où la pierre se pose.
+            for (let i = 0; i < 8; i++) {
+                const p = document.createElementNS(SVGNS, 'circle');
+                p.setAttribute('class', 'vy-dust-particle');
+                p.setAttribute('cx', cx + (Math.random() * rx * 1.6 - rx * 0.8));
+                p.setAttribute('cy', cy);
+                p.setAttribute('r', 1 + Math.random());
+                p.style.setProperty('--dx', (Math.random() * 26 - 13) + 'px');
+                p.style.setProperty('--dy', (-6 - Math.random() * 10) + 'px');
+                dust.appendChild(p);
+                setTimeout(() => p.remove(), 650);
+            }
+            if (navigator.vibrate) { try { navigator.vibrate(14); } catch (e) {} }
+
             if (mound.children.length >= 5) {
                 tumulusBtn.textContent = 'Le tumulus est achevé';
                 tumulusBtn.disabled = true;
                 if (caption) caption.textContent = 'Un tumulus veille désormais sur la lande';
+                const glow = document.createElementNS(SVGNS, 'circle');
+                glow.setAttribute('class', 'vy-tumulus-glow vy-tumulus-glow-on');
+                glow.setAttribute('cx', 200); glow.setAttribute('cy', GROUND_Y - 12); glow.setAttribute('r', 2);
+                mound.appendChild(glow);
+                if (navigator.vibrate) { try { navigator.vibrate([15, 40, 15, 40, 30]); } catch (e) {} }
             }
         });
     }
+
+    $('fsDawnClose')?.addEventListener('click', () => {
+        stage.classList.remove('vy-fs-dawn-on');
+    });
 })();
 
 // =====================================================================
