@@ -724,6 +724,7 @@ if (cairnBtn && cairnStack) {
     const liveBtn = $('liveDay4Btn');
     const dawnSky = $('dawnSky');
     const dawnFlash = $('dawnFlash');
+    const dawnHorizon = $('dawnHorizonGlow');
     const caption = $('dawnCaption');
     const sparkleHost = $('dawnSparkles');
     const fairyHost = $('dawnFairies');
@@ -743,7 +744,7 @@ if (cairnBtn && cairnStack) {
 
     // Le ciel traverse plusieurs teintes, pas un simple aller d'une couleur à l'autre.
     const SKY_STOPS = [
-        [25, 20, 40], [46, 34, 66], [92, 58, 92], [176, 104, 118], [232, 168, 132], [247, 205, 168],
+        [16, 13, 30], [42, 30, 72], [130, 55, 110], [220, 85, 85], [255, 145, 85], [255, 214, 150],
     ];
     function skyColorAt(p) {
         const seg = p * (SKY_STOPS.length - 1);
@@ -830,6 +831,7 @@ if (cairnBtn && cairnStack) {
         heads.forEach(h => h.classList.remove('vy-dawn-head-in', 'vy-dawn-head-land'));
         dawnSky.setAttribute('fill', skyColorAt(0));
         dawnFlash.setAttribute('r', 0); dawnFlash.style.opacity = 0;
+        if (dawnHorizon) dawnHorizon.style.opacity = 0;
         if (liveBtn) { liveBtn.hidden = true; liveBtn.disabled = false; liveBtn.textContent = 'Vivre la journée'; }
         dawnBtn.disabled = false;
         dawnBtn.textContent = 'Voir l\u2019aube se lever';
@@ -846,6 +848,7 @@ if (cairnBtn && cairnStack) {
         function skyFrame(now) {
             const p = Math.min(1, (now - start) / DURATION);
             dawnSky.setAttribute('fill', skyColorAt(p));
+            if (dawnHorizon) dawnHorizon.style.opacity = Math.min(1, p * 1.3);
             if (p > 0.3) stars.forEach((s, i) => { if (p > 0.3 + i * 0.01) s.classList.add('vy-star-out'); });
             if (p >= 0.8 && p < 0.82) spawnBirds();
             if (p < 1) requestAnimationFrame(skyFrame);
@@ -885,6 +888,7 @@ if (cairnBtn && cairnStack) {
             const menhirs = [...menhirHost.querySelectorAll('.vy-menhir')];
             fairies.forEach((f, i) => { f.classList.add('vy-fairy-frozen'); menhirs[i].setAttribute('height', 24); menhirs[i].setAttribute('y', GROUND_Y - 24); menhirs[i].classList.add('vy-menhir-up'); });
             dawnSky.setAttribute('fill', skyColorAt(1));
+            if (dawnHorizon) dawnHorizon.style.opacity = 1;
             if (caption) caption.textContent = 'Les fées se sont figées avec la lumière';
             if (liveBtn) liveBtn.hidden = false;
             return;
@@ -2099,8 +2103,6 @@ document.querySelectorAll('[data-cheers-btn]').forEach(btn => {
     const boardBtn = $('moleBoardBtn');
     const board = $('moleBoard');
     const boardList = $('moleBoardList');
-    const attributeBox = $('moleAttribute');
-    const attributeRow = $('moleAttributeRow');
     if (!field || !startBtn) return;
 
     const holes = [...field.querySelectorAll('.vy-mole-hole')];
@@ -2108,15 +2110,17 @@ document.querySelectorAll('[data-cheers-btn]').forEach(btn => {
     let score = 0, timeLeft = GAME_DURATION, running = false;
     let spawnTimer = null, countdownTimer = null, lastHoleIndex = -1;
     const holeTimers = new Map();
-    let moleNames = ['Victor', 'Swann', 'Pierre'];
+    let myPseudo = null;
 
-    // Les prénoms sont chargés à part ici : cette section est publique,
-    // pas besoin d'avoir déverrouillé la zone privée pour voir le jeu.
-    (async function loadMoleNames() {
+    // Le score s'enregistre sous le vrai pseudo du compte connecté au salon,
+    // pas besoin de le demander à chaque partie.
+    (async function loadMyPseudo() {
         try {
-            const { data } = await api('/api/voyages/names');
-            if (data.names && data.names.length) moleNames = data.names;
-        } catch (e) { /* on garde les prénoms par défaut */ }
+            const res = await fetch('/api/me');
+            if (!res.ok) return;
+            const data = await res.json();
+            myPseudo = data.user && data.user.pseudo;
+        } catch (e) { /* pas grave, le score restera juste local cette fois */ }
     })();
 
     async function renderBoard() {
@@ -2205,18 +2209,13 @@ document.querySelectorAll('[data-cheers-btn]').forEach(btn => {
             resultEl.innerHTML = `Score final : <b>${score}</b>. ${msg}`;
             resultEl.hidden = false;
         }
-        if (attributeBox && attributeRow && score > 0) {
-            attributeRow.innerHTML = moleNames.map((n, i) => `
-                <button type="button" class="vy-avatar-btn" data-mole-attr="${esc(n)}">${avatarChip(i, n)}${esc(n)}</button>
-            `).join('');
-            attributeRow.querySelectorAll('[data-mole-attr]').forEach(b => b.addEventListener('click', async () => {
-                attributeBox.hidden = true;
-                try {
-                    await api('/api/voyages/molescores', { name: b.dataset.moleAttr, score });
-                    if (board && !board.hidden) renderBoard();
-                } catch (e) { /* pas grave si ça échoue, la partie reste jouable */ }
-            }));
-            attributeBox.hidden = false;
+        if (myPseudo && score > 0) {
+            api('/api/voyages/molescores', { name: myPseudo, score }).then(({ data }) => {
+                if (data.newRecord && resultEl) {
+                    resultEl.innerHTML += ` <b>Nouveau record pour vous, bravo !</b>`;
+                }
+                if (board && !board.hidden) renderBoard();
+            }).catch(() => { /* pas grave si ça échoue, la partie reste jouable */ });
         }
     }
 
@@ -2225,7 +2224,6 @@ document.querySelectorAll('[data-cheers-btn]').forEach(btn => {
         if (scoreEl) scoreEl.textContent = '0';
         if (timeEl) timeEl.textContent = GAME_DURATION;
         if (resultEl) resultEl.hidden = true;
-        if (attributeBox) attributeBox.hidden = true;
         startBtn.hidden = true;
         spawnMole();
         countdownTimer = setInterval(() => {

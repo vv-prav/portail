@@ -418,6 +418,7 @@ body {
     padding:20px; }
 .vy-fs-dawn.vy-fs-dawn-on { opacity:1; visibility:visible; }
 .vy-fs-dawn-svg { width:100%; max-width:560px; height:auto; }
+#dawnHorizonGlow { transition:opacity .3s linear; }
 #dawnStars circle { fill:#f3e9f5; transition:opacity 2s; }
 #dawnStars circle.vy-star-out { opacity:0; }
 .vy-fairy { transform-origin:center; filter:drop-shadow(0 0 4px currentColor) drop-shadow(0 0 8px currentColor); }
@@ -938,9 +939,6 @@ body:not(.vy-loading) .vy-loader { opacity:0; visibility:hidden; pointer-events:
 .vy-mole-board-row { display:flex; align-items:center; gap:10px; font-size:.82rem; color:var(--fog); }
 .vy-mole-board-row b { color:var(--ember-soft); font-family:var(--font-mono); margin-left:auto; }
 .vy-mole-board-empty { text-align:center; font-size:.78rem; color:var(--muted); margin:0; }
-.vy-mole-attribute { max-width:320px; margin:16px auto 0; text-align:center; }
-.vy-mole-attribute[hidden] { display:none; }
-.vy-mole-attribute-q { font-size:.8rem; color:var(--fog); margin:0 0 10px; }
 
 .vy-mole-stat { display:flex; flex-direction:column; align-items:center; gap:2px; }
 .vy-mole-stat b { font-family:var(--font-mono); font-size:1.2rem; font-weight:700; color:var(--ember-soft); }

@@ -534,10 +534,6 @@
         </div>
         <button type="button" class="vy-btn" id="moleStartBtn">Lancer le jeu</button>
         <p class="vy-mole-result" id="moleResult" hidden></p>
-        <div class="vy-mole-attribute" id="moleAttribute" hidden>
-            <p class="vy-mole-attribute-q">Qui vient de jouer, pour le classement ?</p>
-            <div class="vy-avatar-row" id="moleAttributeRow"></div>
-        </div>
     </section>
 
     <div class="vy-parchment" data-reveal aria-hidden="true"><span></span></div>
@@ -643,18 +639,6 @@
         <button type="button" class="vy-btn ghost" id="checklistFillBtn">Remplir avec la liste type (sans écraser ce qui existe déjà)</button>
     </div>
 
-    <div class="vy-section vy-offline-section">
-        <p class="vy-kicker">Pour le jour J</p>
-        <h2 class="vy-h2">Mode hors-ligne</h2>
-        <p class="vy-map-note">Le réseau disparaît sur les crêtes. Ce bouton précharge la carte et les tuiles du
-            parcours pendant que vous avez encore du réseau, pour pouvoir la consulter une fois sur place, sans
-            connexion. Le reste de la page (itinéraire, légendes, matériel) reste lisible hors-ligne dès la
-            première visite, ceci ne concerne que la carte.</p>
-        <button type="button" class="vy-btn" id="offlineBtn">Précharger la carte pour hors-ligne</button>
-        <p class="vy-offline-status" id="offlineStatus"></p>
-        <button type="button" class="vy-btn ghost" id="downloadDataBtn">Télécharger nos données (matériel, frais, listes)</button>
-    </div>
-
     <div class="vy-section vy-wheel-section">
         <p class="vy-kicker">Pour trancher</p>
         <h2 class="vy-h2">La roue de la décision</h2>
@@ -670,6 +654,18 @@
         </div>
         <button type="button" class="vy-btn" id="wheelSpinBtn">Faire tourner la roue</button>
         <p class="vy-wheel-result" id="wheelResult" hidden></p>
+    </div>
+
+    <div class="vy-section vy-offline-section">
+        <p class="vy-kicker">Pour le jour J</p>
+        <h2 class="vy-h2">Mode hors-ligne</h2>
+        <p class="vy-map-note">Le réseau disparaît sur les crêtes. Ce bouton précharge la carte et les tuiles du
+            parcours pendant que vous avez encore du réseau, pour pouvoir la consulter une fois sur place, sans
+            connexion. Le reste de la page (itinéraire, légendes, matériel) reste lisible hors-ligne dès la
+            première visite, ceci ne concerne que la carte.</p>
+        <button type="button" class="vy-btn" id="offlineBtn">Précharger la carte pour hors-ligne</button>
+        <p class="vy-offline-status" id="offlineStatus"></p>
+        <button type="button" class="vy-btn ghost" id="downloadDataBtn">Télécharger nos données (matériel, frais, listes)</button>
     </div>
         </div>
     </section>
@@ -691,8 +687,14 @@
                     <stop offset="0%" stop-color="#fff3d6" stop-opacity=".95"/>
                     <stop offset="100%" stop-color="#fff3d6" stop-opacity="0"/>
                 </radialGradient>
+                <radialGradient id="dawnHorizonGrad" cx="50%" cy="100%" r="75%">
+                    <stop offset="0%" stop-color="#ffcf8a" stop-opacity=".9"/>
+                    <stop offset="60%" stop-color="#e08a5a" stop-opacity=".35"/>
+                    <stop offset="100%" stop-color="#e08a5a" stop-opacity="0"/>
+                </radialGradient>
             </defs>
             <rect id="dawnSky" x="0" y="0" width="400" height="240" fill="#191428"/>
+            <rect id="dawnHorizonGlow" x="0" y="0" width="400" height="240" fill="url(#dawnHorizonGrad)" opacity="0"/>
             <g id="dawnStars">
                 <circle cx="30" cy="24" r="1.1"/><circle cx="70" cy="14" r="1.4"/><circle cx="110" cy="30" r="1"/>
                 <circle cx="150" cy="16" r="1.3"/><circle cx="190" cy="26" r="1"/><circle cx="230" cy="12" r="1.4"/>

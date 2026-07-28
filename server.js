@@ -1230,6 +1230,22 @@ app.post('/api/voyages/names', requireAuthApi, (req, res) => {
     res.json({ ok: true, names });
 });
 
+app.get('/api/voyages/molescores', requireAuthApi, (req, res) => {
+    res.json({ scores: mfGet('voyages:molescores') || {} });
+});
+app.post('/api/voyages/molescores', requireAuthApi, (req, res) => {
+    const { name, score } = req.body || {};
+    const cleanName = String(name || '').trim().slice(0, 24);
+    const cleanScore = Math.max(0, Math.min(999, Number(score) || 0));
+    if (!cleanName) return res.status(400).json({ ok: false });
+    const scores = mfGet('voyages:molescores') || {};
+    const previousBest = scores[cleanName] || 0;
+    const newRecord = cleanScore > previousBest;
+    if (newRecord) scores[cleanName] = cleanScore;
+    mfSet('voyages:molescores', scores);
+    res.json({ ok: true, scores, newRecord, previousBest });
+});
+
 // ---------------------------------------------------------------------
 //  RECETTES — carnet partagé du cercle
 //  Stockage : une clé par recette (rec:<id>) via le cache mfGet/mfSet.
