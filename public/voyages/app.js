@@ -764,23 +764,37 @@ if (meteorShowerBtn && fullscreenMeteors) {
     meteorShowerBtn.addEventListener('click', () => {
         if (reduceMotion) return;
         fullscreenMeteors.innerHTML = '';
-        const count = 22;
-        for (let i = 0; i < count; i++) {
-            const m = document.createElement('span');
-            m.className = 'vy-meteor';
-            m.style.top = (Math.random() * 60) + '%';
-            m.style.left = (Math.random() * 100) + '%';
-            m.style.animationDuration = (1.4 + Math.random() * 1.8) + 's';
-            m.style.animationDelay = (Math.random() * 1.6) + 's';
-            fullscreenMeteors.appendChild(m);
+
+        // Un flash lumineux au déclenchement, pour un vrai effet d'annonce.
+        const flash = document.createElement('div');
+        flash.className = 'vy-fs-flash';
+        fullscreenMeteors.appendChild(flash);
+
+        const sizes = ['small', 'small', 'small', 'medium', 'medium', 'large'];
+        function spawnWave(count, delayBase) {
+            for (let i = 0; i < count; i++) {
+                const m = document.createElement('span');
+                const size = sizes[Math.floor(Math.random() * sizes.length)];
+                m.className = 'vy-fs-meteor ' + size;
+                m.style.top = (Math.random() * 65) + '%';
+                m.style.left = (Math.random() * 100) + '%';
+                m.style.animationDuration = (0.9 + Math.random() * 1.3) + 's';
+                m.style.animationDelay = (delayBase + Math.random() * 1.4) + 's';
+                fullscreenMeteors.appendChild(m);
+            }
         }
+        // Trois vagues successives plutôt qu'un seul jet, pour que ça dure et s'intensifie.
+        spawnWave(18, 0);
+        spawnWave(22, 1.1);
+        spawnWave(16, 2.3);
+
         fullscreenMeteors.classList.add('vy-fs-meteors-on');
-        if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
+        if (navigator.vibrate) { try { navigator.vibrate([15, 60, 15, 60, 25]); } catch (e) {} }
         clearTimeout(meteorShowerBtn._hideTimer);
         meteorShowerBtn._hideTimer = setTimeout(() => {
             fullscreenMeteors.classList.remove('vy-fs-meteors-on');
             setTimeout(() => { fullscreenMeteors.innerHTML = ''; }, 700);
-        }, 3600);
+        }, 5200);
     });
 }
 

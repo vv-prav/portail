@@ -74,7 +74,7 @@ body {
                  text-shadow:0 2px 40px rgba(139,107,168,.35); }
 .vy-hero-sub { font-size:1rem; line-height:1.6; color:var(--fog); margin:0 0 36px; }
 
-.vy-hero-path { position:relative; max-width:340px; margin:0 auto 40px; }
+.vy-hero-path { position:relative; max-width:340px; margin:0 auto 50px; }
 .vy-hero-path-svg path { stroke-dasharray:420; stroke-dashoffset:420; animation:vyDrawPath 1.8s 0.4s cubic-bezier(.4,0,.2,1) forwards; }
 @keyframes vyDrawPath { to { stroke-dashoffset:0; } }
 .vy-hero-path-label { position:absolute; top:100%; font-family:var(--font-mono); font-size:.62rem;
@@ -82,9 +82,9 @@ body {
 .vy-hero-path-label.start { left:0; }
 .vy-hero-path-label.end { right:0; }
 
-.vy-hero-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
-@media (max-width:380px) {
-    .vy-hero-stats { grid-template-columns:repeat(2,1fr); gap:10px 6px; }
+.vy-hero-stats { display:grid; grid-template-columns:repeat(2,1fr); gap:10px 6px; margin-bottom:38px; }
+@media (min-width:520px) {
+    .vy-hero-stats { grid-template-columns:repeat(4,1fr); gap:6px; }
 }
 .vy-stat { display:flex; flex-direction:column; align-items:center; gap:2px; }
 .vy-stat b { font-family:var(--font-mono); font-size:1.5rem; font-weight:600; color:var(--parchment); }
@@ -284,7 +284,7 @@ body {
 }
 
 /* ===================== BOUSSOLE ===================== */
-.vy-compass { position:relative; width:78px; height:78px; margin:0 auto 30px; }
+.vy-compass { position:relative; width:78px; height:78px; margin:0 auto 44px; }
 .vy-compass-svg { width:100%; height:100%; filter:drop-shadow(0 6px 16px rgba(0,0,0,.4)); }
 .vy-compass-n { font-family:var(--font-mono); font-size:8px; fill:var(--muted); text-anchor:middle; }
 .vy-compass-needle { transform-origin:50px 50px; transition:transform .25s cubic-bezier(.2,.8,.3,1); }
@@ -298,8 +298,8 @@ body {
 .vy-compass-caption[hidden] { display:none; }
 
 /* ===================== COMPTE À REBOURS ===================== */
-.vy-countdown-label { text-align:center; margin-top:8px; }
-.vy-countdown { display:flex; justify-content:center; gap:10px; margin-top:6px; }
+.vy-countdown-label { text-align:center; margin-top:0; }
+.vy-countdown { display:flex; justify-content:center; gap:10px; margin-top:12px; }
 .vy-flip { display:flex; flex-direction:column; align-items:center; gap:6px; }
 .vy-flip-card { width:52px; height:52px; border-radius:10px; background:linear-gradient(165deg,var(--night-3),var(--night-2));
     border:1px solid var(--line); display:grid; place-items:center; position:relative; overflow:hidden; box-shadow:0 8px 20px rgba(0,0,0,.4); }
@@ -414,8 +414,26 @@ body {
 
 /* La pluie d'étoiles filantes déclenchée par bouton, sur tout l'écran. */
 .vy-fullscreen-meteors { position:fixed; inset:0; z-index:300; pointer-events:none; overflow:hidden;
-    opacity:0; transition:opacity .6s; }
+    opacity:0; transition:opacity .6s; background:radial-gradient(circle at 50% 30%, rgba(139,107,168,.12), transparent 65%); }
 .vy-fullscreen-meteors.vy-fs-meteors-on { opacity:1; }
+.vy-fs-flash { position:absolute; inset:0; background:radial-gradient(circle at 50% 35%, rgba(255,255,255,.55), transparent 60%);
+    opacity:0; animation:vyFsFlash 1s ease-out forwards; }
+@keyframes vyFsFlash { 0% { opacity:.9; } 100% { opacity:0; } }
+.vy-fs-meteor { position:absolute; border-radius:50%; background:var(--parchment); animation:vyFsMeteorStreak linear infinite; }
+.vy-fs-meteor.small { width:2px; height:2px; box-shadow:0 0 8px 2px rgba(243,233,245,.85); }
+.vy-fs-meteor.medium { width:3px; height:3px; box-shadow:0 0 12px 3px rgba(243,233,245,.9); }
+.vy-fs-meteor.large { width:4px; height:4px; box-shadow:0 0 18px 5px rgba(255,247,235,1); }
+.vy-fs-meteor::before { content:''; position:absolute; top:50%; right:0; height:1.5px;
+    background:linear-gradient(to left, var(--parchment), transparent); transform:translateY(-50%) rotate(35deg); transform-origin:right center; }
+.vy-fs-meteor.small::before { width:70px; }
+.vy-fs-meteor.medium::before { width:110px; height:2px; }
+.vy-fs-meteor.large::before { width:160px; height:2.5px; }
+@keyframes vyFsMeteorStreak {
+    0% { transform:translate(0,0); opacity:0; }
+    6% { opacity:1; }
+    75% { transform:translate(-520px,420px); opacity:1; }
+    100% { transform:translate(-620px,500px); opacity:0; }
+}
 .vy-meteor { position:absolute; width:2px; height:2px; background:var(--parchment); border-radius:50%;
     box-shadow:0 0 6px 1px var(--parchment); animation:vyMeteorStreak linear infinite; }
 .vy-meteor::before { content:''; position:absolute; top:1px; right:1px; width:46px; height:1px;
@@ -645,7 +663,7 @@ body:not(.vy-loading) .vy-loader { opacity:0; visibility:hidden; pointer-events:
 .vy-cursor.vy-cursor-foot { width:26px; height:26px; margin:-13px 0 0 -13px; background:rgba(201,147,90,.25); border-color:var(--ember); }
 
 /* ===================== MÉTÉO RÉELLE ===================== */
-.vy-weather { margin-top:26px; }
+.vy-weather { margin-top:42px; }
 .vy-weather[hidden] { display:none; }
 .vy-weather-label { font-family:var(--font-mono); font-size:.64rem; text-transform:uppercase; letter-spacing:1.2px;
     color:var(--muted); margin:0 0 10px; text-align:center; }
