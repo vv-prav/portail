@@ -424,7 +424,7 @@ body {
     0% { opacity:.9; transform:translate(0,0) scale(1); }
     100% { opacity:0; transform:translate(var(--dx,0), var(--dy,-14)) scale(.2); }
 }
-#tumulusShape { transition:rx 1s cubic-bezier(.2,.9,.3,1), ry 1s cubic-bezier(.2,.9,.3,1), cy 1s cubic-bezier(.2,.9,.3,1); }
+#tumulusShape { transform-origin:200px 178px; transform:scaleY(0); transition:transform .7s cubic-bezier(.2,.9,.3,1); }
 .vy-tuft { transition:opacity .5s, transform .5s; }
 .vy-tumulus-glow { fill:none; stroke:#fff3d6; stroke-width:2; opacity:0; transform-origin:200px 178px; }
 .vy-tumulus-glow.vy-tumulus-glow-on { animation:vyBurstRing 1.4s ease-out forwards; }
@@ -731,6 +731,15 @@ body {
 .vy-lock-error { color:var(--card-red,#c2453a); font-size:.8rem; margin:10px 0 0; }
 .vy-lock-error[hidden] { display:none; }
 .vy-private[hidden] { display:none; }
+
+.vy-music-btn { position:fixed; top:max(14px,env(safe-area-inset-top)); right:64px; z-index:200;
+    width:42px; height:42px; display:grid; place-items:center; border-radius:12px;
+    background:rgba(201,147,90,.2); backdrop-filter:blur(8px); border:1px solid var(--ember-soft);
+    color:var(--ember-soft); cursor:pointer; transition:transform .15s; }
+.vy-music-btn svg { width:19px; height:19px; }
+.vy-music-btn:active { transform:scale(.92); }
+.vy-music-btn.vy-music-playing { background:rgba(201,147,90,.4); animation:vyMusicPulse 1.8s ease-in-out infinite; }
+@keyframes vyMusicPulse { 0%,100% { box-shadow:0 0 0 0 rgba(201,147,90,.4); } 50% { box-shadow:0 0 0 6px rgba(201,147,90,0); } }
 
 .vy-key-btn { position:fixed; top:max(14px,env(safe-area-inset-top)); right:14px; z-index:200;
     width:42px; height:42px; display:grid; place-items:center; border-radius:12px;

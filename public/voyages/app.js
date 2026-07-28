@@ -16,6 +16,24 @@ if (reduceMotion) {
     revealEls.forEach(el => io.observe(el));
 }
 
+// ---------- L'hymne de la rando : un tap pour lancer, un tap pour couper ----------
+const musicBtn = $('musicBtn');
+const hymneAudio = $('hymneAudio');
+if (musicBtn && hymneAudio) {
+    musicBtn.addEventListener('click', () => {
+        if (hymneAudio.paused) {
+            hymneAudio.play().then(() => {
+                musicBtn.classList.add('vy-music-playing');
+                musicBtn.setAttribute('aria-label', 'Couper l\u2019hymne de la rando');
+            }).catch(() => { /* le fichier n'est peut-être pas encore en place */ });
+        } else {
+            hymneAudio.pause();
+            musicBtn.classList.remove('vy-music-playing');
+            musicBtn.setAttribute('aria-label', 'Jouer l\u2019hymne de la rando');
+        }
+    });
+}
+
 // ---------- Compteurs mécaniques façon vieux tacot : dépassent la cible, reviennent se caler en tremblant ----------
 function animateCount(el, target, duration) {
     if (reduceMotion) { el.textContent = target; return; }
@@ -808,7 +826,7 @@ if (cairnBtn && cairnStack) {
         dust.innerHTML = '';
         mound.querySelectorAll('.vy-tuft, .vy-tumulus-glow').forEach(el => el.remove());
         tumulusLayer = 0;
-        if (tumulusShape) { tumulusShape.setAttribute('rx', 0); tumulusShape.setAttribute('ry', 0); tumulusShape.setAttribute('cy', GROUND_Y); }
+        if (tumulusShape) tumulusShape.style.transform = 'scaleY(0)';
         dawnSky.setAttribute('fill', skyColorAt(0));
         dawnFlash.setAttribute('r', 0); dawnFlash.style.opacity = 0;
         if (tumulusBtn) { tumulusBtn.hidden = true; tumulusBtn.disabled = false; tumulusBtn.textContent = 'Construire un tumulus avec les menhirs'; }
@@ -880,11 +898,8 @@ if (cairnBtn && cairnStack) {
             if (tumulusLayer >= 5) return;
             tumulusLayer++;
             const cx = 200;
-            const rx = 22 + tumulusLayer * 7;
-            const ry = tumulusLayer * 8;
-            tumulusShape.setAttribute('rx', rx);
-            tumulusShape.setAttribute('ry', ry);
-            tumulusShape.setAttribute('cy', GROUND_Y - ry * 0.7);
+            const rx = 54, ry = 46;
+            tumulusShape.style.transform = `scaleY(${tumulusLayer / 5})`;
 
             // Un vrai nuage de poussière au moment où la terre se tasse.
             for (let i = 0; i < 8; i++) {
