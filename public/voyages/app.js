@@ -294,10 +294,6 @@ function onDeviceOrientation(e) {
     }
 
     document.querySelectorAll('.vy-tilt').forEach(card => {
-        const rx = Math.max(-8, Math.min(8, (e.beta - 45) * 0.25));
-        const ry = Math.max(-10, Math.min(10, e.gamma * 0.3));
-        card.style.transform = `perspective(900px) rotateX(${-rx}deg) rotateY(${ry}deg)`;
-
         // Plus l'appareil s'incline, plus le vent souffle fort, jusqu'à un seuil comique.
         const wind = card.querySelector('.vy-wind');
         if (wind) {
@@ -323,15 +319,6 @@ if (!needsMotionPermission()) {
         const angle = Math.atan2(e.clientX - cx, -(e.clientY - cy)) * (180 / Math.PI);
         compassNeedle.style.transform = `rotate(${Math.max(-70, Math.min(70, angle * 0.35))}deg)`;
     }, { passive: true });
-    document.querySelectorAll('.vy-tilt').forEach(card => {
-        card.addEventListener('mousemove', (e) => {
-            const r = card.getBoundingClientRect();
-            const px = (e.clientX - r.left) / r.width - 0.5;
-            const py = (e.clientY - r.top) / r.height - 0.5;
-            card.style.transform = `perspective(900px) rotateX(${-py * 8}deg) rotateY(${px * 10}deg)`;
-        });
-        card.addEventListener('mouseleave', () => { card.style.transform = ''; });
-    });
 }
 
 // Secouer le téléphone révèle une silhouette bretonne, une seconde ou deux, puis s'efface.
@@ -728,18 +715,18 @@ if (cairnBtn && cairnStack) {
 
 // =====================================================================
 //  L'AUBE SUR LA LANDE (jour 4) : les fées se figent en menhirs,
-//  puis on peut bâtir un tumulus avec les pierres apparues.
+//  puis "Vivre la journée" fait arriver les trois têtes, émerveillées.
 // =====================================================================
 (function dawnScene() {
     const dawnBtn = $('dawnBtn');
     const stage = $('fsDawn');
     const svg = $('dawnSvg');
-    const tumulusBtn = $('tumulusBtn');
+    const liveBtn = $('liveDay4Btn');
     const dawnSky = $('dawnSky');
     const dawnFlash = $('dawnFlash');
     const caption = $('dawnCaption');
-    const mound = $('tumulusMound');
-    const dust = $('tumulusDust');
+    const sparkleHost = $('dawnSparkles');
+    const wow = $('dawnWow');
     const fairyHost = $('dawnFairies');
     const menhirHost = $('dawnMenhirs');
     const burstHost = $('dawnBursts');
@@ -753,6 +740,7 @@ if (cairnBtn && cairnStack) {
     const FAIRY_Y = [90, 75, 95, 78, 92];
     const FAIRY_COLORS = ['#e0b483', '#c9b8dc', '#e0b483', '#a98cc2', '#f0c98e'];
     const GROUND_Y = 178;
+    const heads = [0, 1, 2].map(i => stage.querySelector(`.vy-dawn-head[data-head="${i}"]`)).filter(Boolean);
 
     // Le ciel traverse plusieurs teintes, pas un simple aller d'une couleur à l'autre.
     const SKY_STOPS = [
@@ -820,16 +808,31 @@ if (cairnBtn && cairnStack) {
         }
     }
 
+    function spawnSparkles() {
+        if (!sparkleHost || reduceMotion) return;
+        for (let i = 0; i < 14; i++) {
+            const s = document.createElementNS(SVGNS, 'circle');
+            s.setAttribute('class', 'vy-sparkle');
+            s.setAttribute('cx', 200 + (Math.random() * 70 - 35));
+            s.setAttribute('cy', 96 + (Math.random() * 40 - 20));
+            s.setAttribute('r', 1 + Math.random() * 1.4);
+            s.style.setProperty('--sx', (Math.random() * 40 - 20) + 'px');
+            s.style.setProperty('--sy', (Math.random() * 40 - 30) + 'px');
+            s.style.animationDelay = (Math.random() * 0.3) + 's';
+            sparkleHost.appendChild(s);
+            setTimeout(() => s.remove(), 1200);
+        }
+    }
+
     function reset() {
         stars.forEach(s => s.classList.remove('vy-star-out'));
         fairyHost.innerHTML = ''; menhirHost.innerHTML = ''; burstHost.innerHTML = ''; birdHost.innerHTML = '';
-        dust.innerHTML = '';
-        mound.querySelectorAll('.vy-tuft, .vy-tumulus-glow').forEach(el => el.remove());
-        tumulusLayer = 0;
-        if (tumulusShape) tumulusShape.style.transform = 'scaleY(0)';
+        if (sparkleHost) sparkleHost.innerHTML = '';
+        heads.forEach(h => h.classList.remove('vy-dawn-head-in', 'vy-dawn-head-land'));
+        if (wow) wow.classList.remove('vy-dawn-wow-on');
         dawnSky.setAttribute('fill', skyColorAt(0));
         dawnFlash.setAttribute('r', 0); dawnFlash.style.opacity = 0;
-        if (tumulusBtn) { tumulusBtn.hidden = true; tumulusBtn.disabled = false; tumulusBtn.textContent = 'Construire un tumulus avec les menhirs'; }
+        if (liveBtn) { liveBtn.hidden = true; liveBtn.disabled = false; liveBtn.textContent = 'Vivre la journée'; }
         dawnBtn.disabled = false;
         dawnBtn.textContent = 'Voir l\u2019aube se lever';
         if (caption) caption.textContent = 'Le ciel pâlit doucement sur la lande';
@@ -854,7 +857,7 @@ if (cairnBtn && cairnStack) {
                 setTimeout(() => { dawnFlash.style.opacity = 0; }, 700);
                 dawnBtn.textContent = 'L\u2019aube s\u2019est levée';
                 if (caption) caption.textContent = 'Les fées se sont figées avec la lumière';
-                if (tumulusBtn) tumulusBtn.hidden = false;
+                if (liveBtn) liveBtn.hidden = false;
             }
         }
         requestAnimationFrame(skyFrame);
@@ -885,62 +888,31 @@ if (cairnBtn && cairnStack) {
             fairies.forEach((f, i) => { f.classList.add('vy-fairy-frozen'); menhirs[i].setAttribute('height', 24); menhirs[i].setAttribute('y', GROUND_Y - 24); menhirs[i].classList.add('vy-menhir-up'); });
             dawnSky.setAttribute('fill', skyColorAt(1));
             if (caption) caption.textContent = 'Les fées se sont figées avec la lumière';
-            if (tumulusBtn) tumulusBtn.hidden = false;
+            if (liveBtn) liveBtn.hidden = false;
             return;
         }
         runDawn();
     });
 
-    const tumulusShape = $('tumulusShape');
-    let tumulusLayer = 0;
-    if (tumulusBtn && mound && tumulusShape) {
-        tumulusBtn.addEventListener('click', () => {
-            if (tumulusLayer >= 5) return;
-            tumulusLayer++;
-            const cx = 200;
-            const rx = 54, ry = 46;
-            tumulusShape.style.transform = `scaleY(${tumulusLayer / 5})`;
+    if (liveBtn && heads.length) {
+        liveBtn.addEventListener('click', () => {
+            if (liveBtn.disabled) return;
+            liveBtn.disabled = true;
+            liveBtn.textContent = 'Ils arrivent...';
+            if (caption) caption.textContent = 'Trois silhouettes approchent au loin';
 
-            // Un vrai nuage de poussière au moment où la terre se tasse.
-            for (let i = 0; i < 8; i++) {
-                const p = document.createElementNS(SVGNS, 'circle');
-                p.setAttribute('class', 'vy-dust-particle');
-                p.setAttribute('cx', cx + (Math.random() * rx * 1.6 - rx * 0.8));
-                p.setAttribute('cy', GROUND_Y - ry * 0.4);
-                p.setAttribute('r', 1 + Math.random());
-                p.style.setProperty('--dx', (Math.random() * 26 - 13) + 'px');
-                p.style.setProperty('--dy', (-6 - Math.random() * 10) + 'px');
-                dust.appendChild(p);
-                setTimeout(() => p.remove(), 650);
-            }
-            if (navigator.vibrate) { try { navigator.vibrate(14); } catch (e) {} }
+            heads.forEach((head, i) => {
+                setTimeout(() => head.classList.add('vy-dawn-head-in'), reduceMotion ? 0 : i * 220);
+            });
 
-            if (tumulusLayer >= 5) {
-                tumulusBtn.textContent = 'Le tumulus est achevé';
-                tumulusBtn.disabled = true;
-                if (caption) caption.textContent = 'Un tumulus veille désormais sur la lande';
-
-                // Quelques touffes d'herbe se posent au sommet, pour la touche finale.
-                const topY = GROUND_Y - ry * 0.7 - ry * 0.55;
-                [-14, -4, 8, 16].forEach((dx, i) => {
-                    const tuft = document.createElementNS(SVGNS, 'path');
-                    tuft.setAttribute('class', 'vy-tuft');
-                    tuft.setAttribute('d', `M${cx + dx},${topY} q-2,-7 -4,-2 M${cx + dx},${topY} q0,-8 1,-2 M${cx + dx},${topY} q2,-7 4,-2`);
-                    tuft.setAttribute('stroke', '#9cae6a');
-                    tuft.setAttribute('stroke-width', '1.3');
-                    tuft.setAttribute('fill', 'none');
-                    tuft.setAttribute('stroke-linecap', 'round');
-                    tuft.style.opacity = 0;
-                    mound.appendChild(tuft);
-                    setTimeout(() => { tuft.style.opacity = 1; }, 150 + i * 120);
-                });
-
-                const glow = document.createElementNS(SVGNS, 'circle');
-                glow.setAttribute('class', 'vy-tumulus-glow vy-tumulus-glow-on');
-                glow.setAttribute('cx', 200); glow.setAttribute('cy', topY); glow.setAttribute('r', 2);
-                mound.appendChild(glow);
-                if (navigator.vibrate) { try { navigator.vibrate([15, 40, 15, 40, 30]); } catch (e) {} }
-            }
+            setTimeout(() => {
+                heads.forEach(head => head.classList.add('vy-dawn-head-land'));
+                spawnSparkles();
+                if (wow) wow.classList.add('vy-dawn-wow-on');
+                if (caption) caption.textContent = 'Ils n\u2019en reviennent pas';
+                liveBtn.textContent = 'Ils sont arrivés';
+                if (navigator.vibrate) { try { navigator.vibrate([15, 50, 15, 50, 40]); } catch (e) {} }
+            }, reduceMotion ? 50 : 1500);
         });
     }
 

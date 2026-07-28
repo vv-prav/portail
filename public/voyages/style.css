@@ -419,15 +419,34 @@ body {
     90% { opacity:.7; }
     100% { transform:translate(430px,-40px); opacity:0; }
 }
-.vy-dust-particle { fill:#8a7c62; animation:vyDustPop .6s ease-out forwards; }
-@keyframes vyDustPop {
-    0% { opacity:.9; transform:translate(0,0) scale(1); }
-    100% { opacity:0; transform:translate(var(--dx,0), var(--dy,-14)) scale(.2); }
+
+/* Les trois têtes qui arrivent de l'extérieur de l'écran et se posent au centre. */
+.vy-dawn-head { position:absolute; width:0; height:0; opacity:0; z-index:5; pointer-events:none;
+    top:50%; left:50%; margin:-19px 0 0 -19px;
+    transition:opacity .3s; }
+.vy-dawn-head img { width:38px; height:38px; object-fit:contain; display:block;
+    filter:drop-shadow(0 0 6px rgba(201,147,90,.85)) drop-shadow(0 0 14px rgba(139,107,168,.55)); }
+.vy-dawn-head.vy-dawn-head-in { opacity:1; width:38px; height:38px; }
+.vy-dawn-head[data-head="0"] { transform:translate(-260px,-40px) scale(.6) rotate(-25deg); }
+.vy-dawn-head[data-head="1"] { transform:translate(0,-220px) scale(.6) rotate(15deg); }
+.vy-dawn-head[data-head="2"] { transform:translate(260px,60px) scale(.6) rotate(-15deg); }
+.vy-dawn-head.vy-dawn-head-in { transition:transform 1.1s cubic-bezier(.2,.8,.2,1.35), opacity .3s; transform:translate(0,0) scale(1) rotate(0deg); }
+.vy-dawn-head.vy-dawn-head-land { animation:vyDawnLand .5s ease-out; }
+@keyframes vyDawnLand { 0%,100% { filter:brightness(1); } 40% { filter:brightness(1.5); } }
+
+.vy-dawn-wow { position:absolute; top:calc(50% - 62px); left:50%; transform:translate(-50%,10px) scale(.7);
+    font-family:var(--font-display); font-weight:700; font-style:italic; font-size:1.3rem; color:var(--parchment);
+    text-shadow:0 0 16px rgba(243,233,245,.6); opacity:0; pointer-events:none; z-index:6;
+    transition:opacity .4s, transform .4s; white-space:nowrap; }
+.vy-dawn-wow.vy-dawn-wow-on { opacity:1; transform:translate(-50%,0) scale(1); }
+
+.vy-sparkle { fill:#fff3d6; animation:vySparklePop .9s ease-out forwards; }
+@keyframes vySparklePop {
+    0% { opacity:1; transform:scale(.3); }
+    60% { opacity:1; transform:scale(1.2); }
+    100% { opacity:0; transform:translate(var(--sx,0), var(--sy,0)) scale(.2); }
 }
-#tumulusShape { transform-origin:200px 178px; transform:scaleY(0); transition:transform .7s cubic-bezier(.2,.9,.3,1); }
-.vy-tuft { transition:opacity .5s, transform .5s; }
-.vy-tumulus-glow { fill:none; stroke:#fff3d6; stroke-width:2; opacity:0; transform-origin:200px 178px; }
-.vy-tumulus-glow.vy-tumulus-glow-on { animation:vyBurstRing 1.4s ease-out forwards; }
+
 .vy-dawn-caption { font-family:var(--font-mono); font-size:.75rem; letter-spacing:.4px; color:var(--fog);
     text-transform:uppercase; margin:30px 0 16px; text-align:center; transition:opacity .3s; }
 
