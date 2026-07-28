@@ -450,18 +450,18 @@ body {
     filter:drop-shadow(0 0 6px rgba(201,147,90,.85)) drop-shadow(0 0 14px rgba(139,107,168,.55)); }
 .vy-dawn-head.vy-dawn-head-noimg { background:radial-gradient(circle, rgba(201,147,90,.5), transparent 70%); border-radius:50%; }
 .vy-dawn-head.vy-dawn-head-noimg img { display:none; }
-.vy-dawn-head.vy-dawn-head-in { opacity:1; transform:translate(0,0) scale(1.15) rotate(0deg); }
-.vy-dawn-head.vy-dawn-head-land { transform:translate(0,0) scale(1) rotate(0deg); animation:vyDawnLand .5s ease-out; }
+.vy-dawn-head.vy-dawn-head-in { opacity:1; transform:translate(var(--ex,0), var(--ey,0)) scale(1.15) rotate(0deg); }
+.vy-dawn-head.vy-dawn-head-land { transform:translate(var(--ex,0), var(--ey,0)) scale(1) rotate(0deg); animation:vyDawnLand .5s ease-out; }
 @keyframes vyDawnLand { 0%,60% { filter:brightness(1.6); } 100% { filter:brightness(1); } }
 
-.vy-dawn-wow { position:absolute; top:calc(50% - 92px); left:50%; transform:translate(-50%,14px) scale(.6);
-    font-family:var(--font-display); font-weight:800; font-style:italic; font-size:1.5rem; color:var(--night);
-    background:linear-gradient(155deg,var(--parchment),#f0e6d8); padding:10px 22px; border-radius:999px;
-    box-shadow:0 8px 26px rgba(0,0,0,.4), 0 0 0 3px rgba(255,255,255,.15);
-    opacity:0; pointer-events:none; z-index:7;
-    transition:opacity .4s, transform .5s cubic-bezier(.2,.8,.2,1.4); white-space:nowrap; }
-.vy-dawn-wow.vy-dawn-wow-on { opacity:1; transform:translate(-50%,0) scale(1); animation:vyWowPulse 1.4s ease-in-out .5s infinite; }
-@keyframes vyWowPulse { 0%,100% { transform:translate(-50%,0) scale(1); } 50% { transform:translate(-50%,0) scale(1.06); } }
+/* Une petite bulle propre à chaque tête, plutôt qu'un message unique partagé. */
+.vy-dawn-bubble { position:absolute; top:-34px; left:50%; transform:translate(-50%,8px) scale(.6);
+    font-family:var(--font-display); font-weight:800; font-style:italic; font-size:.78rem; color:var(--night);
+    background:linear-gradient(155deg,var(--parchment),#f0e6d8); padding:5px 11px; border-radius:999px;
+    box-shadow:0 6px 16px rgba(0,0,0,.4), 0 0 0 2px rgba(255,255,255,.15);
+    opacity:0; pointer-events:none; z-index:7; white-space:nowrap;
+    transition:opacity .4s, transform .5s cubic-bezier(.2,.8,.2,1.4); }
+.vy-dawn-head.vy-dawn-head-land .vy-dawn-bubble { opacity:1; transform:translate(-50%,0) scale(1); }
 
 .vy-sparkle { fill:#fff3d6; animation:vySparklePop .9s ease-out forwards; }
 @keyframes vySparklePop {
@@ -926,7 +926,22 @@ body:not(.vy-loading) .vy-loader { opacity:0; visibility:hidden; pointer-events:
 .vy-sundial { width:44px; height:44px; margin-top:10px; }
 
 /* ===================== JEU : ATTRAPEZ-LES SUR LA LANDE ===================== */
-.vy-mole-hud { display:flex; justify-content:center; gap:28px; margin:0 0 18px; }
+.vy-mole-hud { display:flex; justify-content:center; align-items:center; gap:28px; margin:0 0 14px; }
+.vy-mole-board-btn { background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:10px;
+    width:34px; height:34px; font-size:1rem; cursor:pointer; display:grid; place-items:center; }
+.vy-mole-board { max-width:320px; margin:0 auto 18px; padding:14px 16px; border-radius:14px;
+    background:rgba(255,255,255,.04); border:1px solid var(--line); }
+.vy-mole-board[hidden] { display:none; }
+.vy-mole-board-title { margin:0 0 10px; font-family:var(--font-mono); font-size:.68rem; text-transform:uppercase;
+    letter-spacing:1px; color:var(--muted); text-align:center; }
+.vy-mole-board-list { display:flex; flex-direction:column; gap:6px; }
+.vy-mole-board-row { display:flex; align-items:center; gap:10px; font-size:.82rem; color:var(--fog); }
+.vy-mole-board-row b { color:var(--ember-soft); font-family:var(--font-mono); margin-left:auto; }
+.vy-mole-board-empty { text-align:center; font-size:.78rem; color:var(--muted); margin:0; }
+.vy-mole-attribute { max-width:320px; margin:16px auto 0; text-align:center; }
+.vy-mole-attribute[hidden] { display:none; }
+.vy-mole-attribute-q { font-size:.8rem; color:var(--fog); margin:0 0 10px; }
+
 .vy-mole-stat { display:flex; flex-direction:column; align-items:center; gap:2px; }
 .vy-mole-stat b { font-family:var(--font-mono); font-size:1.2rem; font-weight:700; color:var(--ember-soft); }
 .vy-mole-stat span { font-size:.62rem; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
@@ -952,7 +967,7 @@ body:not(.vy-loading) .vy-loader { opacity:0; visibility:hidden; pointer-events:
     width:0; height:0; border-left:10px solid transparent; border-right:10px solid transparent;
     border-top:16px solid var(--ember); filter:drop-shadow(0 2px 4px rgba(0,0,0,.4)); }
 .vy-wheel { position:relative; width:220px; height:220px; border-radius:50%; margin:0 auto;
-    background:conic-gradient(from 0deg, #8b6ba8 0deg 120deg, #c9935a 120deg 240deg, #5fa877 240deg 360deg);
+    background:conic-gradient(from 0deg, #6bb3d6 0deg 120deg, #8b6ba8 120deg 240deg, #5fa877 240deg 360deg);
     border:4px solid var(--parchment); box-shadow:0 10px 30px rgba(0,0,0,.5);
     transition:transform 4.5s cubic-bezier(.15,.85,.3,1); }
 .vy-wheel-seg { position:absolute; top:50%; left:50%; width:0; height:0; }

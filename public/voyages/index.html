@@ -515,6 +515,11 @@
         <div class="vy-mole-hud">
             <div class="vy-mole-stat"><b id="moleScore">0</b><span>score</span></div>
             <div class="vy-mole-stat"><b id="moleTime">30</b><span>secondes</span></div>
+            <button type="button" class="vy-mole-board-btn" id="moleBoardBtn" aria-label="Voir le classement">🏆</button>
+        </div>
+        <div class="vy-mole-board" id="moleBoard" hidden>
+            <p class="vy-mole-board-title">Classement des records</p>
+            <div class="vy-mole-board-list" id="moleBoardList"></div>
         </div>
         <div class="vy-mole-field" id="moleField">
             <div class="vy-mole-hole" data-hole="0"><div class="vy-mole-head"><img alt=""></div></div>
@@ -529,6 +534,10 @@
         </div>
         <button type="button" class="vy-btn" id="moleStartBtn">Lancer le jeu</button>
         <p class="vy-mole-result" id="moleResult" hidden></p>
+        <div class="vy-mole-attribute" id="moleAttribute" hidden>
+            <p class="vy-mole-attribute-q">Qui vient de jouer, pour le classement ?</p>
+            <div class="vy-avatar-row" id="moleAttributeRow"></div>
+        </div>
     </section>
 
     <div class="vy-parchment" data-reveal aria-hidden="true"><span></span></div>
@@ -702,10 +711,18 @@
             <g id="dawnMenhirs"></g>
             <g id="dawnSparkles"></g>
         </svg>
-        <div class="vy-dawn-head" data-head="0" style="--hx:-260px; --hy:-40px; --hr:-25deg;"><img src="photos/ami-1.png" alt="" onerror="this.parentElement.classList.add('vy-dawn-head-noimg')"></div>
-        <div class="vy-dawn-head" data-head="1" style="--hx:0px; --hy:-220px; --hr:15deg;"><img src="photos/ami-2.png" alt="" onerror="this.parentElement.classList.add('vy-dawn-head-noimg')"></div>
-        <div class="vy-dawn-head" data-head="2" style="--hx:260px; --hy:60px; --hr:-15deg;"><img src="photos/ami-3.png" alt="" onerror="this.parentElement.classList.add('vy-dawn-head-noimg')"></div>
-        <p class="vy-dawn-wow" id="dawnWow" aria-hidden="true">Waouh, trop beau !</p>
+        <div class="vy-dawn-head" data-head="0" style="--hx:-260px; --hy:-40px; --hr:-25deg; --ex:-46px; --ey:0px;">
+            <img src="photos/ami-1.png" alt="" onerror="this.parentElement.classList.add('vy-dawn-head-noimg')">
+            <span class="vy-dawn-bubble" data-bubble="0">Waouh !</span>
+        </div>
+        <div class="vy-dawn-head" data-head="1" style="--hx:0px; --hy:-220px; --hr:15deg; --ex:0px; --ey:0px;">
+            <img src="photos/ami-2.png" alt="" onerror="this.parentElement.classList.add('vy-dawn-head-noimg')">
+            <span class="vy-dawn-bubble" data-bubble="1">Trop beau !</span>
+        </div>
+        <div class="vy-dawn-head" data-head="2" style="--hx:260px; --hy:60px; --hr:-15deg; --ex:46px; --ey:0px;">
+            <img src="photos/ami-3.png" alt="" onerror="this.parentElement.classList.add('vy-dawn-head-noimg')">
+            <span class="vy-dawn-bubble" data-bubble="2">On reviendra !</span>
+        </div>
         <button type="button" class="vy-btn ghost" id="liveDay4Btn" hidden>Vivre la journée</button>
         <p class="vy-dawn-caption" id="dawnCaption">Le ciel pâlit doucement sur la lande</p>
     </div>

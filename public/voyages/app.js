@@ -726,7 +726,6 @@ if (cairnBtn && cairnStack) {
     const dawnFlash = $('dawnFlash');
     const caption = $('dawnCaption');
     const sparkleHost = $('dawnSparkles');
-    const wow = $('dawnWow');
     const fairyHost = $('dawnFairies');
     const menhirHost = $('dawnMenhirs');
     const burstHost = $('dawnBursts');
@@ -829,7 +828,6 @@ if (cairnBtn && cairnStack) {
         fairyHost.innerHTML = ''; menhirHost.innerHTML = ''; burstHost.innerHTML = ''; birdHost.innerHTML = '';
         if (sparkleHost) sparkleHost.innerHTML = '';
         heads.forEach(h => h.classList.remove('vy-dawn-head-in', 'vy-dawn-head-land'));
-        if (wow) wow.classList.remove('vy-dawn-wow-on');
         dawnSky.setAttribute('fill', skyColorAt(0));
         dawnFlash.setAttribute('r', 0); dawnFlash.style.opacity = 0;
         if (liveBtn) { liveBtn.hidden = true; liveBtn.disabled = false; liveBtn.textContent = 'Vivre la journée'; }
@@ -908,7 +906,6 @@ if (cairnBtn && cairnStack) {
             setTimeout(() => {
                 heads.forEach(head => head.classList.add('vy-dawn-head-land'));
                 spawnSparkles();
-                if (wow) wow.classList.add('vy-dawn-wow-on');
                 if (caption) caption.textContent = 'Ils n\u2019en reviennent pas';
                 liveBtn.textContent = 'Ils sont arrivés';
                 if (navigator.vibrate) { try { navigator.vibrate([15, 50, 15, 50, 40]); } catch (e) {} }
@@ -2099,6 +2096,11 @@ document.querySelectorAll('[data-cheers-btn]').forEach(btn => {
     const scoreEl = $('moleScore');
     const timeEl = $('moleTime');
     const resultEl = $('moleResult');
+    const boardBtn = $('moleBoardBtn');
+    const board = $('moleBoard');
+    const boardList = $('moleBoardList');
+    const attributeBox = $('moleAttribute');
+    const attributeRow = $('moleAttributeRow');
     if (!field || !startBtn) return;
 
     const holes = [...field.querySelectorAll('.vy-mole-hole')];
@@ -2106,6 +2108,43 @@ document.querySelectorAll('[data-cheers-btn]').forEach(btn => {
     let score = 0, timeLeft = GAME_DURATION, running = false;
     let spawnTimer = null, countdownTimer = null, lastHoleIndex = -1;
     const holeTimers = new Map();
+    let moleNames = ['Victor', 'Swann', 'Pierre'];
+
+    // Les prénoms sont chargés à part ici : cette section est publique,
+    // pas besoin d'avoir déverrouillé la zone privée pour voir le jeu.
+    (async function loadMoleNames() {
+        try {
+            const { data } = await api('/api/voyages/names');
+            if (data.names && data.names.length) moleNames = data.names;
+        } catch (e) { /* on garde les prénoms par défaut */ }
+    })();
+
+    async function renderBoard() {
+        if (!boardList) return;
+        boardList.innerHTML = '<p class="vy-mole-board-empty">Chargement...</p>';
+        try {
+            const { data } = await api('/api/voyages/molescores');
+            const scores = data.scores || {};
+            const entries = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+            if (!entries.length) {
+                boardList.innerHTML = '<p class="vy-mole-board-empty">Personne n\u2019a encore joué.</p>';
+                return;
+            }
+            const medals = ['\u{1f947}', '\u{1f948}', '\u{1f949}'];
+            boardList.innerHTML = entries.map(([name, sc], i) => `
+                <div class="vy-mole-board-row"><span>${medals[i] || '\u2022'} ${esc(name)}</span><b>${sc}</b></div>
+            `).join('');
+        } catch (e) {
+            boardList.innerHTML = '<p class="vy-mole-board-empty">Classement indisponible pour l\u2019instant.</p>';
+        }
+    }
+    if (boardBtn && board) {
+        boardBtn.addEventListener('click', () => {
+            const willShow = board.hidden;
+            board.hidden = !willShow;
+            if (willShow) renderBoard();
+        });
+    }
 
     function randomHole() {
         let i;
@@ -2166,6 +2205,19 @@ document.querySelectorAll('[data-cheers-btn]').forEach(btn => {
             resultEl.innerHTML = `Score final : <b>${score}</b>. ${msg}`;
             resultEl.hidden = false;
         }
+        if (attributeBox && attributeRow && score > 0) {
+            attributeRow.innerHTML = moleNames.map((n, i) => `
+                <button type="button" class="vy-avatar-btn" data-mole-attr="${esc(n)}">${avatarChip(i, n)}${esc(n)}</button>
+            `).join('');
+            attributeRow.querySelectorAll('[data-mole-attr]').forEach(b => b.addEventListener('click', async () => {
+                attributeBox.hidden = true;
+                try {
+                    await api('/api/voyages/molescores', { name: b.dataset.moleAttr, score });
+                    if (board && !board.hidden) renderBoard();
+                } catch (e) { /* pas grave si ça échoue, la partie reste jouable */ }
+            }));
+            attributeBox.hidden = false;
+        }
     }
 
     startBtn.addEventListener('click', () => {
@@ -2173,6 +2225,7 @@ document.querySelectorAll('[data-cheers-btn]').forEach(btn => {
         if (scoreEl) scoreEl.textContent = '0';
         if (timeEl) timeEl.textContent = GAME_DURATION;
         if (resultEl) resultEl.hidden = true;
+        if (attributeBox) attributeBox.hidden = true;
         startBtn.hidden = true;
         spawnMole();
         countdownTimer = setInterval(() => {
