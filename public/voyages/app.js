@@ -1708,7 +1708,7 @@ function unlockPrivateZone(remember) {
             }
         });
         if (filled) await saveChecklists();
-        loadGear(); loadExpenses(); renderChecklistTabs();
+        loadGear(); loadExpenses(); renderChecklistTabs(); renderWheelNames();
     });
     startLiveSync();
 }
@@ -2073,3 +2073,160 @@ if (downloadBtn) {
         setTimeout(() => URL.revokeObjectURL(url), 2000);
     });
 }
+
+// =====================================================================
+//  LE TOAST "TRINQUER" à la fin de chaque journée.
+// =====================================================================
+document.querySelectorAll('[data-cheers-btn]').forEach(btn => {
+    const wrap = btn.closest('.vy-cheers');
+    const caption = wrap ? wrap.querySelector('.vy-cheers-caption') : null;
+    if (!wrap) return;
+    btn.addEventListener('click', () => {
+        wrap.classList.add('vy-cheers-clink');
+        if (caption) caption.classList.add('vy-cheers-caption-on');
+        if (navigator.vibrate) { try { navigator.vibrate([10, 30, 15]); } catch (e) {} }
+        setTimeout(() => wrap.classList.remove('vy-cheers-clink'), 380);
+        setTimeout(() => { if (caption) caption.classList.remove('vy-cheers-caption-on'); }, 1400);
+    });
+});
+
+// =====================================================================
+//  JEU : ATTRAPEZ-LES SUR LA LANDE (tape-taupe avec les trois têtes).
+// =====================================================================
+(function moleGame() {
+    const field = $('moleField');
+    const startBtn = $('moleStartBtn');
+    const scoreEl = $('moleScore');
+    const timeEl = $('moleTime');
+    const resultEl = $('moleResult');
+    if (!field || !startBtn) return;
+
+    const holes = [...field.querySelectorAll('.vy-mole-hole')];
+    const GAME_DURATION = 30;
+    let score = 0, timeLeft = GAME_DURATION, running = false;
+    let spawnTimer = null, countdownTimer = null, lastHoleIndex = -1;
+    const holeTimers = new Map();
+
+    function randomHole() {
+        let i;
+        do { i = Math.floor(Math.random() * holes.length); } while (i === lastHoleIndex && holes.length > 1);
+        lastHoleIndex = i;
+        return holes[i];
+    }
+
+    function spawnMole() {
+        if (!running) return;
+        const hole = randomHole();
+        const friend = 1 + Math.floor(Math.random() * 3);
+        const img = hole.querySelector('img');
+        img.src = `photos/ami-${friend}.png`;
+        hole.classList.remove('vy-mole-hit');
+        hole.classList.add('vy-mole-active');
+
+        // Plus le temps avance, plus les têtes restent visibles peu de temps : ça devient plus dur.
+        const upTime = Math.max(500, 1100 - (GAME_DURATION - timeLeft) * 18);
+        const timer = setTimeout(() => {
+            hole.classList.remove('vy-mole-active');
+            holeTimers.delete(hole);
+        }, upTime);
+        holeTimers.set(hole, timer);
+
+        const nextSpawn = 450 + Math.random() * 500;
+        spawnTimer = setTimeout(spawnMole, nextSpawn);
+    }
+
+    function onHoleClick(e) {
+        const hole = e.target.closest('.vy-mole-hole');
+        if (!hole || !running || !hole.classList.contains('vy-mole-active')) return;
+        score++;
+        if (scoreEl) scoreEl.textContent = score;
+        hole.classList.add('vy-mole-hit');
+        clearTimeout(holeTimers.get(hole));
+        holeTimers.delete(hole);
+        setTimeout(() => { hole.classList.remove('vy-mole-active', 'vy-mole-hit'); }, 300);
+        if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e2) {} }
+    }
+    field.addEventListener('click', onHoleClick);
+
+    function endGame() {
+        running = false;
+        clearTimeout(spawnTimer);
+        clearInterval(countdownTimer);
+        holeTimers.forEach(t => clearTimeout(t));
+        holeTimers.clear();
+        holes.forEach(h => h.classList.remove('vy-mole-active', 'vy-mole-hit'));
+        startBtn.hidden = false;
+        startBtn.textContent = 'Rejouer';
+        if (resultEl) {
+            let msg;
+            if (score >= 20) msg = 'Chasseuses de fées confirmées !';
+            else if (score >= 12) msg = 'Bien joué, la lande n\u2019a plus de secrets pour vous.';
+            else if (score >= 5) msg = 'Pas mal, elles sont plus rapides qu\u2019elles n\u2019en ont l\u2019air.';
+            else msg = 'Elles se sont bien moquées de vous cette fois.';
+            resultEl.innerHTML = `Score final : <b>${score}</b>. ${msg}`;
+            resultEl.hidden = false;
+        }
+    }
+
+    startBtn.addEventListener('click', () => {
+        score = 0; timeLeft = GAME_DURATION; running = true;
+        if (scoreEl) scoreEl.textContent = '0';
+        if (timeEl) timeEl.textContent = GAME_DURATION;
+        if (resultEl) resultEl.hidden = true;
+        startBtn.hidden = true;
+        spawnMole();
+        countdownTimer = setInterval(() => {
+            timeLeft--;
+            if (timeEl) timeEl.textContent = Math.max(0, timeLeft);
+            if (timeLeft <= 0) endGame();
+        }, 1000);
+    });
+})();
+
+
+// =====================================================================
+//  LA ROUE DE LA DÉCISION, pour trancher à trois sans se disputer.
+// =====================================================================
+function renderWheelNames() {
+    const names = (groupNames && groupNames.length) ? groupNames : ['Victor', 'Swann', 'Pierre'];
+    [0, 1, 2].forEach(i => {
+        const label = document.querySelector(`[data-wheel-name="${i}"]`);
+        if (label) label.textContent = names[i] || `Ami ${i + 1}`;
+        const img = document.querySelector(`.vy-wheel-seg[data-seg="${i}"] img`);
+        if (img) img.alt = names[i] || '';
+    });
+}
+(function wheelOfFortune() {
+    const spinBtn = $('wheelSpinBtn');
+    const dial = $('wheelDial');
+    const result = $('wheelResult');
+    if (!spinBtn || !dial) return;
+    let currentRotation = 0, spinning = false;
+
+    spinBtn.addEventListener('click', () => {
+        if (spinning) return;
+        spinning = true;
+        spinBtn.disabled = true;
+        if (result) result.hidden = true;
+
+        const extraSpins = 5 + Math.floor(Math.random() * 3); // cinq à sept tours complets
+        const randomOffset = Math.random() * 360;
+        currentRotation += extraSpins * 360 + randomOffset;
+        dial.style.transform = `rotate(${currentRotation}deg)`;
+        dial.classList.add('vy-wheel-spinning');
+        if (navigator.vibrate) { try { navigator.vibrate(15); } catch (e) {} }
+
+        setTimeout(() => {
+            dial.classList.remove('vy-wheel-spinning');
+            const angleAtTop = (360 - (currentRotation % 360) + 360) % 360;
+            const segIndex = Math.floor(angleAtTop / 120) % 3;
+            const names = (groupNames && groupNames.length) ? groupNames : ['Victor', 'Swann', 'Pierre'];
+            const winner = names[segIndex] || `Ami ${segIndex + 1}`;
+            if (result) { result.innerHTML = `C'est <b>${esc(winner)}</b> !`; result.hidden = false; }
+            if (navigator.vibrate) { try { navigator.vibrate([20, 40, 20, 40, 60]); } catch (e) {} }
+            spinning = false;
+            spinBtn.disabled = false;
+            spinBtn.textContent = 'Refaire tourner la roue';
+        }, reduceMotion ? 50 : 4500);
+    });
+})();

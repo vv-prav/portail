@@ -278,6 +278,13 @@
                     <canvas class="vy-legend-canvas" data-legend="1"></canvas>
                 </div>
                 <p class="vy-day-arrival">Arrivée à <b>Brennilis</b>, au bord du réservoir de Saint-Michel.</p>
+                <div class="vy-cheers" data-cheers="1">
+                    <div class="vy-cheers-glass" data-glass="0"><img src="photos/ami-1.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
+                    <div class="vy-cheers-glass" data-glass="1"><img src="photos/ami-2.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
+                    <div class="vy-cheers-glass" data-glass="2"><img src="photos/ami-3.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
+                    <button type="button" class="vy-cheers-btn" data-cheers-btn="1">Trinquer</button>
+                    <p class="vy-cheers-caption" data-cheers-caption="1">Santé !</p>
+                </div>
             </div>
         </article>
 
@@ -329,6 +336,13 @@
                     <canvas class="vy-legend-canvas" data-legend="2"></canvas>
                 </div>
                 <p class="vy-day-arrival">Arrivée à <b>Botmeur</b>, au creux du versant nord.</p>
+                <div class="vy-cheers" data-cheers="2">
+                    <div class="vy-cheers-glass" data-glass="0"><img src="photos/ami-1.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
+                    <div class="vy-cheers-glass" data-glass="1"><img src="photos/ami-2.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
+                    <div class="vy-cheers-glass" data-glass="2"><img src="photos/ami-3.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
+                    <button type="button" class="vy-cheers-btn" data-cheers-btn="2">Trinquer</button>
+                    <p class="vy-cheers-caption" data-cheers-caption="2">Santé !</p>
+                </div>
             </div>
         </article>
 
@@ -383,6 +397,13 @@
                     <canvas class="vy-legend-canvas" data-legend="3"></canvas>
                 </div>
                 <p class="vy-day-arrival">Arrivée à <b>Plounéour-Ménez</b>, ou en gîte au pied du versant nord.</p>
+                <div class="vy-cheers" data-cheers="3">
+                    <div class="vy-cheers-glass" data-glass="0"><img src="photos/ami-1.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
+                    <div class="vy-cheers-glass" data-glass="1"><img src="photos/ami-2.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
+                    <div class="vy-cheers-glass" data-glass="2"><img src="photos/ami-3.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
+                    <button type="button" class="vy-cheers-btn" data-cheers-btn="3">Trinquer</button>
+                    <p class="vy-cheers-caption" data-cheers-caption="3">Santé !</p>
+                </div>
             </div>
         </article>
 
@@ -424,6 +445,13 @@
                 <button type="button" class="vy-btn ghost" id="dawnBtn">Voir l'aube se lever</button>
 
                 <p class="vy-day-arrival">Arrivée à <b>La Feuillée</b>.</p>
+                <div class="vy-cheers" data-cheers="4">
+                    <div class="vy-cheers-glass" data-glass="0"><img src="photos/ami-1.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
+                    <div class="vy-cheers-glass" data-glass="1"><img src="photos/ami-2.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
+                    <div class="vy-cheers-glass" data-glass="2"><img src="photos/ami-3.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
+                    <button type="button" class="vy-cheers-btn" data-cheers-btn="4">Trinquer</button>
+                    <p class="vy-cheers-caption" data-cheers-caption="4">Santé !</p>
+                </div>
             </div>
         </article>
 
@@ -464,9 +492,43 @@
                 </div>
                 <button type="button" class="vy-btn ghost" id="liveDay5Btn">Vivre cette journée</button>
                 <p class="vy-day-arrival">Retour à <b>Huelgoat</b>, et récupération du véhicule.</p>
+                <div class="vy-cheers" data-cheers="5">
+                    <div class="vy-cheers-glass" data-glass="0"><img src="photos/ami-1.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
+                    <div class="vy-cheers-glass" data-glass="1"><img src="photos/ami-2.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
+                    <div class="vy-cheers-glass" data-glass="2"><img src="photos/ami-3.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
+                    <button type="button" class="vy-cheers-btn" data-cheers-btn="5">Trinquer</button>
+                    <p class="vy-cheers-caption" data-cheers-caption="5">Santé !</p>
+                </div>
             </div>
         </article>
 
+    </section>
+
+    <div class="vy-parchment" data-reveal aria-hidden="true"><span></span></div>
+
+    <!-- ============ JEU : ATTRAPEZ-LES SUR LA LANDE ============ -->
+    <section class="vy-section vy-mole-section" data-mood="lande" data-reveal>
+        <p class="vy-kicker">Pour la route</p>
+        <h2 class="vy-h2">Elles se cachent dans la lande</h2>
+        <p class="vy-map-note">Elles pointent le bout du nez au hasard, entre les fougères. Tapez-les avant qu'elles
+            ne redisparaissent.</p>
+        <div class="vy-mole-hud">
+            <div class="vy-mole-stat"><b id="moleScore">0</b><span>score</span></div>
+            <div class="vy-mole-stat"><b id="moleTime">30</b><span>secondes</span></div>
+        </div>
+        <div class="vy-mole-field" id="moleField">
+            <div class="vy-mole-hole" data-hole="0"><div class="vy-mole-head"><img alt=""></div></div>
+            <div class="vy-mole-hole" data-hole="1"><div class="vy-mole-head"><img alt=""></div></div>
+            <div class="vy-mole-hole" data-hole="2"><div class="vy-mole-head"><img alt=""></div></div>
+            <div class="vy-mole-hole" data-hole="3"><div class="vy-mole-head"><img alt=""></div></div>
+            <div class="vy-mole-hole" data-hole="4"><div class="vy-mole-head"><img alt=""></div></div>
+            <div class="vy-mole-hole" data-hole="5"><div class="vy-mole-head"><img alt=""></div></div>
+            <div class="vy-mole-hole" data-hole="6"><div class="vy-mole-head"><img alt=""></div></div>
+            <div class="vy-mole-hole" data-hole="7"><div class="vy-mole-head"><img alt=""></div></div>
+            <div class="vy-mole-hole" data-hole="8"><div class="vy-mole-head"><img alt=""></div></div>
+        </div>
+        <button type="button" class="vy-btn" id="moleStartBtn">Lancer le jeu</button>
+        <p class="vy-mole-result" id="moleResult" hidden></p>
     </section>
 
     <div class="vy-parchment" data-reveal aria-hidden="true"><span></span></div>
@@ -583,6 +645,23 @@
         <p class="vy-offline-status" id="offlineStatus"></p>
         <button type="button" class="vy-btn ghost" id="downloadDataBtn">Télécharger nos données (matériel, frais, listes)</button>
     </div>
+
+    <div class="vy-section vy-wheel-section">
+        <p class="vy-kicker">Pour trancher</p>
+        <h2 class="vy-h2">La roue de la décision</h2>
+        <p class="vy-map-note">Qui porte quoi, qui paie le prochain plein, ou n'importe quelle autre décision à
+            trois : faites tourner plutôt que d'en discuter pendant une heure.</p>
+        <div class="vy-wheel-stage">
+            <div class="vy-wheel-pointer" aria-hidden="true"></div>
+            <div class="vy-wheel" id="wheelDial">
+                <div class="vy-wheel-seg" data-seg="0"><img src="photos/ami-1.png" alt="" onerror="this.style.display='none'"><span class="vy-wheel-name" data-wheel-name="0"></span></div>
+                <div class="vy-wheel-seg" data-seg="1"><img src="photos/ami-2.png" alt="" onerror="this.style.display='none'"><span class="vy-wheel-name" data-wheel-name="1"></span></div>
+                <div class="vy-wheel-seg" data-seg="2"><img src="photos/ami-3.png" alt="" onerror="this.style.display='none'"><span class="vy-wheel-name" data-wheel-name="2"></span></div>
+            </div>
+        </div>
+        <button type="button" class="vy-btn" id="wheelSpinBtn">Faire tourner la roue</button>
+        <p class="vy-wheel-result" id="wheelResult" hidden></p>
+    </div>
         </div>
     </section>
 
@@ -623,9 +702,9 @@
             <g id="dawnMenhirs"></g>
             <g id="dawnSparkles"></g>
         </svg>
-        <div class="vy-dawn-head" data-head="0"><img src="photos/ami-1.png" alt="" onerror="this.parentElement.style.display='none'"></div>
-        <div class="vy-dawn-head" data-head="1"><img src="photos/ami-2.png" alt="" onerror="this.parentElement.style.display='none'"></div>
-        <div class="vy-dawn-head" data-head="2"><img src="photos/ami-3.png" alt="" onerror="this.parentElement.style.display='none'"></div>
+        <div class="vy-dawn-head" data-head="0" style="--hx:-260px; --hy:-40px; --hr:-25deg;"><img src="photos/ami-1.png" alt="" onerror="this.parentElement.classList.add('vy-dawn-head-noimg')"></div>
+        <div class="vy-dawn-head" data-head="1" style="--hx:0px; --hy:-220px; --hr:15deg;"><img src="photos/ami-2.png" alt="" onerror="this.parentElement.classList.add('vy-dawn-head-noimg')"></div>
+        <div class="vy-dawn-head" data-head="2" style="--hx:260px; --hy:60px; --hr:-15deg;"><img src="photos/ami-3.png" alt="" onerror="this.parentElement.classList.add('vy-dawn-head-noimg')"></div>
         <p class="vy-dawn-wow" id="dawnWow" aria-hidden="true">Waouh, trop beau !</p>
         <button type="button" class="vy-btn ghost" id="liveDay4Btn" hidden>Vivre la journée</button>
         <p class="vy-dawn-caption" id="dawnCaption">Le ciel pâlit doucement sur la lande</p>

@@ -230,6 +230,27 @@ body {
 .vy-day-arrival { margin:28px 0 0; padding-top:20px; border-top:1px solid var(--line); font-size:.85rem; color:var(--fog); }
 .vy-day-arrival b { color:var(--parchment); }
 
+/* Le toast "Trinquer" à la fin de chaque journée. */
+.vy-cheers { position:relative; display:flex; justify-content:center; align-items:flex-end; gap:18px;
+    margin-top:22px; padding-top:6px; }
+.vy-cheers-glass { position:relative; width:34px; height:34px; transition:transform .35s cubic-bezier(.3,.6,.3,1); }
+.vy-cheers-glass img { width:100%; height:100%; object-fit:contain; display:block;
+    filter:drop-shadow(0 0 4px rgba(201,147,90,.7)); }
+.vy-cheers-cup { position:absolute; bottom:-6px; right:-6px; font-size:.95rem; transform:rotate(15deg); }
+.vy-cheers[data-cheers] .vy-cheers-glass[data-glass="0"] { transform:translateX(0); }
+.vy-cheers[data-cheers] .vy-cheers-glass[data-glass="2"] { transform:translateX(0); }
+.vy-cheers.vy-cheers-clink .vy-cheers-glass[data-glass="0"] { transform:translateX(14px) rotate(-8deg); }
+.vy-cheers.vy-cheers-clink .vy-cheers-glass[data-glass="1"] { transform:translateY(-4px) scale(1.08); }
+.vy-cheers.vy-cheers-clink .vy-cheers-glass[data-glass="2"] { transform:translateX(-14px) rotate(8deg); }
+.vy-cheers-btn { flex:0 0 auto; align-self:center; margin-left:8px; padding:8px 16px; border-radius:999px;
+    background:rgba(201,147,90,.18); border:1px solid var(--ember-soft); color:var(--ember-soft);
+    font-family:inherit; font-size:.78rem; font-weight:700; cursor:pointer; transition:transform .15s; }
+.vy-cheers-btn:active { transform:scale(.94); }
+.vy-cheers-caption { position:absolute; top:-22px; left:50%; transform:translateX(-50%) scale(.7); margin:0;
+    font-family:var(--font-display); font-weight:700; font-style:italic; font-size:.95rem; color:var(--ember-soft);
+    opacity:0; pointer-events:none; transition:opacity .3s, transform .3s; white-space:nowrap; }
+.vy-cheers-caption.vy-cheers-caption-on { opacity:1; transform:translateX(-50%) scale(1); }
+
 .vy-day.rev .vy-day-card { background:linear-gradient(165deg,#2e2545,var(--night-2)); }
 
 /* Le petit chemin qui descend d'une étape à la suivante */
@@ -421,24 +442,26 @@ body {
 }
 
 /* Les trois têtes qui arrivent de l'extérieur de l'écran et se posent au centre. */
-.vy-dawn-head { position:absolute; width:0; height:0; opacity:0; z-index:5; pointer-events:none;
-    top:50%; left:50%; margin:-19px 0 0 -19px;
-    transition:opacity .3s; }
-.vy-dawn-head img { width:38px; height:38px; object-fit:contain; display:block;
+.vy-dawn-head { position:absolute; width:40px; height:40px; opacity:0; z-index:5; pointer-events:none;
+    top:50%; left:50%; margin:-20px 0 0 -20px;
+    transform:translate(var(--hx,0), var(--hy,0)) scale(.5) rotate(var(--hr,0deg));
+    transition:opacity .35s, transform 1.2s cubic-bezier(.2,.8,.2,1.3); }
+.vy-dawn-head img { width:100%; height:100%; object-fit:contain; display:block;
     filter:drop-shadow(0 0 6px rgba(201,147,90,.85)) drop-shadow(0 0 14px rgba(139,107,168,.55)); }
-.vy-dawn-head.vy-dawn-head-in { opacity:1; width:38px; height:38px; }
-.vy-dawn-head[data-head="0"] { transform:translate(-260px,-40px) scale(.6) rotate(-25deg); }
-.vy-dawn-head[data-head="1"] { transform:translate(0,-220px) scale(.6) rotate(15deg); }
-.vy-dawn-head[data-head="2"] { transform:translate(260px,60px) scale(.6) rotate(-15deg); }
-.vy-dawn-head.vy-dawn-head-in { transition:transform 1.1s cubic-bezier(.2,.8,.2,1.35), opacity .3s; transform:translate(0,0) scale(1) rotate(0deg); }
-.vy-dawn-head.vy-dawn-head-land { animation:vyDawnLand .5s ease-out; }
-@keyframes vyDawnLand { 0%,100% { filter:brightness(1); } 40% { filter:brightness(1.5); } }
+.vy-dawn-head.vy-dawn-head-noimg { background:radial-gradient(circle, rgba(201,147,90,.5), transparent 70%); border-radius:50%; }
+.vy-dawn-head.vy-dawn-head-noimg img { display:none; }
+.vy-dawn-head.vy-dawn-head-in { opacity:1; transform:translate(0,0) scale(1.15) rotate(0deg); }
+.vy-dawn-head.vy-dawn-head-land { transform:translate(0,0) scale(1) rotate(0deg); animation:vyDawnLand .5s ease-out; }
+@keyframes vyDawnLand { 0%,60% { filter:brightness(1.6); } 100% { filter:brightness(1); } }
 
-.vy-dawn-wow { position:absolute; top:calc(50% - 62px); left:50%; transform:translate(-50%,10px) scale(.7);
-    font-family:var(--font-display); font-weight:700; font-style:italic; font-size:1.3rem; color:var(--parchment);
-    text-shadow:0 0 16px rgba(243,233,245,.6); opacity:0; pointer-events:none; z-index:6;
-    transition:opacity .4s, transform .4s; white-space:nowrap; }
-.vy-dawn-wow.vy-dawn-wow-on { opacity:1; transform:translate(-50%,0) scale(1); }
+.vy-dawn-wow { position:absolute; top:calc(50% - 92px); left:50%; transform:translate(-50%,14px) scale(.6);
+    font-family:var(--font-display); font-weight:800; font-style:italic; font-size:1.5rem; color:var(--night);
+    background:linear-gradient(155deg,var(--parchment),#f0e6d8); padding:10px 22px; border-radius:999px;
+    box-shadow:0 8px 26px rgba(0,0,0,.4), 0 0 0 3px rgba(255,255,255,.15);
+    opacity:0; pointer-events:none; z-index:7;
+    transition:opacity .4s, transform .5s cubic-bezier(.2,.8,.2,1.4); white-space:nowrap; }
+.vy-dawn-wow.vy-dawn-wow-on { opacity:1; transform:translate(-50%,0) scale(1); animation:vyWowPulse 1.4s ease-in-out .5s infinite; }
+@keyframes vyWowPulse { 0%,100% { transform:translate(-50%,0) scale(1); } 50% { transform:translate(-50%,0) scale(1.06); } }
 
 .vy-sparkle { fill:#fff3d6; animation:vySparklePop .9s ease-out forwards; }
 @keyframes vySparklePop {
@@ -901,6 +924,49 @@ body:not(.vy-loading) .vy-loader { opacity:0; visibility:hidden; pointer-events:
 
 /* ===================== CADRAN SOLAIRE (temps de marche total) ===================== */
 .vy-sundial { width:44px; height:44px; margin-top:10px; }
+
+/* ===================== JEU : ATTRAPEZ-LES SUR LA LANDE ===================== */
+.vy-mole-hud { display:flex; justify-content:center; gap:28px; margin:0 0 18px; }
+.vy-mole-stat { display:flex; flex-direction:column; align-items:center; gap:2px; }
+.vy-mole-stat b { font-family:var(--font-mono); font-size:1.2rem; font-weight:700; color:var(--ember-soft); }
+.vy-mole-stat span { font-size:.62rem; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+.vy-mole-field { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; max-width:340px; margin:0 auto 20px;
+    padding:20px; border-radius:20px; background:linear-gradient(165deg,#3a4a2e,#2c3a22); }
+.vy-mole-hole { position:relative; aspect-ratio:1; border-radius:50%; overflow:hidden; cursor:pointer;
+    background:radial-gradient(circle at 50% 65%, #1c1712, #241d17 70%);
+    box-shadow:inset 0 6px 10px rgba(0,0,0,.6); }
+.vy-mole-head { position:absolute; inset:8% ; border-radius:50%; overflow:visible;
+    transform:translateY(115%); transition:transform .18s cubic-bezier(.34,1.5,.5,1); pointer-events:none; }
+.vy-mole-hole.vy-mole-active .vy-mole-head { transform:translateY(0); pointer-events:auto; }
+.vy-mole-head img { width:100%; height:100%; object-fit:contain; display:block;
+    filter:drop-shadow(0 0 5px rgba(201,147,90,.8)) drop-shadow(0 0 10px rgba(139,107,168,.5)); }
+.vy-mole-hole.vy-mole-hit .vy-mole-head { animation:vyMoleHit .3s ease-out forwards; }
+@keyframes vyMoleHit { 0% { transform:translateY(0) scale(1); opacity:1; } 100% { transform:translateY(0) scale(1.4); opacity:0; } }
+.vy-mole-result { text-align:center; font-size:.9rem; color:var(--fog); margin-top:14px; }
+.vy-mole-result[hidden] { display:none; }
+.vy-mole-result b { color:var(--ember-soft); font-family:var(--font-mono); }
+
+/* ===================== LA ROUE DE LA DÉCISION ===================== */
+.vy-wheel-stage { position:relative; width:220px; margin:0 auto 24px; }
+.vy-wheel-pointer { position:absolute; top:-6px; left:50%; transform:translateX(-50%); z-index:2;
+    width:0; height:0; border-left:10px solid transparent; border-right:10px solid transparent;
+    border-top:16px solid var(--ember); filter:drop-shadow(0 2px 4px rgba(0,0,0,.4)); }
+.vy-wheel { position:relative; width:220px; height:220px; border-radius:50%; margin:0 auto;
+    background:conic-gradient(from 0deg, #8b6ba8 0deg 120deg, #c9935a 120deg 240deg, #5fa877 240deg 360deg);
+    border:4px solid var(--parchment); box-shadow:0 10px 30px rgba(0,0,0,.5);
+    transition:transform 4.5s cubic-bezier(.15,.85,.3,1); }
+.vy-wheel-seg { position:absolute; top:50%; left:50%; width:0; height:0; }
+.vy-wheel-seg[data-seg="0"] { transform:rotate(60deg); }
+.vy-wheel-seg[data-seg="1"] { transform:rotate(180deg); }
+.vy-wheel-seg[data-seg="2"] { transform:rotate(300deg); }
+.vy-wheel-seg img { position:absolute; top:-74px; left:0; width:36px; height:36px; margin:-18px 0 0 -18px;
+    object-fit:contain; filter:drop-shadow(0 2px 4px rgba(0,0,0,.5)); }
+.vy-wheel-name { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); }
+.vy-wheel-spinning { animation:vyWheelPulse 4.5s ease-in-out; }
+@keyframes vyWheelPulse { 0% { filter:brightness(1); } 50% { filter:brightness(1.15); } 100% { filter:brightness(1); } }
+.vy-wheel-result { text-align:center; font-size:1rem; color:var(--fog); margin-top:16px; min-height:1.4em; }
+.vy-wheel-result[hidden] { display:none; }
+.vy-wheel-result b { color:var(--ember-soft); font-family:var(--font-display); font-size:1.15rem; }
 
 @media (prefers-reduced-motion:reduce) {
     * { animation-duration:.001ms !important; transition-duration:.001ms !important; scroll-behavior:auto !important; }
