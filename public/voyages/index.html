@@ -177,8 +177,23 @@
     <div class="vy-global-totals" id="trailTotals" data-reveal>
         <p class="vy-kicker">Sur les cinq jours</p>
         <div class="vy-totals">
-            <div class="vy-total-item"><b id="totalElev">...</b><span>de dénivelé cumulé</span></div>
-            <div class="vy-total-item"><b id="totalTime">...</b><span>de marche estimées</span></div>
+            <div class="vy-total-item">
+                <b id="totalElev">...</b><span>de dénivelé cumulé</span>
+                <div class="vy-eiffel-row" id="eiffelRow" aria-hidden="true"></div>
+                <span class="vy-eiffel-caption" id="eiffelCaption" hidden></span>
+            </div>
+            <div class="vy-total-item">
+                <b id="totalTime">...</b><span>de marche estimées</span>
+                <svg class="vy-sundial" viewBox="0 0 60 60" aria-hidden="true">
+                    <circle cx="30" cy="30" r="26" fill="none" stroke="var(--line)" stroke-width="1.5"/>
+                    <line x1="8" y1="30" x2="52" y2="30" stroke="var(--line)" stroke-width="1"/>
+                    <line x1="30" y1="8" x2="30" y2="52" stroke="var(--line)" stroke-width="1"/>
+                    <g id="sundialGnomon" style="transform-origin:30px 30px;">
+                        <line x1="30" y1="30" x2="30" y2="10" stroke="var(--ember)" stroke-width="2" stroke-linecap="round"/>
+                    </g>
+                    <circle cx="30" cy="30" r="2.5" fill="var(--parchment)"/>
+                </svg>
+            </div>
         </div>
     </div>
 
@@ -211,6 +226,8 @@
             <div class="vy-walker" data-walker="1"><img src="photos/ami-2.png" alt="" onerror="this.parentElement.classList.add('vy-walker-empty')"></div>
             <div class="vy-walker" data-walker="2"><img src="photos/ami-3.png" alt="" onerror="this.parentElement.classList.add('vy-walker-empty')"></div>
         </div>
+
+        <div class="vy-team-intro" id="teamIntro" hidden></div>
 
         <article class="vy-day" data-day="1" data-mood="foret" data-reveal>
             <div class="vy-day-node"><span>1</span></div>
@@ -268,6 +285,7 @@
                 </div>
                 <p class="vy-day-tag">Mardi</p>
                 <h3 class="vy-day-title">Les portes de l'enfer et le premier sommet</h3>
+                <div class="vy-title-reflection" id="titleReflection2" aria-hidden="true">Les portes de l'enfer et le premier sommet</div>
                 <p class="vy-day-route"><span>Brennilis</span><i>vers</i><span>Botmeur</span></p>
                 <div class="vy-stat-strip">
                     <div class="vy-stat-box"><b>14 km</b><span>distance</span></div>
@@ -316,7 +334,7 @@
                     <img src="photos/jour-3.jpg" alt="Ligne de crête des Monts d'Arrée" onerror="this.parentElement.classList.add('vy-photo-empty')">
                 </div>
                 <p class="vy-day-tag">Mercredi</p>
-                <h3 class="vy-day-title">Sur le toit de la Bretagne</h3>
+                <h3 class="vy-day-title" id="day3Title">Sur le toit de la Bretagne</h3>
                 <p class="vy-day-route"><span>Botmeur</span><i>vers</i><span>Plounéour-Ménez</span></p>
                 <div class="vy-stat-strip">
                     <div class="vy-stat-box"><b>16 km</b><span>distance</span></div>

@@ -197,9 +197,29 @@ body {
               color:var(--ember-soft); margin:0 0 10px; }
 .vy-day-title { font-family:var(--font-display); font-weight:700; font-size:1.5rem; line-height:1.25;
                 margin:0 0 20px; color:var(--parchment); }
-.vy-day-route { display:flex; align-items:center; gap:10px; font-family:var(--font-mono); font-size:.82rem;
-                color:var(--fog); margin:0 0 26px; flex-wrap:wrap; }
+
+/* Reflet du titre du jour 2 dans l'eau de la tourbière, qui ondule et se trouble au toucher. */
+.vy-title-reflection { font-family:var(--font-display); font-weight:700; font-size:1.5rem; line-height:1.25;
+    color:var(--heather-soft); opacity:.22; transform:scaleY(-1); transform-origin:top;
+    height:1em; overflow:hidden; margin:-8px 0 20px; pointer-events:none;
+    -webkit-mask-image:linear-gradient(to bottom, rgba(0,0,0,.5), transparent);
+    mask-image:linear-gradient(to bottom, rgba(0,0,0,.5), transparent);
+    animation:vyReflectionWave 4.5s ease-in-out infinite;
+    filter:blur(.4px); transition:filter .4s, opacity .4s; }
+@keyframes vyReflectionWave {
+    0%, 100% { transform:scaleY(-1) skewX(0deg); }
+    50% { transform:scaleY(-1) skewX(-1.5deg); }
+}
+.vy-title-reflection.vy-reflection-touched { filter:blur(2.5px); opacity:.35; }
+
+.vy-day-route { display:flex; align-items:center; gap:10px; font-family:var(--font-mono); font-size:.82rem;                color:var(--fog); margin:0 0 26px; flex-wrap:wrap; }
 .vy-day-route i { color:var(--heather-soft); font-style:normal; font-size:.72rem; text-transform:uppercase; letter-spacing:1px; }
+
+/* Les lettres du titre du jour 3, soufflées par le vent, reviennent se poser dans l'ordre. */
+.vy-wind-letter { display:inline-block; opacity:0; transform:translate(var(--dx,0),var(--dy,0)) rotate(var(--rot,0deg));
+    transition:opacity .7s cubic-bezier(.16,1,.3,1), transform .8s cubic-bezier(.16,1,.3,1);
+    transition-delay:calc(var(--i,0) * 28ms); }
+.vy-wind-settled .vy-wind-letter { opacity:1; transform:translate(0,0) rotate(0deg); }
 
 /* Les deux chiffres clés du jour, groupés pour qu'on les lise d'un coup d'œil */
 .vy-stat-strip { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:28px; }
@@ -365,7 +385,17 @@ body {
 .vy-map-note { font-size:.82rem; color:var(--muted); line-height:1.55; margin:0 0 18px; }
 
 /* ===================== LÉGENDES À GRATTER ===================== */
-.vy-legend { position:relative; margin-top:28px; border-radius:14px; }
+.vy-legend { position:relative; margin-top:28px; border-radius:14px; overflow:visible; }
+
+/* Copeaux qui tombent en grattant, et petit tas qui s'accumule sous la carte. */
+.vy-debris { position:absolute; width:4px; height:4px; border-radius:1px; background:#8b7a9a;
+    pointer-events:none; z-index:3; animation:vyDebrisFall .65s cubic-bezier(.4,0,.6,1) forwards; }
+@keyframes vyDebrisFall {
+    to { transform:translate(var(--fall-x,0), 46px) rotate(var(--fall-rot,45deg)); opacity:.3; }
+}
+.vy-legend-pile { position:absolute; left:6%; right:6%; bottom:-6px; height:10px; pointer-events:none; z-index:2; }
+.vy-pile-bit { position:absolute; bottom:0; width:5px; height:3px; border-radius:1px; background:#8b7a9a;
+    opacity:.75; transform:rotate(var(--rot,0deg)); }
 .vy-legend-text { position:relative; margin:0; padding:16px; font-size:.84rem; line-height:1.6; border-radius:14px;
     color:var(--parchment); font-style:italic; background:linear-gradient(165deg,#241a30,#1c1526); }
 .vy-legend-hint { position:absolute; top:8px; right:10px; z-index:3; margin:0; font-family:var(--font-mono);
@@ -696,6 +726,39 @@ body:not(.vy-loading) .vy-loader { opacity:0; visibility:hidden; pointer-events:
     55% { opacity:1; transform:scale(1.035) rotate(1.5deg); filter:blur(0); }
     100% { opacity:1; transform:scale(1) rotate(0deg); filter:blur(0); }
 }
+
+/* ===================== TREMBLEMENT DE COMPTEUR MÉCANIQUE ===================== */
+.vy-mech-settle { animation:vyMechShake .28s ease-out; }
+@keyframes vyMechShake {
+    0% { transform:translateX(0); }
+    25% { transform:translateX(-1.5px); }
+    50% { transform:translateX(1.5px); }
+    75% { transform:translateX(-.5px); }
+    100% { transform:translateX(0); }
+}
+
+/* ===================== LES TROIS TÊTES AVANT LE SENTIER ===================== */
+.vy-team-intro { display:flex; justify-content:center; gap:28px; margin:0 0 34px; }
+.vy-team-intro[hidden] { display:none; }
+.vy-team-member { display:flex; flex-direction:column; align-items:center; gap:6px; }
+.vy-team-member .vy-avatar-chip { width:48px; height:48px; }
+.vy-team-member span { font-family:var(--font-mono); font-size:.68rem; color:var(--fog); }
+
+/* ===================== TOURS EIFFEL (dénivelé cumulé mis à l'échelle) ===================== */
+.vy-eiffel-row { display:flex; align-items:flex-end; justify-content:center; gap:3px; margin-top:10px; height:34px; }
+.vy-eiffel-icon { width:14px; height:34px; opacity:0; transform:translateY(8px);
+    animation:vyEiffelIn .5s cubic-bezier(.16,1,.3,1) forwards; }
+.vy-eiffel-icon:nth-child(1) { animation-delay:.1s; }
+.vy-eiffel-icon:nth-child(2) { animation-delay:.3s; }
+.vy-eiffel-icon:nth-child(3) { animation-delay:.5s; }
+.vy-eiffel-icon:nth-child(4) { animation-delay:.7s; }
+.vy-eiffel-icon:nth-child(n+5) { animation-delay:.9s; }
+@keyframes vyEiffelIn { to { opacity:1; transform:translateY(0); } }
+.vy-eiffel-caption { display:block; font-size:.62rem; color:var(--muted); margin-top:6px; }
+.vy-eiffel-caption[hidden] { display:none; }
+
+/* ===================== CADRAN SOLAIRE (temps de marche total) ===================== */
+.vy-sundial { width:44px; height:44px; margin-top:10px; }
 
 @media (prefers-reduced-motion:reduce) {
     * { animation-duration:.001ms !important; transition-duration:.001ms !important; scroll-behavior:auto !important; }

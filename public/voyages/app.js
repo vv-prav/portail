@@ -16,15 +16,29 @@ if (reduceMotion) {
     revealEls.forEach(el => io.observe(el));
 }
 
-// ---------- Compteurs animés (stats du hero) ----------
+// ---------- Compteurs mécaniques façon vieux tacot : dépassent la cible, reviennent se caler en tremblant ----------
 function animateCount(el, target, duration) {
     if (reduceMotion) { el.textContent = target; return; }
     const start = performance.now();
+    const overshoot = Math.max(1, Math.round(target * 0.08));
     function tick(now) {
-        const p = Math.min(1, (now - start) / duration);
-        const eased = 1 - Math.pow(1 - p, 3);
-        el.textContent = Math.round(target * eased);
-        if (p < 1) requestAnimationFrame(tick);
+        const t = Math.min(1, (now - start) / duration);
+        let value;
+        if (t < 0.7) {
+            const p = t / 0.7;
+            value = (1 - Math.pow(1 - p, 3)) * (target + overshoot);
+        } else {
+            const p = (t - 0.7) / 0.3;
+            const eased = p * p * (3 - 2 * p);
+            value = (target + overshoot) - eased * overshoot;
+        }
+        el.textContent = Math.round(value);
+        if (t < 1) requestAnimationFrame(tick);
+        else {
+            el.textContent = target;
+            el.classList.add('vy-mech-settle');
+            setTimeout(() => el.classList.remove('vy-mech-settle'), 280);
+        }
     }
     requestAnimationFrame(tick);
 }
@@ -339,6 +353,21 @@ function updateFog() {
     fogVeil.classList.toggle('vy-fog-clear', p > 0.55 || reduceMotion);
 }
 
+// Le reflet du titre se trouble un instant quand on touche la carte du jour 2.
+const titleReflection2 = $('titleReflection2');
+if (titleReflection2 && fogCard) {
+    const dayCard2 = fogCard.closest('.vy-day-card');
+    let reflectionTimer = null;
+    const troubleReflection = () => {
+        titleReflection2.classList.add('vy-reflection-touched');
+        clearTimeout(reflectionTimer);
+        reflectionTimer = setTimeout(() => titleReflection2.classList.remove('vy-reflection-touched'), 900);
+    };
+    if (dayCard2) {
+        dayCard2.addEventListener('pointerdown', troubleReflection);
+    }
+}
+
 // =====================================================================
 //  LE VENT DU JOUR 3 : particules qui soufflent tant que la carte est visible.
 // =====================================================================
@@ -590,6 +619,33 @@ document.querySelectorAll('.vy-legend-canvas').forEach((canvas) => {
     const wrap = canvas.closest('.vy-legend');
     let ctx, w, h, scratched = 0, totalPx = 0, done = false;
 
+    // Un petit tas de copeaux qui grandit sous la carte, au fil du grattage.
+    const pile = document.createElement('div');
+    pile.className = 'vy-legend-pile';
+    pile.setAttribute('aria-hidden', 'true');
+    wrap.appendChild(pile);
+    let debrisCount = 0;
+    function spawnDebris(clientX, clientY) {
+        if (reduceMotion || debrisCount > 40) return;
+        const rect = canvas.getBoundingClientRect();
+        const chip = document.createElement('span');
+        chip.className = 'vy-debris';
+        chip.style.left = (clientX - rect.left + (Math.random() * 10 - 5)) + 'px';
+        chip.style.top = (clientY - rect.top) + 'px';
+        chip.style.setProperty('--fall-x', (Math.random() * 16 - 8) + 'px');
+        chip.style.setProperty('--fall-rot', (Math.random() * 180 - 90) + 'deg');
+        wrap.appendChild(chip);
+        setTimeout(() => {
+            chip.remove();
+            const bit = document.createElement('span');
+            bit.className = 'vy-pile-bit';
+            bit.style.left = (Math.random() * 90) + '%';
+            bit.style.setProperty('--rot', (Math.random() * 40 - 20) + 'deg');
+            pile.appendChild(bit);
+        }, 650);
+        debrisCount++;
+    }
+
     function paint() {
         const rect = canvas.getBoundingClientRect();
         w = canvas.width = rect.width * devicePixelRatio;
@@ -611,9 +667,11 @@ document.querySelectorAll('.vy-legend-canvas').forEach((canvas) => {
     }
     function pos(e) {
         const rect = canvas.getBoundingClientRect();
-        const cx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-        const cy = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
-        return { x: cx * devicePixelRatio, y: cy * devicePixelRatio };
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const cx = clientX - rect.left;
+        const cy = clientY - rect.top;
+        return { x: cx * devicePixelRatio, y: cy * devicePixelRatio, clientX, clientY };
     }
     function checkDone() {
         if (done || !ctx) return;
@@ -627,9 +685,13 @@ document.querySelectorAll('.vy-legend-canvas').forEach((canvas) => {
             wrap.classList.add('vy-legend-done');
         }
     }
-    let drawing = false;
-    function start(e) { drawing = true; const p = pos(e); scratchAt(p.x, p.y); checkDone(); }
-    function move(e) { if (!drawing) return; e.preventDefault(); const p = pos(e); scratchAt(p.x, p.y); checkDone(); }
+    let drawing = false, lastDebrisTime = 0;
+    function maybeSpawn(p) {
+        const now = performance.now();
+        if (now - lastDebrisTime > 60) { spawnDebris(p.clientX, p.clientY); lastDebrisTime = now; }
+    }
+    function start(e) { drawing = true; const p = pos(e); scratchAt(p.x, p.y); checkDone(); maybeSpawn(p); }
+    function move(e) { if (!drawing) return; e.preventDefault(); const p = pos(e); scratchAt(p.x, p.y); checkDone(); maybeSpawn(p); }
     function end() { drawing = false; }
     canvas.addEventListener('pointerdown', start);
     canvas.addEventListener('pointermove', move);
@@ -771,6 +833,28 @@ document.querySelectorAll('.vy-elev').forEach((elevBox) => {
     const elevEl = $('totalElev'), timeEl = $('totalTime');
     if (elevEl) elevEl.textContent = `${totalElev} m`;
     if (timeEl) timeEl.textContent = `${h} h ${String(m).padStart(2, '0')}`;
+
+    // Le dénivelé cumulé traduit en tours Eiffel (330 m chacune), pour donner l'échelle d'un coup.
+    const eiffelRow = $('eiffelRow'), eiffelCaption = $('eiffelCaption');
+    if (eiffelRow && totalElev > 0) {
+        const count = Math.max(1, Math.round(totalElev / 330));
+        const eiffelSvg = `<svg viewBox="0 0 20 34" class="vy-eiffel-icon">
+            <path d="M10,1 L13,14 L17,14 L12,20 L15,33 L10,27 L5,33 L8,20 L3,14 L7,14 Z" fill="var(--ember-soft)"/>
+        </svg>`;
+        eiffelRow.innerHTML = Array.from({ length: count }, () => eiffelSvg).join('');
+        if (eiffelCaption) {
+            eiffelCaption.textContent = `\u2248 ${count} tour${count > 1 ? 's' : ''} Eiffel empilée${count > 1 ? 's' : ''}`;
+            eiffelCaption.hidden = false;
+        }
+    }
+
+    // Le cadran solaire tourne en fonction du temps de marche total (24h = un tour complet).
+    const gnomon = $('sundialGnomon');
+    if (gnomon) {
+        const angle = Math.min(355, (totalMinutes / 1440) * 360);
+        gnomon.style.transform = `rotate(${angle}deg)`;
+        gnomon.style.transition = 'transform 1.8s cubic-bezier(.16,1,.3,1)';
+    }
 })();
 
 
@@ -826,6 +910,20 @@ function initials(name) { return (name || '?').trim().slice(0, 2).toUpperCase();
 function avatarChip(i, name) {
     return `<span class="vy-avatar-chip vy-avatar-photo"><img src="photos/ami-${i + 1}.png" alt="" onerror="this.parentElement.classList.add('vy-avatar-noimg')"><i>${initials(name)}</i></span>`;
 }
+
+// ---------- Les trois têtes avec prénoms, avant que le sentier ne commence ----------
+(async function loadTeamIntro() {
+    const host = $('teamIntro');
+    if (!host) return;
+    try {
+        const { data } = await api('/api/voyages/names');
+        const names = (data.names && data.names.length) ? data.names : ['Victor', 'Swann', 'Pierre'];
+        host.innerHTML = names.map((n, i) => `
+            <div class="vy-team-member">${avatarChip(i, n)}<span>${esc(n)}</span></div>
+        `).join('');
+        host.hidden = false;
+    } catch (e) { /* pas grave, la ligne reste simplement masquée */ }
+})();
 
 // ---------- QUI PORTE QUOI ----------
 async function loadGear() {
@@ -1411,7 +1509,7 @@ if (customCursor && window.matchMedia('(pointer: fine)').matches) {
 // =====================================================================
 //  TITRES RÉVÉLÉS MOT PAR MOT.
 // =====================================================================
-document.querySelectorAll('.vy-day-title').forEach(el => {
+document.querySelectorAll('.vy-day-title:not(#day3Title)').forEach(el => {
     // Découpe en mots sans casser les balises internes simples (<br>).
     const words = el.innerHTML.split(/(\s+|<br>)/).filter(Boolean);
     el.innerHTML = words.map((w, i) => {
@@ -1419,6 +1517,31 @@ document.querySelectorAll('.vy-day-title').forEach(el => {
         return `<span class="vy-word" style="--i:${i}">${w}</span>`;
     }).join('');
 });
+
+// =====================================================================
+//  LE TITRE DU JOUR 3, SOUFFLÉ PAR LE VENT : les lettres partent
+//  dispersées et reviennent se poser à leur place, dans l'ordre.
+// =====================================================================
+(function windTitle() {
+    const el = $('day3Title');
+    if (!el || reduceMotion) return;
+    const text = el.textContent;
+    el.innerHTML = [...text].map((ch, i) => {
+        if (ch === ' ') return ' ';
+        const dx = (Math.random() * 220 - 110).toFixed(0);
+        const dy = (Math.random() * 60 - 70).toFixed(0);
+        const rot = (Math.random() * 240 - 120).toFixed(0);
+        return `<span class="vy-wind-letter" style="--dx:${dx}px; --dy:${dy}px; --rot:${rot}deg; --i:${i}">${ch}</span>`;
+    }).join('');
+    const article = el.closest('.vy-day');
+    if (!article) return;
+    const io = new IntersectionObserver((entries) => {
+        entries.forEach(e => {
+            if (e.isIntersecting) { el.classList.add('vy-wind-settled'); io.unobserve(article); }
+        });
+    }, { threshold: 0.35 });
+    io.observe(article);
+})();
 
 // =====================================================================
 //  MÉTÉO RÉELLE (Open-Meteo, sans clé, se met à jour à chaque visite).
