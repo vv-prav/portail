@@ -837,43 +837,134 @@ if (fsEclipseBtn && fsEclipse && fsMoon) {
     const svg = $('day5Svg');
     const path = $('day5Path');
     const caption = $('day5Caption');
+    const splashHost = $('day5Splashes');
+    const confettiHost = $('day5Confetti');
+    const sunGlow = $('day5SunGlow');
     if (!btn || !stage || !svg || !path) return;
 
     const heads = [0, 1, 2].map(i => stage.querySelector(`.vy-day5-head[data-head="${i}"]`)).filter(Boolean);
-    const LAG = [0, 0.025, 0.05];
-    const DURATION = 9000;
+    const trailPaths = [0, 1, 2].map(i => $('day5Trail' + i)).filter(Boolean);
+    const trailPoints = [[], [], []];
+    const RIVER_IN = 0.34, RIVER_OUT = 0.64;
+    const LAG = [0, 0.03, 0.06];
+    const DURATION = 12000;
     let animId = null, startTime = 0;
+    let splashed = [{ in: false, out: false }, { in: false, out: false }, { in: false, out: false }];
+    let arrived = false;
 
-    function placeHead(head, fraction) {
-        const total = path.getTotalLength();
-        const clamped = Math.max(0, Math.min(1, fraction));
-        const pt = path.getPointAtLength(total * clamped);
+    // Le temps ne s'écoule pas à vitesse constante le long du chemin : on
+    // s'attarde dans la rivière, façon vraie baignade, plutôt qu'un survol.
+    function timeToFraction(t) {
+        if (t < 0.35) return (t / 0.35) * RIVER_IN;
+        if (t < 0.78) return RIVER_IN + ((t - 0.35) / 0.43) * (RIVER_OUT - RIVER_IN);
+        return RIVER_OUT + ((t - 0.78) / 0.22) * (1 - RIVER_OUT);
+    }
+
+    function svgToScreen(pt) {
         const svgRect = svg.getBoundingClientRect();
         const vb = svg.viewBox.baseVal;
         const scale = Math.min(svgRect.width / vb.width, svgRect.height / vb.height);
         const renderedW = vb.width * scale, renderedH = vb.height * scale;
         const offsetX = svgRect.left + (svgRect.width - renderedW) / 2;
         const offsetY = svgRect.top + (svgRect.height - renderedH) / 2;
-        head.style.left = (offsetX + (pt.x - vb.x) * scale) + 'px';
-        head.style.top = (offsetY + (pt.y - vb.y) * scale) + 'px';
+        return { x: offsetX + (pt.x - vb.x) * scale, y: offsetY + (pt.y - vb.y) * scale };
+    }
+
+    function pointAt(fraction) {
+        const total = path.getTotalLength();
+        return path.getPointAtLength(total * Math.max(0, Math.min(1, fraction)));
+    }
+
+    function spawnSplash(svgPt) {
+        if (!splashHost || reduceMotion) return;
+        for (let i = 0; i < 6; i++) {
+            const drop = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            drop.setAttribute('class', 'vy-day5-splash-drop');
+            drop.setAttribute('cx', svgPt.x);
+            drop.setAttribute('cy', svgPt.y);
+            drop.setAttribute('r', 1.6 + Math.random() * 1.4);
+            drop.style.setProperty('--sx', (Math.random() * 24 - 12) + 'px');
+            drop.style.setProperty('--sy', (-8 - Math.random() * 16) + 'px');
+            splashHost.appendChild(drop);
+            setTimeout(() => drop.remove(), 650);
+        }
+    }
+
+    function placeHead(head, fraction, index) {
+        const pt = pointAt(fraction);
+        const screen = svgToScreen(pt);
+        head.style.left = screen.x + 'px';
+        head.style.top = screen.y + 'px';
+
+        const inWater = fraction > RIVER_IN + 0.015 && fraction < RIVER_OUT - 0.015;
+        head.classList.toggle('vy-day5-splashing', inWater);
+        head.style.opacity = inWater ? '.88' : '1';
+
+        if (index != null) {
+            if (fraction >= RIVER_IN && !splashed[index].in) { splashed[index].in = true; spawnSplash(pt); }
+            if (fraction >= RIVER_OUT && !splashed[index].out) { splashed[index].out = true; spawnSplash(pt); }
+            const pts = trailPoints[index];
+            pts.push(pt);
+            if (pts.length > 16) pts.shift();
+            const trailPath = trailPaths[index];
+            if (trailPath && pts.length > 1) {
+                trailPath.setAttribute('d', 'M' + pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' L'));
+            }
+        }
+    }
+
+    function burstConfetti() {
+        if (!confettiHost || reduceMotion) return;
+        const colors = ['#c9935a', '#8b6ba8', '#c9b8dc', '#e0b483', '#a8d9b8'];
+        const carPt = svgToScreen(pointAt(1));
+        for (let i = 0; i < 34; i++) {
+            const bit = document.createElement('span');
+            bit.className = 'vy-day5-confetti-bit';
+            const size = 5 + Math.random() * 5;
+            bit.style.width = size + 'px';
+            bit.style.height = (size * 0.6) + 'px';
+            bit.style.left = (carPt.x - 30 + Math.random() * 60) + 'px';
+            bit.style.top = (carPt.y - 20) + 'px';
+            bit.style.background = colors[i % colors.length];
+            bit.style.setProperty('--cx', (Math.random() * 140 - 70) + 'px');
+            bit.style.setProperty('--cr', (Math.random() * 500) + 'deg');
+            bit.style.animationDelay = (Math.random() * 0.4) + 's';
+            confettiHost.appendChild(bit);
+            setTimeout(() => bit.remove(), 2400);
+        }
+        if (navigator.vibrate) { try { navigator.vibrate([20, 40, 20, 40, 60]); } catch (e) {} }
     }
 
     function frame(now) {
         const t = Math.min(1, (now - startTime) / DURATION);
-        heads.forEach((head, i) => placeHead(head, Math.max(0, t - LAG[i])));
+        heads.forEach((head, i) => placeHead(head, timeToFraction(Math.max(0, t - LAG[i] * 3)), i));
+
+        if (sunGlow) sunGlow.style.opacity = Math.max(0, (t - 0.72) / 0.28) * 0.85;
+
         if (caption) {
-            if (t > 0.35 && t < 0.7) caption.textContent = 'Une pause bien méritée dans l\u2019eau fraîche';
-            else if (t >= 0.7) caption.textContent = 'Presque arrivés à la voiture';
-            else caption.textContent = 'Le chemin, la rivière, puis la voiture';
+            if (t < 0.3) caption.textContent = 'Le long des chemins creux, tranquille';
+            else if (t < 0.78) caption.textContent = 'Une vraie baignade, bien méritée';
+            else if (t < 1) caption.textContent = 'Presque arrivés à la voiture';
         }
-        if (t < 1) animId = requestAnimationFrame(frame);
+        if (t < 1) { animId = requestAnimationFrame(frame); return; }
+
+        if (!arrived) {
+            arrived = true;
+            if (caption) caption.textContent = 'Retour à Huelgoat !';
+            burstConfetti();
+        }
     }
 
     function start() {
         stage.classList.add('vy-fs-day5-on');
-        heads.forEach(h => placeHead(h, 0));
+        trailPoints.forEach(p => p.length = 0);
+        trailPaths.forEach(p => p && p.removeAttribute('d'));
+        splashed = [{ in: false, out: false }, { in: false, out: false }, { in: false, out: false }];
+        arrived = false;
+        if (sunGlow) sunGlow.style.opacity = 0;
+        heads.forEach((h, i) => placeHead(h, 0, i));
         cancelAnimationFrame(animId);
-        if (reduceMotion) { heads.forEach(h => placeHead(h, 1)); return; }
+        if (reduceMotion) { heads.forEach((h, i) => placeHead(h, 1, i)); if (caption) caption.textContent = 'Retour à Huelgoat !'; return; }
         startTime = performance.now();
         animId = requestAnimationFrame(frame);
         if (navigator.vibrate) { try { navigator.vibrate(15); } catch (e) {} }
@@ -881,11 +972,13 @@ if (fsEclipseBtn && fsEclipse && fsMoon) {
     function close() {
         stage.classList.remove('vy-fs-day5-on');
         cancelAnimationFrame(animId);
+        if (confettiHost) confettiHost.innerHTML = '';
+        if (splashHost) splashHost.innerHTML = '';
     }
     btn.addEventListener('click', start);
     $('fsDay5Close')?.addEventListener('click', close);
     window.addEventListener('resize', () => {
-        if (stage.classList.contains('vy-fs-day5-on') && !animId) heads.forEach(h => placeHead(h, 1));
+        if (stage.classList.contains('vy-fs-day5-on') && !animId) heads.forEach((h, i) => placeHead(h, 1, i));
     });
 })();
 

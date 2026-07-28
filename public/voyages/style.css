@@ -482,7 +482,21 @@ body {
 .vy-fs-day5-on .vy-day5-head { opacity:1; }
 .vy-fs-day5-caption-fade { animation:vyDay5CaptionFade 1s ease-in-out infinite; }
 @keyframes vyDay5CaptionFade { 0%,100% { opacity:.7; } 50% { opacity:1; } }
+.vy-day5-head.vy-day5-splashing { animation:vyDay5Bob .5s ease-in-out infinite; }
+@keyframes vyDay5Bob { 0%,100% { transform:translateY(0); } 50% { transform:translateY(3px); } }
 
+/* Confettis à l'arrivée à la voiture, le vrai bouquet final. */
+.vy-day5-confetti { position:fixed; inset:0; z-index:312; pointer-events:none; overflow:hidden; }
+.vy-day5-confetti-bit { position:absolute; top:-10px; opacity:0; animation:vyDay5ConfettiFall 1.8s ease-in forwards; }
+@keyframes vyDay5ConfettiFall {
+    0% { opacity:1; transform:translate(0,0) rotate(0deg); }
+    100% { opacity:0; transform:translate(var(--cx,20px), 340px) rotate(var(--cr,360deg)); }
+}
+.vy-day5-splash-drop { fill:#cfe4ef; animation:vyDay5SplashDrop .6s ease-out forwards; }
+@keyframes vyDay5SplashDrop {
+    0% { opacity:1; transform:translate(0,0) scale(1); }
+    100% { opacity:0; transform:translate(var(--sx,0), var(--sy,-18)) scale(.3); }
+}
 .vy-meteor { position:absolute; width:2px; height:2px; background:var(--parchment); border-radius:50%;
     box-shadow:0 0 6px 1px var(--parchment); animation:vyMeteorStreak linear infinite; }
 .vy-meteor::before { content:''; position:absolute; top:1px; right:1px; width:46px; height:1px;
