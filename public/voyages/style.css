@@ -391,6 +391,24 @@ body {
 .vy-legend-canvas { position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none; cursor:pointer; z-index:2; border-radius:14px; }
 .vy-legend.vy-legend-done .vy-legend-canvas { opacity:0; pointer-events:none; transition:opacity .6s; }
 
+/* ===================== L'AUBE, LES FÉES ET LE TUMULUS (jour 4) ===================== */
+.vy-dawn-scene { margin:20px 0 26px; text-align:center; }
+.vy-dawn-svg { width:100%; height:auto; border-radius:14px; margin-bottom:12px; display:block; }
+.vy-fairy { animation:vyFairyFloat 2.6s ease-in-out infinite; transform-origin:center; filter:drop-shadow(0 0 3px currentColor); }
+.vy-fairy:nth-child(5) { animation-delay:.3s; }
+.vy-fairy:nth-child(6) { animation-delay:.7s; }
+.vy-fairy:nth-child(7) { animation-delay:.1s; }
+@keyframes vyFairyFloat {
+    0%,100% { transform:translate(0,0); opacity:.9; }
+    50% { transform:translate(6px,-8px); opacity:.5; }
+}
+.vy-fairy.vy-fairy-frozen { animation:none; opacity:0; transition:opacity .5s; }
+.vy-menhir { transition:height 1s cubic-bezier(.2,.9,.3,1), opacity .5s, y 1s cubic-bezier(.2,.9,.3,1); }
+.vy-menhir.vy-menhir-up { opacity:1; }
+.vy-dawn-caption { font-size:.72rem; color:var(--muted); margin:0 0 10px; }
+.vy-dawn-caption[hidden] { display:none; }
+#tumulusMound rect { transition:opacity .4s; }
+
 /* ===================== CAIRN (jour 1) ===================== */
 .vy-cairn-zone { text-align:center; margin:12px 0 26px; }
 .vy-cairn { min-height:46px; display:flex; flex-direction:column-reverse; align-items:center; gap:3px; margin-bottom:10px; }
@@ -812,7 +830,7 @@ body:not(.vy-loading) .vy-loader { opacity:0; visibility:hidden; pointer-events:
 }
 
 /* ===================== LES TROIS TÊTES AVANT LE SENTIER ===================== */
-.vy-team-intro { display:flex; justify-content:center; gap:28px; margin:0 0 52px; }
+.vy-team-intro { display:flex; justify-content:center; gap:28px; margin:38px 0 0; }
 .vy-team-intro[hidden] { display:none; }
 .vy-team-member { display:flex; flex-direction:column; align-items:center; gap:6px; }
 .vy-team-member .vy-avatar-chip { width:48px; height:48px; }

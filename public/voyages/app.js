@@ -709,6 +709,89 @@ if (cairnBtn && cairnStack) {
 }
 
 // =====================================================================
+//  L'AUBE SUR LA LANDE (jour 4) : les fées se figent en menhirs,
+//  puis on peut bâtir un tumulus avec les pierres apparues.
+// =====================================================================
+(function dawnScene() {
+    const dawnBtn = $('dawnBtn');
+    const tumulusBtn = $('tumulusBtn');
+    const dawnSky = $('dawnSky');
+    const dawnSun = $('dawnSun');
+    const caption = $('dawnCaption');
+    const mound = $('tumulusMound');
+    if (!dawnBtn || !dawnSky) return;
+
+    const fairies = [0, 1, 2].map(i => document.querySelector(`.vy-fairy[data-fairy="${i}"]`)).filter(Boolean);
+    const menhirs = [0, 1, 2].map(i => document.querySelector(`.vy-menhir[data-menhir="${i}"]`)).filter(Boolean);
+    const NIGHT = [36, 28, 52], DAWN = [232, 179, 138]; // couleurs RVB : nuit profonde vers aube ambrée
+
+    function lerpColor(a, b, p) {
+        return `rgb(${Math.round(a[0] + (b[0] - a[0]) * p)},${Math.round(a[1] + (b[1] - a[1]) * p)},${Math.round(a[2] + (b[2] - a[2]) * p)})`;
+    }
+
+    dawnBtn.addEventListener('click', () => {
+        if (dawnBtn.disabled) return;
+        dawnBtn.disabled = true;
+        dawnBtn.textContent = 'L\u2019aube se lève...';
+        if (caption) { caption.hidden = false; caption.textContent = 'Le ciel pâlit doucement sur la lande'; }
+
+        const DURATION = reduceMotion ? 0 : 6000;
+        const start = performance.now();
+        function skyFrame(now) {
+            const p = DURATION ? Math.min(1, (now - start) / DURATION) : 1;
+            dawnSky.setAttribute('fill', lerpColor(NIGHT, DAWN, p));
+            if (dawnSun) dawnSun.style.opacity = p;
+            if (p < 1) requestAnimationFrame(skyFrame);
+        }
+        requestAnimationFrame(skyFrame);
+
+        // Chaque fée se fige en menhir à son propre moment, l'une après l'autre.
+        fairies.forEach((fairy, i) => {
+            setTimeout(() => {
+                fairy.classList.add('vy-fairy-frozen');
+                const menhir = menhirs[i];
+                if (!menhir) return;
+                const groundY = 74;
+                const h = 16 + i * 2;
+                menhir.setAttribute('height', h);
+                menhir.setAttribute('y', groundY - h);
+                menhir.classList.add('vy-menhir-up');
+                if (navigator.vibrate) { try { navigator.vibrate(10); } catch (e) {} }
+            }, reduceMotion ? 0 : 1500 + i * 1400);
+        });
+
+        setTimeout(() => {
+            dawnBtn.textContent = 'L\u2019aube s\u2019est levée';
+            if (caption) caption.textContent = 'Les fées se sont figées avec la lumière';
+            if (tumulusBtn) tumulusBtn.hidden = false;
+        }, reduceMotion ? 0 : 1500 + fairies.length * 1400 + 600);
+    });
+
+    if (tumulusBtn && mound) {
+        tumulusBtn.addEventListener('click', () => {
+            const layer = mound.children.length;
+            if (layer >= 5) return;
+            const bit = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+            const rx = 46 - layer * 7, ry = 5;
+            bit.setAttribute('cx', 150);
+            bit.setAttribute('cy', 74 - layer * 4.5);
+            bit.setAttribute('rx', rx);
+            bit.setAttribute('ry', ry);
+            bit.setAttribute('fill', layer % 2 === 0 ? '#4a4256' : '#544a5f');
+            bit.style.opacity = 0;
+            mound.appendChild(bit);
+            requestAnimationFrame(() => { bit.style.opacity = 1; });
+            if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
+            if (mound.children.length >= 5) {
+                tumulusBtn.textContent = 'Le tumulus est achevé';
+                tumulusBtn.disabled = true;
+                if (caption) caption.textContent = 'Un tumulus veille désormais sur la lande';
+            }
+        });
+    }
+})();
+
+// =====================================================================
 //  LE VŒU DE LA CHAPELLE (jour 2) : appui long fait monter une lumière.
 // =====================================================================
 const wishLight = $('wishLight');

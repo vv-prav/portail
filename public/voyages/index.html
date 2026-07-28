@@ -105,6 +105,8 @@
                 <div class="vy-flip" data-unit="s"><div class="vy-flip-card"><span class="vy-flip-val">00</span></div><span class="vy-flip-label">secondes</span></div>
             </div>
 
+            <div class="vy-team-intro" id="teamIntro" hidden></div>
+
             <div class="vy-weather" id="weatherWidget" hidden>
                 <p class="vy-weather-label">Prévisions à Huelgoat</p>
                 <div class="vy-weather-row" id="weatherRow"></div>
@@ -226,8 +228,6 @@
             <div class="vy-walker" data-walker="1"><img src="photos/ami-2.png" alt="" onerror="this.parentElement.classList.add('vy-walker-empty')"></div>
             <div class="vy-walker" data-walker="2"><img src="photos/ami-3.png" alt="" onerror="this.parentElement.classList.add('vy-walker-empty')"></div>
         </div>
-
-        <div class="vy-team-intro" id="teamIntro" hidden></div>
 
         <article class="vy-day" data-day="1" data-mood="foret" data-reveal>
             <div class="vy-day-node"><span>1</span></div>
@@ -412,6 +412,24 @@
                     <p class="vy-legend-text">Les alignements de pierres du plateau seraient, selon la tradition orale, d'anciens soldats pétrifiés un jour de bataille oubliée. D'autres racontent plutôt qu'il s'agissait de fées veillant sur la lande, changées en menhirs à l'aube.</p>
                     <canvas class="vy-legend-canvas" data-legend="4"></canvas>
                 </div>
+                <div class="vy-dawn-scene" id="dawnScene">
+                    <svg viewBox="0 0 300 100" class="vy-dawn-svg" id="dawnSvg">
+                        <rect id="dawnSky" x="0" y="0" width="300" height="100" fill="#241c34"/>
+                        <circle id="dawnSun" cx="40" cy="90" r="16" fill="#e0b483" opacity="0"/>
+                        <path d="M0,74 Q150,62 300,74 L300,100 L0,100 Z" fill="#2a2138"/>
+                        <circle class="vy-fairy" data-fairy="0" cx="70" cy="45" r="2.6" fill="#e0b483"/>
+                        <circle class="vy-fairy" data-fairy="1" cx="150" cy="35" r="2.6" fill="#c9b8dc"/>
+                        <circle class="vy-fairy" data-fairy="2" cx="225" cy="48" r="2.6" fill="#e0b483"/>
+                        <rect class="vy-menhir" data-menhir="0" x="65" y="74" width="9" height="0" rx="2" fill="#5a5265" opacity="0"/>
+                        <rect class="vy-menhir" data-menhir="1" x="145" y="74" width="9" height="0" rx="2" fill="#5a5265" opacity="0"/>
+                        <rect class="vy-menhir" data-menhir="2" x="220" y="74" width="9" height="0" rx="2" fill="#5a5265" opacity="0"/>
+                        <g id="tumulusMound"></g>
+                    </svg>
+                    <button type="button" class="vy-btn ghost" id="dawnBtn">Voir l'aube se lever</button>
+                    <button type="button" class="vy-btn ghost" id="tumulusBtn" hidden>Construire un tumulus avec les menhirs</button>
+                    <p class="vy-dawn-caption" id="dawnCaption" hidden></p>
+                </div>
+
                 <p class="vy-day-arrival">Arrivée à <b>La Feuillée</b>.</p>
             </div>
         </article>
