@@ -118,7 +118,7 @@ body {
 .vy-sentiers b { color:var(--ember-soft); font-family:var(--font-mono); font-weight:600; }
 
 /* ===================== LE SENTIER (scrollytelling) ===================== */
-.vy-trail { position:relative; max-width:720px; margin:0 auto; padding:40px 18px 30px; }
+.vy-trail { position:relative; max-width:720px; margin:0 auto; padding:58px 18px 30px; }
 .vy-trail-svg { position:absolute; top:0; left:24px; width:6px; height:100%; overflow:visible; z-index:0; }
 
 /* Indicateur d'étape collant, visible tant qu'on est dans le sentier */
@@ -134,7 +134,7 @@ body {
 .vy-progress-track i { display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--ember),var(--heather-soft));
                         transition:width .15s linear; }
 
-.vy-global-totals { max-width:640px; margin:0 auto; padding:0 22px 10px; text-align:center; }
+.vy-global-totals { max-width:640px; margin:0 auto; padding:20px 22px 26px; text-align:center; }
 .vy-global-totals .vy-kicker { text-align:center; }
 .vy-totals { display:flex; justify-content:center; gap:24px; margin:0; }
 .vy-total-item { display:flex; flex-direction:column; align-items:center; gap:2px; }
@@ -197,20 +197,6 @@ body {
               color:var(--ember-soft); margin:0 0 10px; }
 .vy-day-title { font-family:var(--font-display); font-weight:700; font-size:1.5rem; line-height:1.25;
                 margin:0 0 20px; color:var(--parchment); }
-
-/* Reflet du titre du jour 2 dans l'eau de la tourbière, qui ondule et se trouble au toucher. */
-.vy-title-reflection { font-family:var(--font-display); font-weight:700; font-size:1.5rem; line-height:1.25;
-    color:var(--heather-soft); opacity:.22; transform:scaleY(-1); transform-origin:top;
-    height:1em; overflow:hidden; margin:-8px 0 20px; pointer-events:none;
-    -webkit-mask-image:linear-gradient(to bottom, rgba(0,0,0,.5), transparent);
-    mask-image:linear-gradient(to bottom, rgba(0,0,0,.5), transparent);
-    animation:vyReflectionWave 4.5s ease-in-out infinite;
-    filter:blur(.4px); transition:filter .4s, opacity .4s; }
-@keyframes vyReflectionWave {
-    0%, 100% { transform:scaleY(-1) skewX(0deg); }
-    50% { transform:scaleY(-1) skewX(-1.5deg); }
-}
-.vy-title-reflection.vy-reflection-touched { filter:blur(2.5px); opacity:.35; }
 
 .vy-day-route { display:flex; align-items:center; gap:10px; font-family:var(--font-mono); font-size:.82rem;                color:var(--fog); margin:0 0 26px; flex-wrap:wrap; }
 .vy-day-route i { color:var(--heather-soft); font-style:normal; font-size:.72rem; text-transform:uppercase; letter-spacing:1px; }
@@ -425,6 +411,11 @@ body {
 /* ===================== ÉTOILES FILANTES (jour 2, la nuit du 11) ===================== */
 .vy-meteors { position:absolute; inset:0; z-index:2; pointer-events:none; overflow:hidden; opacity:0; transition:opacity .8s; }
 .vy-meteors.vy-meteors-on { opacity:1; }
+
+/* La pluie d'étoiles filantes déclenchée par bouton, sur tout l'écran. */
+.vy-fullscreen-meteors { position:fixed; inset:0; z-index:300; pointer-events:none; overflow:hidden;
+    opacity:0; transition:opacity .6s; }
+.vy-fullscreen-meteors.vy-fs-meteors-on { opacity:1; }
 .vy-meteor { position:absolute; width:2px; height:2px; background:var(--parchment); border-radius:50%;
     box-shadow:0 0 6px 1px var(--parchment); animation:vyMeteorStreak linear infinite; }
 .vy-meteor::before { content:''; position:absolute; top:1px; right:1px; width:46px; height:1px;
@@ -700,7 +691,7 @@ body:not(.vy-loading) .vy-loader { opacity:0; visibility:hidden; pointer-events:
 }
 
 /* ===================== COMPTEUR DE PAS DÉCORATIF ===================== */
-.vy-steps { display:flex; flex-direction:column; align-items:center; gap:2px; margin:0 0 22px; }
+.vy-steps { display:flex; flex-direction:column; align-items:center; gap:2px; margin:0 0 40px; }
 .vy-steps-num { font-family:var(--font-mono); font-weight:700; font-size:1.3rem; color:var(--parchment);
     font-variant-numeric:tabular-nums; transition:color .2s; }
 .vy-steps-num.vy-steps-wild { color:var(--ember-soft); }
@@ -738,7 +729,7 @@ body:not(.vy-loading) .vy-loader { opacity:0; visibility:hidden; pointer-events:
 }
 
 /* ===================== LES TROIS TÊTES AVANT LE SENTIER ===================== */
-.vy-team-intro { display:flex; justify-content:center; gap:28px; margin:0 0 34px; }
+.vy-team-intro { display:flex; justify-content:center; gap:28px; margin:0 0 52px; }
 .vy-team-intro[hidden] { display:none; }
 .vy-team-member { display:flex; flex-direction:column; align-items:center; gap:6px; }
 .vy-team-member .vy-avatar-chip { width:48px; height:48px; }

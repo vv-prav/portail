@@ -353,21 +353,6 @@ function updateFog() {
     fogVeil.classList.toggle('vy-fog-clear', p > 0.55 || reduceMotion);
 }
 
-// Le reflet du titre se trouble un instant quand on touche la carte du jour 2.
-const titleReflection2 = $('titleReflection2');
-if (titleReflection2 && fogCard) {
-    const dayCard2 = fogCard.closest('.vy-day-card');
-    let reflectionTimer = null;
-    const troubleReflection = () => {
-        titleReflection2.classList.add('vy-reflection-touched');
-        clearTimeout(reflectionTimer);
-        reflectionTimer = setTimeout(() => titleReflection2.classList.remove('vy-reflection-touched'), 900);
-    };
-    if (dayCard2) {
-        dayCard2.addEventListener('pointerdown', troubleReflection);
-    }
-}
-
 // =====================================================================
 //  LE VENT DU JOUR 3 : particules qui soufflent tant que la carte est visible.
 // =====================================================================
@@ -770,6 +755,33 @@ if (meteorLayer) {
         });
     }, { threshold: 0.25 });
     meteorIo.observe(meteorLayer.closest('.vy-day'));
+}
+
+// Le bouton "pluie d'étoiles filantes" : plein écran, sur demande.
+const meteorShowerBtn = $('meteorShowerBtn');
+const fullscreenMeteors = $('fullscreenMeteors');
+if (meteorShowerBtn && fullscreenMeteors) {
+    meteorShowerBtn.addEventListener('click', () => {
+        if (reduceMotion) return;
+        fullscreenMeteors.innerHTML = '';
+        const count = 22;
+        for (let i = 0; i < count; i++) {
+            const m = document.createElement('span');
+            m.className = 'vy-meteor';
+            m.style.top = (Math.random() * 60) + '%';
+            m.style.left = (Math.random() * 100) + '%';
+            m.style.animationDuration = (1.4 + Math.random() * 1.8) + 's';
+            m.style.animationDelay = (Math.random() * 1.6) + 's';
+            fullscreenMeteors.appendChild(m);
+        }
+        fullscreenMeteors.classList.add('vy-fs-meteors-on');
+        if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
+        clearTimeout(meteorShowerBtn._hideTimer);
+        meteorShowerBtn._hideTimer = setTimeout(() => {
+            fullscreenMeteors.classList.remove('vy-fs-meteors-on');
+            setTimeout(() => { fullscreenMeteors.innerHTML = ''; }, 700);
+        }, 3600);
+    });
 }
 
 // =====================================================================
