@@ -828,6 +828,68 @@ if (fsEclipseBtn && fsEclipse && fsMoon) {
 }
 
 // =====================================================================
+//  "VIVRE CETTE JOURNÉE" (jour 5) : les trois têtes suivent un chemin
+//  qui passe par la rivière avant d'arriver à la voiture.
+// =====================================================================
+(function day5Scene() {
+    const btn = $('liveDay5Btn');
+    const stage = $('fsDay5');
+    const svg = $('day5Svg');
+    const path = $('day5Path');
+    const caption = $('day5Caption');
+    if (!btn || !stage || !svg || !path) return;
+
+    const heads = [0, 1, 2].map(i => stage.querySelector(`.vy-day5-head[data-head="${i}"]`)).filter(Boolean);
+    const LAG = [0, 0.025, 0.05];
+    const DURATION = 9000;
+    let animId = null, startTime = 0;
+
+    function placeHead(head, fraction) {
+        const total = path.getTotalLength();
+        const clamped = Math.max(0, Math.min(1, fraction));
+        const pt = path.getPointAtLength(total * clamped);
+        const svgRect = svg.getBoundingClientRect();
+        const vb = svg.viewBox.baseVal;
+        const scale = Math.min(svgRect.width / vb.width, svgRect.height / vb.height);
+        const renderedW = vb.width * scale, renderedH = vb.height * scale;
+        const offsetX = svgRect.left + (svgRect.width - renderedW) / 2;
+        const offsetY = svgRect.top + (svgRect.height - renderedH) / 2;
+        head.style.left = (offsetX + (pt.x - vb.x) * scale) + 'px';
+        head.style.top = (offsetY + (pt.y - vb.y) * scale) + 'px';
+    }
+
+    function frame(now) {
+        const t = Math.min(1, (now - startTime) / DURATION);
+        heads.forEach((head, i) => placeHead(head, Math.max(0, t - LAG[i])));
+        if (caption) {
+            if (t > 0.35 && t < 0.7) caption.textContent = 'Une pause bien méritée dans l\u2019eau fraîche';
+            else if (t >= 0.7) caption.textContent = 'Presque arrivés à la voiture';
+            else caption.textContent = 'Le chemin, la rivière, puis la voiture';
+        }
+        if (t < 1) animId = requestAnimationFrame(frame);
+    }
+
+    function start() {
+        stage.classList.add('vy-fs-day5-on');
+        heads.forEach(h => placeHead(h, 0));
+        cancelAnimationFrame(animId);
+        if (reduceMotion) { heads.forEach(h => placeHead(h, 1)); return; }
+        startTime = performance.now();
+        animId = requestAnimationFrame(frame);
+        if (navigator.vibrate) { try { navigator.vibrate(15); } catch (e) {} }
+    }
+    function close() {
+        stage.classList.remove('vy-fs-day5-on');
+        cancelAnimationFrame(animId);
+    }
+    btn.addEventListener('click', start);
+    $('fsDay5Close')?.addEventListener('click', close);
+    window.addEventListener('resize', () => {
+        if (stage.classList.contains('vy-fs-day5-on') && !animId) heads.forEach(h => placeHead(h, 1));
+    });
+})();
+
+// =====================================================================
 //  SUIVRE LE PROFIL D'ALTITUDE AU DOIGT.
 // =====================================================================
 document.querySelectorAll('.vy-elev').forEach((elevBox) => {

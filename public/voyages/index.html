@@ -451,6 +451,7 @@
                     <p class="vy-legend-text">Les chemins creux du retour seraient d'anciens passages empruntés par les contrebandiers de sel, qui connaissaient chaque recoin pour échapper aux gabelous. La nuit, certains jurent encore y entendre des pas qui ne sont pas les leurs.</p>
                     <canvas class="vy-legend-canvas" data-legend="5"></canvas>
                 </div>
+                <button type="button" class="vy-btn ghost" id="liveDay5Btn">Vivre cette journée</button>
                 <p class="vy-day-arrival">Retour à <b>Huelgoat</b>, et récupération du véhicule.</p>
             </div>
         </article>
@@ -582,6 +583,37 @@
     </div>
 
     <div class="vy-fullscreen-meteors" id="fullscreenMeteors" aria-hidden="true"></div>
+
+    <div class="vy-fs-day5" id="fsDay5" aria-hidden="true">
+        <button type="button" class="vy-fs-eclipse-close" id="fsDay5Close" aria-label="Fermer">✕</button>
+        <svg class="vy-fs-day5-svg" id="day5Svg" viewBox="0 0 400 200" preserveAspectRatio="xMidYMid meet">
+            <defs>
+                <linearGradient id="day5Bg" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stop-color="#2a2338"/>
+                    <stop offset="45%" stop-color="#233248"/>
+                    <stop offset="60%" stop-color="#233248"/>
+                    <stop offset="100%" stop-color="#26212f"/>
+                </linearGradient>
+            </defs>
+            <rect x="0" y="0" width="400" height="200" fill="url(#day5Bg)"/>
+            <ellipse cx="255" cy="140" rx="70" ry="26" fill="#3a5f7a" opacity=".55"/>
+            <circle class="vy-day5-ripple" cx="255" cy="140" r="6" />
+            <circle class="vy-day5-ripple" cx="255" cy="140" r="6" style="animation-delay:.5s" />
+            <circle class="vy-day5-ripple" cx="255" cy="140" r="6" style="animation-delay:1s" />
+            <path id="day5Path" d="M20,100 C70,80 100,60 150,80 C180,90 190,130 220,140 C250,150 270,140 300,110 C330,90 350,80 380,90"
+                  fill="none" stroke="rgba(201,184,220,.35)" stroke-width="2" stroke-dasharray="3 7"/>
+            <g transform="translate(365,72)">
+                <rect x="0" y="10" width="30" height="14" rx="4" fill="var(--heather-soft)"/>
+                <rect x="4" y="2" width="20" height="12" rx="4" fill="var(--heather-soft)"/>
+                <circle cx="7" cy="26" r="4" fill="#0d0a14"/>
+                <circle cx="23" cy="26" r="4" fill="#0d0a14"/>
+            </g>
+        </svg>
+        <div class="vy-day5-head" data-head="0"><img src="photos/ami-1.png" alt="" onerror="this.parentElement.style.display='none'"></div>
+        <div class="vy-day5-head" data-head="1"><img src="photos/ami-2.png" alt="" onerror="this.parentElement.style.display='none'"></div>
+        <div class="vy-day5-head" data-head="2"><img src="photos/ami-3.png" alt="" onerror="this.parentElement.style.display='none'"></div>
+        <p class="vy-fs-eclipse-caption" id="day5Caption">Le chemin, la rivière, puis la voiture</p>
+    </div>
 
     <div class="vy-fs-eclipse" id="fsEclipse" aria-hidden="true">
         <button type="button" class="vy-fs-eclipse-close" id="fsEclipseClose" aria-label="Fermer">✕</button>

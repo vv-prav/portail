@@ -462,6 +462,27 @@ body {
     border-radius:12px; background:rgba(255,255,255,.08); border:1px solid var(--line); color:var(--parchment);
     font-size:1.1rem; cursor:pointer; }
 
+/* La scène "vivre cette journée" du jour 5 : chemin, rivière, voiture. */
+.vy-fs-day5 { position:fixed; inset:0; z-index:310; background:#1a1625; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; opacity:0; visibility:hidden; transition:opacity .5s, visibility .5s;
+    padding:20px; }
+.vy-fs-day5.vy-fs-day5-on { opacity:1; visibility:visible; }
+.vy-fs-day5-svg { width:100%; max-width:520px; height:auto; }
+.vy-day5-ripple { fill:none; stroke:rgba(201,184,220,.5); stroke-width:1.5; opacity:0;
+    transform-origin:255px 140px; animation:vyDay5Ripple 2.4s ease-out infinite; animation-play-state:paused; }
+.vy-fs-day5-on .vy-day5-ripple { animation-play-state:running; }
+@keyframes vyDay5Ripple {
+    0% { r:4; opacity:.7; }
+    100% { r:34; opacity:0; }
+}
+.vy-day5-head { position:fixed; width:26px; height:26px; margin:-13px 0 0 -13px; z-index:311;
+    opacity:0; pointer-events:none; transition:opacity .3s; }
+.vy-day5-head img { width:100%; height:100%; object-fit:contain; display:block;
+    filter:drop-shadow(0 0 5px rgba(201,147,90,.85)) drop-shadow(0 0 12px rgba(139,107,168,.5)); }
+.vy-fs-day5-on .vy-day5-head { opacity:1; }
+.vy-fs-day5-caption-fade { animation:vyDay5CaptionFade 1s ease-in-out infinite; }
+@keyframes vyDay5CaptionFade { 0%,100% { opacity:.7; } 50% { opacity:1; } }
+
 .vy-meteor { position:absolute; width:2px; height:2px; background:var(--parchment); border-radius:50%;
     box-shadow:0 0 6px 1px var(--parchment); animation:vyMeteorStreak linear infinite; }
 .vy-meteor::before { content:''; position:absolute; top:1px; right:1px; width:46px; height:1px;
