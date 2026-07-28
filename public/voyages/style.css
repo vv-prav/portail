@@ -434,6 +434,34 @@ body {
     75% { transform:translate(-520px,420px); opacity:1; }
     100% { transform:translate(-620px,500px); opacity:0; }
 }
+
+/* L'éclipse vécue en plein écran : un immense soleil, une lune qui arrive du bord de l'écran. */
+.vy-fs-eclipse { position:fixed; inset:0; z-index:310; background:#0a0713; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; opacity:0; visibility:hidden; transition:opacity .5s, visibility .5s; }
+.vy-fs-eclipse.vy-fs-eclipse-on { opacity:1; visibility:visible; }
+.vy-fs-eclipse-stage { position:relative; width:min(60vw,320px); height:min(60vw,320px); overflow:visible; }
+.vy-fs-sun { position:absolute; inset:0; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, var(--ember-soft), var(--ember) 70%);
+    box-shadow:0 0 90px 30px rgba(201,147,90,.5); }
+.vy-fs-corona { position:absolute; inset:0; border-radius:50%; opacity:0;
+    box-shadow:0 0 130px 46px rgba(243,233,245,.55); transition:opacity .8s; }
+.vy-fs-corona.vy-fs-corona-on { opacity:1; }
+.vy-fs-moon { position:absolute; inset:0; border-radius:50%; background:#0a0713;
+    border:2px solid rgba(201,184,220,.4); box-shadow:0 0 30px 4px rgba(0,0,0,.6);
+    transform:translateX(140vw); }
+.vy-fs-moon.vy-fs-moon-run { animation:vyFsEclipseCross 7s cubic-bezier(.45,0,.55,1) forwards; }
+@keyframes vyFsEclipseCross {
+    0% { transform:translateX(140vw); }
+    45% { transform:translateX(0); }
+    55% { transform:translateX(0); }
+    100% { transform:translateX(-140vw); }
+}
+.vy-fs-eclipse-caption { margin-top:34px; font-family:var(--font-mono); font-size:.75rem; letter-spacing:.5px;
+    color:var(--fog); text-transform:uppercase; }
+.vy-fs-eclipse-close { position:absolute; top:max(16px,env(safe-area-inset-top)); right:16px; width:42px; height:42px;
+    border-radius:12px; background:rgba(255,255,255,.08); border:1px solid var(--line); color:var(--parchment);
+    font-size:1.1rem; cursor:pointer; }
+
 .vy-meteor { position:absolute; width:2px; height:2px; background:var(--parchment); border-radius:50%;
     box-shadow:0 0 6px 1px var(--parchment); animation:vyMeteorStreak linear infinite; }
 .vy-meteor::before { content:''; position:absolute; top:1px; right:1px; width:46px; height:1px;
@@ -520,9 +548,11 @@ body {
 .vy-avatar-btn:active { transform:scale(.95); }
 .vy-avatar-chip { width:24px; height:24px; border-radius:50%; display:grid; place-items:center; font-family:var(--font-mono);
     font-size:.62rem; font-weight:700; color:var(--fog); background:rgba(255,255,255,.08); flex:0 0 auto; }
-.vy-avatar-chip.vy-avatar-photo { overflow:hidden; position:relative; background:rgba(255,255,255,.08); }
-.vy-avatar-chip.vy-avatar-photo img { width:100%; height:100%; object-fit:contain; display:block; }
+.vy-avatar-chip.vy-avatar-photo { overflow:visible; position:relative; background:transparent; border-radius:0; }
+.vy-avatar-chip.vy-avatar-photo img { width:100%; height:100%; object-fit:contain; display:block;
+    filter:drop-shadow(0 0 3px rgba(201,147,90,.55)); }
 .vy-avatar-chip.vy-avatar-photo i { display:none; font-style:normal; }
+.vy-avatar-chip.vy-avatar-photo.vy-avatar-noimg { background:rgba(255,255,255,.08); border-radius:50%; }
 .vy-avatar-chip.vy-avatar-photo.vy-avatar-noimg img { display:none; }
 .vy-avatar-chip.vy-avatar-photo.vy-avatar-noimg i { display:block; }
 .vy-avatar-btn.vy-avatar-on { background:linear-gradient(155deg,var(--heather-soft),var(--heather)); border-color:transparent; color:var(--night); }
@@ -555,7 +585,7 @@ body {
 .vy-gear-noname { font-size:.66rem; color:var(--muted); font-style:italic; }
 .vy-gear-avatar { width:28px; height:28px; border-radius:50%; display:grid; place-items:center; font-family:var(--font-mono);
     font-size:.62rem; font-weight:700; color:var(--fog); background:rgba(255,255,255,.06); border:1.5px solid var(--line);
-    cursor:pointer; transition:transform .15s; flex:0 0 auto; padding:0; overflow:hidden; }
+    cursor:pointer; transition:transform .15s; flex:0 0 auto; padding:0; overflow:visible; }
 .vy-gear-avatar .vy-avatar-chip { width:100%; height:100%; }
 .vy-gear-avatar:active { transform:scale(.88); }
 .vy-gear-avatar.vy-gear-assigned { background:linear-gradient(155deg,var(--heather-soft),var(--heather)); color:var(--night); border-color:transparent; }

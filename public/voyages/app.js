@@ -798,6 +798,35 @@ if (meteorShowerBtn && fullscreenMeteors) {
     });
 }
 
+// L'éclipse vécue en plein écran, déclenchée par bouton depuis le jour 3.
+const fsEclipseBtn = $('fsEclipseBtn');
+const fsEclipse = $('fsEclipse');
+const fsMoon = $('fsMoon');
+const fsCorona = $('fsCorona');
+if (fsEclipseBtn && fsEclipse && fsMoon) {
+    let coronaTimer1 = null, coronaTimer2 = null;
+    const runMoon = () => {
+        fsMoon.classList.remove('vy-fs-moon-run');
+        void fsMoon.offsetWidth;
+        fsMoon.classList.add('vy-fs-moon-run');
+        clearTimeout(coronaTimer1); clearTimeout(coronaTimer2);
+        coronaTimer1 = setTimeout(() => fsCorona.classList.add('vy-fs-corona-on'), 3100);
+        coronaTimer2 = setTimeout(() => fsCorona.classList.remove('vy-fs-corona-on'), 4000);
+    };
+    fsEclipseBtn.addEventListener('click', () => {
+        fsEclipse.classList.add('vy-fs-eclipse-on');
+        if (!reduceMotion) runMoon();
+        if (navigator.vibrate) { try { navigator.vibrate(20); } catch (e) {} }
+    });
+    if (!reduceMotion) fsMoon.addEventListener('animationend', runMoon);
+    $('fsEclipseClose')?.addEventListener('click', () => {
+        fsEclipse.classList.remove('vy-fs-eclipse-on');
+        fsMoon.classList.remove('vy-fs-moon-run');
+        clearTimeout(coronaTimer1); clearTimeout(coronaTimer2);
+        fsCorona.classList.remove('vy-fs-corona-on');
+    });
+}
+
 // =====================================================================
 //  SUIVRE LE PROFIL D'ALTITUDE AU DOIGT.
 // =====================================================================

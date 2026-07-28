@@ -361,6 +361,7 @@
                     <div class="vy-eclipse-moon" id="eclipseMoon"></div>
                     <div class="vy-eclipse-corona" id="eclipseCorona"></div>
                 </div>
+                <button type="button" class="vy-btn ghost" id="fsEclipseBtn">Vivre l'éclipse en plein écran</button>
                 <p class="vy-day-text">C'est la journée la plus physique de la semaine, mais aussi la plus spectaculaire. Le sentier suit la ligne de crête sur un sol de schiste couvert d'ajoncs et de bruyère, et le vent y souffle presque toujours plus fort qu'ailleurs. On passe d'abord par le Roc'h Trédudon, reconnaissable à son antenne de télécommunication qui domine tout le paysage, puis on enchaîne les montées et les descentes jusqu'au Roc'h Trévezel, avec ses pics de granit acérés et son chaos minéral à couper le souffle. Des deux côtés de la crête, la vue se dégage sur toute la péninsule bretonne.</p>
                 <ul class="vy-poi">
                     <li>Le Roc'h Trédudon, à trois cent quatre vingt cinq mètres</li>
@@ -581,6 +582,16 @@
     </div>
 
     <div class="vy-fullscreen-meteors" id="fullscreenMeteors" aria-hidden="true"></div>
+
+    <div class="vy-fs-eclipse" id="fsEclipse" aria-hidden="true">
+        <button type="button" class="vy-fs-eclipse-close" id="fsEclipseClose" aria-label="Fermer">✕</button>
+        <div class="vy-fs-eclipse-stage">
+            <div class="vy-fs-sun"></div>
+            <div class="vy-fs-corona" id="fsCorona"></div>
+            <div class="vy-fs-moon" id="fsMoon"></div>
+        </div>
+        <p class="vy-fs-eclipse-caption">Mercredi 12 août, sur la ligne de crête</p>
+    </div>
 
     <div class="vy-lightbox" id="lightbox" aria-hidden="true">
         <button type="button" class="vy-lightbox-close" id="lightboxClose" aria-label="Fermer">✕</button>
