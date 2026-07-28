@@ -424,7 +424,9 @@ body {
     0% { opacity:.9; transform:translate(0,0) scale(1); }
     100% { opacity:0; transform:translate(var(--dx,0), var(--dy,-14)) scale(.2); }
 }
-.vy-tumulus-glow { fill:none; stroke:#fff3d6; stroke-width:2; opacity:0; transform-origin:150px 74px; }
+#tumulusShape { transition:rx 1s cubic-bezier(.2,.9,.3,1), ry 1s cubic-bezier(.2,.9,.3,1), cy 1s cubic-bezier(.2,.9,.3,1); }
+.vy-tuft { transition:opacity .5s, transform .5s; }
+.vy-tumulus-glow { fill:none; stroke:#fff3d6; stroke-width:2; opacity:0; transform-origin:200px 178px; }
 .vy-tumulus-glow.vy-tumulus-glow-on { animation:vyBurstRing 1.4s ease-out forwards; }
 .vy-dawn-caption { font-family:var(--font-mono); font-size:.75rem; letter-spacing:.4px; color:var(--fog);
     text-transform:uppercase; margin:30px 0 16px; text-align:center; transition:opacity .3s; }

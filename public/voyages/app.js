@@ -805,7 +805,10 @@ if (cairnBtn && cairnStack) {
     function reset() {
         stars.forEach(s => s.classList.remove('vy-star-out'));
         fairyHost.innerHTML = ''; menhirHost.innerHTML = ''; burstHost.innerHTML = ''; birdHost.innerHTML = '';
-        mound.innerHTML = ''; dust.innerHTML = '';
+        dust.innerHTML = '';
+        mound.querySelectorAll('.vy-tuft, .vy-tumulus-glow').forEach(el => el.remove());
+        tumulusLayer = 0;
+        if (tumulusShape) { tumulusShape.setAttribute('rx', 0); tumulusShape.setAttribute('ry', 0); tumulusShape.setAttribute('cy', GROUND_Y); }
         dawnSky.setAttribute('fill', skyColorAt(0));
         dawnFlash.setAttribute('r', 0); dawnFlash.style.opacity = 0;
         if (tumulusBtn) { tumulusBtn.hidden = true; tumulusBtn.disabled = false; tumulusBtn.textContent = 'Construire un tumulus avec les menhirs'; }
@@ -870,27 +873,25 @@ if (cairnBtn && cairnStack) {
         runDawn();
     });
 
-    if (tumulusBtn && mound) {
+    const tumulusShape = $('tumulusShape');
+    let tumulusLayer = 0;
+    if (tumulusBtn && mound && tumulusShape) {
         tumulusBtn.addEventListener('click', () => {
-            const layer = mound.children.length;
-            if (layer >= 5) return;
-            const cx = 200, cy = GROUND_Y - layer * 5;
-            const rx = 52 - layer * 8, ry = 6;
-            const bit = document.createElementNS(SVGNS, 'ellipse');
-            bit.setAttribute('cx', cx); bit.setAttribute('cy', cy);
-            bit.setAttribute('rx', rx); bit.setAttribute('ry', ry);
-            bit.setAttribute('fill', layer % 2 === 0 ? '#4a4256' : '#544a5f');
-            bit.style.opacity = 0;
-            bit.style.transition = 'opacity .4s';
-            mound.appendChild(bit);
-            requestAnimationFrame(() => { bit.style.opacity = 1; });
+            if (tumulusLayer >= 5) return;
+            tumulusLayer++;
+            const cx = 200;
+            const rx = 22 + tumulusLayer * 7;
+            const ry = tumulusLayer * 8;
+            tumulusShape.setAttribute('rx', rx);
+            tumulusShape.setAttribute('ry', ry);
+            tumulusShape.setAttribute('cy', GROUND_Y - ry * 0.7);
 
-            // Un vrai nuage de poussière au moment où la pierre se pose.
+            // Un vrai nuage de poussière au moment où la terre se tasse.
             for (let i = 0; i < 8; i++) {
                 const p = document.createElementNS(SVGNS, 'circle');
                 p.setAttribute('class', 'vy-dust-particle');
                 p.setAttribute('cx', cx + (Math.random() * rx * 1.6 - rx * 0.8));
-                p.setAttribute('cy', cy);
+                p.setAttribute('cy', GROUND_Y - ry * 0.4);
                 p.setAttribute('r', 1 + Math.random());
                 p.style.setProperty('--dx', (Math.random() * 26 - 13) + 'px');
                 p.style.setProperty('--dy', (-6 - Math.random() * 10) + 'px');
@@ -899,13 +900,29 @@ if (cairnBtn && cairnStack) {
             }
             if (navigator.vibrate) { try { navigator.vibrate(14); } catch (e) {} }
 
-            if (mound.children.length >= 5) {
+            if (tumulusLayer >= 5) {
                 tumulusBtn.textContent = 'Le tumulus est achevé';
                 tumulusBtn.disabled = true;
                 if (caption) caption.textContent = 'Un tumulus veille désormais sur la lande';
+
+                // Quelques touffes d'herbe se posent au sommet, pour la touche finale.
+                const topY = GROUND_Y - ry * 0.7 - ry * 0.55;
+                [-14, -4, 8, 16].forEach((dx, i) => {
+                    const tuft = document.createElementNS(SVGNS, 'path');
+                    tuft.setAttribute('class', 'vy-tuft');
+                    tuft.setAttribute('d', `M${cx + dx},${topY} q-2,-7 -4,-2 M${cx + dx},${topY} q0,-8 1,-2 M${cx + dx},${topY} q2,-7 4,-2`);
+                    tuft.setAttribute('stroke', '#9cae6a');
+                    tuft.setAttribute('stroke-width', '1.3');
+                    tuft.setAttribute('fill', 'none');
+                    tuft.setAttribute('stroke-linecap', 'round');
+                    tuft.style.opacity = 0;
+                    mound.appendChild(tuft);
+                    setTimeout(() => { tuft.style.opacity = 1; }, 150 + i * 120);
+                });
+
                 const glow = document.createElementNS(SVGNS, 'circle');
                 glow.setAttribute('class', 'vy-tumulus-glow vy-tumulus-glow-on');
-                glow.setAttribute('cx', 200); glow.setAttribute('cy', GROUND_Y - 12); glow.setAttribute('r', 2);
+                glow.setAttribute('cx', 200); glow.setAttribute('cy', topY); glow.setAttribute('r', 2);
                 mound.appendChild(glow);
                 if (navigator.vibrate) { try { navigator.vibrate([15, 40, 15, 40, 30]); } catch (e) {} }
             }

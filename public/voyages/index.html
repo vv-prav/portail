@@ -594,6 +594,11 @@
                     <stop offset="0%" stop-color="#fff3d6" stop-opacity=".95"/>
                     <stop offset="100%" stop-color="#fff3d6" stop-opacity="0"/>
                 </radialGradient>
+                <linearGradient id="tumulusGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#8a9b5e"/>
+                    <stop offset="35%" stop-color="#6b7a48"/>
+                    <stop offset="100%" stop-color="#4a3f2e"/>
+                </linearGradient>
             </defs>
             <rect id="dawnSky" x="0" y="0" width="400" height="240" fill="#191428"/>
             <g id="dawnStars">
@@ -605,13 +610,16 @@
             <circle id="dawnFlash" cx="200" cy="120" r="0" fill="url(#dawnBurstGrad)" opacity="0"/>
             <path d="M0,178 Q100,158 200,176 T400,178 L400,240 L0,240 Z" fill="#241d34"/>
             <path d="M0,192 Q100,176 200,190 T400,190 L400,240 L0,240 Z" fill="#2c2440" opacity=".8"/>
+            <rect x="0" y="178" width="400" height="62" fill="#2c2440"/>
             <g id="dawnBirds" opacity="0">
                 <path d="M0,0 Q4,-5 8,0 Q4,-5 0,0" stroke="#0d0a14" stroke-width="1.4" fill="none"/>
             </g>
             <g id="dawnFairies"></g>
             <g id="dawnBursts"></g>
             <g id="dawnMenhirs"></g>
-            <g id="tumulusMound"></g>
+            <g id="tumulusMound">
+                <ellipse id="tumulusShape" cx="200" cy="178" rx="0" ry="0" fill="url(#tumulusGrad)"/>
+            </g>
             <g id="tumulusDust"></g>
         </svg>
         <button type="button" class="vy-btn ghost" id="tumulusBtn" hidden>Construire un tumulus avec les menhirs</button>
