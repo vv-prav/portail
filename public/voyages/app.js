@@ -856,7 +856,8 @@ if (cairnBtn && cairnStack) {
                 dawnFlash.style.opacity = .8;
                 dawnFlash.setAttribute('r', 260);
                 setTimeout(() => { dawnFlash.style.opacity = 0; }, 700);
-                dawnBtn.textContent = 'L\u2019aube s\u2019est levée';
+                dawnBtn.textContent = 'Revoir l\u2019aube se lever';
+                dawnBtn.disabled = false;
                 if (caption) caption.textContent = 'Les fées se sont figées avec la lumière';
                 if (liveBtn) liveBtn.hidden = false;
             }
@@ -890,6 +891,7 @@ if (cairnBtn && cairnStack) {
             dawnSky.setAttribute('fill', skyColorAt(1));
             if (dawnHorizon) dawnHorizon.style.opacity = 1;
             if (caption) caption.textContent = 'Les fées se sont figées avec la lumière';
+            dawnBtn.textContent = 'Revoir l\u2019aube se lever';
             if (liveBtn) liveBtn.hidden = false;
             return;
         }
@@ -1346,6 +1348,14 @@ function avatarChip(i, name) {
             <div class="vy-team-member">${avatarChip(i, n)}<span>${esc(n)}</span></div>
         `).join('');
         host.hidden = false;
+        host.querySelectorAll('.vy-team-member').forEach(member => {
+            member.addEventListener('click', () => {
+                member.classList.remove('vy-team-spin');
+                void member.offsetWidth;
+                member.classList.add('vy-team-spin');
+                setTimeout(() => member.classList.remove('vy-team-spin'), 700);
+            });
+        });
     } catch (e) { /* pas grave, la ligne reste simplement masquée */ }
 })();
 

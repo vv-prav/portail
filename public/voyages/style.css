@@ -906,8 +906,10 @@ body:not(.vy-loading) .vy-loader { opacity:0; visibility:hidden; pointer-events:
 /* ===================== LES TROIS TÊTES AVANT LE SENTIER ===================== */
 .vy-team-intro { display:flex; justify-content:center; gap:28px; margin:38px 0 0; }
 .vy-team-intro[hidden] { display:none; }
-.vy-team-member { display:flex; flex-direction:column; align-items:center; gap:6px; }
-.vy-team-member .vy-avatar-chip { width:48px; height:48px; }
+.vy-team-member { display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer; }
+.vy-team-member .vy-avatar-chip { width:48px; height:48px; transition:transform .1s; }
+.vy-team-member:hover .vy-avatar-chip, .vy-team-member.vy-team-spin .vy-avatar-chip { animation:vyTeamSpin .65s ease-in-out; }
+@keyframes vyTeamSpin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
 .vy-team-member span { font-family:var(--font-mono); font-size:.68rem; color:var(--fog); }
 
 /* ===================== TOURS EIFFEL (dénivelé cumulé mis à l'échelle) ===================== */
@@ -965,7 +967,7 @@ body:not(.vy-loading) .vy-loader { opacity:0; visibility:hidden; pointer-events:
     width:0; height:0; border-left:10px solid transparent; border-right:10px solid transparent;
     border-top:16px solid var(--ember); filter:drop-shadow(0 2px 4px rgba(0,0,0,.4)); }
 .vy-wheel { position:relative; width:220px; height:220px; border-radius:50%; margin:0 auto;
-    background:conic-gradient(from 0deg, #6bb3d6 0deg 120deg, #8b6ba8 120deg 240deg, #5fa877 240deg 360deg);
+    background:conic-gradient(from 0deg, #6bb3d6 0deg 120deg, #8b6ba8 120deg 240deg, #c9935a 240deg 360deg);
     border:4px solid var(--parchment); box-shadow:0 10px 30px rgba(0,0,0,.5);
     transition:transform 4.5s cubic-bezier(.15,.85,.3,1); }
 .vy-wheel-seg { position:absolute; top:50%; left:50%; width:0; height:0; }
