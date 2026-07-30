@@ -120,7 +120,7 @@ function currentCardPublic(g) {
     const c = g.cardState;
     const base = {
         category, pseudo, type, text: (g.answers[pseudo] && g.answers[pseudo][category]) || '',
-        catIndex: g.categories.indexOf(category) + 1, catTotal: g.categories.length,
+        catIndex: (g.currentCategories || g.categories).indexOf(category) + 1, catTotal: (g.currentCategories || g.categories).length,
         cardIndex: g.reviewQueue.slice(0, g.reviewIndex + 1).filter(x => x.category === category).length,
         cardTotal: g.reviewQueue.filter(x => x.category === category).length,
         queueIndex: g.reviewIndex, queueTotal: g.reviewQueue.length,
@@ -166,11 +166,19 @@ function broadcastCard(g) {
 // lettrées, montrées brièvement (« Loupé ») plutôt que silencieusement ignorées.
 function buildReviewQueue(g) {
     const q = [];
-    for (const cat of g.categories) {
+    for (const cat of (g.currentCategories || g.categories)) {
         const entries = g.players.filter(p => !p.spectator).map(p => {
             const raw = (g.answers[p.pseudo] && g.answers[p.pseudo][cat]) || '';
-            const n = norm(raw);
-            const valid = !!(n && n[0] === g.letter);
+            let valid;
+            if (g.twoWords) {
+                // La réponse combinée « mot1 / mot2 » : les deux doivent commencer par la lettre.
+                const parts = raw.split(' / ');
+                const n1 = norm(parts[0] || ''), n2 = norm(parts[1] || '');
+                valid = !!(n1 && n2 && n1[0] === g.letter && n2[0] === g.letter);
+            } else {
+                const n = norm(raw);
+                valid = !!(n && n[0] === g.letter);
+            }
             return { category: cat, pseudo: p.pseudo, type: valid ? 'valid' : 'empty' };
         });
         shuffle(entries).forEach(e => q.push(e));
@@ -265,7 +273,7 @@ function finalizeRound(g) {
     clearTimeout(g._timer);
     const rs = {};
     for (const p of g.players) rs[p.pseudo] = 0;
-    for (const cat of g.categories) {
+    for (const cat of (g.currentCategories || g.categories)) {
         const cp = g.categoryPoints[cat] || {};
         for (const p of g.players) rs[p.pseudo] += cp[p.pseudo] || 0;
     }
@@ -281,7 +289,7 @@ function endRoundToVoting(g) {
     g.reviewIndex = 0;
     g.voteOutcomes = {}; g.categoryPoints = {}; g.merges = {};
     if (!g.reviewQueue.length) { finalizeRound(g); return; }
-    if (g.voteMode === 'parallel') { g.parallelCatIndex = 0; startCategoryParallel(g, g.categories[0]); }
+    if (g.voteMode === 'parallel') { g.parallelCatIndex = 0; startCategoryParallel(g, (g.currentCategories || g.categories)[0]); }
     else startCard(g);
 }
 
@@ -323,8 +331,8 @@ function checkParallelDone(g) {
     broadcastState(g);
     g._timer = setTimeout(() => {
         g.parallelCatIndex++;
-        if (g.parallelCatIndex >= g.categories.length) finalizeRound(g);
-        else startCategoryParallel(g, g.categories[g.parallelCatIndex]);
+        if (g.parallelCatIndex >= (g.currentCategories || g.categories).length) finalizeRound(g);
+        else startCategoryParallel(g, (g.currentCategories || g.categories)[g.parallelCatIndex]);
     }, CATEGORY_SUMMARY_MS);
 }
 function buildParallelCardsFor(g, viewerPseudo) {
@@ -351,7 +359,7 @@ function sendParallelTo(g, socket) {
     const pseudo = socket.data.pbacPseudo;
     socket.emit('pbac_parallel', {
         category: g.parallelCategory,
-        catIndex: g.categories.indexOf(g.parallelCategory) + 1, catTotal: g.categories.length,
+        catIndex: (g.currentCategories || g.categories).indexOf(g.parallelCategory) + 1, catTotal: (g.currentCategories || g.categories).length,
         cards: buildParallelCardsFor(g, pseudo),
     });
 }
@@ -365,8 +373,9 @@ function broadcastParallel(g) {
 function stateForClient(g) {
     return {
         id: g.id, host: g.host, status: g.status, players: playerList(g),
-        categories: g.categories, maxRounds: g.maxRounds, round: g.round,
+        categories: g.currentCategories || g.categories, maxRounds: g.maxRounds, round: g.round,
         duration: g.duration, letter: g.letter, letterMode: g.letterMode, voteMode: g.voteMode,
+        twoWords: !!g.twoWords, surpriseCategory: g.surpriseCatThisRound || null,
         timerEnd: g.status === 'writing' ? g.timerEnd : null,
         countdownEnd: g.status === 'countdown' ? g.countdownEnd : null,
         stoppedBy: g.stoppedBy || null,
@@ -395,6 +404,22 @@ function advanceToNextRound(g) {
     g.round++;
     g.stoppedBy = null;
     g.players.forEach(p => { p.spectator = false; });   // tout le monde repart à égalité sur la nouvelle manche
+
+    // Catégorie surprise : une neuvième catégorie tirée au sort, jamais deux fois
+    // la même pour cette table, révélée avant l'écriture.
+    g.currentCategories = g.categories.slice();
+    g.surpriseCatThisRound = null;
+    if (g.surpriseCategory) {
+        const pool = CATEGORY_PRESETS.filter(c => !g.categories.includes(c) && !g.usedSurpriseCategories.includes(c));
+        const source = pool.length ? pool : CATEGORY_PRESETS.filter(c => !g.categories.includes(c));
+        if (source.length) {
+            const pick = source[Math.floor(Math.random() * source.length)];
+            g.usedSurpriseCategories.push(pick);
+            g.currentCategories.push(pick);
+            g.surpriseCatThisRound = pick;
+        }
+    }
+
     if (g.letterMode === 'host') {
         g.status = 'choosing_letter';
         broadcastState(g);
@@ -464,18 +489,27 @@ io.on('connection', (socket) => {
         socket.emit('pbac_packs', packs);
     });
 
-    socket.on('pbac_create', ({ rounds, duration, categories, letterMode, voteMode }) => {
+    socket.on('pbac_create', ({ rounds, duration, customDuration, categories, letterMode, voteMode, twoWords, surpriseCategory }) => {
         const pseudo = socket.data.pbacPseudo;
         if (!pseudo) return socket.emit('pbac_error', 'Session expirée, reviens au salon.');
         const id = 'p' + (nextId++);
+        // Durée : soit un preset (court/moyen/long), soit un nombre de secondes tapé à la main
+        // (borné entre 20 s et 5 minutes pour éviter une manche absurde par erreur de saisie).
+        let finalDuration = DURATIONS[duration] || DURATIONS.moyen;
+        if (duration === 'custom') {
+            const n = Math.round(Number(customDuration));
+            if (Number.isFinite(n)) finalDuration = Math.max(20, Math.min(300, n));
+        }
+        const baseCategories = sanitizeCategories(categories);
         const g = {
             id, host: pseudo, status: 'lobby',
             players: [{ sid: socket.id, pseudo, connected: true }],
-            categories: sanitizeCategories(categories),
+            categories: baseCategories, currentCategories: baseCategories.slice(),
             maxRounds: [3, 5, 7].includes(Number(rounds)) ? Number(rounds) : 5,
-            duration: DURATIONS[duration] || DURATIONS.moyen,
+            duration: finalDuration,
             letterMode: letterMode === 'host' ? 'host' : 'random',
             voteMode: voteMode === 'parallel' ? 'parallel' : 'sequential',
+            twoWords: !!twoWords, surpriseCategory: !!surpriseCategory, usedSurpriseCategories: [], surpriseCatThisRound: null,
             round: 0, usedLetters: [], scores: {}, answers: {}, pendingLetter: null,
             reviewQueue: [], reviewIndex: 0, voteOutcomes: {}, categoryPoints: {}, cardState: null, merges: {},
             parallelCategory: null, parallelCards: {}, parallelCatIndex: 0,
@@ -493,26 +527,79 @@ io.on('connection', (socket) => {
         if (!pseudo) return socket.emit('pbac_error', 'Session expirée, reviens au salon.');
         if (!g) return socket.emit('pbac_error', 'Cette partie n’existe plus.');
         let p = g.players.find(x => x.pseudo === pseudo);
-        if (p) { p.sid = socket.id; p.connected = true; }
-        else {
-            if (g.players.length >= MAX_PLAYERS) return socket.emit('pbac_error', 'Table complète.');
-            // Rejoint en pleine partie : spectateur jusqu'à la prochaine manche (jamais bloqué dehors).
-            const spectator = g.status !== 'lobby';
-            g.players.push({ sid: socket.id, pseudo, connected: true, spectator });
-            g.scores[pseudo] = 0;
+        if (p) {
+            // On en faisait déjà partie (reconnexion) : jamais besoin de redemander l'accord.
+            p.sid = socket.id; p.connected = true;
+            socketGame[socket.id] = g.id;
+            socket.join(roomOf(g));
+            broadcastState(g);
+            if (g.status === 'voting') {
+                if (g.voteMode === 'parallel') sendParallelTo(g, socket);
+                else sendCardTo(g, socket);
+            }
+            broadcastLobby();
+            return;
         }
-        socketGame[socket.id] = g.id;
-        socket.join(roomOf(g));
+        if (g.players.length >= MAX_PLAYERS) return socket.emit('pbac_error', 'Table complète.');
+        if (g.status === 'lobby') {
+            // La partie n'a pas commencé : on rejoint librement, comme avant.
+            g.players.push({ sid: socket.id, pseudo, connected: true });
+            g.scores[pseudo] = 0;
+            socketGame[socket.id] = g.id;
+            socket.join(roomOf(g));
+            broadcastState(g);
+            broadcastLobby();
+            return;
+        }
+        // Partie déjà en cours : on ne rentre plus tout seul, il faut l'accord de l'hôte.
+        g.pendingRequests = g.pendingRequests || [];
+        if (g.pendingRequests.some(r => r.pseudo === pseudo)) return; // déjà en attente
+        g.pendingRequests.push({ pseudo, sid: socket.id });
+        socket.emit('pbac_join_pending', { host: g.host });
+        const hostSock = g.players.find(x => x.pseudo === g.host);
+        if (hostSock) {
+            const hs = io.sockets.sockets.get(hostSock.sid);
+            if (hs) hs.emit('pbac_join_request', { pseudo });
+        }
+    });
+
+    socket.on('pbac_join_decide', ({ pseudo: targetPseudo, accept }) => {
+        const g = games[socketGame[socket.id]];
+        if (!g || g.host !== socket.data.pbacPseudo) return;
+        g.pendingRequests = g.pendingRequests || [];
+        const idx = g.pendingRequests.findIndex(r => r.pseudo === targetPseudo);
+        if (idx < 0) return;
+        const req = g.pendingRequests[idx];
+        g.pendingRequests.splice(idx, 1);
+        const reqSock = io.sockets.sockets.get(req.sid);
+        if (!accept) {
+            if (reqSock) reqSock.emit('pbac_join_declined');
+            return;
+        }
+        // Accepté : rejoint en spectateur jusqu'à la prochaine manche, jamais bloqué en pleine partie.
+        g.players.push({ sid: req.sid, pseudo: req.pseudo, connected: true, spectator: true });
+        g.scores[req.pseudo] = 0;
+        socketGame[req.sid] = g.id;
+        if (reqSock) {
+            reqSock.join(roomOf(g));
+            reqSock.emit('pbac_join_accepted');
+        }
         broadcastState(g);
-        if (g.status === 'voting') {
-            if (g.voteMode === 'parallel') sendParallelTo(g, socket);
-            else sendCardTo(g, socket);
+        if (g.status === 'voting' && reqSock) {
+            if (g.voteMode === 'parallel') sendParallelTo(g, reqSock);
+            else sendCardTo(g, reqSock);
         }
         broadcastLobby();
     });
 
     socket.on('pbac_leave', () => leaveCurrent(socket));
     socket.on('disconnect', () => {
+        // Une demande d'entrée encore en attente, jamais rattachée à une partie tant qu'elle
+        // n'est pas acceptée : on la retire si la personne s'en va avant la décision de l'hôte.
+        for (const g of Object.values(games)) {
+            if (!g.pendingRequests || !g.pendingRequests.length) continue;
+            g.pendingRequests = g.pendingRequests.filter(r => r.sid !== socket.id);
+        }
         const gid = socketGame[socket.id];
         if (!gid) return;
         const g = games[gid];
@@ -558,9 +645,19 @@ io.on('connection', (socket) => {
         const pseudo = socket.data.pbacPseudo;
         if (!g || g.status !== 'writing' || !pseudo) return;
         const clean = {};
-        for (const cat of g.categories) {
-            const v = String((payload && payload[cat]) || '').slice(0, 40);
-            if (v) clean[cat] = v;
+        for (const cat of (g.currentCategories || g.categories)) {
+            const raw = payload && payload[cat];
+            if (g.twoWords) {
+                // Deux réponses attendues, envoyées comme un tableau [mot1, mot2] : les deux
+                // comptent ensemble comme une seule réponse combinée, affichée « mot1 / mot2 ».
+                const arr = Array.isArray(raw) ? raw : [];
+                const w1 = String(arr[0] || '').trim().slice(0, 40);
+                const w2 = String(arr[1] || '').trim().slice(0, 40);
+                if (w1 && w2) clean[cat] = `${w1} / ${w2}`;
+            } else {
+                const v = String(raw || '').slice(0, 40);
+                if (v) clean[cat] = v;
+            }
         }
         g.answers[pseudo] = clean;
     });

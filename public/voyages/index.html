@@ -2,814 +2,254 @@
 <html lang="fr">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
-    <meta name="theme-color" content="#1a1625">
-    <title>Boucle des Monts d'Arrée</title>
-    <meta name="description" content="Cinq jours à pied entre forêts de légendes, chaos de granit et landes de bruyère, au cœur des Monts d'Arrée.">
-    <meta property="og:type" content="website">
-    <meta property="og:title" content="La Boucle des Monts d'Arrée">
-    <meta property="og:description" content="Cinq jours à pied entre forêts de légendes, chaos de granit et landes de bruyère.">
-    <meta property="og:image" content="/icon-512.png">
-    <meta name="twitter:card" content="summary_large_image">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, interactive-widget=resizes-content">
+    <meta name="theme-color" content="#14100b">
+    <title>Petit Bac</title>
     <link rel="icon" href="/icon-192.png">
     <link rel="apple-touch-icon" href="/icon-192.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="vy-loading">
-    <div class="vy-loader" id="loader" aria-hidden="true">
-        <svg viewBox="0 0 200 60" class="vy-loader-svg">
-            <path id="loaderPath" d="M6,30 C 50,5 90,55 140,30 S 194,10 194,30" fill="none" stroke="#c9935a" stroke-width="3" stroke-linecap="round"/>
-        </svg>
-        <p class="vy-loader-text">La boucle des Monts d'Arrée</p>
+<body class="is-boot">
+
+    <div class="boot"><div class="boot-ring"></div></div>
+
+    <canvas id="fx" class="fx"></canvas>
+
+    <div class="pb" id="pb">
+        <header class="pb-head">
+            <a class="pb-back" href="/" aria-label="Retour au salon">←</a>
+            <div class="pb-titles">
+                <h1 class="pb-title">Petit Bac</h1>
+                <span class="pb-sub" id="pb-sub">Salon des parties</span>
+            </div>
+            <span class="pb-round-tag" id="pb-round-tag" hidden></span>
+        </header>
+
+        <div class="pb-join-requests" id="join-request-host" hidden aria-live="polite"></div>
+
+        <!-- LOBBY : liste des tables -->
+        <section class="pb-view" id="v-lobby">
+            <button class="pb-btn" id="btn-create">Créer une table</button>
+            <p class="pb-list-label" id="lobby-empty-label" hidden>Aucune table ouverte pour l'instant.</p>
+            <div class="pb-tables" id="pb-tables"></div>
+        </section>
+
+        <!-- En attente de l'accord de l'hôte pour rejoindre une partie en cours -->
+        <section class="pb-view" id="v-join-pending">
+            <div class="pb-wait-box">
+                <div class="boot-ring"></div>
+                <p class="pb-wait-text">En attente de l'accord de <b id="join-pending-host">l'hôte</b>…</p>
+            </div>
+        </section>
+
+        <!-- Réglages d'une nouvelle table -->
+        <div class="pb-overlay" id="v-create" hidden>
+            <div class="pb-card pb-create-card">
+                <h2 class="pb-card-title">Nouvelle table</h2>
+                <div class="pb-create-scroll">
+                    <p class="pb-field-label">Manches</p>
+                    <div class="pb-choice" id="opt-rounds">
+                        <button type="button" data-v="3">3</button>
+                        <button type="button" data-v="5" class="on">5</button>
+                        <button type="button" data-v="7">7</button>
+                    </div>
+                    <p class="pb-field-label">Durée d'écriture</p>
+                    <div class="pb-choice" id="opt-duration">
+                        <button type="button" data-v="court">60 s</button>
+                        <button type="button" data-v="moyen" class="on">90 s</button>
+                        <button type="button" data-v="long">120 s</button>
+                        <button type="button" data-v="custom">Autre</button>
+                    </div>
+                    <div class="pb-custom-duration" id="customDurationRow" hidden>
+                        <input type="number" id="customDurationInput" min="20" max="300" step="5" value="90">
+                        <span>secondes (entre 20 et 300)</span>
+                    </div>
+                    <p class="pb-field-label">Lettre de chaque manche</p>
+                    <div class="pb-choice" id="opt-letter-mode">
+                        <button type="button" data-v="random" class="on">Aléatoire</button>
+                        <button type="button" data-v="host">Je choisis</button>
+                    </div>
+
+                    <button type="button" class="pb-advanced-toggle" id="advancedToggle">
+                        <span>Règles spéciales</span>
+                        <span class="pb-advanced-chevron">›</span>
+                    </button>
+                    <div class="pb-advanced-body" id="advancedBody" hidden>
+                        <p class="pb-field-label">Vote</p>
+                        <div class="pb-choice" id="opt-vote-mode">
+                            <button type="button" data-v="sequential" class="on">Une réponse à la fois</button>
+                            <button type="button" data-v="parallel">Toute la catégorie</button>
+                        </div>
+                        <p class="pb-cat-hint">« Toute la catégorie » affiche toutes les réponses d'un coup et les votes se font en même temps — beaucoup plus rapide à grand nombre de joueurs.</p>
+
+                        <p class="pb-field-label">Difficulté</p>
+                        <label class="pb-switch-row">
+                            <span>Deux mots par catégorie</span>
+                            <input type="checkbox" id="opt-two-words">
+                            <span class="pb-switch"></span>
+                        </label>
+                        <p class="pb-cat-hint">Chaque catégorie demande deux réponses valides, les deux comptent ensemble.</p>
+
+                        <label class="pb-switch-row">
+                            <span>Catégorie surprise à chaque manche</span>
+                            <input type="checkbox" id="opt-surprise-cat">
+                            <span class="pb-switch"></span>
+                        </label>
+                        <p class="pb-cat-hint">Une neuvième catégorie tirée au sort s'ajoute à chaque manche, révélée juste avant l'écriture.</p>
+                    </div>
+
+                    <p class="pb-field-label">Mes packs de catégories</p>
+                    <div class="pb-packs-row" id="packs-row"></div>
+                    <p class="pb-packs-empty" id="packs-empty" hidden>Aucun pack enregistré pour l'instant.</p>
+
+                    <p class="pb-field-label">Catégories <span id="cat-count">8/8</span></p>
+                    <p class="pb-cat-hint">Touche une catégorie pour l'ajouter ou la retirer. Il en faut exactement 8.</p>
+                    <div class="pb-cat-grid" id="cat-grid"></div>
+                    <div class="pb-cat-custom">
+                        <input id="cat-custom-input" type="text" maxlength="30" placeholder="Une catégorie perso…" autocomplete="off">
+                        <button type="button" id="cat-custom-add">Ajouter</button>
+                    </div>
+
+                    <div class="pb-pack-save-row">
+                        <input id="pack-save-name" type="text" maxlength="24" placeholder="Nom du pack à enregistrer…" autocomplete="off">
+                        <button type="button" id="pack-save-btn">Enregistrer</button>
+                    </div>
+                </div>
+                <div class="pb-create-footer">
+                    <button class="pb-btn" id="create-confirm">Créer</button>
+                    <button class="pb-btn ghost" id="create-cancel">Annuler</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SALLE D'ATTENTE -->
+        <section class="pb-view" id="v-waiting" hidden>
+            <div class="pb-players" id="wait-players"></div>
+            <p class="pb-hint" id="wait-hint">En attente de l'hôte…</p>
+            <button class="pb-btn" id="btn-start" hidden>Lancer la partie</button>
+            <button class="pb-btn ghost" id="btn-leave-lobby">Quitter la table</button>
+        </section>
+
+        <!-- SPECTATEUR (rejoint en cours de manche) -->
+        <section class="pb-view" id="v-spectator" hidden>
+            <div class="pb-spectator-box">
+                <p class="pb-spectator-title">Manche en cours</p>
+                <p class="pb-spectator-letter" id="spectator-letter" hidden>A</p>
+                <p class="pb-hint">Tu observes cette manche — tu joueras dès la prochaine !</p>
+            </div>
+            <button class="pb-btn ghost" id="btn-leave-spectator">Quitter la table</button>
+        </section>
+
+        <!-- CHOIX DE LA LETTRE PAR L'HÔTE -->
+        <section class="pb-view" id="v-choose-letter" hidden>
+            <p class="pb-hint" id="choose-letter-hint">Choisis la lettre de cette manche.</p>
+            <div class="pb-letter-grid" id="letter-grid"></div>
+            <p class="pb-hint" id="choose-letter-wait" hidden>L'hôte choisit la lettre…</p>
+        </section>
+
+        <!-- COMPTE À REBOURS -->
+        <section class="pb-view" id="v-countdown" hidden>
+            <div class="pb-countdown-box">
+                <span class="pb-countdown-num" id="countdown-num">3</span>
+            </div>
+        </section>
+
+        <!-- ÉCRITURE (un champ à la fois, chrono toujours visible) -->
+        <section class="pb-view" id="v-writing" hidden>
+            <header class="pb-write-head">
+                <div class="pb-timering">
+                    <svg viewBox="0 0 64 64" class="pb-ring-svg">
+                        <circle cx="32" cy="32" r="28" class="ring-bg"></circle>
+                        <circle cx="32" cy="32" r="28" class="ring-fg" id="ring-fg"></circle>
+                    </svg>
+                    <span class="pb-timer-num" id="timer-num">90</span>
+                </div>
+                <button class="pb-stop-mini" id="btn-stop">STOP</button>
+            </header>
+
+            <div class="pb-step-card">
+                <div class="pb-letter" id="round-letter">A</div>
+                <div class="pb-dots" id="pb-dots"></div>
+                <p class="pb-step-label" id="step-cat-name">Prénom</p>
+                <input id="step-input" type="text" maxlength="40" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false">
+                <input id="step-input-2" type="text" maxlength="40" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" placeholder="Deuxième mot…" hidden>
+                <div class="pb-step-nav">
+                    <button class="pb-btn ghost" id="step-prev">Précédent</button>
+                    <button class="pb-btn" id="step-next">Suivant</button>
+                </div>
+            </div>
+
+            <p class="pb-hint" id="write-done-hint" hidden>Tout est rempli — appuie sur STOP quand tu es prêt.</p>
+        </section>
+
+        <!-- VOTE (une réponse à la fois) -->
+        <section class="pb-view" id="v-voting" hidden>
+            <div class="pb-round-progress"><div class="pb-round-progress-fill" id="round-progress-fill"></div></div>
+            <p class="pb-hint" id="voting-progress">Catégorie 1 / 8</p>
+            <div class="pb-vote-card" id="vote-normal">
+                <p class="pv-cat" id="vote-cat">Prénom</p>
+                <p class="pv-answer" id="vote-answer">Anaïs</p>
+                <p class="pv-author" id="vote-author">proposé par —</p>
+                <div class="pb-gauge">
+                    <div class="pg-yes" id="gauge-yes"></div>
+                    <div class="pg-no" id="gauge-no"></div>
+                    <span class="pg-spark" id="gauge-spark"></span>
+                </div>
+                <div class="pb-voters-row" id="voters-row"></div>
+                <div class="pb-merge-box" id="merge-box" hidden>
+                    <button class="pb-merge-toggle" id="merge-toggle" type="button">C'est le même mot qu'un déjà accepté ?</button>
+                    <div class="pb-merge-list" id="merge-list" hidden></div>
+                </div>
+                <div class="pb-vote-btns" id="vote-btns">
+                    <button class="pv-btn no" id="btn-vote-no">Non</button>
+                    <button class="pv-btn yes" id="btn-vote-yes">Oui</button>
+                </div>
+                <p class="pv-outcome" id="vote-outcome" hidden></p>
+            </div>
+            <div class="pb-miss-card" id="vote-miss" hidden>
+                <p class="pm-stamp">Loupé</p>
+                <p class="pm-name" id="miss-name">—</p>
+                <p class="pm-sub" id="miss-sub">n'a rien écrit ici</p>
+            </div>
+        </section>
+
+        <!-- VOTE PARALLÈLE (toute la catégorie d'un coup) -->
+        <section class="pb-view" id="v-parallel" hidden>
+            <div class="pb-round-progress"><div class="pb-round-progress-fill" id="parallel-progress-fill"></div></div>
+            <p class="pb-hint" id="parallel-progress">Catégorie 1 / 8</p>
+            <p class="pb-section-title" id="parallel-cat-name">Prénom</p>
+            <div class="pb-parallel-list" id="parallel-list"></div>
+        </section>
+
+        <!-- RÉCAP DE CATÉGORIE -->
+        <section class="pb-view" id="v-cat-summary" hidden>
+            <p class="pb-hint">Catégorie terminée</p>
+            <h2 class="pb-section-title" id="summary-cat-name">Prénom</h2>
+            <div class="pb-summary-list" id="summary-list"></div>
+        </section>
+
+        <!-- FIN DE MANCHE -->
+        <section class="pb-view" id="v-round-end" hidden>
+            <h2 class="pb-section-title">Résultats de la manche</h2>
+            <div class="pb-score-list" id="round-score-list"></div>
+            <button class="pb-btn" id="btn-next-round">Manche suivante</button>
+            <p class="pb-hint" id="round-wait-hint" hidden>En attente de l'hôte…</p>
+        </section>
+
+        <!-- FIN DE PARTIE -->
+        <section class="pb-view" id="v-ended" hidden>
+            <div class="pb-podium" id="pb-podium"></div>
+            <button class="pb-btn" id="btn-rematch">Rejouer</button>
+            <p class="pb-hint" id="final-wait-hint" hidden>En attente de l'hôte…</p>
+            <a class="pb-btn ghost" href="/">Retour au salon</a>
+        </section>
     </div>
 
-    <div class="vy-topbar" id="topbar"><i id="topbarFill"></i></div>
-
-    <button type="button" class="vy-music-btn" id="musicBtn" aria-label="Jouer l'hymne de la rando">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 18V5l12-2v13"></path>
-            <circle cx="6" cy="18" r="3"></circle>
-            <circle cx="18" cy="16" r="3"></circle>
-        </svg>
-    </button>
-    <audio id="hymneAudio" src="audio/hymne.mp3" loop preload="none"></audio>
-    <div class="vy-cursor" id="customCursor" aria-hidden="true"></div>
-
-    <div class="vy-mood" id="moodLayer" aria-hidden="true"></div>
-    <div class="vy-footprints" id="footprints" aria-hidden="true"></div>
-    <a class="vy-back" href="/" aria-label="Retour au salon">←</a>
-    <button type="button" class="vy-key-btn" id="keyJump" hidden aria-label="Aller à la partie privée">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="8" cy="15" r="4"></circle>
-            <path d="M10.5 12.5L20 3M17 6l2.5 2.5M14 9l2 2"></path>
-        </svg>
-    </button>
-
-    <div class="vy-motion-layer" id="motionLayer">
-    <!-- ============ HERO ============ -->
-    <header class="vy-hero">
-        <div class="vy-hero-fog" aria-hidden="true"></div>
-        <div class="vy-hero-inner">
-            <p class="vy-eyebrow">Bretagne, Parc naturel régional d'Armorique</p>
-
-            <h1 class="vy-hero-title">
-                <span class="vy-ink-line" style="--d:.1s"><span class="vy-ink-text">La Boucle</span></span>
-                <span class="vy-ink-line" style="--d:.65s"><span class="vy-ink-text">des Monts d'Arrée</span></span>
-            </h1>
-
-            <p class="vy-hero-sub">Cinq jours à pied entre forêts de légendes, chaos de granit et landes de bruyère.
-                Au cœur du petit Finistère, là où la Bretagne garde ses histoires les plus anciennes.</p>
-
-            <div class="vy-compass" id="compass" aria-hidden="true">
-                <svg viewBox="0 0 100 100" class="vy-compass-svg">
-                    <circle cx="50" cy="50" r="46" fill="none" stroke="var(--line)" stroke-width="1.5"/>
-                    <circle cx="50" cy="50" r="38" fill="none" stroke="var(--line)" stroke-width="1"/>
-                    <text x="50" y="14" class="vy-compass-n">N</text>
-                    <g id="compassNeedle" class="vy-compass-needle">
-                        <path d="M50,16 L44,52 L50,58 L56,52 Z" fill="var(--ember)"/>
-                        <path d="M50,84 L44,52 L50,58 L56,52 Z" fill="var(--fog)" opacity=".55"/>
-                    </g>
-                    <g id="huelgoatMarker" class="vy-compass-huelgoat" hidden>
-                        <path d="M50,4 L46,12 L54,12 Z" fill="var(--heather-soft)"/>
-                    </g>
-                    <circle cx="50" cy="50" r="3.5" fill="var(--parchment)"/>
-                </svg>
-                <p class="vy-compass-caption" id="compassCaption" hidden>vers Huelgoat</p>
-                <button type="button" class="vy-compass-hint" id="motionBtn" hidden>Activer les capteurs</button>
-            </div>
-
-            <div class="vy-hero-path" aria-hidden="true">
-                <svg viewBox="0 0 320 60" class="vy-hero-path-svg">
-                    <path id="heroPath" d="M6,30 C 50,5 90,55 140,30 S 230,5 314,30" fill="none" stroke="url(#heroGrad)" stroke-width="2.5" stroke-linecap="round"/>
-                    <defs>
-                        <linearGradient id="heroGrad" x1="0" y1="0" x2="1" y2="0">
-                            <stop offset="0%" stop-color="#c9935a"/>
-                            <stop offset="55%" stop-color="#c9b8dc"/>
-                            <stop offset="100%" stop-color="#8b6ba8"/>
-                        </linearGradient>
-                    </defs>
-                    <circle cx="6" cy="30" r="5" fill="#c9935a"/>
-                    <circle cx="314" cy="30" r="5" fill="#8b6ba8"/>
-                </svg>
-                <span class="vy-hero-path-label start">Huelgoat</span>
-                <span class="vy-hero-path-label end">Huelgoat</span>
-            </div>
-
-            <div class="vy-hero-stats">
-                <div class="vy-stat"><b class="vy-num" data-count="5">0</b><span>jours de marche</span></div>
-                <div class="vy-stat"><b class="vy-num" data-count="74">0</b><span>kilomètres</span></div>
-                <div class="vy-stat"><b class="vy-num" data-count="4">0</b><span>nuits sur place</span></div>
-                <div class="vy-stat"><b class="vy-num" data-count="381">0</b><span>mètres au sommet</span></div>
-            </div>
-
-            <p class="vy-kicker vy-countdown-label">Départ le 10 août</p>
-            <div class="vy-countdown" id="countdown">
-                <div class="vy-flip" data-unit="d"><div class="vy-flip-card"><span class="vy-flip-val">00</span></div><span class="vy-flip-label">jours</span></div>
-                <div class="vy-flip" data-unit="h"><div class="vy-flip-card"><span class="vy-flip-val">00</span></div><span class="vy-flip-label">heures</span></div>
-                <div class="vy-flip" data-unit="m"><div class="vy-flip-card"><span class="vy-flip-val">00</span></div><span class="vy-flip-label">minutes</span></div>
-                <div class="vy-flip" data-unit="s"><div class="vy-flip-card"><span class="vy-flip-val">00</span></div><span class="vy-flip-label">secondes</span></div>
-            </div>
-
-            <div class="vy-team-intro" id="teamIntro" hidden></div>
-
-            <div class="vy-weather" id="weatherWidget" hidden>
-                <p class="vy-weather-label">Prévisions à Huelgoat</p>
-                <div class="vy-weather-row" id="weatherRow"></div>
-            </div>
-        </div>
-        <div class="vy-scroll-cue" aria-hidden="true"><span></span>Faites défiler</div>
-    </header>
-
-    <!-- Silhouette surprise, révélée en secouant le téléphone -->
-    <div class="vy-korrigan" id="korrigan" aria-hidden="true">
-        <svg viewBox="0 0 100 140">
-            <path d="M50,10 C 30,10 22,30 24,48 C 14,55 10,70 16,84 C 10,90 10,105 20,112 L28,105 C 34,118 66,118 72,105 L80,112 C90,105 90,90 84,84 C90,70 86,55 76,48 C78,30 70,10 50,10 Z" fill="#0d0a14"/>
-            <circle cx="40" cy="45" r="4" fill="#c9935a"/>
-            <circle cx="60" cy="45" r="4" fill="#c9935a"/>
-        </svg>
-    </div>
-
-    <!-- ============ AVANT-PROPOS ============ -->
-    <section class="vy-section vy-intro" data-mood="intro" data-reveal>
-        <p class="vy-kicker">Le projet</p>
-        <p class="vy-intro-text">On part à trois. Cinq jours pour boucler un des plus beaux sentiers de la Bretagne
-            intérieure, celui qui traverse les Monts d'Arrée d'un bout à l'autre avant de revenir sur ses pas.
-            Chaque jour a son caractère propre : la forêt qui raconte des légendes, la tourbière qui porte le nom des
-            portes de l'enfer, la ligne de crête balayée par le vent, la lande à perte de vue, puis le retour tranquille
-            par les chemins creux. On marche entre treize et seize kilomètres par jour,
-            et on garde toujours un œil sur le ciel breton, qui ne prévient jamais vraiment.</p>
-    </section>
-
-    <div class="vy-parchment" data-reveal aria-hidden="true"><span></span></div>
-
-    <!-- ============ LOGISTIQUE ============ -->
-    <section class="vy-section vy-logistics" data-mood="logi" data-reveal>
-        <p class="vy-kicker">Avant de partir</p>
-        <h2 class="vy-h2">Logistique et accès</h2>
-        <div class="vy-logi-grid">
-            <div class="vy-logi-card">
-                <p class="vy-logi-label">Trajet depuis Erquy</p>
-                <p class="vy-logi-text">Environ une heure trente de route par la N12, direction Morlaix puis sortie Huelgoat.</p>
-            </div>
-            <div class="vy-logi-card">
-                <p class="vy-logi-label">Stationnement</p>
-                <p class="vy-logi-text">Parking gratuit et longue durée au Lac de Huelgoat, ou Place de la Gare.</p>
-            </div>
-            <div class="vy-logi-card">
-                <p class="vy-logi-label">Carte de référence</p>
-                <p class="vy-logi-text">IGN 0617 OT, Huelgoat et Monts d'Arrée, à l'échelle 1 sur 25 000.</p>
-            </div>
-            <div class="vy-logi-card">
-                <p class="vy-logi-label">Cartes hors ligne</p>
-                <p class="vy-logi-text">Visorando, AllTrails ou Komoot, téléchargées avant de partir. Le réseau disparaît sur les crêtes.</p>
-            </div>
-        </div>
-        <p class="vy-sentiers">Sentiers empruntés : <b>GR 380</b>, <b>GR 37</b> et quelques petites randonnées locales.</p>
-    </section>
-
-    <div class="vy-parchment" data-reveal aria-hidden="true"><span></span></div>
-
-    <!-- ============ CARTE ============ -->
-    <section class="vy-section vy-map-section" data-mood="carte" data-reveal>
-        <p class="vy-kicker">Se repérer</p>
-        <h2 class="vy-h2">La carte du parcours</h2>
-        <p class="vy-map-note">Les cinq villages d'étape (en violet) et les trois sommets traversés (en ambre) sont
-            positionnés à leur emplacement réel. Le tracé qui les relie est une reconstitution plausible du parcours,
-            en attendant d'y superposer le vrai relevé GPS une fois la randonnée exportée de Visorando ou Komoot.</p>
-        <div class="vy-map" id="voyageMap"></div>
-    </section>
-
-    <div class="vy-parchment" data-reveal aria-hidden="true"><span></span></div>
-
-    <div class="vy-global-totals" id="trailTotals" data-reveal>
-        <p class="vy-kicker">Sur les cinq jours</p>
-        <div class="vy-totals">
-            <div class="vy-total-item">
-                <b id="totalElev">...</b><span>de dénivelé cumulé</span>
-                <div class="vy-eiffel-row" id="eiffelRow" aria-hidden="true"></div>
-                <span class="vy-eiffel-caption" id="eiffelCaption" hidden></span>
-            </div>
-            <div class="vy-total-item">
-                <b id="totalTime">...</b><span>de marche estimées</span>
-                <svg class="vy-sundial" viewBox="0 0 60 60" aria-hidden="true">
-                    <circle cx="30" cy="30" r="26" fill="none" stroke="var(--line)" stroke-width="1.5"/>
-                    <line x1="8" y1="30" x2="52" y2="30" stroke="var(--line)" stroke-width="1"/>
-                    <line x1="30" y1="8" x2="30" y2="52" stroke="var(--line)" stroke-width="1"/>
-                    <g id="sundialGnomon" style="transform-origin:30px 30px;">
-                        <line x1="30" y1="30" x2="30" y2="10" stroke="var(--ember)" stroke-width="2" stroke-linecap="round"/>
-                    </g>
-                    <circle cx="30" cy="30" r="2.5" fill="var(--parchment)"/>
-                </svg>
-            </div>
-        </div>
-    </div>
-
-    <!-- ============ LE SENTIER (scrollytelling) ============ -->
-    <section class="vy-trail" id="trail">
-        <svg class="vy-trail-svg" id="trailSvg" preserveAspectRatio="none">
-            <path id="trailGuide" fill="none" stroke="var(--line)" stroke-width="2"/>
-            <path id="trailPath" fill="none" stroke="url(#trailGrad)" stroke-width="3" stroke-linecap="round"/>
-            <defs>
-                <linearGradient id="trailGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="#c9935a"/>
-                    <stop offset="50%" stop-color="#c9b8dc"/>
-                    <stop offset="100%" stop-color="#8b6ba8"/>
-                </linearGradient>
-            </defs>
-        </svg>
-
-        <div class="vy-progress" id="progressPill">
-            <span class="vy-progress-label">Étape <b id="progressCur">1</b> sur 5</span>
-            <span class="vy-progress-track"><i id="progressFill"></i></span>
-        </div>
-
-        <div class="vy-steps" id="stepsWidget" aria-hidden="true">
-            <span class="vy-steps-num" id="stepsNum">0</span>
-            <span class="vy-steps-label">pas parcourus</span>
-        </div>
-
-        <div class="vy-walkers" id="walkers" aria-hidden="true">
-            <div class="vy-walker" data-walker="0"><img src="photos/ami-1.png" alt="" onerror="this.parentElement.classList.add('vy-walker-empty')"></div>
-            <div class="vy-walker" data-walker="1"><img src="photos/ami-2.png" alt="" onerror="this.parentElement.classList.add('vy-walker-empty')"></div>
-            <div class="vy-walker" data-walker="2"><img src="photos/ami-3.png" alt="" onerror="this.parentElement.classList.add('vy-walker-empty')"></div>
-        </div>
-
-        <article class="vy-day" data-day="1" data-mood="foret" data-reveal>
-            <div class="vy-day-node"><span>1</span></div>
-            <div class="vy-day-card">
-                <div class="vy-leaves" id="leavesLayer1" aria-hidden="true"></div>
-                <div class="vy-day-photo">
-                    <img src="photos/jour-1.jpg" alt="Forêt de Huelgoat" onerror="this.parentElement.classList.add('vy-photo-empty')">
-                </div>
-                <p class="vy-day-tag">Lundi</p>
-                <h3 class="vy-day-title">La forêt qui raconte encore ses légendes</h3>
-                <p class="vy-day-route"><span>Huelgoat</span><i>vers</i><span>Brennilis</span></p>
-                <div class="vy-stat-strip">
-                    <div class="vy-stat-box"><b>15 km</b><span>distance</span></div>
-                    <div class="vy-stat-box"><b>4 h 15</b><span>marche estimée</span></div>
-                </div>
-                <div class="vy-elev" title="Faible dénivelé, terrain plat à légèrement montant">
-                    <svg viewBox="0 0 200 30" class="vy-elev-svg"><path d="M0,26 L30,24 L70,20 L110,16 L150,14 L200,10" /><circle class="vy-elev-dot" r="3.2" style="offset-path:path('M0,26 L30,24 L70,20 L110,16 L150,14 L200,10')"/></svg>
-                    <span>Faible dénivelé, terrain plat à légèrement montant</span>
-                </div>
-                <div class="vy-guess" data-answer="150">
-                    <p class="vy-guess-q">À votre avis, combien de mètres de dénivelé positif aujourd'hui ?</p>
-                    <input type="range" min="0" max="600" step="10" value="300" class="vy-guess-slider">
-                    <div class="vy-guess-row"><span class="vy-guess-val">300</span><span class="vy-guess-unit">mètres</span><button type="button" class="vy-guess-btn">Vérifier</button></div>
-                    <p class="vy-guess-result" hidden></p>
-                </div>
-                <div class="vy-cairn-zone">
-                    <div class="vy-cairn" id="cairnStack" aria-hidden="true"></div>
-                    <button type="button" class="vy-cairn-btn" id="cairnBtn">Poser une pierre sur le cairn</button>
-                </div>
-                <p class="vy-day-text">On plonge directement dans les sous-bois denses du chaos de Huelgoat, entre blocs de granit géants et rivière souterraine. Le sentier est roulant, presque plat, ce qui laisse le temps de s'arrêter partout : au Moulin, dans la grotte du Diable, ou devant la Roche Tremblante, un bloc de cent trente sept tonnes qu'on peut faire vaciller à la seule force des bras. Plus loin, la grotte d'Artus et la mare aux Sangliers referment la partie la plus mystérieuse de la journée. La seconde moitié suit une ancienne voie ferrée devenue voie verte, un vrai bol d'air après les sous-bois, jusqu'au bord du grand réservoir de Saint-Michel.</p>
-                <ul class="vy-poi">
-                    <li>Le chaos de Huelgoat, avec le Moulin et la grotte du Diable</li>
-                    <li>La Roche Tremblante, un bloc de cent trente sept tonnes que l'on peut faire bouger</li>
-                    <li>La grotte d'Artus et la mare aux Sangliers</li>
-                </ul>
-                <div class="vy-legend">
-                    <p class="vy-legend-hint">Grattez pour révéler la légende</p>
-                    <p class="vy-legend-text">On raconte que les blocs du chaos ont été jetés là par Gargantua lui-même, en chemin vers la mer. La grotte d'Artus, elle, tiendrait son nom d'un roi Arthur venu s'y reposer après une bataille, bien avant que la légende ne s'installe de l'autre côté de la Manche.</p>
-                    <canvas class="vy-legend-canvas" data-legend="1"></canvas>
-                </div>
-                <p class="vy-day-arrival">Arrivée à <b>Brennilis</b>, au bord du réservoir de Saint-Michel.</p>
-                <div class="vy-cheers" data-cheers="1">
-                    <div class="vy-cheers-glass" data-glass="0"><img src="photos/ami-1.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
-                    <div class="vy-cheers-glass" data-glass="1"><img src="photos/ami-2.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
-                    <div class="vy-cheers-glass" data-glass="2"><img src="photos/ami-3.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
-                    <button type="button" class="vy-cheers-btn" data-cheers-btn="1">Trinquer</button>
-                    <p class="vy-cheers-caption" data-cheers-caption="1">Santé !</p>
-                </div>
-            </div>
-        </article>
-
-        <div class="vy-connector" data-connector="1"><svg viewBox="0 0 40 90" preserveAspectRatio="none"><path d="M20,0 C 5,25 35,45 20,70 S 5,85 20,90" /></svg></div>
-
-        <article class="vy-day rev" data-day="2" data-mood="tourbiere" data-reveal>
-            <div class="vy-day-node"><span>2</span></div>
-            <div class="vy-day-card">
-                <div class="vy-day-photo" id="fogCard">
-                    <img src="photos/jour-2.avif" alt="Tourbières du Yeun Elez" onerror="this.parentElement.classList.add('vy-photo-empty')">
-                    <div class="vy-fogveil" id="fogVeil" aria-hidden="true"><span></span><span></span><span></span></div>
-                    <div class="vy-meteors" id="meteorLayer" aria-hidden="true"></div>
-                    <div class="vy-wish" id="wishLight" aria-hidden="true"></div>
-                </div>
-                <p class="vy-day-tag">Mardi</p>
-                <h3 class="vy-day-title">Les portes de l'enfer et le premier sommet</h3>
-                <p class="vy-day-route"><span>Brennilis</span><i>vers</i><span>Botmeur</span></p>
-                <div class="vy-stat-strip">
-                    <div class="vy-stat-box"><b>14 km</b><span>distance</span></div>
-                    <div class="vy-stat-box"><b>4 h 34</b><span>marche estimée</span></div>
-                </div>
-                <div class="vy-elev" title="Montée progressive, final raide, puis forte descente">
-                    <svg viewBox="0 0 200 30" class="vy-elev-svg"><path d="M0,26 L40,22 L80,17 L120,8 L145,2 L200,25" /><circle class="vy-elev-dot" r="3.2" style="offset-path:path('M0,26 L40,22 L80,17 L120,8 L145,2 L200,25')"/></svg>
-                    <span>Montée progressive, final raide, puis forte descente</span>
-                </div>
-                <div class="vy-guess" data-answer="320">
-                    <p class="vy-guess-q">À votre avis, combien de mètres de dénivelé positif aujourd'hui ?</p>
-                    <input type="range" min="0" max="600" step="10" value="300" class="vy-guess-slider">
-                    <div class="vy-guess-row"><span class="vy-guess-val">300</span><span class="vy-guess-unit">mètres</span><button type="button" class="vy-guess-btn">Vérifier</button></div>
-                    <p class="vy-guess-result" hidden></p>
-                </div>
-                <div class="vy-astro">
-                    <p class="vy-astro-label">Cette nuit-là</p>
-                    <p class="vy-astro-title">Pluie d'étoiles filantes</p>
-                    <p class="vy-astro-text">La nuit du mardi 11 août, les Perséides seront à leur pic. Depuis la lande,
-                        loin de toute lumière de ville, le ciel des Monts d'Arrée devrait être l'un des meilleurs
-                        endroits de Bretagne pour les observer.</p>
-                </div>
-                <button type="button" class="vy-btn ghost" id="meteorShowerBtn">Faire une pluie d'étoiles filantes</button>
-                <p class="vy-day-text">La matinée commence dans les tourbières du Yeun Elez, que la mythologie bretonne surnomme les portes de l'enfer et qui restent souvent noyées dans la brume à cette heure. On avance sur des caillebotis, entre landes humides et silence complet, avant que le terrain ne se redresse d'un coup pour l'ascension du mont Saint-Michel de Brasparts. Trois cent quatre vingt et un mètres d'altitude, ce qui paraît modeste sur le papier mais qui, une fois là-haut, offre un panorama complet sur la baie de Morlaix quand le ciel veut bien se dégager. La chapelle Saint-Michel, construite en seize cent soixante douze, veille seule au sommet depuis toujours.</p>
-                <ul class="vy-poi">
-                    <li>Les tourbières du Yeun Elez, avec leurs caillebotis et leur brume matinale</li>
-                    <li>Le mont Saint-Michel de Brasparts, à trois cent quatre vingt et un mètres</li>
-                    <li>La chapelle Saint-Michel, construite en seize cent soixante douze</li>
-                </ul>
-                <div class="vy-legend">
-                    <p class="vy-legend-hint">Grattez pour révéler la légende</p>
-                    <p class="vy-legend-text">La tourbière du Yeun Elez serait un des accès au royaume des morts, gardé par l'Ankou, la figure bretonne de la mort qui parcourt les chemins la nuit. Les anciens du coin racontaient qu'il ne fallait jamais s'y attarder après le coucher du soleil.</p>
-                    <canvas class="vy-legend-canvas" data-legend="2"></canvas>
-                </div>
-                <p class="vy-day-arrival">Arrivée à <b>Botmeur</b>, au creux du versant nord.</p>
-                <div class="vy-cheers" data-cheers="2">
-                    <div class="vy-cheers-glass" data-glass="0"><img src="photos/ami-1.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
-                    <div class="vy-cheers-glass" data-glass="1"><img src="photos/ami-2.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
-                    <div class="vy-cheers-glass" data-glass="2"><img src="photos/ami-3.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
-                    <button type="button" class="vy-cheers-btn" data-cheers-btn="2">Trinquer</button>
-                    <p class="vy-cheers-caption" data-cheers-caption="2">Santé !</p>
-                </div>
-            </div>
-        </article>
-
-        <div class="vy-connector" data-connector="2"><svg viewBox="0 0 40 90" preserveAspectRatio="none"><path d="M20,0 C 35,25 5,45 20,70 S 35,85 20,90" /></svg></div>
-
-        <article class="vy-day" data-day="3" data-mood="crete" data-reveal>
-            <div class="vy-day-node"><span>3</span></div>
-            <div class="vy-day-card vy-tilt" id="windCard">
-                <div class="vy-wind" id="windLayer" aria-hidden="true"></div>
-                <div class="vy-day-photo">
-                    <img src="photos/jour-3.jpg" alt="Ligne de crête des Monts d'Arrée" onerror="this.parentElement.classList.add('vy-photo-empty')">
-                </div>
-                <p class="vy-day-tag">Mercredi</p>
-                <h3 class="vy-day-title" id="day3Title">Sur le toit de la Bretagne</h3>
-                <p class="vy-day-route"><span>Botmeur</span><i>vers</i><span>Plounéour-Ménez</span></p>
-                <div class="vy-stat-strip">
-                    <div class="vy-stat-box"><b>16 km</b><span>distance</span></div>
-                    <div class="vy-stat-box"><b>5 h 32</b><span>marche estimée</span></div>
-                </div>
-                <div class="vy-elev" title="Ligne de crête, succession de montées et de descentes">
-                    <svg viewBox="0 0 200 30" class="vy-elev-svg"><path d="M0,22 L25,10 L50,20 L75,6 L100,18 L125,4 L150,16 L175,8 L200,14" /><circle class="vy-elev-dot" r="3.2" style="offset-path:path('M0,22 L25,10 L50,20 L75,6 L100,18 L125,4 L150,16 L175,8 L200,14')"/></svg>
-                    <span>Ligne de crête, succession de montées et de descentes</span>
-                </div>
-                <div class="vy-guess" data-answer="460">
-                    <p class="vy-guess-q">À votre avis, combien de mètres de dénivelé positif aujourd'hui ?</p>
-                    <input type="range" min="0" max="600" step="10" value="300" class="vy-guess-slider">
-                    <div class="vy-guess-row"><span class="vy-guess-val">300</span><span class="vy-guess-unit">mètres</span><button type="button" class="vy-guess-btn">Vérifier</button></div>
-                    <p class="vy-guess-result" hidden></p>
-                </div>
-                <div class="vy-astro">
-                    <p class="vy-astro-label">Ce jour-là</p>
-                    <p class="vy-astro-title">Éclipse solaire</p>
-                    <p class="vy-astro-text">Le mercredi 12 août, une éclipse solaire traversera le ciel pendant qu'on
-                        sera sur la ligne de crête. De quoi transformer une pause casse-croûte en moment qu'on n'oubliera
-                        pas de sitôt.</p>
-                </div>
-                <div class="vy-eclipse-stage" id="eclipseStage">
-                    <div class="vy-eclipse-sun"></div>
-                    <div class="vy-eclipse-moon" id="eclipseMoon"></div>
-                    <div class="vy-eclipse-corona" id="eclipseCorona"></div>
-                </div>
-                <button type="button" class="vy-btn ghost" id="fsEclipseBtn">Vivre l'éclipse en plein écran</button>
-                <p class="vy-day-text">C'est la journée la plus physique de la semaine, mais aussi la plus spectaculaire. Le sentier suit la ligne de crête sur un sol de schiste couvert d'ajoncs et de bruyère, et le vent y souffle presque toujours plus fort qu'ailleurs. On passe d'abord par le Roc'h Trédudon, reconnaissable à son antenne de télécommunication qui domine tout le paysage, puis on enchaîne les montées et les descentes jusqu'au Roc'h Trévezel, avec ses pics de granit acérés et son chaos minéral à couper le souffle. Des deux côtés de la crête, la vue se dégage sur toute la péninsule bretonne.</p>
-                <ul class="vy-poi">
-                    <li>Le Roc'h Trédudon, à trois cent quatre vingt cinq mètres</li>
-                    <li>La ligne de crête des Monts d'Arrée dans son ensemble</li>
-                    <li>Le Roc'h Trévezel, à trois cent quatre vingt quatre mètres, et son chaos minéral</li>
-                </ul>
-                <div class="vy-legend">
-                    <p class="vy-legend-hint">Grattez pour révéler la légende</p>
-                    <p class="vy-legend-text">Sur les hauteurs du Roc'h Trévezel, les korrigans, petits êtres facétieux du folklore breton, seraient sortis danser certaines nuits de pleine lune, attirant les voyageurs égarés dans leurs rondes sans fin.</p>
-                    <canvas class="vy-legend-canvas" data-legend="3"></canvas>
-                </div>
-                <p class="vy-day-arrival">Arrivée à <b>Plounéour-Ménez</b>, ou en gîte au pied du versant nord.</p>
-                <div class="vy-cheers" data-cheers="3">
-                    <div class="vy-cheers-glass" data-glass="0"><img src="photos/ami-1.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
-                    <div class="vy-cheers-glass" data-glass="1"><img src="photos/ami-2.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
-                    <div class="vy-cheers-glass" data-glass="2"><img src="photos/ami-3.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
-                    <button type="button" class="vy-cheers-btn" data-cheers-btn="3">Trinquer</button>
-                    <p class="vy-cheers-caption" data-cheers-caption="3">Santé !</p>
-                </div>
-            </div>
-        </article>
-
-        <div class="vy-connector" data-connector="3"><svg viewBox="0 0 40 90" preserveAspectRatio="none"><path d="M20,0 C 5,25 35,45 20,70 S 5,85 20,90" /></svg></div>
-
-        <article class="vy-day rev" data-day="4" data-mood="lande" data-reveal>
-            <div class="vy-day-node"><span>4</span></div>
-            <div class="vy-day-card">
-                <div class="vy-day-photo">
-                    <img src="photos/jour-4.jpg" alt="Lande des Monts d'Arrée" onerror="this.parentElement.classList.add('vy-photo-empty')">
-                </div>
-                <p class="vy-day-tag">Jeudi</p>
-                <h3 class="vy-day-title">Le cœur de la lande et l'altitude</h3>
-                <p class="vy-day-route"><span>Plounéour-Ménez</span><i>vers</i><span>La Feuillée</span></p>
-                <div class="vy-stat-strip">
-                    <div class="vy-stat-box"><b>15 km</b><span>distance</span></div>
-                    <div class="vy-stat-box"><b>4 h 21</b><span>marche estimée</span></div>
-                </div>
-                <div class="vy-elev" title="Descente puis long plateau vallonné">
-                    <svg viewBox="0 0 200 30" class="vy-elev-svg"><path d="M0,6 L40,14 L80,18 L120,16 L160,19 L200,17" /><circle class="vy-elev-dot" r="3.2" style="offset-path:path('M0,6 L40,14 L80,18 L120,16 L160,19 L200,17')"/></svg>
-                    <span>Descente puis long plateau vallonné</span>
-                </div>
-                <div class="vy-guess" data-answer="180">
-                    <p class="vy-guess-q">À votre avis, combien de mètres de dénivelé positif aujourd'hui ?</p>
-                    <input type="range" min="0" max="600" step="10" value="300" class="vy-guess-slider">
-                    <div class="vy-guess-row"><span class="vy-guess-val">300</span><span class="vy-guess-unit">mètres</span><button type="button" class="vy-guess-btn">Vérifier</button></div>
-                    <p class="vy-guess-result" hidden></p>
-                </div>
-                <p class="vy-day-text">Après les efforts de la veille, la journée s'ouvre sur de grandes étendues désertiques couvertes de fougères, où l'on croise surtout des chemins d'exploitation forestière et agricole. C'est une immersion complète dans le parc naturel régional d'Armorique, avec parfois d'anciens alignements mégalithiques et des tumulus qui rappellent que ces terres sont habitées depuis la préhistoire. Le village d'arrivée, La Feuillée, détient un titre discret mais réel : celui de commune la plus haute de Bretagne, avec sa place de l'église posée à deux cent soixante quinze mètres d'altitude.</p>
-                <ul class="vy-poi">
-                    <li>Les alignements mégalithiques et tumulus du plateau</li>
-                    <li>La Feuillée, commune la plus haute de Bretagne à deux cent soixante quinze mètres</li>
-                </ul>
-                <div class="vy-legend">
-                    <p class="vy-legend-hint">Grattez pour révéler la légende</p>
-                    <p class="vy-legend-text">Les alignements de pierres du plateau seraient, selon la tradition orale, d'anciens soldats pétrifiés un jour de bataille oubliée. D'autres racontent plutôt qu'il s'agissait de fées veillant sur la lande, changées en menhirs à l'aube.</p>
-                    <canvas class="vy-legend-canvas" data-legend="4"></canvas>
-                </div>
-                <button type="button" class="vy-btn ghost" id="dawnBtn">Voir l'aube se lever</button>
-
-                <p class="vy-day-arrival">Arrivée à <b>La Feuillée</b>.</p>
-                <div class="vy-cheers" data-cheers="4">
-                    <div class="vy-cheers-glass" data-glass="0"><img src="photos/ami-1.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
-                    <div class="vy-cheers-glass" data-glass="1"><img src="photos/ami-2.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
-                    <div class="vy-cheers-glass" data-glass="2"><img src="photos/ami-3.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
-                    <button type="button" class="vy-cheers-btn" data-cheers-btn="4">Trinquer</button>
-                    <p class="vy-cheers-caption" data-cheers-caption="4">Santé !</p>
-                </div>
-            </div>
-        </article>
-
-        <article class="vy-day" data-day="5" data-mood="retour" data-reveal>
-            <div class="vy-day-node"><span>5</span></div>
-            <div class="vy-day-card">
-                <div class="vy-leaves" id="leavesLayer5" aria-hidden="true"></div>
-                <div class="vy-day-photo">
-                    <img src="photos/jour-5.avif" alt="Retour vers Huelgoat" onerror="this.parentElement.classList.add('vy-photo-empty')">
-                </div>
-                <p class="vy-day-tag">Vendredi</p>
-                <h3 class="vy-day-title">Le retour aux sources</h3>
-                <p class="vy-day-route"><span>La Feuillée</span><i>vers</i><span>Huelgoat</span></p>
-                <div class="vy-stat-strip">
-                    <div class="vy-stat-box"><b>13 km</b><span>distance</span></div>
-                    <div class="vy-stat-box"><b>3 h 33</b><span>marche estimée</span></div>
-                </div>
-                <div class="vy-elev" title="Journée principalement descendante">
-                    <svg viewBox="0 0 200 30" class="vy-elev-svg"><path d="M0,4 L40,10 L80,15 L120,19 L160,23 L200,26" /><circle class="vy-elev-dot" r="3.2" style="offset-path:path('M0,4 L40,10 L80,15 L120,19 L160,23 L200,26')"/></svg>
-                    <span>Journée principalement descendante</span>
-                </div>
-                <div class="vy-guess" data-answer="90">
-                    <p class="vy-guess-q">À votre avis, combien de mètres de dénivelé positif aujourd'hui ?</p>
-                    <input type="range" min="0" max="600" step="10" value="300" class="vy-guess-slider">
-                    <div class="vy-guess-row"><span class="vy-guess-val">300</span><span class="vy-guess-unit">mètres</span><button type="button" class="vy-guess-btn">Vérifier</button></div>
-                    <p class="vy-guess-result" hidden></p>
-                </div>
-                <p class="vy-day-text">Le dernier jour ramène doucement vers le point de départ, avec une transition progressive entre la lande aride, le bocage fait de champs entourés de haies, et la forêt qui redevient de plus en plus dense à mesure qu'on approche de Huelgoat. On traverse quelques hameaux typiques en pierre de taille, on emprunte ces chemins creux si caractéristiques du centre Bretagne, et on referme la boucle par un versant qu'on n'a pas encore vu, celui du Gouffre, dans la pénombre apaisante de la forêt domaniale.</p>
-                <ul class="vy-poi">
-                    <li>Les hameaux bretons en pierre de taille</li>
-                    <li>Les chemins creux, typiques du centre Bretagne</li>
-                    <li>Le retour par la forêt domaniale de Huelgoat, versant du Gouffre</li>
-                </ul>
-                <div class="vy-legend">
-                    <p class="vy-legend-hint">Grattez pour révéler la légende</p>
-                    <p class="vy-legend-text">Les chemins creux du retour seraient d'anciens passages empruntés par les contrebandiers de sel, qui connaissaient chaque recoin pour échapper aux gabelous. La nuit, certains jurent encore y entendre des pas qui ne sont pas les leurs.</p>
-                    <canvas class="vy-legend-canvas" data-legend="5"></canvas>
-                </div>
-                <button type="button" class="vy-btn ghost" id="liveDay5Btn">Vivre cette journée</button>
-                <p class="vy-day-arrival">Retour à <b>Huelgoat</b>, et récupération du véhicule.</p>
-                <div class="vy-cheers" data-cheers="5">
-                    <div class="vy-cheers-glass" data-glass="0"><img src="photos/ami-1.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
-                    <div class="vy-cheers-glass" data-glass="1"><img src="photos/ami-2.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
-                    <div class="vy-cheers-glass" data-glass="2"><img src="photos/ami-3.png" alt=""><span class="vy-cheers-cup">🥂</span></div>
-                    <button type="button" class="vy-cheers-btn" data-cheers-btn="5">Trinquer</button>
-                    <p class="vy-cheers-caption" data-cheers-caption="5">Santé !</p>
-                </div>
-            </div>
-        </article>
-
-    </section>
-
-    <div class="vy-parchment" data-reveal aria-hidden="true"><span></span></div>
-
-    <!-- ============ JEU : ATTRAPEZ-LES SUR LA LANDE ============ -->
-    <section class="vy-section vy-mole-section" data-mood="lande" data-reveal>
-        <p class="vy-kicker">Pour la route</p>
-        <h2 class="vy-h2">Elles se cachent dans la lande</h2>
-        <p class="vy-map-note">Elles pointent le bout du nez au hasard, entre les fougères. Tapez-les avant qu'elles
-            ne redisparaissent.</p>
-        <div class="vy-mole-hud">
-            <div class="vy-mole-stat"><b id="moleScore">0</b><span>score</span></div>
-            <div class="vy-mole-stat"><b id="moleTime">30</b><span>secondes</span></div>
-            <button type="button" class="vy-mole-board-btn" id="moleBoardBtn" aria-label="Voir le classement">🏆</button>
-        </div>
-        <div class="vy-mole-board" id="moleBoard" hidden>
-            <p class="vy-mole-board-title">Classement des records</p>
-            <div class="vy-mole-board-list" id="moleBoardList"></div>
-        </div>
-        <div class="vy-mole-field" id="moleField">
-            <div class="vy-mole-hole" data-hole="0"><div class="vy-mole-head"><img alt=""></div></div>
-            <div class="vy-mole-hole" data-hole="1"><div class="vy-mole-head"><img alt=""></div></div>
-            <div class="vy-mole-hole" data-hole="2"><div class="vy-mole-head"><img alt=""></div></div>
-            <div class="vy-mole-hole" data-hole="3"><div class="vy-mole-head"><img alt=""></div></div>
-            <div class="vy-mole-hole" data-hole="4"><div class="vy-mole-head"><img alt=""></div></div>
-            <div class="vy-mole-hole" data-hole="5"><div class="vy-mole-head"><img alt=""></div></div>
-            <div class="vy-mole-hole" data-hole="6"><div class="vy-mole-head"><img alt=""></div></div>
-            <div class="vy-mole-hole" data-hole="7"><div class="vy-mole-head"><img alt=""></div></div>
-            <div class="vy-mole-hole" data-hole="8"><div class="vy-mole-head"><img alt=""></div></div>
-        </div>
-        <button type="button" class="vy-btn" id="moleStartBtn">Lancer le jeu</button>
-        <p class="vy-mole-result" id="moleResult" hidden></p>
-    </section>
-
-    <div class="vy-parchment" data-reveal aria-hidden="true"><span></span></div>
-
-    <!-- ============ SÉCURITÉ / PRÉPARATION ============ -->
-    <section class="vy-section vy-prep" data-mood="prep" data-reveal>
-        <p class="vy-kicker">À prévoir</p>
-        <h2 class="vy-h2">Prérequis et sécurité</h2>
-        <div class="vy-prep-grid">
-            <div class="vy-prep-card">
-                <p class="vy-prep-label">Terrain</p>
-                <p class="vy-prep-text">Le sol est inégal, entre roches affleurantes, racines et tourbe glissante.
-                    Des chaussures de randonnée montantes sont obligatoires pour tout le monde.</p>
-            </div>
-            <div class="vy-prep-card">
-                <p class="vy-prep-label">Météo changeante</p>
-                <p class="vy-prep-text">Un système trois couches est nécessaire : t-shirt technique, polaire, veste
-                    imperméable. Le vent sur les crêtes fait chuter la température ressentie plus qu'on ne l'imagine.</p>
-            </div>
-            <div class="vy-prep-card">
-                <p class="vy-prep-label">Ravitaillement</p>
-                <p class="vy-prep-text">Les points d'eau et les épiceries sont rares entre les étapes. Il faut partir
-                    chaque matin avec deux litres d'eau minimum par personne et le repas de midi.</p>
-            </div>
-        </div>
-    </section>
-
-    <div class="vy-parchment" data-reveal aria-hidden="true"><span></span></div>
-
-    <!-- ============ PORTAIL PRIVÉ ============ -->
-    <section class="vy-section vy-lockgate-section" id="lockGateSection" data-mood="prive" data-reveal>
-        <div class="vy-lockgate" id="lockGate">
-            <p class="vy-kicker">Réservé à nous trois</p>
-            <h2 class="vy-h2">La suite est privée</h2>
-            <input type="password" id="lockInput" placeholder="Mot de passe" autocomplete="off">
-            <button type="button" class="vy-btn" id="lockSubmit">Déverrouiller</button>
-            <p class="vy-lock-error" id="lockError" hidden>Mot de passe incorrect.</p>
-        </div>
-
-        <div class="vy-private" id="privateZone" hidden>
-            <!-- ============ VOS PRÉNOMS ============ -->
-            <div class="vy-names-section">
-                <p class="vy-kicker">Une seule fois</p>
-                <h2 class="vy-h2">Qui êtes-vous, tous les trois</h2>
-                <p class="vy-map-note">Vos prénoms servent à répartir le matériel et les frais ci-dessous. Une seule personne
-                    a besoin de les saisir, ils sont partagés entre vos téléphones.</p>
-                <div class="vy-names-row" id="namesRow">
-                    <input type="text" class="vy-name-input" data-idx="0" maxlength="24" placeholder="Prénom 1">
-                    <input type="text" class="vy-name-input" data-idx="1" maxlength="24" placeholder="Prénom 2">
-                    <input type="text" class="vy-name-input" data-idx="2" maxlength="24" placeholder="Prénom 3">
-                </div>
-                <button type="button" class="vy-btn" id="namesSave">Enregistrer</button>
-            </div>
-
-
-    <!-- ============ QUI PORTE QUOI ============ -->
-    <div class="vy-section vy-gear-section">
-        <p class="vy-kicker">À se répartir</p>
-        <h2 class="vy-h2">Qui porte quoi</h2>
-        <p class="vy-map-note">Touchez un prénom pour vous attribuer l'objet, retouchez pour confirmer que vous l'avez
-            vraiment (ça passe au vert), une troisième fois pour libérer l'objet. Glissez la poignée pour réordonner,
-            créez vos propres catégories si besoin.</p>
-        <div class="vy-gear-filter" id="gearFilter"></div>
-        <div class="vy-gear-categories" id="gearCategories"></div>
-        <div class="vy-add-row">
-            <input type="text" id="catInput" maxlength="40" placeholder="Nouvelle catégorie">
-            <button type="button" class="vy-btn ghost" id="catAdd">Créer</button>
-        </div>
-        <button type="button" class="vy-btn ghost" id="gearResetBtn">Remplacer par la liste complète de matériel</button>
-    </div>
-
-    <!-- ============ LES FRAIS ============ -->
-    <div class="vy-section vy-expenses-section">
-        <p class="vy-kicker">À suivre</p>
-        <h2 class="vy-h2">Les frais du voyage</h2>
-        <div class="vy-expense-form" id="expenseForm">
-            <input type="text" id="expLabel" maxlength="60" placeholder="Essence, hébergement...">
-            <input type="number" id="expAmount" min="0" step="0.5" placeholder="Montant en euros">
-            <p class="vy-field-label">Qui a payé</p>
-            <div class="vy-avatar-row" id="expPaidByRow"></div>
-            <p class="vy-field-label">Pour qui</p>
-            <div class="vy-split-row" id="expSplitRow"></div>
-            <button type="button" class="vy-btn" id="expAdd">Ajouter la dépense</button>
-            <button type="button" class="vy-btn ghost" id="expCancelEdit" hidden>Annuler la modification</button>
-        </div>
-        <div class="vy-expense-list" id="expenseList"></div>
-        <div class="vy-expense-summary" id="expenseSummary"></div>
-    </div>
-
-    <div class="vy-parchment" aria-hidden="true"><span></span></div>
-
-    <!-- ============ VOS LISTES ============ -->
-    <div class="vy-section vy-checklist-section">
-        <p class="vy-kicker">Chacun la sienne</p>
-        <h2 class="vy-h2">Avant de partir, vos listes</h2>
-        <p class="vy-map-note">Un onglet par prénom, partagé entre vos téléphones : chacun remplit et coche le sien.</p>
-        <div class="vy-tabs" id="checklistTabs"></div>
-        <div class="vy-checklist" id="checklist"></div>
-        <div class="vy-checklist-add">
-            <input type="text" id="checklistInput" maxlength="40" placeholder="Ajouter un élément">
-            <button type="button" class="vy-btn ghost" id="checklistAdd">Ajouter</button>
-        </div>
-        <button type="button" class="vy-btn ghost" id="checklistFillBtn">Remplir avec la liste type (sans écraser ce qui existe déjà)</button>
-    </div>
-
-    <div class="vy-section vy-wheel-section">
-        <p class="vy-kicker">Pour trancher</p>
-        <h2 class="vy-h2">La roue de la décision</h2>
-        <p class="vy-map-note">Qui porte quoi, qui paie le prochain plein, ou n'importe quelle autre décision à
-            trois : faites tourner plutôt que d'en discuter pendant une heure.</p>
-        <div class="vy-wheel-stage">
-            <div class="vy-wheel-pointer" aria-hidden="true"></div>
-            <div class="vy-wheel" id="wheelDial">
-                <div class="vy-wheel-seg" data-seg="0"><img src="photos/ami-1.png" alt="" onerror="this.style.display='none'"><span class="vy-wheel-name" data-wheel-name="0"></span></div>
-                <div class="vy-wheel-seg" data-seg="1"><img src="photos/ami-2.png" alt="" onerror="this.style.display='none'"><span class="vy-wheel-name" data-wheel-name="1"></span></div>
-                <div class="vy-wheel-seg" data-seg="2"><img src="photos/ami-3.png" alt="" onerror="this.style.display='none'"><span class="vy-wheel-name" data-wheel-name="2"></span></div>
-            </div>
-        </div>
-        <button type="button" class="vy-btn" id="wheelSpinBtn">Faire tourner la roue</button>
-        <p class="vy-wheel-result" id="wheelResult" hidden></p>
-    </div>
-
-    <div class="vy-section vy-offline-section">
-        <p class="vy-kicker">Pour le jour J</p>
-        <h2 class="vy-h2">Mode hors-ligne</h2>
-        <p class="vy-map-note">Le réseau disparaît sur les crêtes. Ce bouton précharge la carte et les tuiles du
-            parcours pendant que vous avez encore du réseau, pour pouvoir la consulter une fois sur place, sans
-            connexion. Le reste de la page (itinéraire, légendes, matériel) reste lisible hors-ligne dès la
-            première visite, ceci ne concerne que la carte.</p>
-        <button type="button" class="vy-btn" id="offlineBtn">Précharger la carte pour hors-ligne</button>
-        <p class="vy-offline-status" id="offlineStatus"></p>
-        <button type="button" class="vy-btn ghost" id="downloadDataBtn">Télécharger nos données (matériel, frais, listes)</button>
-    </div>
-        </div>
-    </section>
-
-    <footer class="vy-footer" data-reveal>
-        <div class="vy-confetti" id="confetti" aria-hidden="true"></div>
-        <p>Cinq jours, une boucle, et la lande pour seul horizon.</p>
-        <p class="vy-footer-sub">Emportez la carte papier. Le réseau ne suit pas toujours sur les crêtes.</p>
-    </footer>
-    </div>
-
-    <div class="vy-fullscreen-meteors" id="fullscreenMeteors" aria-hidden="true"></div>
-
-    <div class="vy-fs-dawn" id="fsDawn" aria-hidden="true">
-        <button type="button" class="vy-fs-eclipse-close" id="fsDawnClose" aria-label="Fermer">✕</button>
-        <svg class="vy-fs-dawn-svg" id="dawnSvg" viewBox="0 0 400 240" preserveAspectRatio="xMidYMid meet">
-            <defs>
-                <radialGradient id="dawnBurstGrad" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stop-color="#fff3d6" stop-opacity=".95"/>
-                    <stop offset="100%" stop-color="#fff3d6" stop-opacity="0"/>
-                </radialGradient>
-                <radialGradient id="dawnHorizonGrad" cx="50%" cy="100%" r="75%">
-                    <stop offset="0%" stop-color="#ffcf8a" stop-opacity=".9"/>
-                    <stop offset="60%" stop-color="#e08a5a" stop-opacity=".35"/>
-                    <stop offset="100%" stop-color="#e08a5a" stop-opacity="0"/>
-                </radialGradient>
-            </defs>
-            <rect id="dawnSky" x="0" y="0" width="400" height="240" fill="#191428"/>
-            <rect id="dawnHorizonGlow" x="0" y="0" width="400" height="240" fill="url(#dawnHorizonGrad)" opacity="0"/>
-            <g id="dawnStars">
-                <circle cx="30" cy="24" r="1.1"/><circle cx="70" cy="14" r="1.4"/><circle cx="110" cy="30" r="1"/>
-                <circle cx="150" cy="16" r="1.3"/><circle cx="190" cy="26" r="1"/><circle cx="230" cy="12" r="1.4"/>
-                <circle cx="270" cy="22" r="1.1"/><circle cx="310" cy="16" r="1.3"/><circle cx="350" cy="28" r="1"/>
-                <circle cx="380" cy="14" r="1.2"/><circle cx="50" cy="50" r="1"/><circle cx="330" cy="48" r="1.1"/>
-            </g>
-            <circle id="dawnFlash" cx="200" cy="120" r="0" fill="url(#dawnBurstGrad)" opacity="0"/>
-            <path d="M0,178 Q100,158 200,176 T400,178 L400,240 L0,240 Z" fill="#241d34"/>
-            <path d="M0,192 Q100,176 200,190 T400,190 L400,240 L0,240 Z" fill="#2c2440" opacity=".8"/>
-            <rect x="0" y="178" width="400" height="62" fill="#2c2440"/>
-            <g id="dawnBirds" opacity="0">
-                <path d="M0,0 Q4,-5 8,0 Q4,-5 0,0" stroke="#0d0a14" stroke-width="1.4" fill="none"/>
-            </g>
-            <g id="dawnFairies"></g>
-            <g id="dawnBursts"></g>
-            <g id="dawnMenhirs"></g>
-            <g id="dawnSparkles"></g>
-        </svg>
-        <div class="vy-dawn-head" data-head="0" style="--hx:-260px; --hy:-40px; --hr:-25deg; --ex:-46px; --ey:0px;">
-            <img src="photos/ami-1.png" alt="" onerror="this.parentElement.classList.add('vy-dawn-head-noimg')">
-            <span class="vy-dawn-bubble" data-bubble="0">Waouh !</span>
-        </div>
-        <div class="vy-dawn-head" data-head="1" style="--hx:0px; --hy:-220px; --hr:15deg; --ex:0px; --ey:0px;">
-            <img src="photos/ami-2.png" alt="" onerror="this.parentElement.classList.add('vy-dawn-head-noimg')">
-            <span class="vy-dawn-bubble" data-bubble="1">Trop beau !</span>
-        </div>
-        <div class="vy-dawn-head" data-head="2" style="--hx:260px; --hy:60px; --hr:-15deg; --ex:46px; --ey:0px;">
-            <img src="photos/ami-3.png" alt="" onerror="this.parentElement.classList.add('vy-dawn-head-noimg')">
-            <span class="vy-dawn-bubble" data-bubble="2">On reviendra !</span>
-        </div>
-        <button type="button" class="vy-btn ghost" id="liveDay4Btn" hidden>Vivre la journée</button>
-        <p class="vy-dawn-caption" id="dawnCaption">Le ciel pâlit doucement sur la lande</p>
-    </div>
-
-    <div class="vy-fs-day5" id="fsDay5" aria-hidden="true">
-        <button type="button" class="vy-fs-eclipse-close" id="fsDay5Close" aria-label="Fermer">✕</button>
-        <svg class="vy-fs-day5-svg" id="day5Svg" viewBox="0 0 400 220" preserveAspectRatio="xMidYMid meet">
-            <defs>
-                <linearGradient id="day5Sky" x1="0" y1="0" x2="1" y2="0">
-                    <stop id="day5SkyA" offset="0%" stop-color="#241c34"/>
-                    <stop id="day5SkyB" offset="45%" stop-color="#2d3a52"/>
-                    <stop id="day5SkyC" offset="65%" stop-color="#3a3350"/>
-                    <stop id="day5SkyD" offset="100%" stop-color="#4a3540"/>
-                </linearGradient>
-                <radialGradient id="day5Sun" cx="50%" cy="50%" r="50%">
-                    <stop offset="0%" stop-color="#f3d9a0"/>
-                    <stop offset="100%" stop-color="#c9935a" stop-opacity="0"/>
-                </radialGradient>
-            </defs>
-            <rect x="0" y="0" width="400" height="220" fill="url(#day5Sky)"/>
-            <circle id="day5SunGlow" cx="370" cy="35" r="60" fill="url(#day5Sun)" opacity="0"/>
-            <g id="day5Clouds" opacity=".5">
-                <ellipse cx="60" cy="30" rx="26" ry="8" fill="#fff" opacity=".18"/>
-                <ellipse cx="150" cy="20" rx="20" ry="6" fill="#fff" opacity=".14"/>
-                <ellipse cx="300" cy="28" rx="30" ry="9" fill="#fff" opacity=".12"/>
-            </g>
-            <path d="M0,170 Q60,150 120,168 T240,166 T400,170 L400,220 L0,220 Z" fill="#241f30"/>
-            <g opacity=".85">
-                <path d="M30,168 L38,130 L46,168 Z" fill="#2e2440"/>
-                <path d="M45,170 L55,120 L65,170 Z" fill="#332747"/>
-                <path d="M8,170 L16,140 L24,170 Z" fill="#2a2138"/>
-            </g>
-            <ellipse cx="255" cy="150" rx="95" ry="34" fill="#2e4a63"/>
-            <ellipse cx="255" cy="150" rx="95" ry="34" fill="#3a5f7a" opacity=".6"/>
-            <path d="M170,140 Q255,118 340,140 L340,150 Q255,130 170,150 Z" fill="#c9b8dc" opacity=".18"/>
-            <circle class="vy-day5-ripple" cx="255" cy="150" r="6" />
-            <circle class="vy-day5-ripple" cx="255" cy="150" r="6" style="animation-delay:.5s" />
-            <circle class="vy-day5-ripple" cx="255" cy="150" r="6" style="animation-delay:1s" />
-            <g id="day5Splashes"></g>
-            <path id="day5Path" d="M20,110 C70,88 100,66 150,88 C180,100 190,142 220,152 C250,162 270,150 300,120 C330,98 350,88 380,98"
-                  fill="none" stroke="rgba(201,184,220,.3)" stroke-width="2" stroke-dasharray="3 7"/>
-            <path id="day5Trail0" fill="none" stroke="var(--ember-soft)" stroke-width="1.5" stroke-linecap="round" opacity=".5"/>
-            <path id="day5Trail1" fill="none" stroke="var(--heather-soft)" stroke-width="1.5" stroke-linecap="round" opacity=".5"/>
-            <path id="day5Trail2" fill="none" stroke="#a98cc2" stroke-width="1.5" stroke-linecap="round" opacity=".5"/>
-            <g opacity=".8">
-                <ellipse cx="345" cy="105" rx="26" ry="7" fill="#3a3244"/>
-                <ellipse cx="365" cy="112" rx="18" ry="5" fill="#332c3d"/>
-            </g>
-            <g id="day5Car" transform="translate(363,80)">
-                <rect x="0" y="10" width="30" height="14" rx="4" fill="var(--heather-soft)"/>
-                <rect x="4" y="2" width="20" height="12" rx="4" fill="var(--heather-soft)"/>
-                <circle cx="7" cy="26" r="4" fill="#0d0a14"/>
-                <circle cx="23" cy="26" r="4" fill="#0d0a14"/>
-                <rect x="7" y="6" width="6" height="6" fill="#c9e0e8" opacity=".8"/>
-                <rect x="15" y="6" width="6" height="6" fill="#c9e0e8" opacity=".8"/>
-            </g>
-        </svg>
-        <div class="vy-day5-head" data-head="0"><img src="photos/ami-1.png" alt="" onerror="this.parentElement.style.display='none'"></div>
-        <div class="vy-day5-head" data-head="1"><img src="photos/ami-2.png" alt="" onerror="this.parentElement.style.display='none'"></div>
-        <div class="vy-day5-head" data-head="2"><img src="photos/ami-3.png" alt="" onerror="this.parentElement.style.display='none'"></div>
-        <div class="vy-day5-confetti" id="day5Confetti" aria-hidden="true"></div>
-        <p class="vy-fs-eclipse-caption" id="day5Caption">Le chemin, la rivière, puis la voiture</p>
-    </div>
-
-    <div class="vy-fs-eclipse" id="fsEclipse" aria-hidden="true">
-        <button type="button" class="vy-fs-eclipse-close" id="fsEclipseClose" aria-label="Fermer">✕</button>
-        <div class="vy-fs-eclipse-stage">
-            <div class="vy-fs-sun"></div>
-            <div class="vy-fs-corona" id="fsCorona"></div>
-            <div class="vy-fs-moon" id="fsMoon"></div>
-        </div>
-        <p class="vy-fs-eclipse-caption">Mercredi 12 août, sur la ligne de crête</p>
-    </div>
-
-    <div class="vy-lightbox" id="lightbox" aria-hidden="true">
-        <button type="button" class="vy-lightbox-close" id="lightboxClose" aria-label="Fermer">✕</button>
-        <button type="button" class="vy-lightbox-nav prev" id="lightboxPrev" aria-label="Photo précédente">‹</button>
-        <div class="vy-lightbox-stage" id="lightboxStage">
-            <img id="lightboxImg" src="" alt="">
-        </div>
-        <button type="button" class="vy-lightbox-nav next" id="lightboxNext" aria-label="Photo suivante">›</button>
-        <p class="vy-lightbox-caption" id="lightboxCaption"></p>
-    </div>
-
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <div class="pb-toast" id="pb-toast" hidden></div>
+    <script src="/socket.io/socket.io.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

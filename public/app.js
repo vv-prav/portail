@@ -260,9 +260,33 @@ async function loadPulse() {
     if (!ok) return;
     pulse = data;
     renderTiles();
+    renderOnlinePlayers(data.salonOnline);
+    renderLiveGames(data.activeGames);
     const st = $('me-streak');
     if (data.mf && data.mf.streak > 0) { st.innerHTML = '🔥 <b>' + data.mf.streak + '</b>'; st.hidden = false; }
     else st.hidden = true;
+}
+
+function renderOnlinePlayers(list) {
+    const box = $('hub-online'), host = $('hub-online-chips');
+    if (!box || !host) return;
+    if (!Array.isArray(list) || !list.length) { box.hidden = true; return; }
+    host.innerHTML = list.map(p => `<span class="hub-online-chip">${esc(p)}</span>`).join('');
+    box.hidden = false;
+}
+
+const LIVE_GAME_LINK = { perudo: '/perudo/', pbac: '/pbac/', undercover: '/undercover/' };
+function renderLiveGames(list) {
+    const host = $('hub-live-games');
+    if (!host) return;
+    if (!Array.isArray(list) || !list.length) { host.hidden = true; return; }
+    host.innerHTML = list.map(g => `
+        <a class="hub-live-row" href="${LIVE_GAME_LINK[g.app] || '#'}">
+            <span class="hub-live-dot"></span>
+            <span class="hub-live-text">Une partie de <b>${esc(g.label)}</b> en cours${g.players && g.players.length ? ' avec ' + g.players.map(esc).join(', ') : ''}</span>
+        </a>
+    `).join('');
+    host.hidden = false;
 }
 
 async function loadAnnounce() {

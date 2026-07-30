@@ -648,6 +648,7 @@ app.post('/api/mf/comments', requireAuth, (req, res) => {
 // ---------------------------------------------------------------------
 const motusDict = require('./motsfleches/dict');
 const motusExtra6 = require('./motus/words6');   // vocabulaire complémentaire (vérifié à la main, 6 lettres)
+const motusExtra = require('./motus/wordsExtra'); // vocabulaire élargi (4 à 7 lettres, filtré automatiquement)
 const MOTUS_LENGTHS = [4, 5, 6, 7];               // longueur du mot du jour, variable
 const MOTUS_TRIES = 6;
 const MOTUS_KEEP_WORD_DAYS = 60;    // recul pour éviter les répétitions de mot
@@ -656,6 +657,8 @@ const MOTUS_KEEP_SHORT_DAYS = 15;   // classement / discussion / progression
 // Pool complet pour le tirage du mot du jour, pour une longueur donnée : les mots
 // courants du dictionnaire des mots fléchés (déjà vérifiés, utilisés en production pour
 // les grilles) + le vocabulaire complémentaire pour les 6 lettres, sans doublons.
+// Le vocabulaire élargi (wordsExtra) n'est volontairement jamais tiré comme mot du
+// jour : il peut contenir des mots plus rares, il ne sert qu'à valider les essais.
 function motusPool(len) {
     const base = (motusDict.words()[len] || []).filter(w => w.n <= 2).map(w => w.m);
     const seen = new Set(base);
@@ -663,11 +666,12 @@ function motusPool(len) {
     return [...base, ...extra];
 }
 // Mots acceptés en tentative : plus permissif (inclut aussi les mots rares du
-// dictionnaire pour cette longueur), pour ne jamais bloquer un joueur qui propose
-// un mot correct mais rare.
+// dictionnaire pour cette longueur, et le vocabulaire élargi), pour ne jamais bloquer
+// un joueur qui propose un mot correct mais rare.
 function motusKnown(guess) {
     const len = guess.length;
     if (len === 6 && motusExtra6.includes(guess)) return true;
+    if (motusExtra[len] && motusExtra[len].includes(guess)) return true;
     return (motusDict.words()[len] || []).some(w => w.m === guess);
 }
 // La longueur du jour est déterministe (même seed que le choix du mot), pour que tout
@@ -1390,12 +1394,41 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
     const mjSolversToday = mjBoard(today).length;
     let pbacOnline = 0;
     try { pbacOnline = pbacApi.online().length; } catch (e) {}
+
+    // Joueurs du salon actuellement en ligne : présence déduite de la fraîcheur de
+    // lastSeen (mis à jour par ce même endpoint, interrogé toutes les 60 s côté client).
+    const ONLINE_WINDOW_MS = 90 * 1000;
+    const now = Date.now();
+    const salonOnline = Object.values(registeredUsers)
+        .filter(u => u && u.lastSeen && (now - u.lastSeen) < ONLINE_WINDOW_MS)
+        .map(u => u.pseudo)
+        .sort((a, b) => a.localeCompare(b));
+
+    // Parties en cours, tous jeux confondus, avec les prénoms des joueurs présents.
+    const activeGames = [];
+    try {
+        perudoApi.games().filter(g => g.started && !g.vsBot).forEach(g => {
+            activeGames.push({ app: 'perudo', label: 'Perudo', players: g.players.map(p => p.pseudo) });
+        });
+    } catch (e) {}
+    try {
+        pbacApi.games().filter(g => g.status !== 'lobby' && g.status !== 'ended').forEach(g => {
+            activeGames.push({ app: 'pbac', label: 'Petit Bac', players: g.players });
+        });
+    } catch (e) {}
+    try {
+        undercoverApi.games().filter(g => g.status !== 'lobby' && g.status !== 'ended').forEach(g => {
+            activeGames.push({ app: 'undercover', label: 'Infiltré', players: g.players });
+        });
+    } catch (e) {}
+
     res.json({
         mf: { done, total: MF_LEVELS.length, streak }, perudo: { online, games },
         rec: { count: recs.length, fresh: recNew },
         motus: { done: motusDone, over: motusOver, solvers: motusSolversToday },
         motjuste: { done: mjDone, over: mjOver, solvers: mjSolversToday },
         pbac: { online: pbacOnline },
+        salonOnline, activeGames,
     });
 });
 

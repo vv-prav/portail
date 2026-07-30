@@ -189,6 +189,28 @@ body.is-hub   .hub   { display: block; }
                         font-size: 1.05rem; }
 .hub-announce[hidden] { display: none; }
 
+.hub-online { margin: 0 0 14px; }
+.hub-online-label { font-size: .68rem; text-transform: uppercase; letter-spacing: 1px; color: var(--muted, #9c9488);
+                     margin: 0 0 8px; }
+.hub-online-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.hub-online-chip { display: inline-flex; align-items: center; gap: 5px; padding: 5px 11px; border-radius: 999px;
+                    background: rgba(120, 200, 140, .12); border: 1px solid rgba(120, 200, 140, .3);
+                    font-size: .78rem; color: var(--parchment); }
+.hub-online-chip::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: #5fd67a;
+                            box-shadow: 0 0 5px #5fd67a; }
+.hub-online[hidden] { display: none; }
+
+.hub-live-games { display: flex; flex-direction: column; gap: 8px; margin: 0 0 18px; }
+.hub-live-games[hidden] { display: none; }
+.hub-live-row { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 12px;
+                background: rgba(217, 169, 78, .07); border: 1px solid rgba(217, 169, 78, .2);
+                color: var(--parchment); text-decoration: none; font-size: .84rem; transition: background .15s; }
+.hub-live-row:active { background: rgba(217, 169, 78, .16); }
+.hub-live-dot { width: 8px; height: 8px; border-radius: 50%; background: #e0684a; flex: 0 0 auto;
+                animation: hubLivePulse 1.6s ease-in-out infinite; }
+@keyframes hubLivePulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+.hub-live-text b { color: var(--brass-soft, #e0c27a); }
+
 /* ===== En-tête profil du salon ===== */
 .hub-me { display: flex; align-items: center; gap: 12px; background: none; border: none; padding: 4px;
           margin: -4px; border-radius: 14px; cursor: pointer; text-align: left; font-family: inherit; min-width: 0; }

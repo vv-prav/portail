@@ -28,11 +28,21 @@
             <span class="pb-round-tag" id="pb-round-tag" hidden></span>
         </header>
 
+        <div class="pb-join-requests" id="join-request-host" hidden aria-live="polite"></div>
+
         <!-- LOBBY : liste des tables -->
         <section class="pb-view" id="v-lobby">
             <button class="pb-btn" id="btn-create">Créer une table</button>
             <p class="pb-list-label" id="lobby-empty-label" hidden>Aucune table ouverte pour l'instant.</p>
             <div class="pb-tables" id="pb-tables"></div>
+        </section>
+
+        <!-- En attente de l'accord de l'hôte pour rejoindre une partie en cours -->
+        <section class="pb-view" id="v-join-pending">
+            <div class="pb-wait-box">
+                <div class="boot-ring"></div>
+                <p class="pb-wait-text">En attente de l'accord de <b id="join-pending-host">l'hôte</b>…</p>
+            </div>
         </section>
 
         <!-- Réglages d'une nouvelle table -->
@@ -51,18 +61,45 @@
                         <button type="button" data-v="court">60 s</button>
                         <button type="button" data-v="moyen" class="on">90 s</button>
                         <button type="button" data-v="long">120 s</button>
+                        <button type="button" data-v="custom">Autre</button>
+                    </div>
+                    <div class="pb-custom-duration" id="customDurationRow" hidden>
+                        <input type="number" id="customDurationInput" min="20" max="300" step="5" value="90">
+                        <span>secondes (entre 20 et 300)</span>
                     </div>
                     <p class="pb-field-label">Lettre de chaque manche</p>
                     <div class="pb-choice" id="opt-letter-mode">
                         <button type="button" data-v="random" class="on">Aléatoire</button>
                         <button type="button" data-v="host">Je choisis</button>
                     </div>
-                    <p class="pb-field-label">Vote</p>
-                    <div class="pb-choice" id="opt-vote-mode">
-                        <button type="button" data-v="sequential" class="on">Une réponse à la fois</button>
-                        <button type="button" data-v="parallel">Toute la catégorie</button>
+
+                    <button type="button" class="pb-advanced-toggle" id="advancedToggle">
+                        <span>Règles spéciales</span>
+                        <span class="pb-advanced-chevron">›</span>
+                    </button>
+                    <div class="pb-advanced-body" id="advancedBody" hidden>
+                        <p class="pb-field-label">Vote</p>
+                        <div class="pb-choice" id="opt-vote-mode">
+                            <button type="button" data-v="sequential" class="on">Une réponse à la fois</button>
+                            <button type="button" data-v="parallel">Toute la catégorie</button>
+                        </div>
+                        <p class="pb-cat-hint">« Toute la catégorie » affiche toutes les réponses d'un coup et les votes se font en même temps — beaucoup plus rapide à grand nombre de joueurs.</p>
+
+                        <p class="pb-field-label">Difficulté</p>
+                        <label class="pb-switch-row">
+                            <span>Deux mots par catégorie</span>
+                            <input type="checkbox" id="opt-two-words">
+                            <span class="pb-switch"></span>
+                        </label>
+                        <p class="pb-cat-hint">Chaque catégorie demande deux réponses valides, les deux comptent ensemble.</p>
+
+                        <label class="pb-switch-row">
+                            <span>Catégorie surprise à chaque manche</span>
+                            <input type="checkbox" id="opt-surprise-cat">
+                            <span class="pb-switch"></span>
+                        </label>
+                        <p class="pb-cat-hint">Une neuvième catégorie tirée au sort s'ajoute à chaque manche, révélée juste avant l'écriture.</p>
                     </div>
-                    <p class="pb-cat-hint">« Toute la catégorie » affiche toutes les réponses d'un coup et les votes se font en même temps — beaucoup plus rapide à grand nombre de joueurs.</p>
 
                     <p class="pb-field-label">Mes packs de catégories</p>
                     <div class="pb-packs-row" id="packs-row"></div>
@@ -138,6 +175,7 @@
                 <div class="pb-dots" id="pb-dots"></div>
                 <p class="pb-step-label" id="step-cat-name">Prénom</p>
                 <input id="step-input" type="text" maxlength="40" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false">
+                <input id="step-input-2" type="text" maxlength="40" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" placeholder="Deuxième mot…" hidden>
                 <div class="pb-step-nav">
                     <button class="pb-btn ghost" id="step-prev">Précédent</button>
                     <button class="pb-btn" id="step-next">Suivant</button>

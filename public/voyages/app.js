@@ -2118,6 +2118,17 @@ document.querySelectorAll('[data-cheers-btn]').forEach(btn => {
     const holes = [...field.querySelectorAll('.vy-mole-hole')];
     const GAME_DURATION = 30;
     let score = 0, timeLeft = GAME_DURATION, running = false;
+    let lastHitTime = 0, hitIntervals = [];
+
+    // Plus les derniers coups tapés étaient rapprochés dans le temps, plus les
+    // prochaines têtes sortent vite : la difficulté répond vraiment au joueur.
+    function speedFactor() {
+        if (!hitIntervals.length) return 1;
+        const avg = hitIntervals.reduce((a, b) => a + b, 0) / hitIntervals.length;
+        // Un rythme autour de 1400 ms entre deux coups reste "normal" (facteur 1).
+        // En dessous de ~630 ms de moyenne, le facteur plafonne à 0.45 (deux fois plus vite).
+        return Math.max(0.45, Math.min(1, avg / 1400));
+    }
     let spawnTimer = null, countdownTimer = null, lastHoleIndex = -1;
     const holeTimers = new Map();
     let myPseudo = null;
@@ -2184,7 +2195,7 @@ document.querySelectorAll('[data-cheers-btn]').forEach(btn => {
         }, upTime);
         holeTimers.set(hole, timer);
 
-        const nextSpawn = 450 + Math.random() * 500;
+        const nextSpawn = (450 + Math.random() * 500) * speedFactor();
         spawnTimer = setTimeout(spawnMole, nextSpawn);
     }
 
@@ -2198,6 +2209,13 @@ document.querySelectorAll('[data-cheers-btn]').forEach(btn => {
         holeTimers.delete(hole);
         setTimeout(() => { hole.classList.remove('vy-mole-active', 'vy-mole-hit'); }, 300);
         if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e2) {} }
+
+        const now = performance.now();
+        if (lastHitTime) {
+            hitIntervals.push(now - lastHitTime);
+            if (hitIntervals.length > 4) hitIntervals.shift(); // seuls les derniers coups comptent
+        }
+        lastHitTime = now;
     }
     field.addEventListener('click', onHoleClick);
 
@@ -2231,6 +2249,7 @@ document.querySelectorAll('[data-cheers-btn]').forEach(btn => {
 
     startBtn.addEventListener('click', () => {
         score = 0; timeLeft = GAME_DURATION; running = true;
+        lastHitTime = 0; hitIntervals = [];
         if (scoreEl) scoreEl.textContent = '0';
         if (timeEl) timeEl.textContent = GAME_DURATION;
         if (resultEl) resultEl.hidden = true;

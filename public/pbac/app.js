@@ -27,7 +27,7 @@ function toast(msg) {
     clearTimeout(el._t); el._t = setTimeout(() => { el.hidden = true; }, 2600);
 }
 function showView(id) {
-    ['v-lobby', 'v-waiting', 'v-spectator', 'v-choose-letter', 'v-countdown', 'v-writing', 'v-voting', 'v-parallel', 'v-cat-summary', 'v-round-end', 'v-ended']
+    ['v-lobby', 'v-join-pending', 'v-waiting', 'v-spectator', 'v-choose-letter', 'v-countdown', 'v-writing', 'v-voting', 'v-parallel', 'v-cat-summary', 'v-round-end', 'v-ended']
         .forEach(v => { $(v).hidden = (v !== id); });
     currentView = id;
 }
@@ -74,6 +74,39 @@ function connect() {
     });
     socket.on('pbac_closed', () => { toast('La table a été fermée.'); setLastGameId(null); location.href = '/'; });
     socket.on('disconnect', () => { wasDisconnected = true; toast('Connexion perdue, on retente…'); });
+
+    // ---- Rejoindre une partie en cours : attente, puis accord ou refus de l'hôte ----
+    socket.on('pbac_join_pending', ({ host }) => {
+        showView('v-join-pending');
+        $('join-pending-host').textContent = host || 'l\u2019hôte';
+    });
+    socket.on('pbac_join_accepted', () => { toast('Accepté, bienvenue dans la partie !'); });
+    socket.on('pbac_join_declined', () => {
+        toast('L\u2019hôte a refusé pour l\u2019instant.');
+        setLastGameId(null);
+        state = null;
+        showView('v-lobby');
+        socket.emit('pbac_list');
+    });
+    socket.on('pbac_join_request', ({ pseudo }) => {
+        const host = $('join-request-host');
+        const row = document.createElement('div');
+        row.className = 'pb-join-request';
+        row.innerHTML = `<span>${esc(pseudo)} demande à rejoindre</span>
+            <button type="button" class="pb-btn ghost small" data-decline>Refuser</button>
+            <button type="button" class="pb-btn small" data-accept>Accepter</button>`;
+        row.querySelector('[data-accept]').addEventListener('click', () => {
+            socket.emit('pbac_join_decide', { pseudo, accept: true });
+            row.remove();
+        });
+        row.querySelector('[data-decline]').addEventListener('click', () => {
+            socket.emit('pbac_join_decide', { pseudo, accept: false });
+            row.remove();
+        });
+        host.appendChild(row);
+        host.hidden = false;
+        if (navigator.vibrate) { try { navigator.vibrate(20); } catch (e) {} }
+    });
 }
 
 // ---------- Lobby ----------
@@ -96,7 +129,7 @@ function renderLobby(games) {
                     ? `🔴 ${esc(statusText)} · Manche ${g.round}/${g.rounds} · ${g.alive} connecté${g.alive > 1 ? 's' : ''}`
                     : `${g.players}/${g.maxPlayers} joueurs · ${g.rounds} manches · ${g.duration} s`}</span>
             </span>
-            ${live ? '<span class="pt-join-hint">Rejoindre en spectateur ›</span>' : ''}
+            ${live ? '<span class="pt-join-hint">Demander à rejoindre ›</span>' : ''}
         </button>`;
     }).join('');
     $('pb-tables').querySelectorAll('.pb-table-row').forEach(b => b.addEventListener('click', () => {
@@ -118,7 +151,15 @@ document.querySelectorAll('#opt-rounds button').forEach(b => b.addEventListener(
 }));
 document.querySelectorAll('#opt-duration button').forEach(b => b.addEventListener('click', () => {
     document.querySelectorAll('#opt-duration button').forEach(x => x.classList.toggle('on', x === b));
+    const row = $('customDurationRow');
+    if (row) row.hidden = b.dataset.v !== 'custom';
 }));
+$('advancedToggle')?.addEventListener('click', () => {
+    const body = $('advancedBody');
+    const open = body.hidden;
+    body.hidden = !open;
+    $('advancedToggle').classList.toggle('on', open);
+});
 document.querySelectorAll('#opt-letter-mode button').forEach(b => b.addEventListener('click', () => {
     document.querySelectorAll('#opt-letter-mode button').forEach(x => x.classList.toggle('on', x === b));
 }));
@@ -200,9 +241,12 @@ $('create-confirm').addEventListener('click', () => {
     if (selectedCats.length !== 8) { toast('Choisis exactement 8 catégories.'); return; }
     const rounds = document.querySelector('#opt-rounds button.on').dataset.v;
     const duration = document.querySelector('#opt-duration button.on').dataset.v;
+    const customDuration = document.getElementById('customDurationInput')?.value;
     const letterMode = document.querySelector('#opt-letter-mode button.on').dataset.v;
     const voteMode = document.querySelector('#opt-vote-mode button.on').dataset.v;
-    socket.emit('pbac_create', { rounds: Number(rounds), duration, letterMode, voteMode, categories: selectedCats });
+    const twoWords = !!document.getElementById('opt-two-words')?.checked;
+    const surpriseCategory = !!document.getElementById('opt-surprise-cat')?.checked;
+    socket.emit('pbac_create', { rounds: Number(rounds), duration, customDuration, letterMode, voteMode, twoWords, surpriseCategory, categories: selectedCats });
     $('v-create').hidden = true;
 });
 $('btn-leave-spectator').addEventListener('click', () => {
@@ -363,29 +407,58 @@ function goToStep(i) {
     const cats = state.categories;
     stepIndex = Math.max(0, Math.min(cats.length - 1, i));
     const cat = cats[stepIndex];
-    $('step-cat-name').textContent = cat;
-    $('step-input').value = answers[cat] || '';
+    const isSurprise = state.surpriseCategory && cat === state.surpriseCategory;
+    $('step-cat-name').textContent = (isSurprise ? '\u2728 ' : '') + cat;
+    $('step-cat-name').classList.toggle('pb-surprise-cat', !!isSurprise);
+    const input2 = $('step-input-2');
+    if (state.twoWords) {
+        const pair = Array.isArray(answers[cat]) ? answers[cat] : ['', ''];
+        $('step-input').value = pair[0] || '';
+        input2.hidden = false;
+        input2.value = pair[1] || '';
+    } else {
+        $('step-input').value = answers[cat] || '';
+        input2.hidden = true;
+    }
     $('step-prev').style.visibility = stepIndex === 0 ? 'hidden' : 'visible';
     $('step-next').textContent = stepIndex === cats.length - 1 ? 'Terminé' : 'Suivant';
     paintDots();
     setTimeout(() => $('step-input').focus(), 60);
     checkAllFilled();
 }
+function catIsFilled(cat) {
+    const v = answers[cat];
+    if (state.twoWords) return Array.isArray(v) && v[0] && v[0].trim() && v[1] && v[1].trim();
+    return v && v.trim();
+}
 function paintDots() {
     $('pb-dots').querySelectorAll('.pb-dot').forEach((d, i) => {
         const cat = state.categories[i];
-        d.classList.toggle('filled', !!(answers[cat] && answers[cat].trim()));
+        d.classList.toggle('filled', catIsFilled(cat));
         d.classList.toggle('current', i === stepIndex);
     });
 }
 function checkAllFilled() {
-    const all = state.categories.every(c => answers[c] && answers[c].trim());
+    const all = state.categories.every(c => catIsFilled(c));
     $('write-done-hint').hidden = !all;
     $('btn-stop').classList.toggle('pulse', all);
 }
 $('step-input').addEventListener('input', () => {
     const cat = state.categories[stepIndex];
-    answers[cat] = $('step-input').value;
+    if (state.twoWords) {
+        const pair = Array.isArray(answers[cat]) ? answers[cat].slice() : ['', ''];
+        pair[0] = $('step-input').value;
+        answers[cat] = pair;
+    } else {
+        answers[cat] = $('step-input').value;
+    }
+    paintDots(); checkAllFilled(); sendAnswersSoon();
+});
+$('step-input-2').addEventListener('input', () => {
+    const cat = state.categories[stepIndex];
+    const pair = Array.isArray(answers[cat]) ? answers[cat].slice() : ['', ''];
+    pair[1] = $('step-input-2').value;
+    answers[cat] = pair;
     paintDots(); checkAllFilled(); sendAnswersSoon();
 });
 $('step-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('step-next').click(); } });
