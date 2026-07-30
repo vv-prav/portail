@@ -17,6 +17,53 @@ function sanitizePacks(list) {
     })).filter(p => p.name);
 }
 
+// =====================================================================
+//  STATISTIQUES PERSISTANTES — une fiche par joueur, qui survit à la
+//  partie, plus un index de tous les pseudos ayant déjà joué (pour le
+//  classement par catégorie, calculé à la demande sur tout le monde).
+// =====================================================================
+const kStats = (pseudo) => `pbac:stats:${norm(pseudo)}`;
+const STATS_INDEX_KEY = 'pbac:statsIndex';
+function defaultStats() {
+    return {
+        gamesPlayed: 0, gamesWon: 0, roundsPlayed: 0,
+        totalPoints: 0, bestRoundScore: 0,
+        answersValid: 0, answersRejected: 0,
+        byCategory: {},   // { "Prénom": { valid: 0, rejected: 0, unique: 0 } }
+    };
+}
+function loadStats(pseudo) {
+    const s = mfGet(kStats(pseudo));
+    return s && typeof s === 'object' ? { ...defaultStats(), ...s, byCategory: { ...(s.byCategory || {}) } } : defaultStats();
+}
+function saveStats(pseudo, stats) {
+    mfSet(kStats(pseudo), stats);
+    const index = mfGet(STATS_INDEX_KEY) || [];
+    if (!index.includes(pseudo)) { index.push(pseudo); mfSet(STATS_INDEX_KEY, index); }
+}
+function bumpCategoryStat(stats, cat, field) {
+    if (!stats.byCategory[cat]) stats.byCategory[cat] = { valid: 0, rejected: 0, unique: 0 };
+    stats.byCategory[cat][field]++;
+}
+// Catégorie la plus forte / la plus faible d'un joueur, seulement parmi celles
+// jouées au moins 3 fois (sinon un seul coup de chance ou de malchance fausserait tout).
+function categoryStrengths(stats) {
+    const entries = Object.entries(stats.byCategory)
+        .map(([cat, c]) => ({ cat, played: c.valid + c.rejected, rate: (c.valid + c.rejected) ? c.valid / (c.valid + c.rejected) : 0 }))
+        .filter(e => e.played >= 3);
+    if (!entries.length) return { best: null, worst: null };
+    const sorted = entries.slice().sort((a, b) => b.rate - a.rate);
+    return { best: sorted[0], worst: sorted[sorted.length - 1] };
+}
+// Enregistre le sort d'une réponse (acceptée ou refusée) dans la fiche du joueur concerné.
+function recordAnswerOutcome(pseudo, cat, accepted) {
+    if (!pseudo) return;
+    const stats = loadStats(pseudo);
+    if (accepted) { stats.answersValid++; bumpCategoryStat(stats, cat, 'valid'); }
+    else { stats.answersRejected++; bumpCategoryStat(stats, cat, 'rejected'); }
+    saveStats(pseudo, stats);
+}
+
 app.get('/pbac/healthz', (req, res) => res.status(200).json({ ok: true, t: Date.now(), games: Object.keys(games).length }));
 
 // =====================================================================
@@ -194,6 +241,7 @@ function startCard(g) {
     if (entry.type === 'empty') {
         g.voteOutcomes[entry.category + '|' + entry.pseudo] = false;
         g.cardState = { type: 'empty', resolved: true, accepted: false, votes: [], voters: {}, eligible: [] };
+        recordAnswerOutcome(entry.pseudo, entry.category, false);
         broadcastCard(g);
         g._timer = setTimeout(() => advanceAfterCard(g, entry), EMPTY_PAUSE_MS);
         return;
@@ -214,6 +262,7 @@ function resolveCard(g, forceAccept, mergedWith) {
     const entry = g.reviewQueue[g.reviewIndex];
     g.voteOutcomes[entry.category + '|' + entry.pseudo] = accepted;
     if (mergedWith) g.merges[entry.category + '|' + entry.pseudo] = mergedWith;
+    recordAnswerOutcome(entry.pseudo, entry.category, accepted);
     broadcastCard(g);
     g._timer = setTimeout(() => advanceAfterCard(g, entry), CARD_PAUSE_MS);
 }
@@ -251,6 +300,11 @@ function computeCategoryPoints(g, cat) {
         const ok = g.voteOutcomes[cat + '|' + p.pseudo];
         const gain = ok && raw ? (counts[groupKeyOf(p.pseudo)] === 1 ? 3 : 1) : 0;
         g.categoryPoints[cat][p.pseudo] = gain;
+        if (gain === 3 && !p.spectator) {
+            const stats = loadStats(p.pseudo);
+            bumpCategoryStat(stats, cat, 'unique');
+            saveStats(p.pseudo, stats);
+        }
     }
 }
 
@@ -278,9 +332,34 @@ function finalizeRound(g) {
         for (const p of g.players) rs[p.pseudo] += cp[p.pseudo] || 0;
     }
     g.roundScores = rs;
-    for (const p of g.players) g.scores[p.pseudo] = (g.scores[p.pseudo] || 0) + rs[p.pseudo];
+    for (const p of g.players) {
+        g.scores[p.pseudo] = (g.scores[p.pseudo] || 0) + rs[p.pseudo];
+        if (p.spectator) continue;   // n'a pas vraiment joué cette manche
+        const stats = loadStats(p.pseudo);
+        stats.roundsPlayed++;
+        stats.totalPoints += rs[p.pseudo];
+        if (rs[p.pseudo] > stats.bestRoundScore) stats.bestRoundScore = rs[p.pseudo];
+        saveStats(p.pseudo, stats);
+    }
     g.status = 'ended_round';
     broadcastState(g);
+}
+// Une vraie partie (pas juste une manche) vient de se terminer : on compte une partie
+// jouée pour chacun, et une victoire pour celui ou celle qui a le meilleur score cumulé.
+function finalizeGameStats(g) {
+    const participants = g.players.filter(p => !p.spectator || (g.scores[p.pseudo] || 0) > 0);
+    if (!participants.length) return;
+    let winner = null, best = -1;
+    for (const p of participants) {
+        const sc = g.scores[p.pseudo] || 0;
+        if (sc > best) { best = sc; winner = p.pseudo; }
+    }
+    for (const p of participants) {
+        const stats = loadStats(p.pseudo);
+        stats.gamesPlayed++;
+        if (p.pseudo === winner) stats.gamesWon++;
+        saveStats(p.pseudo, stats);
+    }
 }
 
 function endRoundToVoting(g) {
@@ -304,6 +383,7 @@ function resolveParallelCard(g, pseudo, forceAccept, mergedWith) {
     c.resolved = true; c.accepted = accepted; c.mergedWith = mergedWith || null;
     g.voteOutcomes[g.parallelCategory + '|' + pseudo] = accepted;
     if (mergedWith) g.merges[g.parallelCategory + '|' + pseudo] = mergedWith;
+    recordAnswerOutcome(pseudo, g.parallelCategory, accepted);
 }
 function startCategoryParallel(g, cat) {
     clearTimeout(g._timer);
@@ -312,7 +392,7 @@ function startCategoryParallel(g, cat) {
     g.parallelCards = {};
     const entries = g.reviewQueue.filter(e => e.category === cat);
     for (const e of entries) {
-        if (e.type === 'empty') { g.voteOutcomes[cat + '|' + e.pseudo] = false; continue; }
+        if (e.type === 'empty') { g.voteOutcomes[cat + '|' + e.pseudo] = false; recordAnswerOutcome(e.pseudo, cat, false); continue; }
         const eligible = g.players.filter(p => p.connected && !p.spectator && p.pseudo !== e.pseudo).map(p => p.pseudo);
         g.parallelCards[e.pseudo] = { votes: [], voters: {}, eligible, resolved: false, accepted: false };
         if (!eligible.length) resolveParallelCard(g, e.pseudo, true);   // personne pour voter : accepté d'office
@@ -729,7 +809,7 @@ io.on('connection', (socket) => {
     socket.on('pbac_next_round', () => {
         const g = games[socketGame[socket.id]];
         if (!g || g.host !== socket.data.pbacPseudo || g.status !== 'ended_round') return;
-        if (g.round >= g.maxRounds) { g.status = 'ended'; broadcastState(g); broadcastLobby(); return; }
+        if (g.round >= g.maxRounds) { g.status = 'ended'; finalizeGameStats(g); broadcastState(g); broadcastLobby(); return; }
         advanceToNextRound(g);
     });
 
@@ -740,6 +820,38 @@ io.on('connection', (socket) => {
         for (const p of g.players) g.scores[p.pseudo] = 0;
         broadcastState(g);
         broadcastLobby();
+    });
+
+    // Mes statistiques, plus un classement de qui est le plus fort sur chaque catégorie,
+    // tous joueurs confondus (seulement les catégories jouées par au moins 2 personnes).
+    socket.on('pbac_stats', () => {
+        const pseudo = socket.data.pbacPseudo;
+        if (!pseudo) return;
+        const stats = loadStats(pseudo);
+        const { best, worst } = categoryStrengths(stats);
+
+        const index = mfGet(STATS_INDEX_KEY) || [];
+        const leaderboard = {};
+        for (const other of index) {
+            const s = other === pseudo ? stats : loadStats(other);
+            for (const [cat, c] of Object.entries(s.byCategory)) {
+                const played = c.valid + c.rejected;
+                if (played < 3) continue;
+                (leaderboard[cat] = leaderboard[cat] || []).push({ pseudo: other, rate: c.valid / played, played });
+            }
+        }
+        for (const cat of Object.keys(leaderboard)) {
+            if (leaderboard[cat].length < 2) { delete leaderboard[cat]; continue; }
+            leaderboard[cat].sort((a, b) => b.rate - a.rate);
+            leaderboard[cat] = leaderboard[cat].slice(0, 5);
+        }
+
+        socket.emit('pbac_stats_result', {
+            gamesPlayed: stats.gamesPlayed, gamesWon: stats.gamesWon, roundsPlayed: stats.roundsPlayed,
+            totalPoints: stats.totalPoints, bestRoundScore: stats.bestRoundScore,
+            answersValid: stats.answersValid, answersRejected: stats.answersRejected,
+            best, worst, leaderboard,
+        });
     });
 });
 

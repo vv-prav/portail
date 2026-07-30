@@ -61,6 +61,7 @@ function connect() {
     socket.on('pbac_card', renderCard);
     socket.on('pbac_parallel', renderParallel);
     socket.on('pbac_packs', renderPacks);
+    socket.on('pbac_stats_result', renderStats);
     socket.on('pbac_error', (msg) => {
         toast(msg || 'Erreur.');
         // La table mémorisée n'existe plus (fermée, expirée…) : on efface et on repasse au lobby.
@@ -146,6 +147,11 @@ $('btn-create').addEventListener('click', () => {
     $('v-create').hidden = false;
 });
 $('create-cancel').addEventListener('click', () => { $('v-create').hidden = true; });
+$('btn-stats').addEventListener('click', () => {
+    socket.emit('pbac_stats');
+    $('v-stats').hidden = false;
+});
+$('stats-close').addEventListener('click', () => { $('v-stats').hidden = true; });
 document.querySelectorAll('#opt-rounds button').forEach(b => b.addEventListener('click', () => {
     document.querySelectorAll('#opt-rounds button').forEach(x => x.classList.toggle('on', x === b));
 }));
@@ -206,6 +212,44 @@ function addCustomCategory() {
 }
 $('cat-custom-add').addEventListener('click', addCustomCategory);
 $('cat-custom-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomCategory(); } });
+
+// ---------- Mes statistiques ----------
+function renderStats(data) {
+    if (!data) return;
+    const grid = $('stats-grid');
+    grid.innerHTML = [
+        ['Parties jouées', data.gamesPlayed],
+        ['Victoires', data.gamesWon],
+        ['Manches jouées', data.roundsPlayed],
+        ['Points cumulés', data.totalPoints],
+        ['Meilleur score de manche', data.bestRoundScore],
+        ['Réponses acceptées', data.answersValid],
+        ['Réponses refusées', data.answersRejected],
+    ].map(([label, val]) => `<div class="pb-stat-box"><b>${val}</b><span>${label}</span></div>`).join('');
+
+    const strength = $('stats-strength');
+    const lines = [];
+    if (data.best) lines.push(`<p class="pb-strength-line">🏆 Votre force : <b>${esc(data.best.cat)}</b> <span>(${Math.round(data.best.rate * 100)}% de réussite)</span></p>`);
+    if (data.worst && (!data.best || data.worst.cat !== data.best.cat)) {
+        lines.push(`<p class="pb-strength-line">🎯 À travailler : <b>${esc(data.worst.cat)}</b> <span>(${Math.round(data.worst.rate * 100)}% de réussite)</span></p>`);
+    }
+    strength.innerHTML = lines.length ? lines.join('') : '<p class="pb-cat-hint">Jouez encore un peu pour révéler vos forces et vos faiblesses par catégorie.</p>';
+
+    const board = $('stats-leaderboard');
+    const cats = Object.keys(data.leaderboard || {});
+    if (!cats.length) {
+        board.innerHTML = '<p class="pb-cat-hint">Pas encore assez de données pour un classement.</p>';
+    } else {
+        board.innerHTML = cats.map(cat => `
+            <div class="pb-leaderboard-cat">
+                <p class="pb-leaderboard-cat-name">${esc(cat)}</p>
+                ${data.leaderboard[cat].map((e, i) => `
+                    <div class="pb-leaderboard-row"><span>${i + 1}. ${esc(e.pseudo)}</span><b>${Math.round(e.rate * 100)}%</b></div>
+                `).join('')}
+            </div>
+        `).join('');
+    }
+}
 
 // ---------- Packs de catégories sauvegardés ----------
 let myPacks = [];

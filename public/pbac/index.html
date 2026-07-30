@@ -33,6 +33,7 @@
         <!-- LOBBY : liste des tables -->
         <section class="pb-view" id="v-lobby">
             <button class="pb-btn" id="btn-create">Créer une table</button>
+            <button class="pb-btn ghost" id="btn-stats">Mes statistiques</button>
             <p class="pb-list-label" id="lobby-empty-label" hidden>Aucune table ouverte pour l'instant.</p>
             <div class="pb-tables" id="pb-tables"></div>
         </section>
@@ -44,6 +45,19 @@
                 <p class="pb-wait-text">En attente de l'accord de <b id="join-pending-host">l'hôte</b>…</p>
             </div>
         </section>
+
+        <!-- Mes statistiques -->
+        <div class="pb-overlay" id="v-stats" hidden>
+            <div class="pb-card">
+                <h2 class="pb-card-title">Mes statistiques</h2>
+                <div class="pb-stats-grid" id="stats-grid"></div>
+                <div class="pb-stats-strength" id="stats-strength"></div>
+                <p class="pb-field-label">Classement par catégorie</p>
+                <p class="pb-cat-hint">Seules les catégories jouées au moins 3 fois par au moins deux personnes apparaissent ici.</p>
+                <div class="pb-stats-leaderboard" id="stats-leaderboard"></div>
+                <button class="pb-btn ghost" id="stats-close">Fermer</button>
+            </div>
+        </div>
 
         <!-- Réglages d'une nouvelle table -->
         <div class="pb-overlay" id="v-create" hidden>
