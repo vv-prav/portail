@@ -26,13 +26,14 @@ function fmtDate(ts) {
     if (!ts) return '—';
     return new Date(ts).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
+function fmtTime(ts) { return new Date(ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }
 function fmtAgo(ts) {
     if (!ts) return 'jamais';
     const d = Math.floor((Date.now() - ts) / 86400000);
-    if (d === 0) return "aujourd'hui";
-    if (d === 1) return 'hier';
-    if (d < 31) return 'il y a ' + d + ' j';
-    return fmtDate(ts);
+    if (d === 0) return "aujourd'hui à " + fmtTime(ts);
+    if (d === 1) return 'hier à ' + fmtTime(ts);
+    if (d < 31) return 'il y a ' + d + ' j, à ' + fmtTime(ts);
+    return fmtDate(ts) + ' à ' + fmtTime(ts);
 }
 function fmtDur(sec) {
     const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
@@ -113,6 +114,32 @@ async function loadOverview() {
         ['Administrateurs', (data.admins || []).join(', ')],
     ].map(([k, v]) => `<div class="kv-row"><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('');
     loadLog();
+    loadAppsOverview();
+    loadGameHistory();
+}
+async function loadAppsOverview() {
+    const { data } = await api('/api/admin/apps-overview');
+    if (!data) return;
+    $('ad-apps-stats').innerHTML = [
+        ['🧩', data.mf.solvedToday, 'mots fléchés résolus aujourd\u2019hui'],
+        ['🎲', data.perudo.online, 'en ligne sur Perudo'],
+        ['🎲', data.perudo.activeGames, 'partie(s) de Perudo en cours'],
+        ['🍎', data.pbac.online, 'en ligne sur Petit Bac'],
+        ['🍎', data.pbac.totalGamesPlayed, 'parties de Petit Bac jouées au total'],
+        ['🕵️', data.undercover.online, 'en ligne sur Infiltré'],
+        ['📝', data.motus.solversToday, 'ont trouvé le Motus du jour'],
+        ['🔤', data.motjuste.solversToday, 'ont trouvé le Mot Juste du jour'],
+    ].map(([i, v, l]) => `<div class="stat"><span class="s-ico">${i}</span><b>${v}</b><em>${l}</em></div>`).join('');
+}
+const GAME_LABEL_ICON = { perudo: '🎲', pbac: '🍎', undercover: '🕵️' };
+async function loadGameHistory() {
+    const { data } = await api('/api/admin/game-history');
+    const list = (data && data.history) || [];
+    $('ad-game-history').innerHTML = list.length
+        ? list.slice(0, 30).map(g => `<div class="log-row"><span class="lg-a">${GAME_LABEL_ICON[g.app] || ''} ${esc(g.label)}</span>
+            <span class="lg-t">${(g.players || []).map(esc).join(', ') || 'personne'}</span>
+            <span class="lg-d">${fmtAgo(g.endedAt)}</span></div>`).join('')
+        : '<p class="empty">Aucune partie terminée pour l\u2019instant.</p>';
 }
 let _logCache = [];
 function renderLog() {

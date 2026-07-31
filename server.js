@@ -701,6 +701,7 @@ const kMotusProg = (u, d) => `motus:prog:${u}:${d}`;
 const kMotusBoard = (d) => `motus:board:${d}`;
 const kMotusCmt = (d) => `motus:cmt:${d}`;
 const kMotusDays = (u) => `motus:days:${u}`;
+const kMotusBestStreak = (u) => `motus:beststreak:${u}`;
 
 // Mot du jour, déterministe (même mot pour tout le monde), sans répétition récente.
 function motusWord(date) {
@@ -756,7 +757,9 @@ function motusStreak(user) {
     let cur = 0, d = mfTodayId();
     if (!days.has(d)) d = mfShiftDay(d, -1);
     while (days.has(d)) { cur++; d = mfShiftDay(d, -1); }
-    return { current: cur, total: days.size };
+    const storedBest = mfGet(kMotusBestStreak(user)) || 0;
+    const best = Math.max(storedBest, cur);
+    return { current: cur, total: days.size, best };
 }
 function motusBoard(date) {
     return (mfGet(kMotusBoard(date)) || []).filter(e => !e.susp).slice().sort((a, b) => a.tries - b.tries || a.ts - b.ts);
@@ -775,7 +778,7 @@ app.get('/api/motus/today', requireAuth, (req, res) => {
     if (date > today) date = today;
     const word = motusWord(date);
     const prog = mfGet(kMotusProg(user, date)) || null;
-    const finished = !!(prog && (prog.solved || prog.gaveUp));
+    const finished = !!(prog && (prog.solved || prog.gaveUp || prog.lost));
     res.json({
         date, today, isArchive: date !== today, nextIn: mfSecondsToMidnight(),
         length: word.length, firstLetter: word[0],
@@ -792,7 +795,7 @@ app.post('/api/motus/guess', requireAuth, (req, res) => {
     const word = motusWord(date);
     const key = kMotusProg(user, date);
     const prog = mfGet(key) || { guesses: [], solved: false, gaveUp: false, startedAt: Date.now() };
-    if (prog.solved || prog.gaveUp) return res.status(400).json({ error: 'La partie est déjà terminée.' });
+    if (prog.solved || prog.gaveUp || prog.lost) return res.status(400).json({ error: 'La partie est déjà terminée.' });
     if (prog.guesses.length >= MOTUS_TRIES) return res.status(400).json({ error: 'Plus de tentative disponible.' });
 
     let guess = String(b.guess || '').toUpperCase().trim();
@@ -806,9 +809,11 @@ app.post('/api/motus/guess', requireAuth, (req, res) => {
     prog.guesses.push({ word: guess, marks });
     if (solved) prog.solved = true;
     prog.startedAt = prog.startedAt || Date.now();
-    mfSet(key, prog);
 
     const lost = !solved && prog.guesses.length >= MOTUS_TRIES;
+    if (lost) prog.lost = true;   // sinon une défaite par épuisement des essais ne se distingue jamais d'une partie en cours
+    mfSet(key, prog);
+
     let rank = null, board = [];
     if (solved && date === today) {
         const list = (mfGet(kMotusBoard(date)) || []).slice();
@@ -818,6 +823,14 @@ app.post('/api/motus/guess', requireAuth, (req, res) => {
         }
         const days = (mfGet(kMotusDays(user)) || []).slice();
         if (!days.includes(date)) { days.push(date); mfSet(kMotusDays(user), days); }
+        const freshStreak = motusStreak(user);
+        if (freshStreak.current > (mfGet(kMotusBestStreak(user)) || 0)) mfSet(kMotusBestStreak(user), freshStreak.current);
+
+        // Diffusion en direct : tout le monde connecté voit apparaître la résolution
+        // au moment où elle se produit, façon "on joue en même temps".
+        const liveBoard = motusBoard(date);
+        const liveRank = liveBoard.findIndex(e => e.u === user) + 1;
+        io.emit('motus_live_solve', { pseudo: user, tries: prog.guesses.length, rank: liveRank, first: liveRank === 1 });
     }
     if (solved || lost) {
         board = motusBoard(date);
@@ -1075,6 +1088,50 @@ app.use('/pbac', requireAuth, express.static(__dirname + '/public/pbac'));
 // ---------------------------------------------------------------------
 const undercoverApi = require('./undercover/game')(app, io, requireAuth);
 app.use('/undercover', requireAuth, express.static(__dirname + '/public/undercover'));
+
+// ---------------------------------------------------------------------
+//  HISTORIQUE DES TABLES — Perudo, Petit Bac, Infiltré, tout confondu.
+//  Aucun des trois moteurs de jeu n'est modifié : on compare simplement
+//  la liste des parties actives à intervalles réguliers, et toute partie
+//  qui disparaît (terminée ou fermée) part dans l'historique persistant.
+// ---------------------------------------------------------------------
+const GAME_HISTORY_KEY = 'admin:gameHistory';
+const GAME_HISTORY_MAX = 150;
+let knownLiveGames = new Map(); // id -> { app, label, players, seenAt }
+
+function snapshotActiveGames() {
+    const current = new Map();
+    try {
+        perudoApi.games().filter(g => g.started && !g.vsBot).forEach(g => {
+            current.set('perudo:' + g.id, { app: 'perudo', label: 'Perudo', players: g.players.map(p => p.pseudo) });
+        });
+    } catch (e) {}
+    try {
+        pbacApi.games().filter(g => g.status !== 'lobby' && g.status !== 'ended').forEach(g => {
+            current.set('pbac:' + g.id, { app: 'pbac', label: 'Petit Bac', players: g.players });
+        });
+    } catch (e) {}
+    try {
+        undercoverApi.games().filter(g => g.status !== 'lobby' && g.status !== 'ended').forEach(g => {
+            current.set('undercover:' + g.id, { app: 'undercover', label: 'Infiltré', players: g.players });
+        });
+    } catch (e) {}
+    return current;
+}
+function pollGameHistory() {
+    const current = snapshotActiveGames();
+    const history = mfGet(GAME_HISTORY_KEY) || [];
+    let changed = false;
+    for (const [id, info] of knownLiveGames) {
+        if (!current.has(id)) {
+            history.unshift({ app: info.app, label: info.label, players: info.players, endedAt: Date.now() });
+            changed = true;
+        }
+    }
+    if (changed) mfSet(GAME_HISTORY_KEY, history.slice(0, GAME_HISTORY_MAX));
+    knownLiveGames = current;
+}
+setInterval(pollGameHistory, 20 * 1000);
 
 // ---------------------------------------------------------------------
 //  PURPLE — tirage de carte aléatoire, purement statique (aucun état
@@ -1435,7 +1492,7 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
 // Agrège les stats d'un jeu "mot du jour" (Motus, Le Mot Juste) à partir de ses
 // clés de progression par utilisateur — même forme pour les deux jeux.
 function dailyGameStats(prefix, pseudo, daysKey, streakFn) {
-    let solved = 0, gaveUp = 0, bestTries = null, totalTries = 0;
+    let solved = 0, gaveUp = 0, lost = 0, bestTries = null, totalTries = 0;
     for (const [k, v] of Object.entries(mfCache)) {
         if (!k.startsWith(`${prefix}:${pseudo}:`) || !v) continue;
         if (v.solved) {
@@ -1443,13 +1500,17 @@ function dailyGameStats(prefix, pseudo, daysKey, streakFn) {
             const tries = (v.guesses || []).length;
             totalTries += tries;
             if (!bestTries || tries < bestTries) bestTries = tries;
-        } else if (v.gaveUp) gaveUp++;
+        } else if (v.lost) lost++;
+        else if (v.gaveUp) gaveUp++;
     }
     const days = new Set(mfGet(daysKey(pseudo)) || []);
+    const played = solved + gaveUp + lost;
+    const streak = streakFn(pseudo);
     return {
-        solved, gaveUp, bestTries,
+        solved, gaveUp, lost, bestTries,
         avgTries: solved ? Math.round((totalTries / solved) * 10) / 10 : null,
-        days: days.size, streak: streakFn(pseudo).current,
+        days: days.size, streak: streak.current, bestStreak: streak.best,
+        successRate: played ? Math.round((solved / played) * 100) : null,
     };
 }
 

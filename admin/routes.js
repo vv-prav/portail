@@ -56,6 +56,56 @@ module.exports = function attachAdmin(app, ctx) {
     // =================================================================
     //  COMPTES
     // =================================================================
+
+    // =================================================================
+    //  TOUTES LES APPS RÉUNIES — un seul tableau de bord, en plus des
+    //  pages détaillées par jeu qui existent déjà.
+    // =================================================================
+    G('/apps-overview', (req, res) => {
+        const cache = mf.cache();
+        const today = mf.today();
+
+        let mfSolvedToday = 0;
+        for (const lv of mf.levels) {
+            mfSolvedToday += Object.keys(cache).filter(k => k.startsWith('mf:prog:') && k.endsWith(`:${today}:${lv}`) && (cache[k] || {}).solved).length;
+        }
+
+        let perudoOnline = 0, perudoGames = 0;
+        try { perudoOnline = ctx.perudo().online().length; perudoGames = ctx.perudo().games().filter(g => g.started && !g.vsBot).length; } catch (e) {}
+
+        let pbacOnline = 0, pbacGames = 0, pbacTotalGamesPlayed = 0;
+        try {
+            pbacOnline = pbac().online().length;
+            pbacGames = pbac().games().filter(g => g.status !== 'lobby' && g.status !== 'ended').length;
+        } catch (e) {}
+        for (const k of Object.keys(cache)) {
+            if (k.startsWith('pbac:stats:')) pbacTotalGamesPlayed += (cache[k] && cache[k].gamesPlayed) || 0;
+        }
+
+        let undercoverOnline = 0, undercoverGames = 0;
+        try {
+            undercoverOnline = ctx.undercover().online().length;
+            undercoverGames = ctx.undercover().games().filter(g => g.status !== 'lobby' && g.status !== 'ended').length;
+        } catch (e) {}
+
+        const motusBoard = cache[motus.kBoard(today)] || [];
+        const mjBoard = cache[motjuste.kBoard(today)] || [];
+
+        res.json({
+            mf: { solvedToday: mfSolvedToday, totalKeys: Object.keys(cache).length },
+            perudo: { online: perudoOnline, activeGames: perudoGames },
+            pbac: { online: pbacOnline, activeGames: pbacGames, totalGamesPlayed: pbacTotalGamesPlayed },
+            undercover: { online: undercoverOnline, activeGames: undercoverGames },
+            motus: { solversToday: motusBoard.length },
+            motjuste: { solversToday: mjBoard.length },
+        });
+    });
+
+    G('/game-history', (req, res) => {
+        const history = mf.get('admin:gameHistory') || [];
+        res.json({ history: history.slice(0, 100) });
+    });
+
     G('/accounts', (req, res) => {
         const q = String(req.query.q || '').toLowerCase().trim();
         const sort = req.query.sort || 'recent';
