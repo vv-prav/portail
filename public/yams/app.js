@@ -40,13 +40,40 @@ const PIP_LAYOUTS = {
 function diceFaceSvg(n, extraClass) {
     const pips = PIP_LAYOUTS[n] || [];
     return `<svg viewBox="0 0 100 100" class="ym-die-face ${extraClass || ''}">
-        <rect x="4" y="4" width="92" height="92" rx="18"/>
+        <rect x="4" y="4" width="92" height="92" rx="18" class="ym-die-body"/>
+        <ellipse cx="30" cy="20" rx="22" ry="10" class="ym-die-shine"/>
         ${pips.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="9"/>`).join('')}
     </svg>`;
 }
 
 let socket = null, state = null, myPseudo = null, lastGameId = null;
 const LS_KEY = 'yams_last_game';
+
+// ---------- Grande célébration plein écran quand quelqu'un fait un Yams ----------
+const CONFETTI_COLORS = ['#d9a94e', '#ecca82', '#efe4cf', '#5aa87a', '#d2624a'];
+function playCelebration(pseudo, bonus) {
+    const el = $('ymCelebration');
+    const field = $('ymConfetti');
+    $('ymCelebrationWho').textContent = pseudo === myPseudo ? 'Vous venez de faire un Yams !' : `${pseudo} vient de faire un Yams !`;
+    $('ymCelebrationBonus').hidden = !bonus;
+    field.innerHTML = '';
+    const count = 90;
+    for (let i = 0; i < count; i++) {
+        const bit = document.createElement('span');
+        bit.className = 'ym-confetti-bit';
+        bit.style.left = Math.random() * 100 + '%';
+        bit.style.background = CONFETTI_COLORS[i % CONFETTI_COLORS.length];
+        bit.style.animationDelay = (Math.random() * .6) + 's';
+        bit.style.animationDuration = (1.8 + Math.random() * 1.2) + 's';
+        bit.style.setProperty('--drift', (Math.random() * 140 - 70) + 'px');
+        bit.style.setProperty('--rot', (Math.random() * 720 - 360) + 'deg');
+        field.appendChild(bit);
+    }
+    el.classList.add('on');
+    if (navigator.vibrate) { try { navigator.vibrate([30, 60, 30, 60, 120]); } catch (e) {} }
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.classList.remove('on'); field.innerHTML = ''; }, 3400);
+}
 
 function connect() {
     socket = io();
@@ -61,6 +88,7 @@ function connect() {
     });
     socket.on('yams_games', renderLobby);
     socket.on('yams_state', onState);
+    socket.on('yams_celebration', ({ pseudo, bonus }) => playCelebration(pseudo, bonus));
     socket.on('yams_error', (msg) => {
         toast(msg || 'Erreur.');
         if (/existe plus|déjà commencé/i.test(msg || '')) {
@@ -117,9 +145,9 @@ $('btn-back-lobby').addEventListener('click', () => { socket.emit('yams_leave');
 // ---------- Partie ----------
 function renderScoresStrip(s) {
     $('scoresStrip').innerHTML = s.players.map(p => `
-        <div class="ym-score-chip${p.pseudo === s.turnPseudo ? ' current' : ''}">
-            <span class="ym-score-chip-name">${p.connected ? '' : '⚪ '}${esc(p.pseudo)}</span>
-            <b>${p.total}</b>
+        <div class="ym-score-band${p.pseudo === s.turnPseudo ? ' current' : ''}">
+            <span class="ym-score-band-name">${p.connected ? '' : '⚪ '}${esc(p.pseudo)}</span>
+            <b class="ym-score-band-total">${p.total}</b>
         </div>
     `).join('');
 }
@@ -198,10 +226,21 @@ function renderSheet(s) {
     $('upperRows').innerHTML = UPPER_CATS.map(c => sheetRow(c.key, c.label, diceFaceSvg(c.face, 'small'))).join('');
     $('lowerRows').innerHTML = LOWER_CATS.map(c => sheetRow(c.key, c.label)).join('');
     const upperSums = s.players.map(p => UPPER_KEYS.reduce((sum, k) => sum + (p.scores[k] || 0), 0));
+    const lowerKeys = LOWER_CATS.map(c => c.key);
+    const lowerSums = s.players.map(p => lowerKeys.reduce((sum, k) => sum + (p.scores[k] || 0), 0) + (p.yamsBonus || 0));
     $('bonusRow').innerHTML = `
+        <div class="ym-sheet-row subtotal">
+            <span class="ym-sheet-row-label text">Sous-total</span>
+            <span class="ym-sheet-row-cells">${upperSums.map(u => `<span class="ym-score-cell filled">${u}</span>`).join('')}</span>
+        </div>
         <div class="ym-sheet-row bonus">
             <span class="ym-sheet-row-label text">Bonus <em>(63 pts et +)</em></span>
             <span class="ym-sheet-row-cells">${upperSums.map(u => `<span class="ym-score-cell ${u >= 63 ? 'filled bonus-on' : 'empty'}">${u >= 63 ? '+35' : '—'}</span>`).join('')}</span>
+        </div>`;
+    $('lowerSubtotalRow').innerHTML = `
+        <div class="ym-sheet-row subtotal">
+            <span class="ym-sheet-row-label text">Sous-total${s.players.some(p => p.yamsBonus) ? ' (bonus Yams inclus)' : ''}</span>
+            <span class="ym-sheet-row-cells">${lowerSums.map(u => `<span class="ym-score-cell filled">${u}</span>`).join('')}</span>
         </div>`;
     document.querySelectorAll('.ym-sheet-row.eligible').forEach(row => row.addEventListener('click', () => {
         const cat = row.dataset.cat;

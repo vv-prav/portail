@@ -49,6 +49,7 @@
                 <div class="ym-sheet-col">
                     <p class="ym-sheet-col-title">Combinaisons</p>
                     <div class="ym-sheet-rows" id="lowerRows"></div>
+                    <div class="ym-bonus-row" id="lowerSubtotalRow"></div>
                 </div>
             </div>
 
@@ -78,6 +79,15 @@
     </div>
 
     <p class="ym-toast" id="ym-toast" hidden></p>
+
+    <div class="ym-celebration" id="ymCelebration" aria-hidden="true">
+        <div class="ym-confetti-field" id="ymConfetti"></div>
+        <div class="ym-celebration-inner">
+            <p class="ym-celebration-word">YAMS !</p>
+            <p class="ym-celebration-who" id="ymCelebrationWho">—</p>
+            <p class="ym-celebration-bonus" id="ymCelebrationBonus" hidden>+50 points de bonus !</p>
+        </div>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="app.js"></script>

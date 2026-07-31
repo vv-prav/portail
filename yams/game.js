@@ -79,11 +79,12 @@ function computePossibleScore(cat, dice) {
 function upperTotal(scores) {
     return UPPER_CATEGORIES.reduce((s, c) => s + (scores[c] || 0), 0);
 }
-function grandTotal(scores) {
+function grandTotal(p) {
+    const scores = p.scores;
     const upper = upperTotal(scores);
     const bonus = upper >= BONUS_THRESHOLD ? BONUS_POINTS : 0;
     const lower = CATEGORIES.filter(c => !UPPER_CATEGORIES.includes(c)).reduce((s, c) => s + (scores[c] || 0), 0);
-    return upper + bonus + lower;
+    return upper + bonus + lower + (p.yamsBonus || 0);
 }
 
 // =====================================================================
@@ -116,7 +117,7 @@ function broadcastLobby() { io.emit('yams_games', publicGames()); }
 
 function playerView(g) {
     return g.players.map(p => ({
-        pseudo: p.pseudo, connected: p.connected, scores: p.scores, total: grandTotal(p.scores),
+        pseudo: p.pseudo, connected: p.connected, scores: p.scores, yamsBonus: p.yamsBonus || 0, total: grandTotal(p),
     }));
 }
 function stateForClient(g) {
@@ -133,7 +134,7 @@ function stateForClient(g) {
 function winnerOf(g) {
     let best = null, bestScore = -1;
     for (const p of g.players) {
-        const t = grandTotal(p.scores);
+        const t = grandTotal(p);
         if (t > bestScore) { bestScore = t; best = p.pseudo; }
     }
     return best;
@@ -202,7 +203,7 @@ io.on('connection', (socket) => {
         const id = 'y' + (nextId++);
         const g = {
             id, host: pseudo, status: 'lobby',
-            players: [{ sid: socket.id, pseudo, connected: true, scores: freshScores() }],
+            players: [{ sid: socket.id, pseudo, connected: true, scores: freshScores(), yamsBonus: 0 }],
             turnIndex: 0, dice: [1, 1, 1, 1, 1], held: [false, false, false, false, false],
             rollsLeft: MAX_ROLLS, hasRolled: false,
         };
@@ -223,7 +224,7 @@ io.on('connection', (socket) => {
         else {
             if (g.status !== 'lobby') return socket.emit('yams_error', 'La partie a déjà commencé.');
             if (g.players.length >= MAX_PLAYERS) return socket.emit('yams_error', 'Table complète.');
-            g.players.push({ sid: socket.id, pseudo, connected: true, scores: freshScores() });
+            g.players.push({ sid: socket.id, pseudo, connected: true, scores: freshScores(), yamsBonus: 0 });
         }
         socketGame[socket.id] = g.id;
         socket.join(roomOf(g));
@@ -276,7 +277,19 @@ io.on('connection', (socket) => {
         if (!current || current.pseudo !== pseudo) return;
         if (!g.hasRolled) return;   // il faut avoir lancé au moins une fois
         if (!CATEGORIES.includes(category) || current.scores[category] !== null) return;
+
+        // Si les dés forment un Yams et que la case Yams est déjà remplie avec 50 points,
+        // c'est un Yams supplémentaire dans la même partie : 50 points de bonus en plus,
+        // quelle que soit la case choisie pour ce tour-ci.
+        const isYamsRoll = computePossibleScore('yams', g.dice) === 50;
+        const extraYamsBonus = isYamsRoll && current.scores.yams === 50;
+        if (extraYamsBonus) current.yamsBonus = (current.yamsBonus || 0) + 50;
+
         current.scores[category] = computePossibleScore(category, g.dice);
+
+        if (isYamsRoll) {
+            io.to(roomOf(g)).emit('yams_celebration', { pseudo, bonus: extraYamsBonus });
+        }
         advanceTurn(g);
     });
 
@@ -286,7 +299,7 @@ io.on('connection', (socket) => {
         const g = games[socketGame[socket.id]];
         if (!g || g.host !== socket.data.yamsPseudo || g.status !== 'ended') return;
         g.status = 'lobby';
-        g.players.forEach(p => { p.scores = freshScores(); });
+        g.players.forEach(p => { p.scores = freshScores(); p.yamsBonus = 0; });
         g.turnIndex = 0;
         broadcastState(g);
         broadcastLobby();
