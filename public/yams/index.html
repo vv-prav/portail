@@ -40,13 +40,6 @@
         <section class="ym-view" id="v-game" hidden>
             <div class="ym-scores-strip" id="scoresStrip"></div>
 
-            <div class="ym-dice-zone">
-                <div class="ym-dice" id="diceRow"></div>
-                <p class="ym-turn-label" id="turnLabel">—</p>
-                <button class="ym-btn" id="btn-roll">Lancer les dés</button>
-                <p class="ym-rolls-left" id="rollsLeft"></p>
-            </div>
-
             <div class="ym-sheet">
                 <div class="ym-sheet-col">
                     <p class="ym-sheet-col-title">Chiffres</p>
@@ -58,7 +51,21 @@
                     <div class="ym-sheet-rows" id="lowerRows"></div>
                 </div>
             </div>
+
+            <div class="ym-dice-zone">
+                <p class="ym-turn-label" id="turnLabel">—</p>
+                <div class="ym-dice" id="diceRow"></div>
+                <p class="ym-rolls-left" id="rollsLeft"></p>
+                <button class="ym-btn" id="btn-roll">Lancer les dés</button>
+            </div>
         </section>
+
+        <!-- Barre de confirmation avant de noter une catégorie -->
+        <div class="ym-confirm-bar" id="confirmBar" hidden>
+            <span class="ym-confirm-text" id="confirmText">—</span>
+            <button type="button" class="ym-confirm-cancel" id="confirmCancel">Annuler</button>
+            <button type="button" class="ym-confirm-ok" id="confirmOk">Confirmer</button>
+        </div>
 
         <!-- FIN DE PARTIE -->
         <section class="ym-view" id="v-ended" hidden>

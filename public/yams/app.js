@@ -123,56 +123,96 @@ function renderScoresStrip(s) {
         </div>
     `).join('');
 }
+let lastDiceKey = null;
 function renderDice(s) {
     const isMyTurn = s.turnPseudo === myPseudo;
-    $('diceRow').innerHTML = s.dice.map((v, i) => `
-        <button type="button" class="ym-die${s.held[i] ? ' held' : ''}" data-i="${i}" ${(!isMyTurn || !s.hasRolled) ? 'disabled' : ''}>
-            ${diceFaceSvg(v)}
-        </button>
-    `).join('');
-    $('diceRow').querySelectorAll('.ym-die').forEach(b => b.addEventListener('click', () => {
-        socket.emit('yams_hold', { index: Number(b.dataset.i) });
-    }));
+    if (!s.hasRolled) {
+        // Rien n'est affiché tant qu'on n'a pas lancé : les dés apparaissent au clic, pas avant.
+        $('diceRow').innerHTML = '';
+        lastDiceKey = null;
+    } else {
+        const diceKey = s.dice.join(',') + '|' + s.rollsLeft + '|' + s.turnPseudo;
+        const justRolled = diceKey !== lastDiceKey;
+        lastDiceKey = diceKey;
+        $('diceRow').innerHTML = s.dice.map((v, i) => `
+            <button type="button" class="ym-die${s.held[i] ? ' held' : ''}" data-i="${i}" ${(!isMyTurn || s.rollsLeft <= 0) ? 'disabled' : ''}>
+                ${diceFaceSvg(v)}
+            </button>
+        `).join('');
+        $('diceRow').querySelectorAll('.ym-die').forEach((b, i) => {
+            b.addEventListener('click', () => socket.emit('yams_hold', { index: Number(b.dataset.i) }));
+            // On ne fait rouler que les dés qui viennent vraiment d'être relancés (pas ceux gardés).
+            if (justRolled && !s.held[i]) {
+                b.style.animationDelay = (i * 60) + 'ms';
+                b.classList.add('rolling');
+                setTimeout(() => b.classList.remove('rolling'), 800 + i * 60);
+            }
+        });
+    }
     $('turnLabel').textContent = isMyTurn ? 'À vous de jouer' : `Au tour de ${s.turnPseudo}`;
     $('btn-roll').disabled = !isMyTurn || s.rollsLeft <= 0;
     $('btn-roll').textContent = s.rollsLeft === 3 ? 'Lancer les dés' : 'Relancer';
     $('rollsLeft').textContent = s.hasRolled ? `${s.rollsLeft} lancer${s.rollsLeft > 1 ? 's' : ''} restant${s.rollsLeft > 1 ? 's' : ''}` : '3 lancers disponibles';
 }
+
+// ---------- Choisir une catégorie : toute la rangée est cliquable, mais rien n'est
+// noté avant confirmation en bas, pour éviter toute erreur au tap. ----------
+let pendingCategory = null, pendingLabel = '', pendingDiceKey = null;
+function clearPending() {
+    pendingCategory = null;
+    $('confirmBar').hidden = true;
+    document.querySelectorAll('.ym-sheet-row.pending').forEach(r => r.classList.remove('pending'));
+}
+function selectPending(cat, label, points) {
+    pendingCategory = cat; pendingLabel = label;
+    pendingDiceKey = state ? state.dice.join(',') : null;
+    document.querySelectorAll('.ym-sheet-row').forEach(r => r.classList.toggle('pending', r.dataset.cat === cat));
+    $('confirmText').innerHTML = `${esc(label)} : <b>${points}</b> point${points > 1 ? 's' : ''}`;
+    $('confirmBar').hidden = false;
+}
+$('confirmCancel').addEventListener('click', clearPending);
+$('confirmOk').addEventListener('click', () => {
+    if (!pendingCategory) return;
+    socket.emit('yams_score', { category: pendingCategory });
+    clearPending();
+});
+
 function scoreCellsFor(cat, s) {
-    const isMyTurn = s.turnPseudo === myPseudo;
     return s.players.map(p => {
         const val = p.scores[cat];
         if (val !== null) return `<span class="ym-score-cell filled">${val}</span>`;
-        if (isMyTurn && p.pseudo === myPseudo && s.hasRolled) {
-            return `<button type="button" class="ym-score-cell possible" data-cat="${cat}">${s.possible[cat]}</button>`;
-        }
         return `<span class="ym-score-cell empty">—</span>`;
     }).join('');
 }
+function sheetRow(cat, label, labelHtml) {
+    const isMyTurn = state && state.turnPseudo === myPseudo;
+    const me = state && state.players.find(p => p.pseudo === myPseudo);
+    const eligible = isMyTurn && state && state.hasRolled && me && me.scores[cat] === null;
+    return `
+        <div class="ym-sheet-row${eligible ? ' eligible' : ''}" data-cat="${cat}">
+            <span class="ym-sheet-row-label${labelHtml ? '' : ' text'}">${labelHtml || label}</span>
+            <span class="ym-sheet-row-cells">${scoreCellsFor(cat, state)}</span>
+        </div>`;
+}
 function renderSheet(s) {
-    $('upperRows').innerHTML = UPPER_CATS.map(c => `
-        <div class="ym-sheet-row">
-            <span class="ym-sheet-row-label">${diceFaceSvg(c.face, 'small')}</span>
-            <span class="ym-sheet-row-cells">${scoreCellsFor(c.key, s)}</span>
-        </div>
-    `).join('');
-    $('lowerRows').innerHTML = LOWER_CATS.map(c => `
-        <div class="ym-sheet-row">
-            <span class="ym-sheet-row-label text">${c.label}</span>
-            <span class="ym-sheet-row-cells">${scoreCellsFor(c.key, s)}</span>
-        </div>
-    `).join('');
+    $('upperRows').innerHTML = UPPER_CATS.map(c => sheetRow(c.key, c.label, diceFaceSvg(c.face, 'small'))).join('');
+    $('lowerRows').innerHTML = LOWER_CATS.map(c => sheetRow(c.key, c.label)).join('');
     const upperSums = s.players.map(p => UPPER_KEYS.reduce((sum, k) => sum + (p.scores[k] || 0), 0));
     $('bonusRow').innerHTML = `
         <div class="ym-sheet-row bonus">
             <span class="ym-sheet-row-label text">Bonus <em>(63 pts et +)</em></span>
             <span class="ym-sheet-row-cells">${upperSums.map(u => `<span class="ym-score-cell ${u >= 63 ? 'filled bonus-on' : 'empty'}">${u >= 63 ? '+35' : '—'}</span>`).join('')}</span>
         </div>`;
-    document.querySelectorAll('.ym-score-cell.possible').forEach(b => b.addEventListener('click', () => {
-        socket.emit('yams_score', { category: b.dataset.cat });
+    document.querySelectorAll('.ym-sheet-row.eligible').forEach(row => row.addEventListener('click', () => {
+        const cat = row.dataset.cat;
+        const label = [...UPPER_CATS, ...LOWER_CATS].find(c => c.key === cat).label;
+        selectPending(cat, label, s.possible[cat]);
     }));
+    // Si les dés ont changé depuis la sélection (nouveau lancer), la case en attente n'a plus de sens.
+    if (pendingCategory && pendingDiceKey !== s.dice.join(',')) clearPending();
 }
-$('btn-roll').addEventListener('click', () => socket.emit('yams_roll'));
+$('btn-roll').addEventListener('click', () => { clearPending(); socket.emit('yams_roll'); });
+
 
 // ---------- Fin de partie ----------
 function renderEnded(s) {
