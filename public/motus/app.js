@@ -21,7 +21,7 @@ const I18N = {
         err_incomplete: "Complète le mot avant de valider.", err_generic: "Une erreur est survenue.",
         end_title_win: "Trouvé !", end_title_lost: "Perdu…", end_title_giveup: "Abandonné",
         end_tries: "en", end_try_one: "essai", end_try_many: "essais",
-        end_rank: "sur", end_streak: "jours d'affilée", end_noboard: "Retente demain !",
+        end_rank: "sur", end_streak: "jours d'affilée", end_best_streak: "record perso", end_noboard: "Retente demain !",
         board_title: "Classement du jour", board_empty: "Personne n'a encore trouvé le mot aujourd'hui.",
         giveup_title: "Abandonner ?", giveup_sub: "Le mot sera révélé et tu ne figureras pas au classement.",
         giveup_yes: "Oui, révéler le mot",
@@ -44,7 +44,7 @@ const I18N = {
         err_incomplete: "Complete the word before submitting.", err_generic: "Something went wrong.",
         end_title_win: "Found it!", end_title_lost: "Lost…", end_title_giveup: "Given up",
         end_tries: "in", end_try_one: "try", end_try_many: "tries",
-        end_rank: "of", end_streak: "day streak", end_noboard: "Try again tomorrow!",
+        end_rank: "of", end_streak: "day streak", end_best_streak: "personal best", end_noboard: "Try again tomorrow!",
         board_title: "Today's leaderboard", board_empty: "Nobody has found the word today yet.",
         giveup_title: "Give up?", giveup_sub: "The word will be revealed and you won't appear on the leaderboard.",
         giveup_yes: "Yes, reveal the word",
@@ -67,7 +67,7 @@ const I18N = {
         err_incomplete: "Completa la palabra antes de validar.", err_generic: "Ha ocurrido un error.",
         end_title_win: "¡Encontrada!", end_title_lost: "Perdida…", end_title_giveup: "Abandonada",
         end_tries: "en", end_try_one: "intento", end_try_many: "intentos",
-        end_rank: "de", end_streak: "días seguidos", end_noboard: "¡Inténtalo mañana!",
+        end_rank: "de", end_streak: "días seguidos", end_best_streak: "récord personal", end_noboard: "¡Inténtalo mañana!",
         board_title: "Clasificación del día", board_empty: "Nadie ha encontrado la palabra hoy todavía.",
         giveup_title: "¿Rendirse?", giveup_sub: "La palabra se revelará y no aparecerás en la clasificación.",
         giveup_yes: "Sí, revelar la palabra",
@@ -367,7 +367,10 @@ async function showEnd(kind, data) {
     if (kind === 'win') {
         sub = t('end_tries') + ' ' + tryLabel(data.guesses || guesses.length);
         if (!isArchive && data.rank) sub += ' · ' + data.rank + ' ' + t('end_rank') + ' ' + data.total;
-        if (!isArchive && data.streak && data.streak.current > 1) sub += ' · 🔥 ' + data.streak.current + ' ' + t('end_streak');
+        if (!isArchive && data.streak && data.streak.current > 1) {
+            sub += ' · 🔥 ' + data.streak.current + ' ' + t('end_streak');
+            if (data.streak.best && data.streak.current >= data.streak.best) sub += ' · 🏆 ' + t('end_best_streak');
+        }
         if (isArchive) sub += ' · ' + t('arch_solved');
     } else {
         sub = t('end_noboard');
@@ -532,3 +535,24 @@ load();
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
 }
+
+// ---------- En direct : voir apparaître les résolutions des autres, à mesure ----------
+(function liveFeed() {
+    if (typeof io !== 'function') return;   // bibliothèque non chargée, on ne bloque rien
+    const socket = io();
+    const host = $('mt-live-feed');
+    socket.on('connect', () => socket.emit('motus_join'));
+    socket.on('motus_live_solve', ({ pseudo, tries, rank, first }) => {
+        if (!host) return;
+        const row = document.createElement('div');
+        row.className = 'mt-live-row' + (first ? ' mt-live-first' : '');
+        row.innerHTML = `${first ? '\u{1f947} ' : ''}<b>${esc(pseudo)}</b> vient de trouver le mot du jour en ${tries} ${tries === 1 ? 'essai' : 'essais'}${rank ? ' \u00b7 ' + rank + 'e' : ''}`;
+        host.appendChild(row);
+        host.hidden = false;
+        setTimeout(() => {
+            row.classList.add('mt-live-out');
+            setTimeout(() => { row.remove(); if (!host.children.length) host.hidden = true; }, 400);
+        }, 5000);
+    });
+    window.addEventListener('beforeunload', () => { try { socket.emit('motus_leave'); } catch (e) {} });
+})();

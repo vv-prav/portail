@@ -91,48 +91,37 @@ body.is-hub   .hub   { display: block; }
 .rule { height: 1px; margin: 18px 0 20px; background: linear-gradient(90deg, transparent, var(--line) 15%, var(--line) 85%, transparent); position: relative; }
 .rule::after { content: "✦"; position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); background: var(--ink); padding: 0 10px; color: var(--brass); font-size: 0.68rem; }
 
-/* --- Tuiles (une colonne sur mobile) --- */
-.tiles { display: grid; grid-template-columns: 1fr; gap: 12px; }
+/* --- Tuiles (grille de 2 colonnes, glissables) --- */
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .tile {
-    position: relative; display: flex; align-items: center; gap: 14px;
-    min-height: 78px; padding: 15px 76px 15px 15px; /* place à droite pour le badge */
+    position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 7px;
+    padding: 20px 10px 14px; min-height: 128px; justify-content: center;
     border-radius: var(--radius); text-decoration: none; color: inherit;
     background: linear-gradient(165deg, var(--ink-3), var(--ink-2));
     border: 1px solid var(--line); box-shadow: 0 8px 20px rgba(0,0,0,0.32);
     transition: transform 0.14s ease, border-color 0.18s ease, box-shadow 0.18s ease;
-    overflow: hidden;
 }
-.tile::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--accent); opacity: 0.9; }
+.tile::before { content: ""; position: absolute; left: 0; top: 0; right: 0; height: 3px; background: var(--accent); opacity: 0.9; border-radius: var(--radius) var(--radius) 0 0; }
 .tile:not(.is-soon):hover, .tile:not(.is-soon):focus-visible { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); box-shadow: 0 14px 30px rgba(0,0,0,0.5), 0 0 22px color-mix(in srgb, var(--accent) 20%, transparent); }
 .tile:not(.is-soon):active { transform: translateY(0) scale(0.99); }
 .tile.is-soon { opacity: 0.62; cursor: default; }
+.tile.tile-dragging { z-index: 50; box-shadow: 0 20px 40px rgba(0,0,0,.6); border-color: var(--accent); cursor: grabbing; transition: none; }
+.tile.tile-drop-target { border-color: var(--accent); background: linear-gradient(165deg, color-mix(in srgb, var(--accent) 14%, var(--ink-3)), var(--ink-2)); }
 
-.tile-mark { flex: 0 0 auto; width: 52px; height: 52px; border-radius: 13px; display: grid; place-items: center; font-size: 1.6rem; background: color-mix(in srgb, var(--accent) 15%, var(--ink)); border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent); }
-.tile-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.tile-name { font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 1.2rem; color: var(--parchment); overflow-wrap: anywhere; }
-.tile-desc { font-size: 0.84rem; color: var(--muted); line-height: 1.3; }
-.tile-badge { position: absolute; top: 14px; right: 14px; font-size: 0.62rem; letter-spacing: 0.6px; text-transform: uppercase; padding: 4px 9px; border-radius: 999px; font-weight: 800; white-space: nowrap; }
+.tile-drag-handle { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; display: grid; place-items: center;
+    color: var(--muted); font-size: .78rem; letter-spacing: -2px; line-height: 1; cursor: grab; touch-action: none;
+    border-radius: 8px; opacity: .55; }
+.tile-drag-handle:active { cursor: grabbing; opacity: 1; background: rgba(255,255,255,.06); }
+.tile-mark { flex: 0 0 auto; width: 50px; height: 50px; border-radius: 13px; display: grid; place-items: center; font-size: 1.5rem; background: color-mix(in srgb, var(--accent) 15%, var(--ink)); border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent); }
+.tile-name { font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 1rem; color: var(--parchment); overflow-wrap: anywhere; }
+.tile-online { font-size: .68rem; color: var(--muted); line-height: 1.35; overflow-wrap: anywhere; }
+.tile-online b { color: #bfe8cd; font-weight: 800; }
+.tile-online.empty { opacity: .55; }
+.tile-badge { font-size: 0.62rem; letter-spacing: 0.6px; text-transform: uppercase; padding: 4px 9px; border-radius: 999px; font-weight: 800; white-space: nowrap; }
 .tile-badge.open { color: #2a1c07; background: var(--accent); }
 .tile-badge.soon { color: var(--muted); border: 1px solid var(--line); }
 
 .hub-foot { text-align: center; color: #6f6350; font-size: 0.78rem; margin: 26px 0 4px; }
-
-/* --- Dossier "Jeux" dépliable --- */
-.folder-card { width: 100%; cursor: pointer; font-family: inherit; text-align: left; padding-right: 116px; }
-.folder-card .tile-badge { right: 40px; }
-.folder-chevron { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 1rem;
-                  color: var(--muted); transition: transform 0.3s ease; }
-.folder-card.open .folder-chevron { transform: translateY(-50%) rotate(180deg); }
-.folder-card.open { border-color: color-mix(in srgb, var(--accent) 45%, var(--line));
-                     box-shadow: 0 8px 20px rgba(0,0,0,0.32), inset 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent); }
-
-.folder-tray { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.4s cubic-bezier(0.2, 0.8, 0.2, 1); margin-top: -4px; }
-.folder-tray.open { grid-template-rows: 1fr; margin-top: 10px; }
-.folder-tray-inner { overflow: hidden; min-width: 0; display: flex; flex-direction: column; gap: 10px;
-                      padding: 2px 0 2px 18px; border-left: 2px solid color-mix(in srgb, var(--brass) 30%, transparent); }
-.folder-item { opacity: 0; transform: translateY(-6px); }
-.folder-tray.open .folder-item { animation: folderItemIn 0.32s ease forwards; animation-delay: var(--d, 0ms); }
-@keyframes folderItemIn { to { opacity: 1; transform: translateY(0); } }
 
 /* --- Placeholder d'une app --- */
 .app-placeholder { min-height: 100dvh; display: grid; place-items: center; padding: 20px; }

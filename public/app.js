@@ -26,7 +26,7 @@ const I18N = {
         forgot_send: "Réinitialiser", cancel: "Annuler",
         app_perudo_d: "Le jeu de dés des pirates, en ligne.", app_motus_d: "Un mot à deviner en 6 essais.", app_pbac_d: "Une lettre, huit catégories, à plusieurs.", app_uc_d: "Démasque l'infiltré parmi vous.", app_juste_d: "Devine le mot secret à l'intuition.", app_mf_d: "Une nouvelle grille chaque jour.",
         app_recettes_d: "Garde et partage tes recettes.", app_voyages_d: "La rando dans les Monts d'Arrée.", app_admin_d: "Comptes, données et réglages.",
-        b_open: "Ouvert", b_soon: "Bientôt", b_online: "en ligne", b_new_grid: "Nouvelle grille !",
+        b_open: "Ouvert", b_soon: "Bientôt", b_online: "en ligne", b_nobody_online: "Personne pour l'instant", b_new_grid: "Nouvelle grille !",
         b_grid_done: "Grille du jour ✓", b_grid_part: "faites aujourd'hui",
         folder_games: "Jeux", folder_games_count: "jeux", folder_drinks: "Jeux d'alcool", folder_drinks_count: "jeux",
         app_rn_d: "Tire une carte au hasard, décidez à l'oral.", app_auto_d: "Avance sur la route, gorgée à la clé.",
@@ -56,7 +56,7 @@ const I18N = {
         forgot_send: "Reset", cancel: "Cancel",
         app_perudo_d: "The pirates' dice game, online.", app_motus_d: "Guess the word in 6 tries.", app_pbac_d: "A letter, eight categories, with friends.", app_uc_d: "Unmask the impostor among you.", app_juste_d: "Guess the secret word by feel.", app_mf_d: "A fresh grid every day.",
         app_recettes_d: "Keep and share your recipes.", app_voyages_d: "The Monts d'Arrée hiking trip.", app_admin_d: "Accounts, data and settings.",
-        b_open: "Open", b_soon: "Soon", b_online: "online", b_new_grid: "New grid!",
+        b_open: "Open", b_soon: "Soon", b_online: "online", b_nobody_online: "Nobody right now", b_new_grid: "New grid!",
         b_grid_done: "Today's grid ✓", b_grid_part: "done today",
         folder_games: "Games", folder_games_count: "games", folder_drinks: "Drinking games", folder_drinks_count: "games",
         app_rn_d: "Draw a random card, decide out loud.", app_auto_d: "Move down the road, one sip at a time.",
@@ -86,7 +86,7 @@ const I18N = {
         forgot_send: "Restablecer", cancel: "Cancelar",
         app_perudo_d: "El juego de dados pirata, en línea.", app_motus_d: "Adivina la palabra en 6 intentos.", app_pbac_d: "Una letra, ocho categorías, en grupo.", app_uc_d: "Descubre al infiltrado entre vosotros.", app_juste_d: "Adivina la palabra secreta por intuición.", app_mf_d: "Una cuadrícula nueva cada día.",
         app_recettes_d: "Guarda y comparte tus recetas.", app_voyages_d: "La ruta por los Monts d'Arrée.", app_admin_d: "Cuentas, datos y ajustes.",
-        b_open: "Abierto", b_soon: "Pronto", b_online: "en línea", b_new_grid: "¡Nueva cuadrícula!",
+        b_open: "Abierto", b_soon: "Pronto", b_online: "en línea", b_nobody_online: "Nadie por ahora", b_new_grid: "¡Nueva cuadrícula!",
         b_grid_done: "Cuadrícula de hoy ✓", b_grid_part: "hechas hoy",
         folder_games: "Juegos", folder_games_count: "juegos", folder_drinks: "Juegos de beber", folder_drinks_count: "juegos",
         app_rn_d: "Saca una carta al azar, decidid en voz alta.", app_auto_d: "Avanza por la carretera, trago a trago.",
@@ -132,16 +132,8 @@ const OTHER_APPS = [
     { id: 'voyages',  name: 'Voyages',      dKey: 'app_voyages_d',  emoji: '🥾', href: '/voyages',     accent: '#8b6ba8', status: 'open' },
 ];
 const ADMIN_APP = { id: 'admin', name: 'Administration', dKey: 'app_admin_d', emoji: '🛡️', href: '/admin', accent: '#c96f6f', status: 'open' };
-const FOLDERS = [
-    { id: 'games',  emoji: '🎲', accent: '#d9a94e', nameKey: 'folder_games',  countKey: 'folder_games_count',  apps: GAME_APPS },
-    { id: 'drinks', emoji: '🍻', accent: '#b7454a', nameKey: 'folder_drinks', countKey: 'folder_drinks_count', apps: DRINK_APPS },
-];
 let isAdminUser = false;
 let pulse = null;
-let openFolders = new Set(JSON.parse(localStorage.getItem('erquy_folders_open') || '[]'));
-if (!localStorage.getItem('erquy_folders_open') && localStorage.getItem('erquy_games_open') === '1') {
-    openFolders.add('games');   // migration douce depuis l'ancien système à un seul dossier
-}
 
 async function api(path, body) {
     const res = await fetch(path, {
@@ -190,69 +182,95 @@ function tileBadge(app) {
     }
     return `<span class="tile-badge open">${t('b_open')}</span>`;
 }
+const MULTIPLAYER_APPS = new Set(['perudo', 'pbac', 'undercover']);
+function tileOnlineInfo(a) {
+    const p = pulse && pulse[a.id];
+    const names = (p && p.names) || [];
+    if (!names.length) return `<span class="tile-online empty">${t('b_nobody_online')}</span>`;
+    const shown = names.slice(0, 3).map(esc).join(', ');
+    const extra = names.length > 3 ? ` +${names.length - 3}` : '';
+    return `<span class="tile-online"><b>🟢 ${names.length}</b> ${shown}${extra}</span>`;
+}
 function renderTile(a) {
     const open = a.status === 'open';
+    const sub = open && MULTIPLAYER_APPS.has(a.id) ? tileOnlineInfo(a) : (open ? tileBadge(a) : `<span class="tile-badge soon">${t('b_soon')}</span>`);
     const inner = `
+        <span class="tile-drag-handle" aria-hidden="true">⠿⠿</span>
         <span class="tile-mark">${a.emoji}</span>
-        <span class="tile-body">
-            <span class="tile-name">${esc(a.name)}</span>
-            <span class="tile-desc">${t(a.dKey)}</span>
-        </span>
-        ${tileBadge(a)}`;
+        <span class="tile-name">${esc(a.name)}</span>
+        ${sub}`;
     return open
-        ? `<a class="tile" href="${a.href}" style="--accent:${a.accent}">${inner}</a>`
-        : `<div class="tile is-soon" style="--accent:${a.accent}" aria-disabled="true">${inner}</div>`;
+        ? `<a class="tile" data-id="${a.id}" href="${a.href}" style="--accent:${a.accent}">${inner}</a>`
+        : `<div class="tile is-soon" data-id="${a.id}" style="--accent:${a.accent}" aria-disabled="true">${inner}</div>`;
 }
 
-// Résumé affiché sur un dossier fermé : priorité au direct, sinon aux nouveautés du jour
-// (seulement pertinent pour le dossier Jeux, qui a des tuiles vivantes ; sinon un simple compte).
-function folderBadge(folder) {
-    if (folder.id !== 'games') {
-        const openCount = folder.apps.filter(a => a.status === 'open').length;
-        return `<span class="tile-badge open">${openCount} ${t(folder.countKey)}</span>`;
-    }
-    if (pulse && pulse.perudo && pulse.perudo.online > 0) {
-        return `<span class="tile-badge live">🟢 ${pulse.perudo.online} ${t('b_online')}</span>`;
-    }
-    let fresh = 0;
-    if (pulse) {
-        if (pulse.mf && pulse.mf.done < pulse.mf.total) fresh++;
-        if (pulse.motus && !pulse.motus.over) fresh++;
-        if (pulse.motjuste && !pulse.motjuste.over) fresh++;
-    }
-    if (fresh > 0) return `<span class="tile-badge new">✨ ${fresh} ${t('b_folder_todo')}</span>`;
-    return `<span class="tile-badge done">${t('b_folder_done')}</span>`;
+// ---------- Ordre personnalisé des tuiles, sauvegardé sur cet appareil ----------
+const TILE_ORDER_KEY = 'erquy_tile_order';
+function loadTileOrder(allIds) {
+    let saved = [];
+    try { saved = JSON.parse(localStorage.getItem(TILE_ORDER_KEY) || '[]'); } catch (e) {}
+    const known = saved.filter(id => allIds.includes(id));
+    const missing = allIds.filter(id => !known.includes(id));  // nouvelles apps jamais vues : à la fin
+    return [...known, ...missing];
 }
-
-function renderFolder(folder) {
-    const open = openFolders.has(folder.id);
-    const inner = folder.apps.map((a, i) => `<div class="folder-item" style="--d:${i * 55}ms">${renderTile(a)}</div>`).join('');
-    return `
-        <button class="tile folder-card${open ? ' open' : ''}" data-folder="${folder.id}" type="button" style="--accent:${folder.accent}">
-            <span class="tile-mark">${folder.emoji}</span>
-            <span class="tile-body">
-                <span class="tile-name">${t(folder.nameKey)}</span>
-                <span class="tile-desc">${folder.apps.length} ${t(folder.countKey)}</span>
-            </span>
-            ${folderBadge(folder)}
-            <span class="folder-chevron">⌄</span>
-        </button>
-        <div class="folder-tray${open ? ' open' : ''}" id="folder-tray-${folder.id}">
-            <div class="folder-tray-inner">${inner}</div>
-        </div>`;
-}
+function saveTileOrder(order) { localStorage.setItem(TILE_ORDER_KEY, JSON.stringify(order)); }
 
 function renderTiles() {
-    const folders = FOLDERS.map(renderFolder).join('');
-    const rest = OTHER_APPS.map(renderTile).join('') + (isAdminUser ? renderTile(ADMIN_APP) : '');
-    $('tiles').innerHTML = folders + rest;
+    const all = [...GAME_APPS, ...DRINK_APPS, ...OTHER_APPS, ...(isAdminUser ? [ADMIN_APP] : [])];
+    const byId = Object.fromEntries(all.map(a => [a.id, a]));
+    const order = loadTileOrder(all.map(a => a.id));
+    $('tiles').innerHTML = order.map(id => byId[id]).filter(Boolean).map(renderTile).join('');
+    wireTileDrag();
+}
 
-    document.querySelectorAll('[data-folder]').forEach(btn => btn.addEventListener('click', () => {
-        const id = btn.dataset.folder;
-        if (openFolders.has(id)) openFolders.delete(id); else openFolders.add(id);
-        localStorage.setItem('erquy_folders_open', JSON.stringify([...openFolders]));
-        renderTiles();
-    }));
+// ---------- Glisser-déposer : on attrape par la petite poignée, jamais par
+// toute la tuile, pour ne jamais entrer en conflit avec le simple fait de
+// faire défiler la page ou de taper sur la tuile pour ouvrir l'app. ----------
+function wireTileDrag() {
+    const host = $('tiles');
+    let dragTile = null, startX = 0, startY = 0, dropTarget = null;
+
+    function onPointerMove(e) {
+        if (!dragTile) return;
+        e.preventDefault();
+        const x = e.clientX - startX, y = e.clientY - startY;
+        dragTile.style.transform = `translate(${x}px, ${y}px) scale(1.04)`;
+
+        const under = document.elementFromPoint(e.clientX, e.clientY);
+        const overTile = under && under.closest('.tile');
+        if (dropTarget && dropTarget !== overTile) dropTarget.classList.remove('tile-drop-target');
+        dropTarget = (overTile && overTile !== dragTile && host.contains(overTile)) ? overTile : null;
+        if (dropTarget) dropTarget.classList.add('tile-drop-target');
+    }
+    function onPointerUp() {
+        if (!dragTile) return;
+        dragTile.classList.remove('tile-dragging');
+        dragTile.style.transform = '';
+        document.removeEventListener('pointermove', onPointerMove);
+        document.removeEventListener('pointerup', onPointerUp);
+
+        if (dropTarget) {
+            dropTarget.classList.remove('tile-drop-target');
+            const ids = [...host.querySelectorAll('.tile')].map(t => t.dataset.id);
+            const from = ids.indexOf(dragTile.dataset.id), to = ids.indexOf(dropTarget.dataset.id);
+            ids.splice(to, 0, ids.splice(from, 1)[0]);
+            saveTileOrder(ids);
+            if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
+            renderTiles();
+        }
+        dragTile = null; dropTarget = null;
+    }
+    host.querySelectorAll('.tile-drag-handle').forEach(handle => {
+        handle.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            dragTile = handle.closest('.tile');
+            if (!dragTile) return;
+            startX = e.clientX; startY = e.clientY;
+            dragTile.classList.add('tile-dragging');
+            document.addEventListener('pointermove', onPointerMove);
+            document.addEventListener('pointerup', onPointerUp);
+        });
+    });
 }
 
 async function loadPulse() {

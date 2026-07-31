@@ -830,7 +830,7 @@ app.post('/api/motus/guess', requireAuth, (req, res) => {
         // au moment où elle se produit, façon "on joue en même temps".
         const liveBoard = motusBoard(date);
         const liveRank = liveBoard.findIndex(e => e.u === user) + 1;
-        io.emit('motus_live_solve', { pseudo: user, tries: prog.guesses.length, rank: liveRank, first: liveRank === 1 });
+        io.to('motus_room').emit('motus_live_solve', { pseudo: user, tries: prog.guesses.length, rank: liveRank, first: liveRank === 1 });
     }
     if (solved || lost) {
         board = motusBoard(date);
@@ -1452,6 +1452,13 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
     let pbacOnline = 0;
     try { pbacOnline = pbacApi.online().length; } catch (e) {}
 
+    // Les vrais prénoms connectés par jeu, pour les tuiles du salon ("qui est
+    // connecté" plutôt qu'un simple nombre). Undercover réutilise le même schéma.
+    let perudoNames = [], pbacNames = [], undercoverOnlineCount = 0, undercoverNames = [];
+    try { perudoNames = perudoApi.online().map(p => p.pseudo); } catch (e) {}
+    try { pbacNames = pbacApi.online(); } catch (e) {}
+    try { undercoverNames = undercoverApi.online(); undercoverOnlineCount = undercoverNames.length; } catch (e) {}
+
     // Joueurs du salon actuellement en ligne : présence déduite de la fraîcheur de
     // lastSeen (mis à jour par ce même endpoint, interrogé toutes les 60 s côté client).
     const ONLINE_WINDOW_MS = 90 * 1000;
@@ -1480,11 +1487,12 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
     } catch (e) {}
 
     res.json({
-        mf: { done, total: MF_LEVELS.length, streak }, perudo: { online, games },
+        mf: { done, total: MF_LEVELS.length, streak }, perudo: { online, games, names: perudoNames },
         rec: { count: recs.length, fresh: recNew },
         motus: { done: motusDone, over: motusOver, solvers: motusSolversToday },
         motjuste: { done: mjDone, over: mjOver, solvers: mjSolversToday },
-        pbac: { online: pbacOnline },
+        pbac: { online: pbacOnline, names: pbacNames },
+        undercover: { online: undercoverOnlineCount, names: undercoverNames },
         salonOnline, activeGames,
     });
 });
@@ -1600,6 +1608,11 @@ app.use(express.static('public'));
 
 io.on('connection', (socket) => {
     // Prêt pour Perudo & co. Le salon lui-même n'a pas besoin de temps réel.
+
+    // Salle Motus : uniquement les personnes réellement sur la page reçoivent
+    // les résolutions en direct des autres, jamais tout le portail.
+    socket.on('motus_join', () => { socket.join('motus_room'); });
+    socket.on('motus_leave', () => { socket.leave('motus_room'); });
 });
 
 // Filet de sécurité : aucune erreur ne doit faire tomber le serveur
