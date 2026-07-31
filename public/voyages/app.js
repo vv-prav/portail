@@ -2310,3 +2310,11 @@ function renderWheelNames() {
         }, reduceMotion ? 50 : 4500);
     });
 })();
+
+// Le service worker de cette page, avec une portée limitée à /voyages/ explicitement,
+// pour ne jamais prendre le contrôle du reste du site (Petit Bac, Motus, etc.).
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js', { scope: '/voyages/' }).catch(() => {});
+    });
+}

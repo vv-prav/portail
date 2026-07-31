@@ -532,10 +532,6 @@ async function load() {
 applyI18n();
 load();
 
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
-}
-
 // ---------- En direct : voir apparaître les résolutions des autres, à mesure ----------
 (function liveFeed() {
     if (typeof io !== 'function') return;   // bibliothèque non chargée, on ne bloque rien

@@ -826,6 +826,3 @@ if (window.visualViewport) {
 // ---------- Démarrage ----------
 connect();
 setInterval(() => { if (currentView === 'lobby' && socket && socket.connected) socket.emit('pbac_list'); }, 6000);
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
-}

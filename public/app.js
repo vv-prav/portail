@@ -27,6 +27,7 @@ const I18N = {
         app_perudo_d: "Le jeu de dés des pirates, en ligne.", app_motus_d: "Un mot à deviner en 6 essais.", app_pbac_d: "Une lettre, huit catégories, à plusieurs.", app_uc_d: "Démasque l'infiltré parmi vous.", app_juste_d: "Devine le mot secret à l'intuition.", app_mf_d: "Une nouvelle grille chaque jour.",
         app_recettes_d: "Garde et partage tes recettes.", app_voyages_d: "La rando dans les Monts d'Arrée.", app_admin_d: "Comptes, données et réglages.",
         b_open: "Ouvert", b_soon: "Bientôt", b_online: "en ligne", b_nobody_online: "Personne pour l'instant", b_new_grid: "Nouvelle grille !",
+        reorder_start: "Réorganiser", reorder_done: "Terminé", reorder_hint: "Tapez une tuile, puis une deuxième pour échanger leur place.",
         b_grid_done: "Grille du jour ✓", b_grid_part: "faites aujourd'hui",
         folder_games: "Jeux", folder_games_count: "jeux", folder_drinks: "Jeux d'alcool", folder_drinks_count: "jeux",
         app_rn_d: "Tire une carte au hasard, décidez à l'oral.", app_auto_d: "Avance sur la route, gorgée à la clé.",
@@ -57,6 +58,7 @@ const I18N = {
         app_perudo_d: "The pirates' dice game, online.", app_motus_d: "Guess the word in 6 tries.", app_pbac_d: "A letter, eight categories, with friends.", app_uc_d: "Unmask the impostor among you.", app_juste_d: "Guess the secret word by feel.", app_mf_d: "A fresh grid every day.",
         app_recettes_d: "Keep and share your recipes.", app_voyages_d: "The Monts d'Arrée hiking trip.", app_admin_d: "Accounts, data and settings.",
         b_open: "Open", b_soon: "Soon", b_online: "online", b_nobody_online: "Nobody right now", b_new_grid: "New grid!",
+        reorder_start: "Reorder", reorder_done: "Done", reorder_hint: "Tap a tile, then a second one to swap places.",
         b_grid_done: "Today's grid ✓", b_grid_part: "done today",
         folder_games: "Games", folder_games_count: "games", folder_drinks: "Drinking games", folder_drinks_count: "games",
         app_rn_d: "Draw a random card, decide out loud.", app_auto_d: "Move down the road, one sip at a time.",
@@ -87,6 +89,7 @@ const I18N = {
         app_perudo_d: "El juego de dados pirata, en línea.", app_motus_d: "Adivina la palabra en 6 intentos.", app_pbac_d: "Una letra, ocho categorías, en grupo.", app_uc_d: "Descubre al infiltrado entre vosotros.", app_juste_d: "Adivina la palabra secreta por intuición.", app_mf_d: "Una cuadrícula nueva cada día.",
         app_recettes_d: "Guarda y comparte tus recetas.", app_voyages_d: "La ruta por los Monts d'Arrée.", app_admin_d: "Cuentas, datos y ajustes.",
         b_open: "Abierto", b_soon: "Pronto", b_online: "en línea", b_nobody_online: "Nadie por ahora", b_new_grid: "¡Nueva cuadrícula!",
+        reorder_start: "Reordenar", reorder_done: "Hecho", reorder_hint: "Toca una casilla, luego otra para intercambiarlas.",
         b_grid_done: "Cuadrícula de hoy ✓", b_grid_part: "hechas hoy",
         folder_games: "Juegos", folder_games_count: "juegos", folder_drinks: "Juegos de beber", folder_drinks_count: "juegos",
         app_rn_d: "Saca una carta al azar, decidid en voz alta.", app_auto_d: "Avanza por la carretera, trago a trago.",
@@ -195,7 +198,6 @@ function renderTile(a) {
     const open = a.status === 'open';
     const sub = open && MULTIPLAYER_APPS.has(a.id) ? tileOnlineInfo(a) : (open ? tileBadge(a) : `<span class="tile-badge soon">${t('b_soon')}</span>`);
     const inner = `
-        <span class="tile-drag-handle" aria-hidden="true">⠿⠿</span>
         <span class="tile-mark">${a.emoji}</span>
         <span class="tile-name">${esc(a.name)}</span>
         ${sub}`;
@@ -220,58 +222,50 @@ function renderTiles() {
     const byId = Object.fromEntries(all.map(a => [a.id, a]));
     const order = loadTileOrder(all.map(a => a.id));
     $('tiles').innerHTML = order.map(id => byId[id]).filter(Boolean).map(renderTile).join('');
-    wireTileDrag();
+    $('tiles').classList.toggle('tiles-reorder-on', reorderMode);
+    if (reorderMode) wireTileReorder();
 }
 
-// ---------- Glisser-déposer : on attrape par la petite poignée, jamais par
-// toute la tuile, pour ne jamais entrer en conflit avec le simple fait de
-// faire défiler la page ou de taper sur la tuile pour ouvrir l'app. ----------
-function wireTileDrag() {
+// ---------- Mode "Réorganiser" : un appui sélectionne une tuile (elle se
+// détache légèrement), un second appui sur une autre échange leur place. Pas
+// de geste de glissement, donc rien qui puisse entrer en conflit avec le
+// défilement de la page ou le fait de suivre normalement un lien. ----------
+let reorderMode = false;
+let reorderSelected = null;
+function toggleReorderMode(on) {
+    reorderMode = on;
+    reorderSelected = null;
+    $('reorder-toggle').textContent = on ? t('reorder_done') : t('reorder_start');
+    $('reorder-hint').hidden = !on;
+    renderTiles();
+}
+function wireTileReorder() {
     const host = $('tiles');
-    let dragTile = null, startX = 0, startY = 0, dropTarget = null;
-
-    function onPointerMove(e) {
-        if (!dragTile) return;
-        e.preventDefault();
-        const x = e.clientX - startX, y = e.clientY - startY;
-        dragTile.style.transform = `translate(${x}px, ${y}px) scale(1.04)`;
-
-        const under = document.elementFromPoint(e.clientX, e.clientY);
-        const overTile = under && under.closest('.tile');
-        if (dropTarget && dropTarget !== overTile) dropTarget.classList.remove('tile-drop-target');
-        dropTarget = (overTile && overTile !== dragTile && host.contains(overTile)) ? overTile : null;
-        if (dropTarget) dropTarget.classList.add('tile-drop-target');
-    }
-    function onPointerUp() {
-        if (!dragTile) return;
-        dragTile.classList.remove('tile-dragging');
-        dragTile.style.transform = '';
-        document.removeEventListener('pointermove', onPointerMove);
-        document.removeEventListener('pointerup', onPointerUp);
-
-        if (dropTarget) {
-            dropTarget.classList.remove('tile-drop-target');
+    host.querySelectorAll('.tile').forEach(tile => {
+        tile.addEventListener('click', (e) => {
+            if (!reorderMode) return;
+            e.preventDefault();   // en mode réorganisation, un tap ne doit jamais ouvrir l'app
+            if (reorderSelected === tile.dataset.id) {
+                tile.classList.remove('tile-selected');
+                reorderSelected = null;
+                return;
+            }
+            if (!reorderSelected) {
+                reorderSelected = tile.dataset.id;
+                tile.classList.add('tile-selected');
+                return;
+            }
             const ids = [...host.querySelectorAll('.tile')].map(t => t.dataset.id);
-            const from = ids.indexOf(dragTile.dataset.id), to = ids.indexOf(dropTarget.dataset.id);
-            ids.splice(to, 0, ids.splice(from, 1)[0]);
+            const from = ids.indexOf(reorderSelected), to = ids.indexOf(tile.dataset.id);
+            [ids[from], ids[to]] = [ids[to], ids[from]];
             saveTileOrder(ids);
-            if (navigator.vibrate) { try { navigator.vibrate(12); } catch (e) {} }
+            reorderSelected = null;
+            if (navigator.vibrate) { try { navigator.vibrate(14); } catch (err) {} }
             renderTiles();
-        }
-        dragTile = null; dropTarget = null;
-    }
-    host.querySelectorAll('.tile-drag-handle').forEach(handle => {
-        handle.addEventListener('pointerdown', (e) => {
-            e.preventDefault();
-            dragTile = handle.closest('.tile');
-            if (!dragTile) return;
-            startX = e.clientX; startY = e.clientY;
-            dragTile.classList.add('tile-dragging');
-            document.addEventListener('pointermove', onPointerMove);
-            document.addEventListener('pointerup', onPointerUp);
         });
     });
 }
+$('reorder-toggle').addEventListener('click', () => toggleReorderMode(!reorderMode));
 
 async function loadPulse() {
     const { ok, data } = await api('/api/salon/pulse');
@@ -473,6 +467,13 @@ applyI18n();
     if (ok && data.user) enterHub(data.user.pseudo, data.user.isAdmin);
     else { setState('entry'); setTimeout(() => { const p = $('pseudo'); if (p) p.focus(); }, 120); }
 })();
+
+// Nettoyage : un ancien bug faisait enregistrer ici même le service worker
+// prévu pour Voyages, à la racine du site — il prenait alors le contrôle de
+// TOUTES les pages (Petit Bac, Motus...), pas seulement de la sienne. On
+// retire tout service worker dont la portée est la racine, une bonne fois.
 if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+    navigator.serviceWorker.getRegistrations().then(regs => {
+        regs.forEach(reg => { if (reg.scope === location.origin + '/') reg.unregister(); });
+    }).catch(() => {});
 }

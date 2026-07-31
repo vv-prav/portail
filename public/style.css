@@ -105,13 +105,19 @@ body.is-hub   .hub   { display: block; }
 .tile:not(.is-soon):hover, .tile:not(.is-soon):focus-visible { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); box-shadow: 0 14px 30px rgba(0,0,0,0.5), 0 0 22px color-mix(in srgb, var(--accent) 20%, transparent); }
 .tile:not(.is-soon):active { transform: translateY(0) scale(0.99); }
 .tile.is-soon { opacity: 0.62; cursor: default; }
-.tile.tile-dragging { z-index: 50; box-shadow: 0 20px 40px rgba(0,0,0,.6); border-color: var(--accent); cursor: grabbing; transition: none; }
-.tile.tile-drop-target { border-color: var(--accent); background: linear-gradient(165deg, color-mix(in srgb, var(--accent) 14%, var(--ink-3)), var(--ink-2)); }
 
-.tile-drag-handle { position: absolute; top: 6px; right: 6px; width: 30px; height: 30px; display: grid; place-items: center;
-    color: var(--muted); font-size: .78rem; letter-spacing: -2px; line-height: 1; cursor: grab; touch-action: none;
-    border-radius: 8px; opacity: .55; }
-.tile-drag-handle:active { cursor: grabbing; opacity: 1; background: rgba(255,255,255,.06); }
+/* --- Barre d'outils et mode "Réorganiser" (tap pour échanger deux tuiles) --- */
+.tiles-toolbar { display: flex; justify-content: flex-end; margin: -6px 0 10px; }
+.tiles-reorder-btn { padding: 8px 16px; border-radius: 999px; background: rgba(255,255,255,.05); border: 1px solid var(--line);
+    color: var(--muted); font-family: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; }
+.reorder-hint { text-align: center; font-size: .78rem; color: var(--brass-soft); margin: 0 0 14px; }
+.reorder-hint[hidden] { display: none; }
+.tiles.tiles-reorder-on .tile { animation: tileWobble .28s ease-in-out infinite; cursor: pointer; }
+.tiles.tiles-reorder-on .tile:nth-child(even) { animation-delay: -.14s; }
+@keyframes tileWobble { 0%,100% { transform: rotate(-1.3deg); } 50% { transform: rotate(1.3deg); } }
+.tile.tile-selected { outline: 2px solid var(--accent); outline-offset: 2px; animation: none !important;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 25%, transparent); }
+
 .tile-mark { flex: 0 0 auto; width: 50px; height: 50px; border-radius: 13px; display: grid; place-items: center; font-size: 1.5rem; background: color-mix(in srgb, var(--accent) 15%, var(--ink)); border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent); }
 .tile-name { font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 1rem; color: var(--parchment); overflow-wrap: anywhere; }
 .tile-online { font-size: .68rem; color: var(--muted); line-height: 1.35; overflow-wrap: anywhere; }
