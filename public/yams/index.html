@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+    <meta name="theme-color" content="#14100b">
+    <title>Yams</title>
+    <link rel="icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="ym">
+        <header class="ym-head">
+            <a class="ym-back" href="/" aria-label="Retour au salon">←</a>
+            <div class="ym-titles">
+                <h1 class="ym-title">Yams</h1>
+                <span class="ym-sub" id="ym-sub">Salon des parties</span>
+            </div>
+            <span class="ym-turn-tag" id="ym-turn-tag" hidden></span>
+        </header>
+
+        <!-- LOBBY -->
+        <section class="ym-view" id="v-lobby">
+            <button class="ym-btn" id="btn-create">Créer une table</button>
+            <p class="ym-list-label" id="lobby-empty-label" hidden>Aucune table ouverte pour l'instant.</p>
+            <div class="ym-tables" id="ym-tables"></div>
+        </section>
+
+        <!-- SALLE D'ATTENTE -->
+        <section class="ym-view" id="v-waiting" hidden>
+            <p class="ym-field-label">En attente d'au moins deux joueurs</p>
+            <div class="ym-wait-players" id="wait-players"></div>
+            <button class="ym-btn" id="btn-start" hidden>Lancer la partie</button>
+            <p class="ym-cat-hint" id="wait-hint">En attente de l'hôte…</p>
+            <button class="ym-btn ghost" id="btn-leave-lobby">Quitter la table</button>
+        </section>
+
+        <!-- PARTIE EN COURS -->
+        <section class="ym-view" id="v-game" hidden>
+            <div class="ym-scores-strip" id="scoresStrip"></div>
+
+            <div class="ym-dice-zone">
+                <div class="ym-dice" id="diceRow"></div>
+                <p class="ym-turn-label" id="turnLabel">—</p>
+                <button class="ym-btn" id="btn-roll">Lancer les dés</button>
+                <p class="ym-rolls-left" id="rollsLeft"></p>
+            </div>
+
+            <div class="ym-sheet">
+                <div class="ym-sheet-col">
+                    <p class="ym-sheet-col-title">Chiffres</p>
+                    <div class="ym-sheet-rows" id="upperRows"></div>
+                    <div class="ym-bonus-row" id="bonusRow"></div>
+                </div>
+                <div class="ym-sheet-col">
+                    <p class="ym-sheet-col-title">Combinaisons</p>
+                    <div class="ym-sheet-rows" id="lowerRows"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FIN DE PARTIE -->
+        <section class="ym-view" id="v-ended" hidden>
+            <p class="ym-end-emoji">🏆</p>
+            <h2 class="ym-end-title" id="endTitle">—</h2>
+            <div class="ym-end-scores" id="endScores"></div>
+            <button class="ym-btn" id="btn-rematch" hidden>Rejouer</button>
+            <button class="ym-btn ghost" id="btn-back-lobby">Retour au salon des parties</button>
+        </section>
+    </div>
+
+    <p class="ym-toast" id="ym-toast" hidden></p>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

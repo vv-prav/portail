@@ -1082,6 +1082,8 @@ app.use('/perudo', requireAuth, express.static(__dirname + '/public/perudo'));
 // ---------------------------------------------------------------------
 const pbacApi = require('./pbac/game')(app, io, { get: mfGet, set: mfSet });
 app.use('/pbac', requireAuth, express.static(__dirname + '/public/pbac'));
+const yamsApi = require('./yams/game')(app, io);
+app.use('/yams', requireAuth, express.static(__dirname + '/public/yams'));
 
 // ---------------------------------------------------------------------
 //  INFILTRÉ — jeu social de déduction, intégré sous /undercover.
@@ -1114,6 +1116,11 @@ function snapshotActiveGames() {
     try {
         undercoverApi.games().filter(g => g.status !== 'lobby' && g.status !== 'ended').forEach(g => {
             current.set('undercover:' + g.id, { app: 'undercover', label: 'Infiltré', players: g.players });
+        });
+    } catch (e) {}
+    try {
+        yamsApi.games().filter(g => g.status !== 'lobby' && g.status !== 'ended').forEach(g => {
+            current.set('yams:' + g.id, { app: 'yams', label: 'Yams', players: g.players });
         });
     } catch (e) {}
     return current;
@@ -1454,10 +1461,11 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
 
     // Les vrais prénoms connectés par jeu, pour les tuiles du salon ("qui est
     // connecté" plutôt qu'un simple nombre). Undercover réutilise le même schéma.
-    let perudoNames = [], pbacNames = [], undercoverOnlineCount = 0, undercoverNames = [];
+    let perudoNames = [], pbacNames = [], undercoverOnlineCount = 0, undercoverNames = [], yamsOnlineCount = 0, yamsNames = [];
     try { perudoNames = perudoApi.online().map(p => p.pseudo); } catch (e) {}
     try { pbacNames = pbacApi.online(); } catch (e) {}
     try { undercoverNames = undercoverApi.online(); undercoverOnlineCount = undercoverNames.length; } catch (e) {}
+    try { yamsNames = yamsApi.online(); yamsOnlineCount = yamsNames.length; } catch (e) {}
 
     // Joueurs du salon actuellement en ligne : présence déduite de la fraîcheur de
     // lastSeen (mis à jour par ce même endpoint, interrogé toutes les 60 s côté client).
@@ -1485,6 +1493,11 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
             activeGames.push({ app: 'undercover', label: 'Infiltré', players: g.players });
         });
     } catch (e) {}
+    try {
+        yamsApi.games().filter(g => g.status !== 'lobby' && g.status !== 'ended').forEach(g => {
+            activeGames.push({ app: 'yams', label: 'Yams', players: g.players });
+        });
+    } catch (e) {}
 
     res.json({
         mf: { done, total: MF_LEVELS.length, streak }, perudo: { online, games, names: perudoNames },
@@ -1493,6 +1506,7 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
         motjuste: { done: mjDone, over: mjOver, solvers: mjSolversToday },
         pbac: { online: pbacOnline, names: pbacNames },
         undercover: { online: undercoverOnlineCount, names: undercoverNames },
+        yams: { online: yamsOnlineCount, names: yamsNames },
         salonOnline, activeGames,
     });
 });
@@ -1598,6 +1612,7 @@ require('./admin/routes')(app, {
     },
     pbac: () => pbacApi,
     undercover: () => undercoverApi,
+    yams: () => yamsApi,
 });
 
 

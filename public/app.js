@@ -122,6 +122,7 @@ const GAME_APPS = [
     { id: 'motus',    name: 'Motus',        dKey: 'app_motus_d',    emoji: '🟨', href: '/motus',        accent: '#c9a24a', status: 'open' },
     { id: 'motjuste', name: 'Le Mot Juste', dKey: 'app_juste_d',    emoji: '🧊', href: '/motjuste',     accent: '#6fb8d9', status: 'open' },
     { id: 'mf',       name: 'Mots Fléchés', dKey: 'app_mf_d',       emoji: '🧩', href: '/mots-fleches', accent: '#5aa87a', status: 'open' },
+    { id: 'yams',     name: 'Yams',         dKey: 'app_yams_d',     emoji: '🎯', href: '/yams',         accent: '#ecca82', status: 'open' },
 ];
 const DRINK_APPS = [
     { id: 'purple',     name: 'Purple',        dKey: 'app_rn_d',   emoji: '🃏', href: '/purple',    accent: '#9b6fc7', status: 'open' },
@@ -185,7 +186,7 @@ function tileBadge(app) {
     }
     return `<span class="tile-badge open">${t('b_open')}</span>`;
 }
-const MULTIPLAYER_APPS = new Set(['perudo', 'pbac', 'undercover']);
+const MULTIPLAYER_APPS = new Set(['perudo', 'pbac', 'undercover', 'yams']);
 function tileOnlineInfo(a) {
     const p = pulse && pulse[a.id];
     const names = (p && p.names) || [];
