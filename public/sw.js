@@ -15,7 +15,7 @@ const CORE = [
     '/autoroute/', '/autoroute/app.js', '/autoroute/style.css',
     '/roidescons/', '/roidescons/app.js', '/roidescons/style.css',
     '/chance/', '/chance/app.js', '/chance/style.css',
-    '/voyages/', '/voyages/app.js', '/voyages/style.css',
+    '/voyages/monts-arree/', '/voyages/monts-arree/app.js', '/voyages/monts-arree/style.css',
 ];
 
 self.addEventListener('install', (e) => {

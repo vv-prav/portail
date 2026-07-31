@@ -2,254 +2,30 @@
 <html lang="fr">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, interactive-widget=resizes-content">
-    <meta name="theme-color" content="#14100b">
-    <title>Petit Bac</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+    <meta name="theme-color" content="#1a1625">
+    <title>Voyages</title>
+    <meta name="description" content="Nos randonnées et voyages, un carnet par aventure.">
     <link rel="icon" href="/icon-192.png">
     <link rel="apple-touch-icon" href="/icon-192.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="hub.css">
 </head>
-<body class="is-boot">
+<body>
+    <a class="vh-back" href="/" aria-label="Retour au salon">←</a>
 
-    <div class="boot"><div class="boot-ring"></div></div>
+    <header class="vh-head">
+        <p class="vh-eyebrow">Le carnet des trois</p>
+        <h1 class="vh-title">Voyages</h1>
+        <p class="vh-sub">Une page par aventure, préparée avant de partir.</p>
+    </header>
 
-    <canvas id="fx" class="fx"></canvas>
+    <main class="vh-list" id="voyageList"></main>
 
-    <div class="pb" id="pb">
-        <header class="pb-head">
-            <a class="pb-back" href="/" aria-label="Retour au salon">←</a>
-            <div class="pb-titles">
-                <h1 class="pb-title">Petit Bac</h1>
-                <span class="pb-sub" id="pb-sub">Salon des parties</span>
-            </div>
-            <span class="pb-round-tag" id="pb-round-tag" hidden></span>
-        </header>
+    <p class="vh-empty" id="voyageEmpty" hidden>Aucun voyage pour l'instant. Le prochain arrivera bientôt.</p>
 
-        <div class="pb-join-requests" id="join-request-host" hidden aria-live="polite"></div>
-
-        <!-- LOBBY : liste des tables -->
-        <section class="pb-view" id="v-lobby">
-            <button class="pb-btn" id="btn-create">Créer une table</button>
-            <p class="pb-list-label" id="lobby-empty-label" hidden>Aucune table ouverte pour l'instant.</p>
-            <div class="pb-tables" id="pb-tables"></div>
-        </section>
-
-        <!-- En attente de l'accord de l'hôte pour rejoindre une partie en cours -->
-        <section class="pb-view" id="v-join-pending">
-            <div class="pb-wait-box">
-                <div class="boot-ring"></div>
-                <p class="pb-wait-text">En attente de l'accord de <b id="join-pending-host">l'hôte</b>…</p>
-            </div>
-        </section>
-
-        <!-- Réglages d'une nouvelle table -->
-        <div class="pb-overlay" id="v-create" hidden>
-            <div class="pb-card pb-create-card">
-                <h2 class="pb-card-title">Nouvelle table</h2>
-                <div class="pb-create-scroll">
-                    <p class="pb-field-label">Manches</p>
-                    <div class="pb-choice" id="opt-rounds">
-                        <button type="button" data-v="3">3</button>
-                        <button type="button" data-v="5" class="on">5</button>
-                        <button type="button" data-v="7">7</button>
-                    </div>
-                    <p class="pb-field-label">Durée d'écriture</p>
-                    <div class="pb-choice" id="opt-duration">
-                        <button type="button" data-v="court">60 s</button>
-                        <button type="button" data-v="moyen" class="on">90 s</button>
-                        <button type="button" data-v="long">120 s</button>
-                        <button type="button" data-v="custom">Autre</button>
-                    </div>
-                    <div class="pb-custom-duration" id="customDurationRow" hidden>
-                        <input type="number" id="customDurationInput" min="20" max="300" step="5" value="90">
-                        <span>secondes (entre 20 et 300)</span>
-                    </div>
-                    <p class="pb-field-label">Lettre de chaque manche</p>
-                    <div class="pb-choice" id="opt-letter-mode">
-                        <button type="button" data-v="random" class="on">Aléatoire</button>
-                        <button type="button" data-v="host">Je choisis</button>
-                    </div>
-
-                    <button type="button" class="pb-advanced-toggle" id="advancedToggle">
-                        <span>Règles spéciales</span>
-                        <span class="pb-advanced-chevron">›</span>
-                    </button>
-                    <div class="pb-advanced-body" id="advancedBody" hidden>
-                        <p class="pb-field-label">Vote</p>
-                        <div class="pb-choice" id="opt-vote-mode">
-                            <button type="button" data-v="sequential" class="on">Une réponse à la fois</button>
-                            <button type="button" data-v="parallel">Toute la catégorie</button>
-                        </div>
-                        <p class="pb-cat-hint">« Toute la catégorie » affiche toutes les réponses d'un coup et les votes se font en même temps — beaucoup plus rapide à grand nombre de joueurs.</p>
-
-                        <p class="pb-field-label">Difficulté</p>
-                        <label class="pb-switch-row">
-                            <span>Deux mots par catégorie</span>
-                            <input type="checkbox" id="opt-two-words">
-                            <span class="pb-switch"></span>
-                        </label>
-                        <p class="pb-cat-hint">Chaque catégorie demande deux réponses valides, les deux comptent ensemble.</p>
-
-                        <label class="pb-switch-row">
-                            <span>Catégorie surprise à chaque manche</span>
-                            <input type="checkbox" id="opt-surprise-cat">
-                            <span class="pb-switch"></span>
-                        </label>
-                        <p class="pb-cat-hint">Une neuvième catégorie tirée au sort s'ajoute à chaque manche, révélée juste avant l'écriture.</p>
-                    </div>
-
-                    <p class="pb-field-label">Mes packs de catégories</p>
-                    <div class="pb-packs-row" id="packs-row"></div>
-                    <p class="pb-packs-empty" id="packs-empty" hidden>Aucun pack enregistré pour l'instant.</p>
-
-                    <p class="pb-field-label">Catégories <span id="cat-count">8/8</span></p>
-                    <p class="pb-cat-hint">Touche une catégorie pour l'ajouter ou la retirer. Il en faut exactement 8.</p>
-                    <div class="pb-cat-grid" id="cat-grid"></div>
-                    <div class="pb-cat-custom">
-                        <input id="cat-custom-input" type="text" maxlength="30" placeholder="Une catégorie perso…" autocomplete="off">
-                        <button type="button" id="cat-custom-add">Ajouter</button>
-                    </div>
-
-                    <div class="pb-pack-save-row">
-                        <input id="pack-save-name" type="text" maxlength="24" placeholder="Nom du pack à enregistrer…" autocomplete="off">
-                        <button type="button" id="pack-save-btn">Enregistrer</button>
-                    </div>
-                </div>
-                <div class="pb-create-footer">
-                    <button class="pb-btn" id="create-confirm">Créer</button>
-                    <button class="pb-btn ghost" id="create-cancel">Annuler</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- SALLE D'ATTENTE -->
-        <section class="pb-view" id="v-waiting" hidden>
-            <div class="pb-players" id="wait-players"></div>
-            <p class="pb-hint" id="wait-hint">En attente de l'hôte…</p>
-            <button class="pb-btn" id="btn-start" hidden>Lancer la partie</button>
-            <button class="pb-btn ghost" id="btn-leave-lobby">Quitter la table</button>
-        </section>
-
-        <!-- SPECTATEUR (rejoint en cours de manche) -->
-        <section class="pb-view" id="v-spectator" hidden>
-            <div class="pb-spectator-box">
-                <p class="pb-spectator-title">Manche en cours</p>
-                <p class="pb-spectator-letter" id="spectator-letter" hidden>A</p>
-                <p class="pb-hint">Tu observes cette manche — tu joueras dès la prochaine !</p>
-            </div>
-            <button class="pb-btn ghost" id="btn-leave-spectator">Quitter la table</button>
-        </section>
-
-        <!-- CHOIX DE LA LETTRE PAR L'HÔTE -->
-        <section class="pb-view" id="v-choose-letter" hidden>
-            <p class="pb-hint" id="choose-letter-hint">Choisis la lettre de cette manche.</p>
-            <div class="pb-letter-grid" id="letter-grid"></div>
-            <p class="pb-hint" id="choose-letter-wait" hidden>L'hôte choisit la lettre…</p>
-        </section>
-
-        <!-- COMPTE À REBOURS -->
-        <section class="pb-view" id="v-countdown" hidden>
-            <div class="pb-countdown-box">
-                <span class="pb-countdown-num" id="countdown-num">3</span>
-            </div>
-        </section>
-
-        <!-- ÉCRITURE (un champ à la fois, chrono toujours visible) -->
-        <section class="pb-view" id="v-writing" hidden>
-            <header class="pb-write-head">
-                <div class="pb-timering">
-                    <svg viewBox="0 0 64 64" class="pb-ring-svg">
-                        <circle cx="32" cy="32" r="28" class="ring-bg"></circle>
-                        <circle cx="32" cy="32" r="28" class="ring-fg" id="ring-fg"></circle>
-                    </svg>
-                    <span class="pb-timer-num" id="timer-num">90</span>
-                </div>
-                <button class="pb-stop-mini" id="btn-stop">STOP</button>
-            </header>
-
-            <div class="pb-step-card">
-                <div class="pb-letter" id="round-letter">A</div>
-                <div class="pb-dots" id="pb-dots"></div>
-                <p class="pb-step-label" id="step-cat-name">Prénom</p>
-                <input id="step-input" type="text" maxlength="40" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false">
-                <input id="step-input-2" type="text" maxlength="40" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" placeholder="Deuxième mot…" hidden>
-                <div class="pb-step-nav">
-                    <button class="pb-btn ghost" id="step-prev">Précédent</button>
-                    <button class="pb-btn" id="step-next">Suivant</button>
-                </div>
-            </div>
-
-            <p class="pb-hint" id="write-done-hint" hidden>Tout est rempli — appuie sur STOP quand tu es prêt.</p>
-        </section>
-
-        <!-- VOTE (une réponse à la fois) -->
-        <section class="pb-view" id="v-voting" hidden>
-            <div class="pb-round-progress"><div class="pb-round-progress-fill" id="round-progress-fill"></div></div>
-            <p class="pb-hint" id="voting-progress">Catégorie 1 / 8</p>
-            <div class="pb-vote-card" id="vote-normal">
-                <p class="pv-cat" id="vote-cat">Prénom</p>
-                <p class="pv-answer" id="vote-answer">Anaïs</p>
-                <p class="pv-author" id="vote-author">proposé par —</p>
-                <div class="pb-gauge">
-                    <div class="pg-yes" id="gauge-yes"></div>
-                    <div class="pg-no" id="gauge-no"></div>
-                    <span class="pg-spark" id="gauge-spark"></span>
-                </div>
-                <div class="pb-voters-row" id="voters-row"></div>
-                <div class="pb-merge-box" id="merge-box" hidden>
-                    <button class="pb-merge-toggle" id="merge-toggle" type="button">C'est le même mot qu'un déjà accepté ?</button>
-                    <div class="pb-merge-list" id="merge-list" hidden></div>
-                </div>
-                <div class="pb-vote-btns" id="vote-btns">
-                    <button class="pv-btn no" id="btn-vote-no">Non</button>
-                    <button class="pv-btn yes" id="btn-vote-yes">Oui</button>
-                </div>
-                <p class="pv-outcome" id="vote-outcome" hidden></p>
-            </div>
-            <div class="pb-miss-card" id="vote-miss" hidden>
-                <p class="pm-stamp">Loupé</p>
-                <p class="pm-name" id="miss-name">—</p>
-                <p class="pm-sub" id="miss-sub">n'a rien écrit ici</p>
-            </div>
-        </section>
-
-        <!-- VOTE PARALLÈLE (toute la catégorie d'un coup) -->
-        <section class="pb-view" id="v-parallel" hidden>
-            <div class="pb-round-progress"><div class="pb-round-progress-fill" id="parallel-progress-fill"></div></div>
-            <p class="pb-hint" id="parallel-progress">Catégorie 1 / 8</p>
-            <p class="pb-section-title" id="parallel-cat-name">Prénom</p>
-            <div class="pb-parallel-list" id="parallel-list"></div>
-        </section>
-
-        <!-- RÉCAP DE CATÉGORIE -->
-        <section class="pb-view" id="v-cat-summary" hidden>
-            <p class="pb-hint">Catégorie terminée</p>
-            <h2 class="pb-section-title" id="summary-cat-name">Prénom</h2>
-            <div class="pb-summary-list" id="summary-list"></div>
-        </section>
-
-        <!-- FIN DE MANCHE -->
-        <section class="pb-view" id="v-round-end" hidden>
-            <h2 class="pb-section-title">Résultats de la manche</h2>
-            <div class="pb-score-list" id="round-score-list"></div>
-            <button class="pb-btn" id="btn-next-round">Manche suivante</button>
-            <p class="pb-hint" id="round-wait-hint" hidden>En attente de l'hôte…</p>
-        </section>
-
-        <!-- FIN DE PARTIE -->
-        <section class="pb-view" id="v-ended" hidden>
-            <div class="pb-podium" id="pb-podium"></div>
-            <button class="pb-btn" id="btn-rematch">Rejouer</button>
-            <p class="pb-hint" id="final-wait-hint" hidden>En attente de l'hôte…</p>
-            <a class="pb-btn ghost" href="/">Retour au salon</a>
-        </section>
-    </div>
-
-    <div class="pb-toast" id="pb-toast" hidden></div>
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="app.js"></script>
+    <script src="hub.js"></script>
 </body>
 </html>

@@ -471,7 +471,7 @@ applyI18n();
 // Nettoyage : un ancien bug faisait enregistrer ici même le service worker
 // prévu pour Voyages, à la racine du site — il prenait alors le contrôle de
 // TOUTES les pages (Petit Bac, Motus...), pas seulement de la sienne. On
-// retire tout ce qui n'est pas correctement limité à /voyages/, et si on en
+// retire tout ce qui n'est pas correctement limité à /voyages/monts-arree/, et si on en
 // trouve un, on recharge une seule fois pour que la page actuelle en soit
 // vraiment libérée tout de suite (sinon ça peut rester collé jusqu'à la
 // fermeture complète de l'onglet, même après un simple unregister()).
@@ -479,7 +479,7 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(regs => {
         let foundStray = false;
         regs.forEach(reg => {
-            if (reg.scope !== location.origin + '/voyages/') { reg.unregister(); foundStray = true; }
+            if (reg.scope !== location.origin + '/voyages/monts-arree/') { reg.unregister(); foundStray = true; }
         });
         if (foundStray && !sessionStorage.getItem('erquy_sw_cleaned')) {
             sessionStorage.setItem('erquy_sw_cleaned', '1');

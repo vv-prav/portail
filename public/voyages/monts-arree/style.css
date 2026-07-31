@@ -1,0 +1,988 @@
+/* =====================================================================
+   LA BOUCLE DES MONTS D'ARRÉE, mobile-first
+   Palette ancrée dans le sujet : la bruyère violette qui couvre la
+   lande, le granit sombre de la nuit, la brume, une touche ambrée de
+   tourbe pour contraster le froid du plateau. Aucune icône, aucun
+   tiret cadratin : la hiérarchie vient de la typographie et de la
+   couleur, pas de symboles décoratifs.
+   ===================================================================== */
+:root {
+    --night: #1a1625;
+    --night-2: #221c30;
+    --night-3: #2b2340;
+    --heather: #8b6ba8;
+    --heather-soft: #a98cc2;
+    --fog: #c9b8dc;
+    --parchment: #f3e9f5;
+    --muted: #9d8fb0;
+    --ember: #c9935a;
+    --ember-soft: #e0b483;
+    --line: rgba(201,184,220,0.16);
+    --shadow: 0 30px 70px rgba(0,0,0,.55);
+    --illus-1: #3a2f52; --illus-2: #4d3d6b; --illus-3: #c9935a; --illus-4: #6b5687;
+    --font-display: 'Cormorant Garamond', Georgia, serif;
+    --font-body: 'Manrope', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html { scroll-behavior:smooth; }
+body {
+    margin:0; background:var(--night); color:var(--parchment);
+    font-family:var(--font-body); overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+}
+::selection { background:var(--heather); color:var(--night); }
+
+.vy-mood { position:fixed; inset:0; z-index:-1; pointer-events:none;
+           background:radial-gradient(140% 90% at 50% 0%, var(--mood-a, #3a2d52) 0%, var(--night) 62%);
+           transition:background 1.6s cubic-bezier(.4,0,.2,1); }
+
+/* Empreintes de pas qui se dessinent sous le doigt en glissant, façon boue fraîche. */
+.vy-footprints { position:fixed; inset:0; z-index:151; pointer-events:none; overflow:hidden; }
+.vy-footprint { position:absolute; width:14px; height:22px; margin:-11px 0 0 -7px;
+    background:radial-gradient(ellipse at center, rgba(70,50,40,.55), rgba(70,50,40,0) 75%);
+    border-radius:50% 50% 45% 45%; opacity:.8; animation:vyFootFade 2.2s ease-out forwards; }
+@keyframes vyFootFade { to { opacity:0; transform:scale(1.15); } }
+
+.vy-back { position:fixed; top:max(14px,env(safe-area-inset-top)); left:14px; z-index:200;
+           width:42px; height:42px; display:grid; place-items:center; border-radius:12px;
+           background:rgba(26,22,37,.6); backdrop-filter:blur(8px); border:1px solid var(--line);
+           color:var(--fog); text-decoration:none; font-size:1.2rem; }
+.vy-back:active { transform:scale(.92); }
+
+/* ===================== HERO ===================== */
+.vy-hero { position:relative; min-height:100dvh; display:flex; flex-direction:column;
+           align-items:center; justify-content:center; text-align:center; padding:80px 22px 40px;
+           background:
+             radial-gradient(120% 90% at 50% 0%, #3a2d52 0%, transparent 60%),
+             radial-gradient(140% 100% at 50% 120%, #241c36 0%, var(--night) 65%);
+           overflow:hidden; }
+.vy-hero-fog { position:absolute; inset:-20% -10%; pointer-events:none;
+    background:
+        radial-gradient(38% 22% at 20% 30%, rgba(201,184,220,.10), transparent 70%),
+        radial-gradient(30% 18% at 80% 60%, rgba(139,107,168,.14), transparent 70%),
+        radial-gradient(26% 16% at 55% 80%, rgba(201,184,220,.08), transparent 70%);
+    animation: vyFogDrift 22s ease-in-out infinite alternate;
+}
+@keyframes vyFogDrift { from { transform:translateX(-3%) translateY(0); } to { transform:translateX(3%) translateY(-2%); } }
+.vy-hero-inner { position:relative; max-width:520px; animation:vyRise 1s cubic-bezier(.16,1,.3,1) both; }
+@keyframes vyRise { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+.vy-eyebrow { font-family:var(--font-mono); font-size:.68rem; text-transform:uppercase; letter-spacing:2.4px;
+              color:var(--ember-soft); margin:0 0 18px; }
+.vy-hero-title { font-family:var(--font-display); font-weight:700; font-size:clamp(2.6rem,10vw,4.2rem);
+                 line-height:1.05; margin:0 0 20px; color:var(--parchment);
+                 text-shadow:0 2px 40px rgba(139,107,168,.35); }
+.vy-hero-sub { font-size:1rem; line-height:1.6; color:var(--fog); margin:0 0 36px; }
+
+.vy-hero-path { position:relative; max-width:340px; margin:0 auto 50px; }
+.vy-hero-path-svg path { stroke-dasharray:420; stroke-dashoffset:420; animation:vyDrawPath 1.8s 0.4s cubic-bezier(.4,0,.2,1) forwards; }
+@keyframes vyDrawPath { to { stroke-dashoffset:0; } }
+.vy-hero-path-label { position:absolute; top:100%; font-family:var(--font-mono); font-size:.62rem;
+                       text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-top:6px; }
+.vy-hero-path-label.start { left:0; }
+.vy-hero-path-label.end { right:0; }
+
+.vy-hero-stats { display:grid; grid-template-columns:repeat(2,1fr); gap:10px 6px; margin-bottom:38px; }
+@media (min-width:520px) {
+    .vy-hero-stats { grid-template-columns:repeat(4,1fr); gap:6px; }
+}
+.vy-stat { display:flex; flex-direction:column; align-items:center; gap:2px; }
+.vy-stat b { font-family:var(--font-mono); font-size:1.5rem; font-weight:600; color:var(--parchment); }
+.vy-stat span { font-size:.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; line-height:1.3; }
+
+.vy-scroll-cue { position:absolute; bottom:26px; left:50%; transform:translateX(-50%);
+                  display:flex; flex-direction:column; align-items:center; gap:8px;
+                  font-family:var(--font-mono); font-size:.62rem; color:var(--muted);
+                  text-transform:uppercase; letter-spacing:1.6px; }
+.vy-scroll-cue span { width:1px; height:26px; background:linear-gradient(var(--heather),transparent); animation:vyCue 1.6s ease-in-out infinite; }
+@keyframes vyCue { 0%,100%{opacity:.3; transform:scaleY(.7);} 50%{opacity:1; transform:scaleY(1);} }
+
+/* ===================== SECTIONS GÉNÉRIQUES ===================== */
+.vy-section { max-width:640px; margin:0 auto; padding:70px 22px; }
+.vy-kicker { font-family:var(--font-mono); font-size:.66rem; text-transform:uppercase; letter-spacing:2px;
+             color:var(--ember-soft); margin:0 0 8px; }
+.vy-h2 { font-family:var(--font-display); font-weight:700; font-size:clamp(1.8rem,6vw,2.4rem);
+         margin:0 0 30px; color:var(--parchment); }
+.vy-intro-text { font-size:1.02rem; line-height:1.75; color:var(--fog); margin:0; }
+
+[data-reveal] { opacity:0; transform:translateY(28px); transition:opacity .8s cubic-bezier(.16,1,.3,1), transform .8s cubic-bezier(.16,1,.3,1); }
+[data-reveal].in-view { opacity:1; transform:translateY(0); }
+
+/* ===================== LOGISTIQUE ===================== */
+.vy-logi-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:22px; }
+.vy-logi-card { background:var(--night-2); border:1px solid var(--line); border-radius:16px; padding:18px 16px; }
+.vy-logi-label { font-family:var(--font-mono); font-size:.66rem; text-transform:uppercase; letter-spacing:1px;
+                 color:var(--ember-soft); margin:0 0 8px; }
+.vy-logi-text { margin:0; font-size:.8rem; line-height:1.55; color:var(--fog); }
+.vy-sentiers { text-align:center; font-size:.82rem; color:var(--fog); margin:0; }
+.vy-sentiers b { color:var(--ember-soft); font-family:var(--font-mono); font-weight:600; }
+
+/* ===================== LE SENTIER (scrollytelling) ===================== */
+.vy-trail { position:relative; max-width:720px; margin:0 auto; padding:58px 18px 30px; }
+.vy-trail-svg { position:absolute; top:0; left:24px; width:6px; height:100%; overflow:visible; z-index:0; }
+
+/* Indicateur d'étape collant, visible tant qu'on est dans le sentier */
+.vy-progress { position:sticky; top:max(14px,env(safe-area-inset-top)); z-index:20; margin:0 0 30px;
+               display:flex; align-items:center; gap:12px; padding:10px 16px; border-radius:999px;
+               background:rgba(26,22,37,.72); backdrop-filter:blur(10px); border:1px solid var(--line);
+               width:fit-content; margin-left:auto; margin-right:auto; opacity:0; transform:translateY(-8px);
+               transition:opacity .4s, transform .4s; }
+.vy-progress.vy-progress-on { opacity:1; transform:translateY(0); }
+.vy-progress-label { font-family:var(--font-mono); font-size:.72rem; color:var(--fog); white-space:nowrap; }
+.vy-progress-label b { color:var(--ember-soft); }
+.vy-progress-track { width:70px; height:3px; border-radius:2px; background:rgba(255,255,255,.12); overflow:hidden; }
+.vy-progress-track i { display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--ember),var(--heather-soft));
+                        transition:width .15s linear; }
+
+.vy-global-totals { max-width:640px; margin:0 auto; padding:20px 22px 26px; text-align:center; }
+.vy-global-totals .vy-kicker { text-align:center; }
+.vy-totals { display:flex; justify-content:center; gap:24px; margin:0; }
+.vy-total-item { display:flex; flex-direction:column; align-items:center; gap:2px; }
+.vy-total-item b { font-family:var(--font-mono); font-size:1.1rem; font-weight:600; color:var(--ember-soft); }
+.vy-total-item span { font-size:.66rem; color:var(--muted); text-align:center; }
+
+/* Les 3 compagnons de route : décalés du tracé pour ne jamais se confondre avec les
+   pastilles numérotées, avec un léger balancement pour évoquer la marche. */
+.vy-walkers { position:absolute; top:0; left:24px; width:0; height:0; z-index:3; pointer-events:none; }
+.vy-walker { position:absolute; top:0; left:0; width:40px; height:40px; margin-left:0; margin-top:-20px;
+             opacity:0; transition:top .05s linear, opacity .4s;
+             transform:translateX(var(--tx,0)) translateY(0);
+             animation:vyWalkerBob 1.1s ease-in-out infinite; }
+.vy-walker.vy-walker-visible { opacity:1; }
+.vy-walker[data-walker="0"] { --tx:0px; animation-delay:0s; }
+.vy-walker[data-walker="1"] { --tx:0px; animation-delay:.15s; }
+.vy-walker[data-walker="2"] { --tx:0px; animation-delay:.3s; }
+@keyframes vyWalkerBob {
+    0%,100% { transform:translateX(var(--tx,0)) translateY(0); }
+    50% { transform:translateX(var(--tx,0)) translateY(-4px); }
+}
+.vy-walker img { width:100%; height:100%; object-fit:contain; display:block; transition:transform .5s ease-out;
+    filter:drop-shadow(0 0 5px rgba(201,147,90,.9)) drop-shadow(0 0 16px rgba(201,147,90,.55)) drop-shadow(0 0 26px rgba(139,107,168,.4)); }
+.vy-walker.vy-walker-empty { background:radial-gradient(circle, rgba(201,147,90,.4), transparent 70%); border-radius:50%; }
+.vy-walker.vy-walker-empty img { display:none; }
+
+.vy-day { position:relative; padding-left:56px; margin-bottom:8px; z-index:1; }
+.vy-day-node { position:absolute; left:8px; top:6px; width:34px; height:34px; border-radius:50%;
+               background:linear-gradient(155deg,var(--heather-soft),var(--heather));
+               display:grid; place-items:center; box-shadow:0 0 0 5px var(--night), 0 8px 20px rgba(139,107,168,.4);
+               z-index:2; }
+.vy-day-node span { font-family:var(--font-mono); font-weight:700; font-size:.92rem; color:var(--night); }
+
+.vy-day-card { position:relative; background:linear-gradient(165deg,var(--night-3),var(--night-2)); border:1px solid var(--line);
+               border-radius:22px; padding:24px 22px; box-shadow:var(--shadow); overflow:hidden; }
+[data-reveal].in-view .vy-day-card > * { animation:vyStagger .7s cubic-bezier(.16,1,.3,1) both; }
+[data-reveal].in-view .vy-day-card > *:nth-child(1) { animation-delay:.02s; }
+[data-reveal].in-view .vy-day-card > *:nth-child(2) { animation-delay:.10s; }
+[data-reveal].in-view .vy-day-card > *:nth-child(3) { animation-delay:.16s; }
+[data-reveal].in-view .vy-day-card > *:nth-child(4) { animation-delay:.22s; }
+[data-reveal].in-view .vy-day-card > *:nth-child(5) { animation-delay:.28s; }
+[data-reveal].in-view .vy-day-card > *:nth-child(6) { animation-delay:.34s; }
+[data-reveal].in-view .vy-day-card > *:nth-child(7) { animation-delay:.4s; }
+@keyframes vyStagger { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+
+.vy-day-photo { position:relative; border-radius:14px; overflow:hidden; margin-bottom:26px; background:
+                linear-gradient(155deg,var(--night-3),var(--night-2)); aspect-ratio:4/3; }
+.vy-day-photo.vy-photo-empty { background:linear-gradient(155deg,var(--night-3),var(--illus-2,#4d3d6b)); }
+.vy-day-photo.vy-photo-empty::after { content:'Photo à venir'; position:absolute; inset:0; display:flex;
+    align-items:center; justify-content:center; font-family:var(--font-mono); font-size:.68rem; text-transform:uppercase;
+    letter-spacing:1.2px; color:var(--muted); }
+.vy-day-photo img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block;
+                     transform:scale(1.02); transition:transform 8s cubic-bezier(.2,0,.2,1); }
+.vy-day-photo.vy-photo-empty img { display:none; }
+[data-reveal].in-view .vy-day-photo img:not([style*="display: none"]) { animation:vyPhotoIn 1s cubic-bezier(.16,1,.3,1) both; }
+@keyframes vyPhotoIn { from { opacity:0; transform:scale(1.1); } to { opacity:1; transform:scale(1.02); } }
+[data-reveal].in-view .vy-day-photo img { transform:scale(1.1); }
+
+.vy-day-tag { font-family:var(--font-mono); font-size:.7rem; text-transform:uppercase; letter-spacing:1.4px;
+              color:var(--ember-soft); margin:0 0 10px; }
+.vy-day-title { font-family:var(--font-display); font-weight:700; font-size:1.5rem; line-height:1.25;
+                margin:0 0 20px; color:var(--parchment); }
+
+.vy-day-route { display:flex; align-items:center; gap:10px; font-family:var(--font-mono); font-size:.82rem;                color:var(--fog); margin:0 0 26px; flex-wrap:wrap; }
+.vy-day-route i { color:var(--heather-soft); font-style:normal; font-size:.72rem; text-transform:uppercase; letter-spacing:1px; }
+
+/* Les lettres du titre du jour 3, soufflées par le vent, reviennent se poser dans l'ordre. */
+.vy-wind-letter { display:inline-block; opacity:0; transform:translate(var(--dx,0),var(--dy,0)) rotate(var(--rot,0deg));
+    transition:opacity .7s cubic-bezier(.16,1,.3,1), transform .8s cubic-bezier(.16,1,.3,1);
+    transition-delay:calc(var(--i,0) * 28ms); }
+.vy-wind-settled .vy-wind-letter { opacity:1; transform:translate(0,0) rotate(0deg); }
+
+/* Les deux chiffres clés du jour, groupés pour qu'on les lise d'un coup d'œil */
+.vy-stat-strip { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:28px; }
+.vy-stat-box { background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:12px; padding:10px 4px; text-align:center; }
+.vy-stat-box b { display:block; font-family:var(--font-mono); font-size:.95rem; font-weight:700; color:var(--ember-soft); }
+.vy-stat-box span { font-size:.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+
+.vy-elev { margin-bottom:26px; }
+.vy-elev-svg { width:100%; height:26px; display:block; }
+.vy-elev-svg path { fill:none; stroke:var(--heather-soft); stroke-width:2; stroke-linecap:round; stroke-linejoin:round;
+                     stroke-dasharray:340; stroke-dashoffset:340; transition:stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1); }
+.in-view .vy-elev-svg path { stroke-dashoffset:0; }
+.vy-elev-dot { fill:var(--ember); opacity:0; offset-distance:0%; offset-rotate:0deg;
+               transition:opacity .3s .3s, offset-distance 1.5s .3s cubic-bezier(.4,0,.2,1); }
+.in-view .vy-elev-dot { opacity:1; offset-distance:100%; }
+.vy-elev span { display:block; font-size:.68rem; color:var(--muted); margin-top:6px; }
+.vy-day-text { font-size:.88rem; line-height:1.7; color:var(--fog); margin:28px 0; }
+.vy-poi { list-style:none; margin:0 0 28px; padding:0; display:flex; flex-direction:column; gap:12px; }
+.vy-poi li { position:relative; padding-left:18px; font-size:.83rem; line-height:1.5; color:var(--parchment); }
+.vy-poi li::before { content:''; position:absolute; left:0; top:.5em; width:6px; height:6px; border-radius:50%;
+                      background:var(--ember); }
+.vy-day-arrival { margin:28px 0 0; padding-top:20px; border-top:1px solid var(--line); font-size:.85rem; color:var(--fog); }
+.vy-day-arrival b { color:var(--parchment); }
+
+/* Le toast "Trinquer" à la fin de chaque journée. */
+.vy-cheers { position:relative; display:flex; justify-content:center; align-items:flex-end; gap:18px;
+    margin-top:22px; padding-top:6px; }
+.vy-cheers-glass { position:relative; width:34px; height:34px; transition:transform .35s cubic-bezier(.3,.6,.3,1); }
+.vy-cheers-glass img { width:100%; height:100%; object-fit:contain; display:block;
+    filter:drop-shadow(0 0 4px rgba(201,147,90,.7)); }
+.vy-cheers-cup { position:absolute; bottom:-6px; right:-6px; font-size:.95rem; transform:rotate(15deg); }
+.vy-cheers[data-cheers] .vy-cheers-glass[data-glass="0"] { transform:translateX(0); }
+.vy-cheers[data-cheers] .vy-cheers-glass[data-glass="2"] { transform:translateX(0); }
+.vy-cheers.vy-cheers-clink .vy-cheers-glass[data-glass="0"] { transform:translateX(14px) rotate(-8deg); }
+.vy-cheers.vy-cheers-clink .vy-cheers-glass[data-glass="1"] { transform:translateY(-4px) scale(1.08); }
+.vy-cheers.vy-cheers-clink .vy-cheers-glass[data-glass="2"] { transform:translateX(-14px) rotate(8deg); }
+.vy-cheers-btn { flex:0 0 auto; align-self:center; margin-left:8px; padding:8px 16px; border-radius:999px;
+    background:rgba(201,147,90,.18); border:1px solid var(--ember-soft); color:var(--ember-soft);
+    font-family:inherit; font-size:.78rem; font-weight:700; cursor:pointer; transition:transform .15s; }
+.vy-cheers-btn:active { transform:scale(.94); }
+.vy-cheers-caption { position:absolute; top:-22px; left:50%; transform:translateX(-50%) scale(.7); margin:0;
+    font-family:var(--font-display); font-weight:700; font-style:italic; font-size:.95rem; color:var(--ember-soft);
+    opacity:0; pointer-events:none; transition:opacity .3s, transform .3s; white-space:nowrap; }
+.vy-cheers-caption.vy-cheers-caption-on { opacity:1; transform:translateX(-50%) scale(1); }
+
+.vy-day.rev .vy-day-card { background:linear-gradient(165deg,#2e2545,var(--night-2)); }
+
+/* Le petit chemin qui descend d'une étape à la suivante */
+.vy-connector { position:relative; height:110px; margin:0 0 8px 25px; width:40px; z-index:0; }
+.vy-connector svg { width:100%; height:100%; overflow:visible; }
+.vy-connector path { fill:none; stroke:var(--heather-soft); stroke-width:2.5; stroke-linecap:round;
+                      stroke-dasharray:4 10; opacity:.6; animation:vyConnectorFlow 1.4s linear infinite; }
+@keyframes vyConnectorFlow { to { stroke-dashoffset:-28; } }
+
+/* ===================== PRÉPARATION ===================== */
+.vy-prep-grid { display:flex; flex-direction:column; gap:10px; }
+.vy-prep-card { background:var(--night-2); border:1px solid var(--line); border-radius:16px; padding:20px; }
+.vy-prep-label { font-family:var(--font-mono); font-size:.7rem; text-transform:uppercase; letter-spacing:1.2px;
+                 color:var(--ember-soft); margin:0 0 8px; }
+.vy-prep-text { margin:0; font-size:.84rem; line-height:1.55; color:var(--muted); }
+
+/* ===================== FOOTER ===================== */
+.vy-footer { position:relative; text-align:center; padding:60px 22px 80px; overflow:hidden; }
+.vy-confetti { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+.vy-confetti-bit { position:absolute; top:-10px; border-radius:2px; opacity:0; animation:vyConfettiFall 2.6s ease-in forwards; }
+@keyframes vyConfettiFall {
+    0% { opacity:1; transform:translateY(0) rotate(0deg); }
+    100% { opacity:0; transform:translateY(220px) rotate(220deg); }
+}
+.vy-footer p { font-family:var(--font-display); font-style:italic; font-size:1.3rem; color:var(--fog); margin:0 0 10px; }
+.vy-footer-sub { font-family:var(--font-body); font-style:normal; font-size:.78rem; color:var(--muted); }
+
+/* ===================== ÉCRANS PLUS LARGES ===================== */
+@media (min-width:640px) {
+    .vy-logi-grid { grid-template-columns:repeat(4,1fr); }
+    .vy-trail-svg, .vy-walkers { left:50%; margin-left:-3px; }
+    .vy-day { padding-left:0; width:50%; }
+    .vy-day-node { left:auto; }
+    .vy-day:not(.rev) { padding-right:56px; }
+    .vy-day.rev { padding-left:56px; margin-left:50%; }
+    .vy-day:not(.rev) .vy-day-node { right:-17px; left:auto; }
+    .vy-day.rev .vy-day-node { left:-17px; }
+    .vy-connector { margin-left:calc(50% - 20px); }
+}
+
+/* ===================== TITRE À L'ENCRE ===================== */
+.vy-ink-line { display:block; overflow:hidden; position:relative; line-height:1.05; }
+.vy-ink-text { display:inline-block; clip-path:inset(0 100% 0 0); animation:vyInkReveal 1.15s var(--d,0s) cubic-bezier(.4,0,.2,1) forwards; }
+@keyframes vyInkReveal { to { clip-path:inset(0 0% 0 0); } }
+.vy-ink-line::after { content:''; position:absolute; top:8%; bottom:8%; width:3px; left:0; border-radius:2px;
+    background:linear-gradient(var(--ember-soft),var(--heather-soft)); box-shadow:0 0 10px 2px rgba(201,147,90,.5);
+    animation:vyInkCursor 1.15s var(--d,0s) cubic-bezier(.4,0,.2,1) forwards; opacity:0; }
+@keyframes vyInkCursor {
+    0% { left:0; opacity:1; }
+    92% { opacity:1; }
+    100% { left:100%; opacity:0; }
+}
+
+/* ===================== BOUSSOLE ===================== */
+.vy-compass { position:relative; width:78px; height:78px; margin:0 auto 44px; }
+.vy-compass-svg { width:100%; height:100%; filter:drop-shadow(0 6px 16px rgba(0,0,0,.4)); }
+.vy-compass-n { font-family:var(--font-mono); font-size:8px; fill:var(--muted); text-anchor:middle; }
+.vy-compass-needle { transform-origin:50px 50px; transition:transform .25s cubic-bezier(.2,.8,.3,1); }
+.vy-compass-hint { position:absolute; top:calc(100% + 10px); left:50%; transform:translateX(-50%); white-space:nowrap;
+    font-family:var(--font-mono); font-size:.62rem; text-transform:uppercase; letter-spacing:1px; color:var(--ember-soft);
+    background:rgba(26,22,37,.7); border:1px solid var(--line); border-radius:999px; padding:6px 12px; cursor:pointer; }
+.vy-compass-hint[hidden] { display:none; }
+.vy-compass-huelgoat { transform-origin:50px 50px; transition:transform .3s cubic-bezier(.2,.8,.3,1); }
+.vy-compass-caption { position:absolute; top:calc(100% + 34px); left:50%; transform:translateX(-50%); white-space:nowrap;
+    font-family:var(--font-mono); font-size:.6rem; text-transform:uppercase; letter-spacing:.8px; color:var(--heather-soft); margin:0; }
+.vy-compass-caption[hidden] { display:none; }
+
+/* ===================== COMPTE À REBOURS ===================== */
+.vy-countdown-label { text-align:center; margin-top:0; }
+.vy-countdown { display:flex; justify-content:center; gap:10px; margin-top:12px; }
+.vy-flip { display:flex; flex-direction:column; align-items:center; gap:6px; }
+.vy-flip-card { width:52px; height:52px; border-radius:10px; background:linear-gradient(165deg,var(--night-3),var(--night-2));
+    border:1px solid var(--line); display:grid; place-items:center; position:relative; overflow:hidden; box-shadow:0 8px 20px rgba(0,0,0,.4); }
+.vy-flip-card::before { content:''; position:absolute; top:50%; left:0; right:0; height:1px; background:rgba(0,0,0,.35); }
+.vy-flip-val { font-family:var(--font-mono); font-weight:600; font-size:1.3rem; color:var(--parchment); }
+.vy-flip-val.vy-flip-tick { animation:vyFlipTick .4s ease-out; }
+@keyframes vyFlipTick { from { transform:translateY(-10px); opacity:.3; } to { transform:translateY(0); opacity:1; } }
+.vy-flip-label { font-family:var(--font-mono); font-size:.58rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); }
+
+/* ===================== SILHOUETTE SURPRISE (secouer le téléphone) ===================== */
+.vy-korrigan { position:fixed; inset:0; z-index:300; display:grid; place-items:center; pointer-events:none;
+    background:rgba(13,10,20,0); opacity:0; transition:opacity .35s, background .35s; }
+.vy-korrigan.vy-korrigan-on { opacity:1; background:rgba(13,10,20,.72); }
+.vy-korrigan svg { width:110px; filter:drop-shadow(0 0 30px rgba(201,147,90,.5)); transform:scale(.85) translateY(10px);
+    transition:transform .4s cubic-bezier(.2,1.4,.4,1); }
+.vy-korrigan.vy-korrigan-on svg { transform:scale(1) translateY(0); }
+
+/* ===================== DIVIDER PARCHEMIN ===================== */
+.vy-parchment { max-width:640px; margin:0 auto; padding:0 22px; height:44px; position:relative;
+    display:flex; align-items:center; opacity:0; transform:scaleX(.7); transition:opacity .9s, transform .9s cubic-bezier(.16,1,.3,1); }
+.vy-parchment.in-view { opacity:1; transform:scaleX(1); }
+.vy-parchment span { display:block; width:100%; height:1px; background:linear-gradient(90deg,transparent,var(--heather-soft) 15%,var(--ember-soft) 50%,var(--heather-soft) 85%,transparent); position:relative; }
+.vy-parchment span::before, .vy-parchment span::after { content:''; position:absolute; top:50%; width:9px; height:9px; border-radius:50%;
+    background:var(--night-2); border:1.5px solid var(--heather-soft); transform:translateY(-50%); transition:left 1s cubic-bezier(.16,1,.3,1), right 1s cubic-bezier(.16,1,.3,1); }
+.vy-parchment span::before { left:50%; }
+.vy-parchment span::after { right:50%; }
+.vy-parchment.in-view span::before { left:calc(100% - 5px); }
+.vy-parchment.in-view span::after { right:calc(100% - 5px); }
+
+/* ===================== BRUME DU JOUR 2 ===================== */
+.vy-fogveil { position:absolute; inset:0; z-index:2; pointer-events:none; }
+.vy-fogveil span { position:absolute; inset:-20% -10%; border-radius:50%; background:var(--parchment);
+    filter:blur(18px); transition:opacity 1.4s cubic-bezier(.4,0,.2,1), transform 1.4s cubic-bezier(.4,0,.2,1); }
+.vy-fogveil span:nth-child(1) { opacity:.9; transform:translateY(0); }
+.vy-fogveil span:nth-child(2) { opacity:.75; transform:translateY(6%); transition-delay:.08s; }
+.vy-fogveil span:nth-child(3) { opacity:.6; transform:translateY(-4%); transition-delay:.16s; }
+.vy-fogveil.vy-fog-clear span { opacity:0; transform:translateY(-30%); }
+
+/* ===================== VENT ET INCLINAISON DU JOUR 3 ===================== */
+.vy-tilt { transform-style:preserve-3d; transition:transform .15s ease-out; will-change:transform; }
+.vy-wind { position:absolute; inset:0; z-index:2; pointer-events:none; overflow:hidden; border-radius:inherit; opacity:0; transition:opacity .6s; }
+.vy-wind.vy-wind-on { opacity:1; }
+.vy-wind-streak { position:absolute; height:1.5px; border-radius:2px; background:linear-gradient(90deg,transparent,var(--fog),transparent);
+    animation:vyWindBlow linear infinite; }
+@keyframes vyWindBlow { from { transform:translateX(-40px); } to { transform:translateX(340px); } }
+[data-reveal].in-view .vy-day-title, [data-reveal].in-view .vy-day-tag { transition:transform .12s ease-out; }
+
+/* ===================== PANORAMA DE CRÊTE (défilement horizontal) ===================== */
+.vy-ridge-strip { position:relative; margin:0 0 16px; border-radius:12px; overflow-x:auto; overflow-y:hidden;
+    background:var(--night); -webkit-overflow-scrolling:touch; scrollbar-width:thin; }
+.vy-ridge-svg { display:block; width:220%; height:80px; max-width:none; }
+.vy-ridge-tag { position:absolute; bottom:8px; left:14px; font-family:var(--font-mono); font-size:.62rem;
+    text-transform:uppercase; letter-spacing:.8px; color:var(--parchment); background:rgba(13,10,20,.55);
+    padding:4px 9px; border-radius:999px; }
+.vy-ridge-tag.right { left:auto; right:14px; }
+
+/* ===================== CIEL PAR ÉTAPE ===================== */
+.vy-sky { margin-bottom:6px; }
+.vy-sky svg { width:70px; height:12px; display:block; }
+.vy-sky-dot { fill:var(--ember); offset-distance:0%; opacity:0; transition:offset-distance 1.6s .2s cubic-bezier(.4,0,.2,1), opacity .3s .2s; }
+[data-reveal].in-view .vy-sky-dot { offset-distance:100%; opacity:1; }
+
+/* ===================== BOUTON GÉNÉRIQUE ===================== */
+.vy-btn { display:block; width:100%; padding:14px; border-radius:12px; font-size:.9rem; font-weight:700;
+    font-family:inherit; cursor:pointer; border:1px solid transparent; text-align:center; margin-top:10px;
+    background:linear-gradient(180deg,var(--heather-soft),var(--heather)); color:var(--night); }
+.vy-btn.ghost { background:transparent; border-color:var(--line); color:var(--fog); }
+.vy-btn:active { transform:scale(.98); }
+.vy-map-note { font-size:.82rem; color:var(--muted); line-height:1.55; margin:0 0 18px; }
+
+/* ===================== LÉGENDES À GRATTER ===================== */
+.vy-legend { position:relative; margin-top:28px; border-radius:14px; overflow:visible; }
+
+/* Copeaux qui tombent en grattant, et petit tas qui s'accumule sous la carte. */
+.vy-debris { position:absolute; width:4px; height:4px; border-radius:1px; background:#8b7a9a;
+    pointer-events:none; z-index:3; animation:vyDebrisFall .65s cubic-bezier(.4,0,.6,1) forwards; }
+@keyframes vyDebrisFall {
+    to { transform:translate(var(--fall-x,0), 46px) rotate(var(--fall-rot,45deg)); opacity:.3; }
+}
+.vy-legend-pile { position:absolute; left:6%; right:6%; bottom:-6px; height:10px; pointer-events:none; z-index:2; }
+.vy-pile-bit { position:absolute; bottom:0; width:5px; height:3px; border-radius:1px; background:#8b7a9a;
+    opacity:.75; transform:rotate(var(--rot,0deg)); }
+.vy-legend-text { position:relative; margin:0; padding:16px; font-size:.84rem; line-height:1.6; border-radius:14px;
+    color:var(--parchment); font-style:italic; background:linear-gradient(165deg,#241a30,#1c1526); }
+.vy-legend-hint { position:absolute; top:8px; right:10px; z-index:3; margin:0; font-family:var(--font-mono);
+    font-size:.6rem; text-transform:uppercase; letter-spacing:.6px; color:var(--night); background:rgba(243,233,245,.85);
+    padding:4px 9px; border-radius:999px; pointer-events:none; }
+.vy-legend.vy-legend-done .vy-legend-hint { display:none; }
+.vy-legend-canvas { position:absolute; inset:0; width:100%; height:100%; display:block; touch-action:none; cursor:pointer; z-index:2; border-radius:14px; }
+.vy-legend.vy-legend-done .vy-legend-canvas { opacity:0; pointer-events:none; transition:opacity .6s; }
+
+/* ===================== L'AUBE, LES FÉES ET LE TUMULUS (jour 4, plein écran) ===================== */
+.vy-fs-dawn { position:fixed; inset:0; z-index:310; background:#191428; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; opacity:0; visibility:hidden; transition:opacity .5s, visibility .5s;
+    padding:20px; }
+.vy-fs-dawn.vy-fs-dawn-on { opacity:1; visibility:visible; }
+.vy-fs-dawn-svg { width:100%; max-width:560px; height:auto; }
+#dawnHorizonGlow { transition:opacity .3s linear; }
+#dawnStars circle { fill:#f3e9f5; transition:opacity 2s; }
+#dawnStars circle.vy-star-out { opacity:0; }
+.vy-fairy { transform-origin:center; filter:drop-shadow(0 0 4px currentColor) drop-shadow(0 0 8px currentColor); }
+.vy-fairy-fly { animation:vyFairyFloat 2.4s ease-in-out infinite; }
+@keyframes vyFairyFloat {
+    0%,100% { transform:translate(0,0) scale(1); opacity:.95; }
+    50% { transform:translate(8px,-11px) scale(1.15); opacity:.6; }
+}
+.vy-fairy.vy-fairy-frozen { animation:none; opacity:0; transition:opacity .6s; }
+.vy-menhir { transition:height 1.1s cubic-bezier(.2,.9,.3,1), opacity .5s, y 1.1s cubic-bezier(.2,.9,.3,1); }
+.vy-menhir.vy-menhir-up { opacity:1; }
+.vy-burst-ring { fill:none; stroke:#fff3d6; stroke-width:2; opacity:0; transform-origin:center;
+    animation:vyBurstRing 1s cubic-bezier(.2,.8,.3,1) forwards; }
+@keyframes vyBurstRing { 0% { opacity:.9; r:2; stroke-width:3; } 100% { opacity:0; r:26; stroke-width:.3; } }
+#dawnFlash { transition:r 1.2s cubic-bezier(.2,.8,.3,1), opacity 1.2s; }
+.vy-bird { animation:vyBirdFly 3.4s linear forwards; }
+@keyframes vyBirdFly {
+    0% { transform:translate(-30px,0); opacity:0; }
+    10% { opacity:.7; }
+    90% { opacity:.7; }
+    100% { transform:translate(430px,-40px); opacity:0; }
+}
+
+/* Les trois têtes qui arrivent de l'extérieur de l'écran et se posent au centre. */
+.vy-dawn-head { position:absolute; width:40px; height:40px; opacity:0; z-index:5; pointer-events:none;
+    top:50%; left:50%; margin:-20px 0 0 -20px;
+    transform:translate(var(--hx,0), var(--hy,0)) scale(.5) rotate(var(--hr,0deg));
+    transition:opacity .35s, transform 1.2s cubic-bezier(.2,.8,.2,1.3); }
+.vy-dawn-head img { width:100%; height:100%; object-fit:contain; display:block;
+    filter:drop-shadow(0 0 6px rgba(201,147,90,.85)) drop-shadow(0 0 14px rgba(139,107,168,.55)); }
+.vy-dawn-head.vy-dawn-head-noimg { background:radial-gradient(circle, rgba(201,147,90,.5), transparent 70%); border-radius:50%; }
+.vy-dawn-head.vy-dawn-head-noimg img { display:none; }
+.vy-dawn-head.vy-dawn-head-in { opacity:1; transform:translate(var(--ex,0), var(--ey,0)) scale(1.15) rotate(0deg); }
+.vy-dawn-head.vy-dawn-head-land { transform:translate(var(--ex,0), var(--ey,0)) scale(1) rotate(0deg); animation:vyDawnLand .5s ease-out; }
+@keyframes vyDawnLand { 0%,60% { filter:brightness(1.6); } 100% { filter:brightness(1); } }
+
+/* Une petite bulle propre à chaque tête, plutôt qu'un message unique partagé. */
+.vy-dawn-bubble { position:absolute; top:-34px; left:50%; transform:translate(-50%,8px) scale(.6);
+    font-family:var(--font-display); font-weight:800; font-style:italic; font-size:.78rem; color:var(--night);
+    background:linear-gradient(155deg,var(--parchment),#f0e6d8); padding:5px 11px; border-radius:999px;
+    box-shadow:0 6px 16px rgba(0,0,0,.4), 0 0 0 2px rgba(255,255,255,.15);
+    opacity:0; pointer-events:none; z-index:7; white-space:nowrap;
+    transition:opacity .4s, transform .5s cubic-bezier(.2,.8,.2,1.4); }
+.vy-dawn-head.vy-dawn-head-land .vy-dawn-bubble { opacity:1; transform:translate(-50%,0) scale(1); }
+
+.vy-sparkle { fill:#fff3d6; animation:vySparklePop .9s ease-out forwards; }
+@keyframes vySparklePop {
+    0% { opacity:1; transform:scale(.3); }
+    60% { opacity:1; transform:scale(1.2); }
+    100% { opacity:0; transform:translate(var(--sx,0), var(--sy,0)) scale(.2); }
+}
+
+.vy-dawn-caption { font-family:var(--font-mono); font-size:.75rem; letter-spacing:.4px; color:var(--fog);
+    text-transform:uppercase; margin:30px 0 16px; text-align:center; transition:opacity .3s; }
+
+/* ===================== CAIRN (jour 1) ===================== */
+.vy-cairn-zone { text-align:center; margin:12px 0 26px; }
+.vy-cairn { min-height:46px; display:flex; flex-direction:column-reverse; align-items:center; gap:3px; margin-bottom:10px; }
+.vy-cairn-stone { width:54px; height:16px; border-radius:40%; background:linear-gradient(165deg,#7a6a91,#544567);
+    box-shadow:0 3px 6px rgba(0,0,0,.4); animation:vyStoneDrop .5s cubic-bezier(.3,1.6,.4,1) both; }
+@keyframes vyStoneDrop { from { transform:translateY(-40px) scale(.7); opacity:0; } to { transform:translateY(0) scale(1); opacity:1; } }
+.vy-cairn-btn { background:rgba(255,255,255,.05); border:1px solid var(--line); color:var(--fog); font-family:inherit;
+    font-size:.78rem; padding:9px 16px; border-radius:999px; cursor:pointer; }
+.vy-cairn-btn:active { transform:scale(.96); }
+
+/* ===================== VŒU DE LA CHAPELLE (jour 2) ===================== */
+.vy-photo-sub { text-align:center; font-size:.72rem; color:var(--muted); margin:8px 0 16px; font-style:italic; }
+.vy-wish { position:absolute; inset:0; z-index:3; pointer-events:none; overflow:hidden; }
+.vy-wish-beam { position:absolute; bottom:20%; left:50%; width:3px; height:0; background:linear-gradient(to top,var(--ember),transparent);
+    transform:translateX(-50%); animation:vyWishRise 1.4s ease-out forwards; box-shadow:0 0 14px 3px rgba(201,147,90,.6); }
+@keyframes vyWishRise { from { height:0; opacity:1; } to { height:120%; opacity:0; } }
+
+/* ===================== ÉTOILES FILANTES (jour 2, la nuit du 11) ===================== */
+.vy-meteors { position:absolute; inset:0; z-index:2; pointer-events:none; overflow:hidden; opacity:0; transition:opacity .8s; }
+.vy-meteors.vy-meteors-on { opacity:1; }
+
+/* La pluie d'étoiles filantes déclenchée par bouton, sur tout l'écran. */
+.vy-fullscreen-meteors { position:fixed; inset:0; z-index:300; pointer-events:none; overflow:hidden;
+    opacity:0; transition:opacity .6s; background:radial-gradient(circle at 50% 30%, rgba(139,107,168,.12), transparent 65%); }
+.vy-fullscreen-meteors.vy-fs-meteors-on { opacity:1; }
+.vy-fs-flash { position:absolute; inset:0; background:radial-gradient(circle at 50% 35%, rgba(255,255,255,.55), transparent 60%);
+    opacity:0; animation:vyFsFlash 1s ease-out forwards; }
+@keyframes vyFsFlash { 0% { opacity:.9; } 100% { opacity:0; } }
+.vy-fs-meteor { position:absolute; border-radius:50%; background:var(--parchment); animation:vyFsMeteorStreak linear infinite; }
+.vy-fs-meteor.small { width:2px; height:2px; box-shadow:0 0 8px 2px rgba(243,233,245,.85); }
+.vy-fs-meteor.medium { width:3px; height:3px; box-shadow:0 0 12px 3px rgba(243,233,245,.9); }
+.vy-fs-meteor.large { width:4px; height:4px; box-shadow:0 0 18px 5px rgba(255,247,235,1); }
+.vy-fs-meteor::before { content:''; position:absolute; top:50%; right:0; height:1.5px;
+    background:linear-gradient(to left, var(--parchment), transparent); transform:translateY(-50%) rotate(35deg); transform-origin:right center; }
+.vy-fs-meteor.small::before { width:70px; }
+.vy-fs-meteor.medium::before { width:110px; height:2px; }
+.vy-fs-meteor.large::before { width:160px; height:2.5px; }
+@keyframes vyFsMeteorStreak {
+    0% { transform:translate(0,0); opacity:0; }
+    6% { opacity:1; }
+    75% { transform:translate(-520px,420px); opacity:1; }
+    100% { transform:translate(-620px,500px); opacity:0; }
+}
+
+/* L'éclipse vécue en plein écran : un immense soleil, une lune qui arrive du bord de l'écran. */
+.vy-fs-eclipse { position:fixed; inset:0; z-index:310; background:#0a0713; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; opacity:0; visibility:hidden; transition:opacity .5s, visibility .5s; }
+.vy-fs-eclipse.vy-fs-eclipse-on { opacity:1; visibility:visible; }
+.vy-fs-eclipse-stage { position:relative; width:min(60vw,320px); height:min(60vw,320px); overflow:visible; }
+.vy-fs-sun { position:absolute; inset:0; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, var(--ember-soft), var(--ember) 70%);
+    box-shadow:0 0 90px 30px rgba(201,147,90,.5); }
+.vy-fs-corona { position:absolute; inset:0; border-radius:50%; opacity:0;
+    box-shadow:0 0 130px 46px rgba(243,233,245,.55); transition:opacity .8s; }
+.vy-fs-corona.vy-fs-corona-on { opacity:1; }
+.vy-fs-moon { position:absolute; inset:0; border-radius:50%; background:#0a0713;
+    border:2px solid rgba(201,184,220,.4); box-shadow:0 0 30px 4px rgba(0,0,0,.6);
+    transform:translateX(140vw); }
+.vy-fs-moon.vy-fs-moon-run { animation:vyFsEclipseCross 7s cubic-bezier(.45,0,.55,1) forwards; }
+@keyframes vyFsEclipseCross {
+    0% { transform:translateX(140vw); }
+    45% { transform:translateX(0); }
+    55% { transform:translateX(0); }
+    100% { transform:translateX(-140vw); }
+}
+.vy-fs-eclipse-caption { margin-top:34px; font-family:var(--font-mono); font-size:.75rem; letter-spacing:.5px;
+    color:var(--fog); text-transform:uppercase; }
+.vy-fs-eclipse-close { position:absolute; top:max(16px,env(safe-area-inset-top)); right:16px; width:42px; height:42px;
+    border-radius:12px; background:rgba(255,255,255,.08); border:1px solid var(--line); color:var(--parchment);
+    font-size:1.1rem; cursor:pointer; }
+
+/* La scène "vivre cette journée" du jour 5 : chemin, rivière, voiture. */
+.vy-fs-day5 { position:fixed; inset:0; z-index:310; background:#1a1625; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; opacity:0; visibility:hidden; transition:opacity .5s, visibility .5s;
+    padding:20px; }
+.vy-fs-day5.vy-fs-day5-on { opacity:1; visibility:visible; }
+.vy-fs-day5-svg { width:100%; max-width:520px; height:auto; }
+.vy-day5-ripple { fill:none; stroke:rgba(201,184,220,.5); stroke-width:1.5; opacity:0;
+    transform-origin:255px 140px; animation:vyDay5Ripple 2.4s ease-out infinite; animation-play-state:paused; }
+.vy-fs-day5-on .vy-day5-ripple { animation-play-state:running; }
+@keyframes vyDay5Ripple {
+    0% { r:4; opacity:.7; }
+    100% { r:34; opacity:0; }
+}
+.vy-day5-head { position:fixed; width:26px; height:26px; margin:-13px 0 0 -13px; z-index:311;
+    opacity:0; pointer-events:none; transition:opacity .3s; }
+.vy-day5-head img { width:100%; height:100%; object-fit:contain; display:block;
+    filter:drop-shadow(0 0 5px rgba(201,147,90,.85)) drop-shadow(0 0 12px rgba(139,107,168,.5)); }
+.vy-fs-day5-on .vy-day5-head { opacity:1; }
+.vy-fs-day5-caption-fade { animation:vyDay5CaptionFade 1s ease-in-out infinite; }
+@keyframes vyDay5CaptionFade { 0%,100% { opacity:.7; } 50% { opacity:1; } }
+.vy-day5-head.vy-day5-splashing { animation:vyDay5Bob .5s ease-in-out infinite; }
+@keyframes vyDay5Bob { 0%,100% { transform:translateY(0); } 50% { transform:translateY(3px); } }
+
+/* Confettis à l'arrivée à la voiture, le vrai bouquet final. */
+.vy-day5-confetti { position:fixed; inset:0; z-index:312; pointer-events:none; overflow:hidden; }
+.vy-day5-confetti-bit { position:absolute; top:-10px; opacity:0; animation:vyDay5ConfettiFall 1.8s ease-in forwards; }
+@keyframes vyDay5ConfettiFall {
+    0% { opacity:1; transform:translate(0,0) rotate(0deg); }
+    100% { opacity:0; transform:translate(var(--cx,20px), 340px) rotate(var(--cr,360deg)); }
+}
+.vy-day5-splash-drop { fill:#cfe4ef; animation:vyDay5SplashDrop .6s ease-out forwards; }
+@keyframes vyDay5SplashDrop {
+    0% { opacity:1; transform:translate(0,0) scale(1); }
+    100% { opacity:0; transform:translate(var(--sx,0), var(--sy,-18)) scale(.3); }
+}
+.vy-meteor { position:absolute; width:2px; height:2px; background:var(--parchment); border-radius:50%;
+    box-shadow:0 0 6px 1px var(--parchment); animation:vyMeteorStreak linear infinite; }
+.vy-meteor::before { content:''; position:absolute; top:1px; right:1px; width:46px; height:1px;
+    background:linear-gradient(to left, var(--parchment), transparent); transform:rotate(35deg); transform-origin:right center; }
+@keyframes vyMeteorStreak {
+    0% { transform:translate(0,0); opacity:0; }
+    8% { opacity:1; }
+    28% { transform:translate(-160px,120px); opacity:0; }
+    100% { transform:translate(-160px,120px); opacity:0; }
+}
+
+/* ===================== ENCART ASTRO ===================== */
+.vy-astro { margin:20px 0 26px; padding:16px 18px; border-radius:14px; background:linear-gradient(165deg,rgba(201,147,90,.14),rgba(139,107,168,.08));
+    border:1px solid rgba(201,147,90,.3); }
+.vy-astro-label { font-family:var(--font-mono); font-size:.62rem; text-transform:uppercase; letter-spacing:1.2px;
+    color:var(--ember-soft); margin:0 0 4px; }
+.vy-astro-title { font-family:var(--font-display); font-weight:700; font-size:1.15rem; color:var(--parchment); margin:0 0 8px; }
+.vy-astro-text { font-size:.82rem; line-height:1.55; color:var(--fog); margin:0; }
+
+/* ===================== ÉCLIPSE (jour 3, le 12) ===================== */
+.vy-eclipse-stage { position:relative; height:64px; margin:4px 0 6px; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.vy-eclipse-sun { width:44px; height:44px; border-radius:50%; background:radial-gradient(circle at 35% 30%, var(--ember-soft), var(--ember) 75%);
+    box-shadow:0 0 24px 6px rgba(201,147,90,.35); }
+.vy-eclipse-moon { position:absolute; width:44px; height:44px; border-radius:50%; background:var(--night);
+    border:1.5px solid rgba(201,184,220,.5); box-shadow:0 0 8px 1px rgba(0,0,0,.5);
+    animation:vyEclipseCross 11s ease-in-out infinite; }
+@keyframes vyEclipseCross {
+    0%   { left:calc(50% + 74px); }
+    18%  { left:calc(50% - 22px); }
+    32%  { left:calc(50% - 22px); }
+    50%  { left:calc(50% - 74px); }
+    68%  { left:calc(50% - 22px); }
+    82%  { left:calc(50% - 22px); }
+    100% { left:calc(50% + 74px); }
+}
+.vy-eclipse-corona { position:absolute; width:44px; height:44px; border-radius:50%; left:calc(50% - 22px);
+    animation:vyEclipseGlow 11s ease-in-out infinite; }
+@keyframes vyEclipseGlow {
+    0%, 10% { opacity:0; box-shadow:0 0 0 0 rgba(243,233,245,0); }
+    18%, 32% { opacity:1; box-shadow:0 0 26px 10px rgba(243,233,245,.4); }
+    41%, 59% { opacity:0; box-shadow:0 0 0 0 rgba(243,233,245,0); }
+    68%, 82% { opacity:1; box-shadow:0 0 26px 10px rgba(243,233,245,.4); }
+    90%, 100% { opacity:0; box-shadow:0 0 0 0 rgba(243,233,245,0); }
+}
+
+/* ===================== DEVINER LE DÉNIVELÉ ===================== */
+.vy-guess { margin-top:0; margin-bottom:8px; padding:16px; border-radius:14px; background:rgba(255,255,255,.03); border:1px solid var(--line); }
+.vy-guess-q { margin:0 0 10px; font-size:.8rem; color:var(--fog); line-height:1.4; }
+.vy-guess-slider { width:100%; accent-color:var(--heather-soft); margin-bottom:10px; }
+.vy-guess-row { display:flex; align-items:center; gap:8px; }
+.vy-guess-val { font-family:var(--font-mono); font-weight:600; color:var(--parchment); min-width:2.4em; }
+.vy-guess-unit { font-size:.72rem; color:var(--muted); flex:1; }
+.vy-guess-btn { font-family:inherit; font-size:.76rem; font-weight:700; padding:8px 14px; border-radius:999px;
+    background:linear-gradient(180deg,var(--heather-soft),var(--heather)); color:var(--night); border:none; cursor:pointer; }
+.vy-guess-result { margin:10px 0 0; font-size:.82rem; color:var(--ember-soft); font-weight:600; }
+.vy-guess-result[hidden] { display:none; }
+
+/* ===================== CARTE ===================== */
+.vy-map { height:320px; border-radius:16px; overflow:hidden; border:1px solid var(--line); filter:saturate(.7) brightness(.9); }
+.vy-map .leaflet-control-attribution { background:rgba(26,22,37,.75) !important; color:var(--muted) !important; font-size:.62rem !important; }
+.vy-map .leaflet-control-attribution a { color:var(--fog) !important; }
+.vy-map-pin { display:grid; place-items:center; width:26px; height:26px; border-radius:50%;
+    background:linear-gradient(155deg,var(--heather-soft),var(--heather)); border:2px solid var(--parchment);
+    box-shadow:0 4px 10px rgba(0,0,0,.4); font-family:var(--font-mono); font-weight:700; font-size:.7rem; color:var(--night); }
+.vy-map-pin-sommet { width:14px; height:14px; border-radius:50%; background:var(--ember);
+    border:2px solid var(--parchment); box-shadow:0 3px 8px rgba(0,0,0,.4); }
+
+/* ===================== PRÉNOMS ===================== */
+.vy-names-row { display:flex; gap:8px; margin-bottom:6px; }
+.vy-name-input, .vy-expense-form input, .vy-checklist-add input, .vy-add-row input {
+    flex:1; min-width:0; padding:12px; border-radius:10px;
+    background:rgba(255,255,255,.05); border:1px solid var(--line); color:var(--parchment); font-size:16px; font-family:inherit; }
+.vy-name-input:focus, .vy-expense-form input:focus, .vy-checklist-add input:focus, .vy-add-row input:focus {
+    outline:none; border-color:var(--heather-soft); }
+.vy-field-label { font-family:var(--font-mono); font-size:.66rem; text-transform:uppercase; letter-spacing:1px;
+    color:var(--brass,var(--ember-soft)); margin:14px 0 8px; }
+.vy-add-row { display:flex; flex-direction:column; gap:8px; margin-top:14px; }
+
+/* ===================== AVATARS RÉUTILISABLES ===================== */
+.vy-avatar-row, .vy-split-row, .vy-gear-filter { display:flex; gap:8px; flex-wrap:wrap; }
+.vy-avatar-btn { display:flex; align-items:center; gap:7px; padding:8px 12px 8px 8px; border-radius:999px;
+    background:rgba(255,255,255,.05); border:1.5px solid var(--line); color:var(--fog); font-family:inherit;
+    font-size:.8rem; cursor:pointer; transition:transform .15s,background .2s,border-color .2s; }
+.vy-avatar-btn:active { transform:scale(.95); }
+.vy-avatar-chip { width:24px; height:24px; border-radius:50%; display:grid; place-items:center; font-family:var(--font-mono);
+    font-size:.62rem; font-weight:700; color:var(--fog); background:rgba(255,255,255,.08); flex:0 0 auto; }
+.vy-avatar-chip.vy-avatar-photo { overflow:visible; position:relative; background:transparent; border-radius:0; }
+.vy-avatar-chip.vy-avatar-photo img { width:100%; height:100%; object-fit:contain; display:block;
+    filter:drop-shadow(0 0 3px rgba(201,147,90,.55)); }
+.vy-avatar-chip.vy-avatar-photo i { display:none; font-style:normal; }
+.vy-avatar-chip.vy-avatar-photo.vy-avatar-noimg { background:rgba(255,255,255,.08); border-radius:50%; }
+.vy-avatar-chip.vy-avatar-photo.vy-avatar-noimg img { display:none; }
+.vy-avatar-chip.vy-avatar-photo.vy-avatar-noimg i { display:block; }
+.vy-avatar-btn.vy-avatar-on { background:linear-gradient(155deg,var(--heather-soft),var(--heather)); border-color:transparent; color:var(--night); }
+.vy-avatar-btn.vy-avatar-on .vy-avatar-chip { background:rgba(26,22,37,.25); color:var(--night); }
+
+/* ===================== QUI PORTE QUOI ===================== */
+.vy-gear-filter { margin-bottom:18px; }
+.vy-gear-categories { display:flex; flex-direction:column; gap:16px; }
+.vy-gear-cat { border-radius:16px; background:var(--night-2); border:1px solid var(--line); overflow:hidden; }
+.vy-gear-cat-head { display:flex; align-items:center; gap:8px; padding:14px; cursor:pointer; }
+.vy-gear-cat-chevron { flex:0 0 auto; display:inline-block; font-size:1.1rem; color:var(--muted);
+    transform:rotate(0deg); transition:transform .25s ease; }
+.vy-gear-cat-chevron-open { transform:rotate(90deg); color:var(--ember-soft); }
+.vy-gear-cat-name { flex:1; font-family:var(--font-display); font-weight:700; font-size:1.05rem; color:var(--parchment); }
+.vy-gear-cat-count { flex:0 0 auto; font-family:var(--font-mono); font-size:.7rem; color:var(--muted);
+    background:rgba(255,255,255,.06); border-radius:999px; padding:2px 8px; }
+.vy-gear-cat-del { background:none; border:none; color:var(--muted); font-size:.85rem; cursor:pointer; padding:4px 6px; flex:0 0 auto; }
+.vy-gear-cat-body { max-height:0; overflow:hidden; transition:max-height .35s ease; padding:0 14px; }
+.vy-gear-cat-body-open { max-height:2000px; padding:0 14px 14px; }
+.vy-gear-items { display:flex; flex-direction:column; gap:8px; margin-bottom:10px; }
+.vy-gear-item { display:flex; align-items:center; gap:8px; padding:10px 10px 10px 4px; border-radius:12px;
+    background:rgba(255,255,255,.03); border:1px solid var(--line); touch-action:pan-y; }
+.vy-gear-item.vy-item-dim { opacity:.3; }
+.vy-gear-item.vy-dragging { opacity:.55; box-shadow:0 10px 22px rgba(0,0,0,.4); }
+.vy-gear-handle { flex:0 0 auto; width:26px; height:30px; display:grid; place-items:center; color:var(--muted);
+    cursor:grab; font-size:1rem; letter-spacing:-2px; touch-action:none; }
+.vy-gear-handle:active { cursor:grabbing; }
+.vy-gear-name { flex:1; min-width:0; font-size:.84rem; color:var(--parchment); }
+.vy-gear-people { display:flex; gap:5px; flex:0 0 auto; }
+.vy-gear-noname { font-size:.66rem; color:var(--muted); font-style:italic; }
+.vy-gear-avatar { width:28px; height:28px; border-radius:50%; display:grid; place-items:center; font-family:var(--font-mono);
+    font-size:.62rem; font-weight:700; color:var(--fog); background:rgba(255,255,255,.06); border:1.5px solid var(--line);
+    cursor:pointer; transition:transform .15s; flex:0 0 auto; padding:0; overflow:visible; }
+.vy-gear-avatar .vy-avatar-chip { width:100%; height:100%; }
+.vy-gear-avatar:active { transform:scale(.88); }
+.vy-gear-avatar.vy-gear-assigned { background:linear-gradient(155deg,var(--heather-soft),var(--heather)); color:var(--night); border-color:transparent; }
+.vy-gear-avatar.vy-gear-assigned .vy-avatar-chip { background:transparent; color:var(--night); }
+.vy-gear-avatar.vy-gear-packed { background:linear-gradient(155deg,#a8d9b8,#5fa877); color:var(--night); border-color:transparent;
+    box-shadow:0 0 0 2px rgba(95,168,119,.35); }
+.vy-gear-avatar.vy-gear-packed .vy-avatar-chip { background:transparent; color:var(--night); }
+.vy-gear-del { background:none; border:none; color:var(--muted); font-size:.85rem; cursor:pointer; padding:4px 6px; flex:0 0 auto; }
+.vy-gear-item-add { display:flex; flex-direction:column; gap:6px; }
+.vy-gear-item-add input { width:100%; padding:9px 10px; border-radius:9px; background:rgba(255,255,255,.04);
+    border:1px solid var(--line); color:var(--parchment); font-size:16px; font-family:inherit; }
+.vy-gear-item-add button { width:100%; padding:9px 12px; border-radius:9px; background:rgba(255,255,255,.06);
+    border:1px solid var(--line); color:var(--fog); font-family:inherit; font-size:.78rem; cursor:pointer; }
+
+/* ===================== LES FRAIS, FAÇON TRICOUNT ===================== */
+.vy-expense-form { margin-bottom:18px; padding:16px; border-radius:16px; background:var(--night-2); border:1px solid var(--line); }
+.vy-expense-list { display:flex; flex-direction:column; gap:8px; margin-bottom:16px; }
+.vy-expense-row { display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:12px; background:var(--night-2);
+    border:1px solid var(--line); cursor:pointer; }
+.vy-expense-row:active { transform:scale(.99); }
+.vy-expense-main { flex:1; min-width:0; }
+.vy-expense-label { display:block; font-size:.86rem; color:var(--parchment); font-weight:600; }
+.vy-expense-meta { display:block; font-size:.7rem; color:var(--muted); margin-top:3px; }
+.vy-expense-amount { font-family:var(--font-mono); font-weight:700; color:var(--ember-soft); white-space:nowrap; font-size:.92rem; }
+.vy-expense-del { background:none; border:none; color:var(--muted); font-size:1rem; cursor:pointer; padding:4px 6px; }
+.vy-expense-summary { display:flex; flex-direction:column; gap:6px; }
+.vy-summary-row { display:flex; justify-content:space-between; font-size:.84rem; padding:10px 14px; border-radius:10px; background:rgba(255,255,255,.03); }
+.vy-summary-row b { color:var(--parchment); }
+.vy-summary-row b.vy-owes { color:var(--ember-soft); }
+.vy-summary-row b.vy-owed { color:#9ec9ad; }
+.vy-empty-note { font-size:.8rem; color:var(--muted); text-align:center; padding:10px 0; }
+
+/* ===================== ONGLETS DE LISTES ===================== */
+.vy-tabs { display:flex; gap:8px; margin-bottom:16px; }
+
+.vy-tab { flex:1; padding:8px 6px; border-radius:10px; background:rgba(255,255,255,.04); border:1px solid var(--line);
+    color:var(--muted); font-family:inherit; font-weight:700; font-size:.78rem; cursor:pointer; text-align:center;
+    display:flex; flex-direction:column; align-items:center; gap:5px; }
+.vy-tab .vy-avatar-chip { width:26px; height:26px; }
+.vy-tab.vy-tab-on { background:linear-gradient(155deg,var(--heather-soft),var(--heather)); color:var(--night); border-color:transparent; }
+.vy-tab.vy-tab-on .vy-avatar-chip { background:rgba(26,22,37,.25); }
+
+/* ===================== CHECK-LIST QUI SE FROISSE ===================== */
+.vy-checklist { display:flex; flex-direction:column; gap:8px; margin-bottom:14px; }
+.vy-check-item { display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:12px;
+    background:var(--night-2); border:1px solid var(--line); cursor:pointer; transition:transform .3s; }
+.vy-check-box { width:20px; height:20px; border-radius:6px; border:2px solid var(--heather-soft); flex:0 0 auto; position:relative; }
+.vy-check-item.vy-checked .vy-check-box { background:var(--heather-soft); }
+.vy-check-item.vy-checked .vy-check-box::after { content:''; position:absolute; left:5px; top:1px; width:5px; height:9px;
+    border:solid var(--night); border-width:0 2px 2px 0; transform:rotate(40deg); }
+.vy-check-label { flex:1; font-size:.85rem; color:var(--parchment); }
+.vy-check-item.vy-checked .vy-check-label { color:var(--muted); text-decoration:line-through; }
+.vy-check-item.vy-crumple { animation:vyCrumple .4s ease-out; }
+@keyframes vyCrumple { 30% { transform:scale(.94) rotate(-1deg); } 60% { transform:scale(.97) rotate(1deg); } 100% { transform:scale(1) rotate(0); } }
+.vy-check-edit { background:none; border:none; color:var(--muted); font-size:.85rem; cursor:pointer; padding:4px 6px; }
+.vy-check-del { background:none; border:none; color:var(--muted); font-size:.9rem; cursor:pointer; }
+.vy-checklist-add { display:flex; flex-direction:column; gap:8px; }
+.vy-offline-status { font-size:.8rem; color:var(--ember-soft); text-align:center; margin:10px 0 0; min-height:1.2em; }
+
+/* ===================== PORTAIL PRIVÉ ===================== */
+.vy-lockgate { max-width:400px; margin:0 auto; text-align:center; padding:28px 24px; border-radius:20px;
+    background:linear-gradient(165deg,var(--night-3),var(--night-2)); border:1px solid var(--heather); box-shadow:var(--shadow); }
+.vy-lockgate .vy-kicker, .vy-lockgate .vy-h2, .vy-lockgate .vy-map-note { text-align:center; }
+.vy-lockgate #lockInput { width:100%; margin-top:8px; padding:13px; border-radius:10px; text-align:center;
+    background:rgba(255,255,255,.05); border:1px solid var(--line); color:var(--parchment); font-size:16px;
+    font-family:var(--font-mono); letter-spacing:2px; }
+.vy-lockgate #lockInput:focus { outline:none; border-color:var(--heather-soft); }
+.vy-lock-error { color:var(--card-red,#c2453a); font-size:.8rem; margin:10px 0 0; }
+.vy-lock-error[hidden] { display:none; }
+.vy-private[hidden] { display:none; }
+
+.vy-music-btn { position:fixed; top:max(14px,env(safe-area-inset-top)); right:64px; z-index:200;
+    width:42px; height:42px; display:grid; place-items:center; border-radius:12px;
+    background:rgba(201,147,90,.2); backdrop-filter:blur(8px); border:1px solid var(--ember-soft);
+    color:var(--ember-soft); cursor:pointer; transition:transform .15s; }
+.vy-music-btn svg { width:19px; height:19px; }
+.vy-music-btn:active { transform:scale(.92); }
+.vy-music-btn.vy-music-playing { background:rgba(201,147,90,.4); animation:vyMusicPulse 1.8s ease-in-out infinite; }
+@keyframes vyMusicPulse { 0%,100% { box-shadow:0 0 0 0 rgba(201,147,90,.4); } 50% { box-shadow:0 0 0 6px rgba(201,147,90,0); } }
+
+.vy-key-btn { position:fixed; top:max(14px,env(safe-area-inset-top)); right:14px; z-index:200;
+    width:42px; height:42px; display:grid; place-items:center; border-radius:12px;
+    background:rgba(139,107,168,.25); backdrop-filter:blur(8px); border:1px solid var(--heather-soft);
+    color:var(--ember-soft); cursor:pointer; }
+.vy-key-btn svg { width:20px; height:20px; }
+.vy-key-btn:active { transform:scale(.92); }
+.vy-key-btn[hidden] { display:none; }
+
+/* ===================== ÉCRAN DE CHARGEMENT ===================== */
+body.vy-loading { overflow:hidden; }
+.vy-loader { position:fixed; inset:0; z-index:500; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:18px; background:var(--night); transition:opacity .6s ease, visibility .6s; }
+body:not(.vy-loading) .vy-loader { opacity:0; visibility:hidden; pointer-events:none; }
+.vy-loader-svg { width:180px; height:54px; }
+.vy-loader-svg path { stroke-dasharray:260; stroke-dashoffset:260; animation:vyLoaderDraw 1.6s ease-in-out infinite; }
+@keyframes vyLoaderDraw { 0% { stroke-dashoffset:260; } 50% { stroke-dashoffset:0; } 100% { stroke-dashoffset:-260; } }
+.vy-loader-text { font-family:var(--font-display); font-style:italic; color:var(--fog); font-size:1rem; margin:0; }
+
+/* ===================== BARRE DE PROGRESSION GLOBALE ===================== */
+.vy-topbar { position:fixed; top:0; left:0; width:100%; height:3px; z-index:190; background:rgba(255,255,255,.06); }
+.vy-topbar i { display:block; height:100%; width:0%; background:linear-gradient(90deg,var(--ember),var(--heather-soft)); }
+
+/* ===================== CURSEUR PERSONNALISÉ (ordinateur uniquement) ===================== */
+.vy-cursor { position:fixed; top:0; left:0; width:34px; height:34px; margin:-17px 0 0 -17px; border-radius:50%;
+    border:1.5px solid var(--heather-soft); pointer-events:none; z-index:400; opacity:0;
+    transition:opacity .25s, transform .12s ease-out, width .2s, height .2s, background .2s;
+    display:flex; align-items:center; justify-content:center; font-size:14px; }
+@media (pointer: fine) {
+    .vy-cursor.vy-cursor-on { opacity:1; }
+    body.vy-cursor-active, body.vy-cursor-active a, body.vy-cursor-active button { cursor:none; }
+}
+.vy-cursor.vy-cursor-point { width:14px; height:14px; margin:-7px 0 0 -7px; background:var(--heather-soft); }
+.vy-cursor.vy-cursor-compass { width:44px; height:44px; margin:-22px 0 0 -22px; background:rgba(139,107,168,.25); }
+.vy-cursor.vy-cursor-foot { width:26px; height:26px; margin:-13px 0 0 -13px; background:rgba(201,147,90,.25); border-color:var(--ember); }
+
+/* ===================== MÉTÉO RÉELLE ===================== */
+.vy-weather { margin-top:42px; }
+.vy-weather[hidden] { display:none; }
+.vy-weather-label { font-family:var(--font-mono); font-size:.64rem; text-transform:uppercase; letter-spacing:1.2px;
+    color:var(--muted); margin:0 0 10px; text-align:center; }
+.vy-weather-row { display:flex; gap:8px; justify-content:center; overflow-x:auto; }
+.vy-weather-loading { font-size:.78rem; color:var(--muted); text-align:center; margin:0; }
+.vy-weather-day { flex:0 0 auto; width:56px; display:flex; flex-direction:column; align-items:center; gap:4px;
+    padding:10px 6px; border-radius:12px; background:rgba(255,255,255,.04); border:1px solid var(--line); }
+.vy-weather-day b { font-size:.66rem; color:var(--fog); font-weight:600; text-transform:uppercase; }
+.vy-weather-day .vy-w-ico { font-size:1.1rem; }
+.vy-weather-day .vy-w-temp { font-family:var(--font-mono); font-size:.7rem; color:var(--ember-soft); }
+.vy-weather-day .vy-w-rain { font-size:.6rem; color:var(--muted); }
+
+/* ===================== GALERIE PLEIN ÉCRAN ===================== */
+.vy-lightbox { position:fixed; inset:0; z-index:250; background:rgba(10,8,15,.96); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; opacity:0; visibility:hidden; transition:opacity .3s, visibility .3s; }
+.vy-lightbox.vy-lightbox-on { opacity:1; visibility:visible; }
+.vy-lightbox-stage { max-width:92vw; max-height:78vh; overflow:hidden; border-radius:12px; touch-action:pinch-zoom; }
+.vy-lightbox-stage img { max-width:92vw; max-height:78vh; display:block; transition:transform .3s; touch-action:pinch-zoom; }
+.vy-lightbox-close { position:absolute; top:max(16px,env(safe-area-inset-top)); right:16px; width:42px; height:42px;
+    border-radius:12px; background:rgba(255,255,255,.08); border:1px solid var(--line); color:var(--parchment);
+    font-size:1.1rem; cursor:pointer; }
+.vy-lightbox-nav { position:absolute; top:50%; transform:translateY(-50%); width:46px; height:46px; border-radius:50%;
+    background:rgba(255,255,255,.08); border:1px solid var(--line); color:var(--parchment); font-size:1.6rem; cursor:pointer; }
+.vy-lightbox-nav.prev { left:14px; } .vy-lightbox-nav.next { right:14px; }
+.vy-lightbox-caption { position:absolute; bottom:max(20px,env(safe-area-inset-bottom)); color:var(--fog);
+    font-size:.82rem; font-family:var(--font-mono); }
+
+/* ===================== TITRES RÉVÉLÉS MOT PAR MOT ===================== */
+.vy-word { display:inline-block; opacity:0; transform:translateY(.4em); filter:blur(3px);
+    transition:opacity .55s cubic-bezier(.16,1,.3,1), transform .55s cubic-bezier(.16,1,.3,1), filter .55s;
+    transition-delay:calc(var(--i,0) * 65ms); }
+[data-reveal].in-view .vy-word, .in-view .vy-word { opacity:1; transform:translateY(0); filter:blur(0); }
+
+/* ===================== SURVOL ET TAP SOIGNÉS PARTOUT ===================== */
+.vy-btn, .vy-tab, .vy-avatar-btn, .vy-gear-avatar, .vy-day-node, .vy-cairn-btn, .vy-back, .vy-key-btn,
+.vy-lightbox-nav, .vy-lightbox-close, .vy-gear-cat-del, .vy-gear-del, .vy-check-del, .vy-expense-del {
+    transition:transform .15s cubic-bezier(.34,1.56,.64,1), opacity .2s, background .2s, box-shadow .2s;
+}
+@media (hover:hover) {
+    .vy-btn:hover, .vy-tab:hover, .vy-avatar-btn:hover { transform:translateY(-2px); box-shadow:0 8px 18px rgba(0,0,0,.35); }
+    .vy-day-node:hover, .vy-gear-avatar:hover, .vy-cairn-btn:hover { transform:scale(1.08); }
+    .vy-back:hover, .vy-key-btn:hover { background:rgba(139,107,168,.25); }
+}
+
+/* ===================== COMPTEUR DE PAS DÉCORATIF ===================== */
+.vy-steps { display:flex; flex-direction:column; align-items:center; gap:2px; margin:0 0 40px; }
+.vy-steps-num { font-family:var(--font-mono); font-weight:700; font-size:1.3rem; color:var(--parchment);
+    font-variant-numeric:tabular-nums; transition:color .2s; }
+.vy-steps-num.vy-steps-wild { color:var(--ember-soft); }
+.vy-steps-label { font-size:.62rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); }
+
+/* ===================== FEUILLES QUI TOMBENT (jours 1 et 5) ===================== */
+.vy-leaves { position:absolute; inset:0; z-index:1; pointer-events:none; overflow:hidden; border-radius:inherit; }
+.vy-leaf { position:absolute; top:-16px; border-radius:0 60% 0 60%; animation:vyLeafFall linear forwards; }
+@keyframes vyLeafFall {
+    0% { transform:translate(0,0) rotate(0deg); opacity:0; }
+    8% { opacity:.85; }
+    92% { opacity:.75; }
+    100% { transform:translate(var(--leaf-x,20px), 340px) rotate(var(--leaf-rot,180deg)); opacity:0; }
+}
+
+/* ===================== LA CARTE QUI SE DÉPLIE COMME DU PAPIER ===================== */
+.vy-map { opacity:0; transform:scale(.42) rotate(-9deg); filter:blur(3px); transform-origin:center center; }
+.vy-map-section.in-view .vy-map {
+    animation:vyMapUnfold 1.15s cubic-bezier(.16,1,.3,1) forwards;
+}
+@keyframes vyMapUnfold {
+    0% { opacity:0; transform:scale(.42) rotate(-9deg); filter:blur(3px); }
+    55% { opacity:1; transform:scale(1.035) rotate(1.5deg); filter:blur(0); }
+    100% { opacity:1; transform:scale(1) rotate(0deg); filter:blur(0); }
+}
+
+/* ===================== TREMBLEMENT DE COMPTEUR MÉCANIQUE ===================== */
+.vy-mech-settle { animation:vyMechShake .28s ease-out; }
+@keyframes vyMechShake {
+    0% { transform:translateX(0); }
+    25% { transform:translateX(-1.5px); }
+    50% { transform:translateX(1.5px); }
+    75% { transform:translateX(-.5px); }
+    100% { transform:translateX(0); }
+}
+
+/* ===================== LES TROIS TÊTES AVANT LE SENTIER ===================== */
+.vy-team-intro { display:flex; justify-content:center; gap:28px; margin:38px 0 0; }
+.vy-team-intro[hidden] { display:none; }
+.vy-team-member { display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer; }
+.vy-team-member .vy-avatar-chip { width:48px; height:48px; transition:transform .1s; }
+.vy-team-member:hover .vy-avatar-chip, .vy-team-member.vy-team-spin .vy-avatar-chip { animation:vyTeamSpin .65s ease-in-out; }
+@keyframes vyTeamSpin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
+.vy-team-member span { font-family:var(--font-mono); font-size:.68rem; color:var(--fog); }
+
+/* ===================== TOURS EIFFEL (dénivelé cumulé mis à l'échelle) ===================== */
+.vy-eiffel-row { display:flex; align-items:flex-end; justify-content:center; gap:3px; margin-top:10px; height:34px; }
+.vy-eiffel-icon { width:14px; height:34px; opacity:0; transform:translateY(8px);
+    animation:vyEiffelIn .5s cubic-bezier(.16,1,.3,1) forwards; }
+.vy-eiffel-icon:nth-child(1) { animation-delay:.1s; }
+.vy-eiffel-icon:nth-child(2) { animation-delay:.3s; }
+.vy-eiffel-icon:nth-child(3) { animation-delay:.5s; }
+.vy-eiffel-icon:nth-child(4) { animation-delay:.7s; }
+.vy-eiffel-icon:nth-child(n+5) { animation-delay:.9s; }
+@keyframes vyEiffelIn { to { opacity:1; transform:translateY(0); } }
+.vy-eiffel-caption { display:block; font-size:.62rem; color:var(--muted); margin-top:6px; }
+.vy-eiffel-caption[hidden] { display:none; }
+
+/* ===================== CADRAN SOLAIRE (temps de marche total) ===================== */
+.vy-sundial { width:44px; height:44px; margin-top:10px; }
+
+/* ===================== JEU : ATTRAPEZ-LES SUR LA LANDE ===================== */
+.vy-mole-hud { display:flex; justify-content:center; align-items:center; gap:28px; margin:0 0 14px; }
+.vy-mole-board-btn { background:rgba(255,255,255,.06); border:1px solid var(--line); border-radius:10px;
+    width:34px; height:34px; font-size:1rem; cursor:pointer; display:grid; place-items:center; }
+.vy-mole-board { max-width:320px; margin:0 auto 18px; padding:14px 16px; border-radius:14px;
+    background:rgba(255,255,255,.04); border:1px solid var(--line); }
+.vy-mole-board[hidden] { display:none; }
+.vy-mole-board-title { margin:0 0 10px; font-family:var(--font-mono); font-size:.68rem; text-transform:uppercase;
+    letter-spacing:1px; color:var(--muted); text-align:center; }
+.vy-mole-board-list { display:flex; flex-direction:column; gap:6px; }
+.vy-mole-board-row { display:flex; align-items:center; gap:10px; font-size:.82rem; color:var(--fog); }
+.vy-mole-board-row b { color:var(--ember-soft); font-family:var(--font-mono); margin-left:auto; }
+.vy-mole-board-empty { text-align:center; font-size:.78rem; color:var(--muted); margin:0; }
+
+.vy-mole-stat { display:flex; flex-direction:column; align-items:center; gap:2px; }
+.vy-mole-stat b { font-family:var(--font-mono); font-size:1.2rem; font-weight:700; color:var(--ember-soft); }
+.vy-mole-stat span { font-size:.62rem; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+.vy-mole-field { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; max-width:340px; margin:0 auto 20px;
+    padding:20px; border-radius:20px; background:linear-gradient(165deg,#3a4a2e,#2c3a22); }
+.vy-mole-hole { position:relative; aspect-ratio:1; border-radius:50%; overflow:hidden; cursor:pointer;
+    background:radial-gradient(circle at 50% 65%, #1c1712, #241d17 70%);
+    box-shadow:inset 0 6px 10px rgba(0,0,0,.6); }
+.vy-mole-head { position:absolute; inset:8% ; border-radius:50%; overflow:visible;
+    transform:translateY(115%); transition:transform .18s cubic-bezier(.34,1.5,.5,1); pointer-events:none; }
+.vy-mole-hole.vy-mole-active .vy-mole-head { transform:translateY(0); pointer-events:auto; }
+.vy-mole-head img { width:100%; height:100%; object-fit:contain; display:block;
+    filter:drop-shadow(0 0 5px rgba(201,147,90,.8)) drop-shadow(0 0 10px rgba(139,107,168,.5)); }
+.vy-mole-hole.vy-mole-hit .vy-mole-head { animation:vyMoleHit .3s ease-out forwards; }
+@keyframes vyMoleHit { 0% { transform:translateY(0) scale(1); opacity:1; } 100% { transform:translateY(0) scale(1.4); opacity:0; } }
+.vy-mole-result { text-align:center; font-size:.9rem; color:var(--fog); margin-top:14px; }
+.vy-mole-result[hidden] { display:none; }
+.vy-mole-result b { color:var(--ember-soft); font-family:var(--font-mono); }
+
+/* ===================== LA ROUE DE LA DÉCISION ===================== */
+.vy-wheel-stage { position:relative; width:220px; margin:0 auto 24px; }
+.vy-wheel-pointer { position:absolute; top:-6px; left:50%; transform:translateX(-50%); z-index:2;
+    width:0; height:0; border-left:10px solid transparent; border-right:10px solid transparent;
+    border-top:16px solid var(--ember); filter:drop-shadow(0 2px 4px rgba(0,0,0,.4)); }
+.vy-wheel { position:relative; width:220px; height:220px; border-radius:50%; margin:0 auto;
+    background:conic-gradient(from 0deg, #6bb3d6 0deg 120deg, #8b6ba8 120deg 240deg, #c9935a 240deg 360deg);
+    border:4px solid var(--parchment); box-shadow:0 10px 30px rgba(0,0,0,.5);
+    transition:transform 4.5s cubic-bezier(.15,.85,.3,1); }
+.vy-wheel-seg { position:absolute; top:50%; left:50%; width:0; height:0; }
+.vy-wheel-seg[data-seg="0"] { transform:rotate(60deg); }
+.vy-wheel-seg[data-seg="1"] { transform:rotate(180deg); }
+.vy-wheel-seg[data-seg="2"] { transform:rotate(300deg); }
+.vy-wheel-seg img { position:absolute; top:-74px; left:0; width:36px; height:36px; margin:-18px 0 0 -18px;
+    object-fit:contain; filter:drop-shadow(0 2px 4px rgba(0,0,0,.5)); }
+.vy-wheel-name { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); }
+.vy-wheel-spinning { animation:vyWheelPulse 4.5s ease-in-out; }
+@keyframes vyWheelPulse { 0% { filter:brightness(1); } 50% { filter:brightness(1.15); } 100% { filter:brightness(1); } }
+.vy-wheel-result { text-align:center; font-size:1rem; color:var(--fog); margin-top:16px; min-height:1.4em; }
+.vy-wheel-result[hidden] { display:none; }
+.vy-wheel-result b { color:var(--ember-soft); font-family:var(--font-display); font-size:1.15rem; }
+
+@media (prefers-reduced-motion:reduce) {
+    * { animation-duration:.001ms !important; transition-duration:.001ms !important; scroll-behavior:auto !important; }
+}
