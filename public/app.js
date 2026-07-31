@@ -209,12 +209,25 @@ function renderTile(a) {
 
 // ---------- Ordre personnalisé des tuiles, sauvegardé sur cet appareil ----------
 const TILE_ORDER_KEY = 'erquy_tile_order';
+// Ordre de préférence par défaut, utilisé tant que personne n'a encore réorganisé les
+// tuiles à la main. Voyages et Recettes restent toujours tout en bas, même après.
+const DEFAULT_PRIORITY = ['yams', 'pbac', 'perudo', 'motus', 'mf', 'motjuste', 'undercover'];
+const ALWAYS_LAST = ['voyages', 'recettes'];
 function loadTileOrder(allIds) {
     let saved = [];
     try { saved = JSON.parse(localStorage.getItem(TILE_ORDER_KEY) || '[]'); } catch (e) {}
-    const known = saved.filter(id => allIds.includes(id));
-    const missing = allIds.filter(id => !known.includes(id));  // nouvelles apps jamais vues : à la fin
-    return [...known, ...missing];
+    let order;
+    if (saved.length) {
+        const known = saved.filter(id => allIds.includes(id));
+        const missing = allIds.filter(id => !known.includes(id));  // nouvelles apps jamais vues : à la fin
+        order = [...known, ...missing];
+    } else {
+        const rest = allIds.filter(id => !DEFAULT_PRIORITY.includes(id) && !ALWAYS_LAST.includes(id));
+        order = [...DEFAULT_PRIORITY.filter(id => allIds.includes(id)), ...rest];
+    }
+    // Voyages et Recettes : toujours en dernier, qu'un ordre ait été sauvegardé ou non.
+    const last = ALWAYS_LAST.filter(id => order.includes(id));
+    return [...order.filter(id => !ALWAYS_LAST.includes(id)), ...last];
 }
 function saveTileOrder(order) { localStorage.setItem(TILE_ORDER_KEY, JSON.stringify(order)); }
 
