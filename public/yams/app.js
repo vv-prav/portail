@@ -9,6 +9,11 @@ function toast(msg) {
     el._t = setTimeout(() => { el.hidden = true; }, 2600);
 }
 
+// Une couleur par joueur, pour se repérer d'un coup d'œil entre le score en
+// haut et ses cases remplies dans la feuille.
+const PLAYER_COLORS = ['#9b6fc7', '#5aa8d9', '#5aa87a', '#d98a4a'];
+function playerColor(index) { return PLAYER_COLORS[index % PLAYER_COLORS.length]; }
+
 const UPPER_CATS = [
     { key: 'uns', label: 'As', face: 1 },
     { key: 'deux', label: 'Deux', face: 2 },
@@ -51,28 +56,37 @@ const LS_KEY = 'yams_last_game';
 
 // ---------- Grande célébration plein écran quand quelqu'un fait un Yams ----------
 const CONFETTI_COLORS = ['#d9a94e', '#ecca82', '#efe4cf', '#5aa87a', '#d2624a'];
+const BONUS_CONFETTI_COLORS = ['#ecca82', '#ffdf8a', '#ff6b4a', '#d2624a', '#fff2d0'];
 function playCelebration(pseudo, bonus) {
     const el = $('ymCelebration');
     const field = $('ymConfetti');
-    $('ymCelebrationWho').textContent = pseudo === myPseudo ? 'Vous venez de faire un Yams !' : `${pseudo} vient de faire un Yams !`;
+    const who = pseudo === myPseudo ? 'Vous' : pseudo;
+    $('ymCelebrationWord').textContent = bonus ? 'BONUS YAMS !' : 'YAMS !';
+    $('ymCelebrationWho').textContent = bonus
+        ? `${who === 'Vous' ? 'Vous enchaînez' : who + ' enchaîne'} un deuxième Yams !`
+        : `${who === 'Vous' ? 'Vous venez' : who + ' vient'} de faire un Yams !`;
     $('ymCelebrationBonus').hidden = !bonus;
+    el.classList.toggle('mega', !!bonus);
     field.innerHTML = '';
-    const count = 90;
+    const count = bonus ? 190 : 90;
     for (let i = 0; i < count; i++) {
         const bit = document.createElement('span');
         bit.className = 'ym-confetti-bit';
         bit.style.left = Math.random() * 100 + '%';
-        bit.style.background = CONFETTI_COLORS[i % CONFETTI_COLORS.length];
+        bit.style.background = (bonus ? BONUS_CONFETTI_COLORS : CONFETTI_COLORS)[i % CONFETTI_COLORS.length];
         bit.style.animationDelay = (Math.random() * .6) + 's';
-        bit.style.animationDuration = (1.8 + Math.random() * 1.2) + 's';
-        bit.style.setProperty('--drift', (Math.random() * 140 - 70) + 'px');
+        bit.style.animationDuration = (bonus ? 2.4 : 1.8) + (Math.random() * 1.2) + 's';
+        bit.style.setProperty('--drift', (Math.random() * (bonus ? 220 : 140) - (bonus ? 110 : 70)) + 'px');
         bit.style.setProperty('--rot', (Math.random() * 720 - 360) + 'deg');
+        if (bonus) { bit.style.width = '13px'; bit.style.height = '20px'; }
         field.appendChild(bit);
     }
     el.classList.add('on');
-    if (navigator.vibrate) { try { navigator.vibrate([30, 60, 30, 60, 120]); } catch (e) {} }
+    if (navigator.vibrate) {
+        try { navigator.vibrate(bonus ? [40, 80, 40, 80, 40, 80, 220] : [30, 60, 30, 60, 120]); } catch (e) {}
+    }
     clearTimeout(el._t);
-    el._t = setTimeout(() => { el.classList.remove('on'); field.innerHTML = ''; }, 3400);
+    el._t = setTimeout(() => { el.classList.remove('on', 'mega'); field.innerHTML = ''; }, bonus ? 4600 : 3400);
 }
 
 function connect() {
@@ -88,6 +102,7 @@ function connect() {
     });
     socket.on('yams_games', renderLobby);
     socket.on('yams_state', onState);
+    socket.on('yams_stats_result', renderStats);
     socket.on('yams_celebration', ({ pseudo, bonus }) => playCelebration(pseudo, bonus));
     socket.on('yams_error', (msg) => {
         toast(msg || 'Erreur.');
@@ -106,6 +121,24 @@ function showView(id) {
 }
 
 // ---------- Lobby ----------
+function renderStats(data) {
+    if (!data) return;
+    $('statsGrid').innerHTML = [
+        ['Victoires', data.gamesWon],
+        ['Parties jouées', data.gamesPlayed],
+        ['Taux de réussite', data.winRate === null ? '—' : data.winRate + '%'],
+        ['Yams réalisés', data.totalYams],
+        ['dont bonus', data.bonusYams],
+        ['Meilleur score', data.bestScore],
+    ].map(([label, val]) => `<div class="ym-stat-box"><b>${val}</b><span>${label}</span></div>`).join('');
+    const nem = $('statsNemesis');
+    if (data.nemesis) {
+        nem.innerHTML = `😈 Votre bête noire : <b>${esc(data.nemesis.pseudo)}</b> vous a battu ${data.nemesis.losses} fois`;
+        nem.hidden = false;
+    } else {
+        nem.hidden = true;
+    }
+}
 function renderLobby(games) {
     $('lobby-empty-label').hidden = !!games.length;
     $('ym-tables').innerHTML = games.map(g => `
@@ -122,6 +155,8 @@ function renderLobby(games) {
     }));
 }
 $('btn-create').addEventListener('click', () => socket.emit('yams_create'));
+$('btn-stats').addEventListener('click', () => { socket.emit('yams_stats'); $('v-stats').hidden = false; });
+$('stats-close').addEventListener('click', () => { $('v-stats').hidden = true; });
 socket_list_poll();
 function socket_list_poll() {
     setInterval(() => { if (socket && socket.connected && !$('v-lobby').hidden) socket.emit('yams_list'); }, 5000);
@@ -144,14 +179,36 @@ $('btn-back-lobby').addEventListener('click', () => { socket.emit('yams_leave');
 
 // ---------- Partie ----------
 function renderScoresStrip(s) {
-    $('scoresStrip').innerHTML = s.players.map(p => `
-        <div class="ym-score-band${p.pseudo === s.turnPseudo ? ' current' : ''}">
+    $('scoresStrip').innerHTML = s.players.map((p, i) => `
+        <div class="ym-score-band${p.pseudo === s.turnPseudo ? ' current' : ''}" style="--pcolor:${playerColor(i)}">
             <span class="ym-score-band-name">${p.connected ? '' : '⚪ '}${esc(p.pseudo)}</span>
             <b class="ym-score-band-total">${p.total}</b>
         </div>
     `).join('');
 }
 let lastDiceKey = null;
+function runRollAnimation(btn, finalValue, delayMs) {
+    // Cycle réellement à travers des valeurs aléatoires, de plus en plus lentement,
+    // avant de se stabiliser sur le vrai résultat : ça donne l'impression d'un dé
+    // qui roule pour de vrai plutôt qu'un simple sursaut visuel.
+    setTimeout(() => {
+        btn.classList.add('rolling-spin');
+        const face = btn.querySelector('.ym-die-face-wrap');
+        const steps = [60, 60, 70, 80, 90, 110, 140, 180];
+        let i = 0;
+        function tick() {
+            const val = i < steps.length - 1 ? (1 + Math.floor(Math.random() * 6)) : finalValue;
+            if (face) face.innerHTML = diceFaceSvg(val);
+            if (i < steps.length - 1) { setTimeout(tick, steps[i]); i++; }
+            else {
+                btn.classList.remove('rolling-spin');
+                btn.classList.add('landed');
+                setTimeout(() => btn.classList.remove('landed'), 350);
+            }
+        }
+        tick();
+    }, delayMs);
+}
 function renderDice(s) {
     const isMyTurn = s.turnPseudo === myPseudo;
     if (!s.hasRolled) {
@@ -164,17 +221,13 @@ function renderDice(s) {
         lastDiceKey = diceKey;
         $('diceRow').innerHTML = s.dice.map((v, i) => `
             <button type="button" class="ym-die${s.held[i] ? ' held' : ''}" data-i="${i}" ${(!isMyTurn || s.rollsLeft <= 0) ? 'disabled' : ''}>
-                ${diceFaceSvg(v)}
+                <span class="ym-die-face-wrap">${diceFaceSvg(v)}</span>
             </button>
         `).join('');
         $('diceRow').querySelectorAll('.ym-die').forEach((b, i) => {
             b.addEventListener('click', () => socket.emit('yams_hold', { index: Number(b.dataset.i) }));
             // On ne fait rouler que les dés qui viennent vraiment d'être relancés (pas ceux gardés).
-            if (justRolled && !s.held[i]) {
-                b.style.animationDelay = (i * 60) + 'ms';
-                b.classList.add('rolling');
-                setTimeout(() => b.classList.remove('rolling'), 800 + i * 60);
-            }
+            if (justRolled && !s.held[i]) runRollAnimation(b, s.dice[i], i * 70);
         });
     }
     $('turnLabel').textContent = isMyTurn ? 'À vous de jouer' : `Au tour de ${s.turnPseudo}`;
@@ -206,9 +259,9 @@ $('confirmOk').addEventListener('click', () => {
 });
 
 function scoreCellsFor(cat, s) {
-    return s.players.map(p => {
+    return s.players.map((p, i) => {
         const val = p.scores[cat];
-        if (val !== null) return `<span class="ym-score-cell filled">${val}</span>`;
+        if (val !== null) return `<span class="ym-score-cell filled" style="--pcolor:${playerColor(i)}">${val}</span>`;
         return `<span class="ym-score-cell empty">—</span>`;
     }).join('');
 }
@@ -229,13 +282,13 @@ function renderSheet(s) {
     const lowerKeys = LOWER_CATS.map(c => c.key);
     const lowerSums = s.players.map(p => lowerKeys.reduce((sum, k) => sum + (p.scores[k] || 0), 0) + (p.yamsBonus || 0));
     $('bonusRow').innerHTML = `
-        <div class="ym-sheet-row subtotal">
-            <span class="ym-sheet-row-label text">Sous-total</span>
-            <span class="ym-sheet-row-cells">${upperSums.map(u => `<span class="ym-score-cell filled">${u}</span>`).join('')}</span>
-        </div>
         <div class="ym-sheet-row bonus">
             <span class="ym-sheet-row-label text">Bonus <em>(63 pts et +)</em></span>
             <span class="ym-sheet-row-cells">${upperSums.map(u => `<span class="ym-score-cell ${u >= 63 ? 'filled bonus-on' : 'empty'}">${u >= 63 ? '+35' : '—'}</span>`).join('')}</span>
+        </div>
+        <div class="ym-sheet-row subtotal">
+            <span class="ym-sheet-row-label text">Sous-total</span>
+            <span class="ym-sheet-row-cells">${upperSums.map(u => `<span class="ym-score-cell filled">${u}</span>`).join('')}</span>
         </div>`;
     $('lowerSubtotalRow').innerHTML = `
         <div class="ym-sheet-row subtotal">

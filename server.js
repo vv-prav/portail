@@ -1082,7 +1082,7 @@ app.use('/perudo', requireAuth, express.static(__dirname + '/public/perudo'));
 // ---------------------------------------------------------------------
 const pbacApi = require('./pbac/game')(app, io, { get: mfGet, set: mfSet });
 app.use('/pbac', requireAuth, express.static(__dirname + '/public/pbac'));
-const yamsApi = require('./yams/game')(app, io);
+const yamsApi = require('./yams/game')(app, io, { get: mfGet, set: mfSet });
 app.use('/yams', requireAuth, express.static(__dirname + '/public/yams'));
 
 // ---------------------------------------------------------------------
@@ -1563,12 +1563,15 @@ app.get('/api/salon/profile', requireAuthApi, (req, res) => {
     // stats motus / le mot juste (même forme de données par utilisateur)
     const motus = dailyGameStats('motus:prog', pseudo, u => kMotusDays(u), u => motusStreak(u));
     const motjuste = dailyGameStats('mj:prog', pseudo, u => kMjDays(u), u => mjStreak(u));
+    // stats yams
+    let yams = null;
+    try { yams = yamsApi.statsFor(pseudo); } catch (e) {}
     res.json({
         pseudo, avatar: user.avatar || '',
         created: user.created || 0, prevLogin: user.prevLogin || 0,
         isAdmin: isAdmin(pseudo),
         mf: { solved, best, streak: mfStreak, days: mfDays.size },
-        perudo, motus, motjuste,
+        perudo, motus, motjuste, yams,
         avatars: SALON_AVATARS,
     });
 });

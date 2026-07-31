@@ -5,7 +5,10 @@
 // =====================================================================
 const crypto = require('crypto');
 
-module.exports = function attachYams(app, io) {
+module.exports = function attachYams(app, io, store) {
+
+const mfGet = store && store.get ? store.get : () => undefined;
+const mfSet = store && store.set ? store.set : () => {};
 
 const MAX_PLAYERS = 4;
 const MIN_PLAYERS = 2;
@@ -88,6 +91,55 @@ function grandTotal(p) {
 }
 
 // =====================================================================
+//  STATISTIQUES PERSISTANTES — une fiche par joueur, qui survit à la
+//  partie. Parties jouées et gagnées, Yams réalisés, meilleur score, et
+//  un décompte face à chaque adversaire pour en tirer une "bête noire"
+//  (celui ou celle qui vous bat le plus souvent).
+// =====================================================================
+const kYamsStats = (pseudo) => `yams:stats:${norm(pseudo)}`;
+const STATS_INDEX_KEY = 'yams:statsIndex';
+function norm(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim(); }
+function defaultYamsStats() {
+    return { gamesPlayed: 0, gamesWon: 0, totalYams: 0, bonusYams: 0, bestScore: 0, vsOpponent: {} };
+}
+function loadYamsStats(pseudo) {
+    const s = mfGet(kYamsStats(pseudo));
+    return s && typeof s === 'object' ? { ...defaultYamsStats(), ...s, vsOpponent: { ...(s.vsOpponent || {}) } } : defaultYamsStats();
+}
+function saveYamsStats(pseudo, stats) {
+    mfSet(kYamsStats(pseudo), stats);
+    const index = mfGet(STATS_INDEX_KEY) || [];
+    if (!index.includes(pseudo)) { index.push(pseudo); mfSet(STATS_INDEX_KEY, index); }
+}
+// La "bête noire" : parmi les adversaires rencontrés au moins 2 fois, celui qui a
+// gagné le plus souvent contre ce joueur (à égalité, le plus de parties jouées ensemble).
+function nemesisOf(stats) {
+    const entries = Object.entries(stats.vsOpponent).filter(([, v]) => (v.losses || 0) >= 2);
+    if (!entries.length) return null;
+    entries.sort((a, b) => (b[1].losses - a[1].losses) || ((b[1].wins + b[1].losses) - (a[1].wins + a[1].losses)));
+    return { pseudo: entries[0][0], losses: entries[0][1].losses };
+}
+// Enregistre la fin d'une vraie partie (pas juste une manche) : une partie jouée pour
+// chacun, une victoire pour le gagnant, une défaite face à lui pour tous les autres.
+function finalizeYamsStats(g) {
+    const winner = winnerOf(g);
+    for (const p of g.players) {
+        const stats = loadYamsStats(p.pseudo);
+        stats.gamesPlayed++;
+        const myTotal = grandTotal(p);
+        if (myTotal > stats.bestScore) stats.bestScore = myTotal;
+        if (p.pseudo === winner) stats.gamesWon++;
+        for (const other of g.players) {
+            if (other.pseudo === p.pseudo) continue;
+            if (!stats.vsOpponent[other.pseudo]) stats.vsOpponent[other.pseudo] = { wins: 0, losses: 0 };
+            if (p.pseudo === winner) stats.vsOpponent[other.pseudo].wins++;
+            else if (other.pseudo === winner) stats.vsOpponent[other.pseudo].losses++;
+        }
+        saveYamsStats(p.pseudo, stats);
+    }
+}
+
+// =====================================================================
 //  ÉTAT DES PARTIES
 // =====================================================================
 const games = {};       // id -> partie
@@ -156,6 +208,7 @@ function advanceTurn(g) {
     // Si tout le monde a fini, la partie se termine.
     if (g.players.every(allCategoriesFilled)) {
         g.status = 'ended';
+        finalizeYamsStats(g);
         broadcastState(g);
         broadcastLobby();
         return;
@@ -289,11 +342,27 @@ io.on('connection', (socket) => {
 
         if (isYamsRoll) {
             io.to(roomOf(g)).emit('yams_celebration', { pseudo, bonus: extraYamsBonus });
+            const stats = loadYamsStats(pseudo);
+            stats.totalYams++;
+            if (extraYamsBonus) stats.bonusYams++;
+            saveYamsStats(pseudo, stats);
         }
         advanceTurn(g);
     });
 
     socket.on('yams_leave', () => leaveCurrent(socket));
+
+    socket.on('yams_stats', () => {
+        const pseudo = socket.data.yamsPseudo;
+        if (!pseudo) return;
+        const stats = loadYamsStats(pseudo);
+        socket.emit('yams_stats_result', {
+            gamesPlayed: stats.gamesPlayed, gamesWon: stats.gamesWon,
+            totalYams: stats.totalYams, bonusYams: stats.bonusYams, bestScore: stats.bestScore,
+            winRate: stats.gamesPlayed ? Math.round((stats.gamesWon / stats.gamesPlayed) * 100) : null,
+            nemesis: nemesisOf(stats),
+        });
+    });
 
     socket.on('yams_rematch', () => {
         const g = games[socketGame[socket.id]];
@@ -320,6 +389,15 @@ io.on('connection', (socket) => {
 return {
     online: () => [...new Set(Object.values(games).flatMap(g => g.players.filter(p => p.connected).map(p => p.pseudo)))],
     games: () => Object.values(games).map(g => ({ id: g.id, host: g.host, status: g.status, players: g.players.map(p => p.pseudo) })),
+    statsFor: (pseudo) => {
+        const stats = loadYamsStats(pseudo);
+        return {
+            gamesPlayed: stats.gamesPlayed, gamesWon: stats.gamesWon,
+            totalYams: stats.totalYams, bonusYams: stats.bonusYams, bestScore: stats.bestScore,
+            winRate: stats.gamesPlayed ? Math.round((stats.gamesWon / stats.gamesPlayed) * 100) : null,
+            nemesis: nemesisOf(stats),
+        };
+    },
     endGame: (id) => {
         const g = games[id];
         if (!g) return false;

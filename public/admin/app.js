@@ -127,11 +127,14 @@ async function loadAppsOverview() {
         ['🍎', data.pbac.online, 'en ligne sur Petit Bac'],
         ['🍎', data.pbac.totalGamesPlayed, 'parties de Petit Bac jouées au total'],
         ['🕵️', data.undercover.online, 'en ligne sur Infiltré'],
+        ['🎯', data.yams.online, 'en ligne sur Yams'],
+        ['🎯', data.yams.activeGames, 'partie(s) de Yams en cours'],
+        ['🎯', data.yams.totalGamesPlayed, 'parties de Yams jouées au total'],
         ['📝', data.motus.solversToday, 'ont trouvé le Motus du jour'],
         ['🔤', data.motjuste.solversToday, 'ont trouvé le Mot Juste du jour'],
     ].map(([i, v, l]) => `<div class="stat"><span class="s-ico">${i}</span><b>${v}</b><em>${l}</em></div>`).join('');
 }
-const GAME_LABEL_ICON = { perudo: '🎲', pbac: '🍎', undercover: '🕵️' };
+const GAME_LABEL_ICON = { perudo: '🎲', pbac: '🍎', undercover: '🕵️', yams: '🎯' };
 async function loadGameHistory() {
     const { data } = await api('/api/admin/game-history');
     const list = (data && data.history) || [];

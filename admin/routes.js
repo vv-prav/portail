@@ -88,11 +88,14 @@ module.exports = function attachAdmin(app, ctx) {
             undercoverGames = ctx.undercover().games().filter(g => g.status !== 'lobby' && g.status !== 'ended').length;
         } catch (e) {}
 
-        let yamsOnline = 0, yamsGames = 0;
+        let yamsOnline = 0, yamsGames = 0, yamsTotalGamesPlayed = 0;
         try {
             yamsOnline = ctx.yams().online().length;
             yamsGames = ctx.yams().games().filter(g => g.status !== 'lobby' && g.status !== 'ended').length;
         } catch (e) {}
+        for (const k of Object.keys(cache)) {
+            if (k.startsWith('yams:stats:')) yamsTotalGamesPlayed += (cache[k] && cache[k].gamesPlayed) || 0;
+        }
 
         const motusBoard = cache[motus.kBoard(today)] || [];
         const mjBoard = cache[motjuste.kBoard(today)] || [];
@@ -102,7 +105,7 @@ module.exports = function attachAdmin(app, ctx) {
             perudo: { online: perudoOnline, activeGames: perudoGames },
             pbac: { online: pbacOnline, activeGames: pbacGames, totalGamesPlayed: pbacTotalGamesPlayed },
             undercover: { online: undercoverOnline, activeGames: undercoverGames },
-            yams: { online: yamsOnline, activeGames: yamsGames },
+            yams: { online: yamsOnline, activeGames: yamsGames, totalGamesPlayed: yamsTotalGamesPlayed },
             motus: { solversToday: motusBoard.length },
             motjuste: { solversToday: mjBoard.length },
         });

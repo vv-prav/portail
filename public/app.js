@@ -379,6 +379,12 @@ function buildGameCards(p) {
     // Petit Bac / Infiltré : pas encore de suivi persistant — on le dit clairement plutôt que de rien afficher.
     cards.push(gameCard('✏️', 'Petit Bac', '#c2513a', 0, null, t('prof_soon')));
     cards.push(gameCard('🕵️', 'Infiltré', '#6f7bb0', 0, null, t('prof_soon')));
+    // Yams
+    const y = p.yams;
+    const yamsNote = y && y.nemesis ? `Bête noire : ${esc(y.nemesis.pseudo)} vous a battu ${y.nemesis.losses} fois` : null;
+    cards.push(gameCard('🎯', 'Yams', '#ecca82', 0, y && y.gamesPlayed ? [
+        [y.gamesWon, 'victoires'], [y.gamesPlayed, 'parties'], [y.totalYams, 'Yams'], [y.bestScore, 'meilleur score'],
+    ] : null, yamsNote));
     return cards.join('');
 }
 

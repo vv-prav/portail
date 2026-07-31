@@ -23,9 +23,20 @@
         <!-- LOBBY -->
         <section class="ym-view" id="v-lobby">
             <button class="ym-btn" id="btn-create">Créer une table</button>
+            <button class="ym-btn ghost" id="btn-stats">Mes statistiques</button>
             <p class="ym-list-label" id="lobby-empty-label" hidden>Aucune table ouverte pour l'instant.</p>
             <div class="ym-tables" id="ym-tables"></div>
         </section>
+
+        <!-- MES STATISTIQUES -->
+        <div class="ym-overlay" id="v-stats" hidden>
+            <div class="ym-stats-card">
+                <h2 class="ym-stats-title">Mes statistiques</h2>
+                <div class="ym-stats-grid" id="statsGrid"></div>
+                <p class="ym-stats-nemesis" id="statsNemesis" hidden></p>
+                <button class="ym-btn ghost" id="stats-close">Fermer</button>
+            </div>
+        </div>
 
         <!-- SALLE D'ATTENTE -->
         <section class="ym-view" id="v-waiting" hidden>
@@ -83,7 +94,7 @@
     <div class="ym-celebration" id="ymCelebration" aria-hidden="true">
         <div class="ym-confetti-field" id="ymConfetti"></div>
         <div class="ym-celebration-inner">
-            <p class="ym-celebration-word">YAMS !</p>
+            <p class="ym-celebration-word" id="ymCelebrationWord">YAMS !</p>
             <p class="ym-celebration-who" id="ymCelebrationWho">—</p>
             <p class="ym-celebration-bonus" id="ymCelebrationBonus" hidden>+50 points de bonus !</p>
         </div>
