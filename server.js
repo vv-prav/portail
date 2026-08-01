@@ -771,6 +771,10 @@ function motusDefFor(word) {
 }
 
 app.use('/motus', requireAuth, express.static(__dirname + '/public/motus'));
+const motusPartyApi = require('./motusparty/game')(app, io, {
+    motusPool, motusKnown, motusMarks, motusDef: motusDefFor,
+    get: mfGet, set: mfSet,
+});
 
 app.get('/api/motus/today', requireAuth, (req, res) => {
     const user = currentUser(req), today = mfTodayId();
@@ -1123,6 +1127,11 @@ function snapshotActiveGames() {
             current.set('yams:' + g.id, { app: 'yams', label: 'Yams', players: g.players });
         });
     } catch (e) {}
+    try {
+        motusPartyApi.games().filter(g => g.status !== 'lobby' && g.status !== 'ended').forEach(g => {
+            current.set('motusparty:' + g.id, { app: 'motusparty', label: 'Motus Party', players: g.players });
+        });
+    } catch (e) {}
     return current;
 }
 function pollGameHistory() {
@@ -1461,11 +1470,12 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
 
     // Les vrais prénoms connectés par jeu, pour les tuiles du salon ("qui est
     // connecté" plutôt qu'un simple nombre). Undercover réutilise le même schéma.
-    let perudoNames = [], pbacNames = [], undercoverOnlineCount = 0, undercoverNames = [], yamsOnlineCount = 0, yamsNames = [];
+    let perudoNames = [], pbacNames = [], undercoverOnlineCount = 0, undercoverNames = [], yamsOnlineCount = 0, yamsNames = [], mpOnlineCount = 0, mpNames = [];
     try { perudoNames = perudoApi.online().map(p => p.pseudo); } catch (e) {}
     try { pbacNames = pbacApi.online(); } catch (e) {}
     try { undercoverNames = undercoverApi.online(); undercoverOnlineCount = undercoverNames.length; } catch (e) {}
     try { yamsNames = yamsApi.online(); yamsOnlineCount = yamsNames.length; } catch (e) {}
+    try { mpNames = motusPartyApi.online(); mpOnlineCount = mpNames.length; } catch (e) {}
 
     // Joueurs du salon actuellement en ligne : présence déduite de la fraîcheur de
     // lastSeen (mis à jour par ce même endpoint, interrogé toutes les 60 s côté client).
@@ -1507,6 +1517,7 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
         pbac: { online: pbacOnline, names: pbacNames },
         undercover: { online: undercoverOnlineCount, names: undercoverNames },
         yams: { online: yamsOnlineCount, names: yamsNames },
+        motusparty: { online: mpOnlineCount, names: mpNames },
         salonOnline, activeGames,
     });
 });
@@ -1616,6 +1627,7 @@ require('./admin/routes')(app, {
     pbac: () => pbacApi,
     undercover: () => undercoverApi,
     yams: () => yamsApi,
+    motusparty: () => motusPartyApi,
 });
 
 

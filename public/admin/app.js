@@ -130,11 +130,14 @@ async function loadAppsOverview() {
         ['🎯', data.yams.online, 'en ligne sur Yams'],
         ['🎯', data.yams.activeGames, 'partie(s) de Yams en cours'],
         ['🎯', data.yams.totalGamesPlayed, 'parties de Yams jouées au total'],
+        ['🏁', data.motusparty.online, 'en ligne sur Motus Party'],
+        ['🏁', data.motusparty.activeGames, 'course(s) de Motus Party en cours'],
+        ['🏁', data.motusparty.totalMatchesPlayed, 'courses de Motus Party jouées au total'],
         ['📝', data.motus.solversToday, 'ont trouvé le Motus du jour'],
         ['🔤', data.motjuste.solversToday, 'ont trouvé le Mot Juste du jour'],
     ].map(([i, v, l]) => `<div class="stat"><span class="s-ico">${i}</span><b>${v}</b><em>${l}</em></div>`).join('');
 }
-const GAME_LABEL_ICON = { perudo: '🎲', pbac: '🍎', undercover: '🕵️', yams: '🎯' };
+const GAME_LABEL_ICON = { perudo: '🎲', pbac: '🍎', undercover: '🕵️', yams: '🎯', motusparty: '🏁' };
 async function loadGameHistory() {
     const { data } = await api('/api/admin/game-history');
     const list = (data && data.history) || [];

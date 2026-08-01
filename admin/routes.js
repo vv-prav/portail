@@ -97,6 +97,15 @@ module.exports = function attachAdmin(app, ctx) {
             if (k.startsWith('yams:stats:')) yamsTotalGamesPlayed += (cache[k] && cache[k].gamesPlayed) || 0;
         }
 
+        let mpOnline = 0, mpGames = 0, mpTotalMatchesPlayed = 0;
+        try {
+            mpOnline = ctx.motusparty().online().length;
+            mpGames = ctx.motusparty().games().filter(g => g.status !== 'lobby' && g.status !== 'ended').length;
+        } catch (e) {}
+        for (const k of Object.keys(cache)) {
+            if (k.startsWith('motusparty:stats:')) mpTotalMatchesPlayed += (cache[k] && cache[k].matchesPlayed) || 0;
+        }
+
         const motusBoard = cache[motus.kBoard(today)] || [];
         const mjBoard = cache[motjuste.kBoard(today)] || [];
 
@@ -106,6 +115,7 @@ module.exports = function attachAdmin(app, ctx) {
             pbac: { online: pbacOnline, activeGames: pbacGames, totalGamesPlayed: pbacTotalGamesPlayed },
             undercover: { online: undercoverOnline, activeGames: undercoverGames },
             yams: { online: yamsOnline, activeGames: yamsGames, totalGamesPlayed: yamsTotalGamesPlayed },
+            motusparty: { online: mpOnline, activeGames: mpGames, totalMatchesPlayed: mpTotalMatchesPlayed },
             motus: { solversToday: motusBoard.length },
             motjuste: { solversToday: mjBoard.length },
         });

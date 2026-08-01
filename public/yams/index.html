@@ -24,6 +24,8 @@
         <section class="ym-view" id="v-lobby">
             <button class="ym-btn" id="btn-create">Créer une table</button>
             <button class="ym-btn ghost" id="btn-stats">Mes statistiques</button>
+            <button class="ym-btn ghost" id="btn-skins">🎨 Style des dés</button>
+            <button class="ym-btn ghost" id="btn-leaderboard">🏆 Classement &amp; historique</button>
             <p class="ym-list-label" id="lobby-empty-label" hidden>Aucune table ouverte pour l'instant.</p>
             <div class="ym-tables" id="ym-tables"></div>
         </section>
@@ -38,6 +40,33 @@
             </div>
         </div>
 
+        <div class="ym-overlay" id="v-skins" hidden>
+            <div class="ym-stats-card ym-skins-card">
+                <h2 class="ym-stats-title">Style des dés</h2>
+                <p class="ym-skins-hint">Certains styles se débloquent avec vos victoires ou le nombre de Yams réalisés.</p>
+                <div class="ym-skins-grid" id="skinsGrid"></div>
+                <button class="ym-btn ghost" id="skins-close">Fermer</button>
+            </div>
+        </div>
+
+        <div class="ym-overlay" id="v-leaderboard" hidden>
+            <div class="ym-stats-card">
+                <h2 class="ym-stats-title">Classement &amp; historique</h2>
+                <div class="ym-lb-tabs">
+                    <button type="button" class="ym-lb-tab active" data-tab="lb">Classement</button>
+                    <button type="button" class="ym-lb-tab" data-tab="hist">Historique</button>
+                    <button type="button" class="ym-lb-tab" data-tab="h2h">Face à face</button>
+                </div>
+                <div class="ym-lb-pane" id="paneLb"></div>
+                <div class="ym-lb-pane" id="paneHist" hidden></div>
+                <div class="ym-lb-pane" id="paneH2h" hidden>
+                    <select class="ym-h2h-select" id="h2hSelect"></select>
+                    <div id="h2hResult"></div>
+                </div>
+                <button class="ym-btn ghost" id="leaderboard-close">Fermer</button>
+            </div>
+        </div>
+
         <!-- SALLE D'ATTENTE -->
         <section class="ym-view" id="v-waiting" hidden>
             <p class="ym-field-label">En attente d'au moins deux joueurs</p>
@@ -49,6 +78,7 @@
 
         <!-- PARTIE EN COURS -->
         <section class="ym-view" id="v-game" hidden>
+            <p class="ym-spectator-banner" id="spectatorBanner" hidden>👀 Vous regardez cette partie en spectateur</p>
             <div class="ym-scores-strip" id="scoresStrip"></div>
 
             <div class="ym-sheet">
@@ -74,6 +104,7 @@
 
         <!-- Barre de confirmation avant de noter une catégorie -->
         <div class="ym-confirm-bar" id="confirmBar" hidden>
+            <div class="ym-confirm-dice" id="confirmDice"></div>
             <span class="ym-confirm-text" id="confirmText">—</span>
             <button type="button" class="ym-confirm-cancel" id="confirmCancel">Annuler</button>
             <button type="button" class="ym-confirm-ok" id="confirmOk">Confirmer</button>
@@ -81,6 +112,7 @@
 
         <!-- FIN DE PARTIE -->
         <section class="ym-view" id="v-ended" hidden>
+            <div class="ym-confetti-field" id="ymEndConfetti"></div>
             <p class="ym-end-emoji">🏆</p>
             <h2 class="ym-end-title" id="endTitle">—</h2>
             <div class="ym-end-scores" id="endScores"></div>
@@ -97,6 +129,14 @@
             <p class="ym-celebration-word" id="ymCelebrationWord">YAMS !</p>
             <p class="ym-celebration-who" id="ymCelebrationWho">—</p>
             <p class="ym-celebration-bonus" id="ymCelebrationBonus" hidden>+50 points de bonus !</p>
+        </div>
+    </div>
+
+    <div class="ym-celebration ym-nemesis-screen" id="ymNemesisScreen" aria-hidden="true">
+        <div class="ym-confetti-field" id="ymNemesisConfetti"></div>
+        <div class="ym-celebration-inner">
+            <p class="ym-celebration-word ym-nemesis-word">😈 ENFIN !</p>
+            <p class="ym-celebration-who" id="ymNemesisWho">—</p>
         </div>
     </div>
 

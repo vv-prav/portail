@@ -40,6 +40,10 @@ body.is-ready .mt { display:flex; }
 
 /* Bandeau */
 .mt-strip { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
+.mt-party-link { display:block; text-align:center; padding:11px 14px; border-radius:12px; margin:12px 0 0;
+    background:linear-gradient(135deg,rgba(217,169,78,.16),rgba(217,169,78,.05)); border:1px solid var(--brass);
+    color:var(--brass-soft); text-decoration:none; font-weight:700; font-size:.85rem; }
+.mt-party-link:active { transform:scale(.98); }
 .chip { font-size:.74rem; color:var(--muted); background:rgba(0,0,0,.28); border:1px solid var(--line);
         padding:5px 10px; border-radius:999px; }
 .chip b { color:var(--brass-soft); }
