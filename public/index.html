@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, interactive-widget=resizes-content">
     <meta name="theme-color" content="#14100b">
     <title>Le Salon</title>
     <link rel="manifest" href="/manifest.json">
@@ -80,6 +80,11 @@
                 <h2 class="ov-title" id="prof-name">—</h2>
                 <p class="prof-meta" id="prof-meta">—</p>
                 <div class="avatar-grid" id="avatar-grid" hidden></div>
+                <div class="prof-photo-row">
+                    <button class="btn btn-ghost" id="prof-photo-btn" type="button">📷 Mettre une photo</button>
+                    <button class="btn btn-ghost" id="prof-photo-remove" type="button" hidden>Retirer la photo</button>
+                </div>
+                <input type="file" id="prof-photo-input" accept="image/*" hidden>
                 <div class="prof-games" id="prof-games"></div>
                 <button class="btn btn-ghost" id="prof-code" type="button" data-i="prof_code">Nouveau code de récupération</button>
                 <button class="btn btn-ghost logout" id="btn-logout" type="button" data-i="btn_logout">Se déconnecter</button>
@@ -116,6 +121,8 @@
             <button class="btn btn-ghost" id="f-cancel" type="button" data-i="cancel">Annuler</button>
         </div>
     </div>
+
+    <p class="hub-toast" id="hub-toast" hidden></p>
 
     <script src="/app.js"></script>
 </body>

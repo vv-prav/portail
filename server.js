@@ -873,6 +873,11 @@ app.get('/api/motus/state', requireAuth, (req, res) => {
     const state = !p ? 'neuf' : (p.solved ? 'fini' : (p.gaveUp || (p.guesses || []).length >= MOTUS_TRIES ? 'abandon' : 'encours'));
     res.json({ state, streak: motusStreak(user), nextIn: mfSecondsToMidnight() });
 });
+app.get('/api/motus/mystats', requireAuth, (req, res) => {
+    const user = currentUser(req);
+    const stats = dailyGameStats('motus:prog', user, u => kMotusDays(u), u => motusStreak(u));
+    res.json(stats);
+});
 app.get('/api/motus/archive', requireAuth, (req, res) => {
     const user = currentUser(req), today = mfTodayId();
     const out = [];
@@ -1578,7 +1583,7 @@ app.get('/api/salon/profile', requireAuthApi, (req, res) => {
     let yams = null;
     try { yams = yamsApi.statsFor(pseudo); } catch (e) {}
     res.json({
-        pseudo, avatar: user.avatar || '',
+        pseudo, avatar: user.avatar || '', avatarPhoto: user.avatarPhoto || '',
         created: user.created || 0, prevLogin: user.prevLogin || 0,
         isAdmin: isAdmin(pseudo),
         mf: { solved, best, streak: mfStreak, days: mfDays.size },
@@ -1595,6 +1600,31 @@ app.post('/api/salon/profile', requireAuthApi, (req, res) => {
     user.avatar = av;
     saveUsers();
     res.json({ ok: true, avatar: av });
+});
+app.post('/api/salon/avatar-photo', requireAuthApi, (req, res) => {
+    const user = registeredUsers[currentUser(req)];
+    if (!user) return res.status(404).json({ error: 'Compte introuvable.' });
+    const photo = req.body && req.body.photo;
+    if (photo === null || photo === '') { user.avatarPhoto = ''; saveUsers(); return res.json({ ok: true, photo: '' }); }
+    if (typeof photo !== 'string' || !/^data:image\/(jpeg|png|webp);base64,/.test(photo)) {
+        return res.status(400).json({ error: 'Format d\u2019image invalide.' });
+    }
+    if (photo.length > 350000) return res.status(400).json({ error: 'Image trop volumineuse.' });
+    user.avatarPhoto = photo;
+    saveUsers();
+    res.json({ ok: true, photo });
+});
+// Petit annuaire public (aux joueurs connectés) : donne la photo ou l'emoji de
+// n'importe quel pseudo, pour afficher sa bulle dans n'importe quel jeu sans
+// avoir à faire porter la photo elle-même dans chaque mise à jour de partie.
+app.get('/api/avatars', requireAuthApi, (req, res) => {
+    const list = String(req.query.pseudos || '').split(',').map(s => s.trim()).filter(Boolean).slice(0, 40);
+    const out = {};
+    for (const pseudo of list) {
+        const u = registeredUsers[pseudo];
+        out[pseudo] = u ? { photo: u.avatarPhoto || '', emoji: u.avatar || '' } : { photo: '', emoji: '' };
+    }
+    res.json(out);
 });
 
 // ---------------------------------------------------------------------

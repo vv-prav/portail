@@ -212,7 +212,8 @@ body.is-hub   .hub   { display: block; }
 .hub-me:active { background: rgba(255,255,255,0.05); }
 .me-avatar { flex: 0 0 auto; width: 52px; height: 52px; display: grid; place-items: center; font-size: 1.7rem;
              background: linear-gradient(165deg, var(--ink-3), var(--ink-2)); border: 1.5px solid var(--brass);
-             border-radius: 50%; box-shadow: 0 4px 14px rgba(0,0,0,0.4); }
+             border-radius: 50%; box-shadow: 0 4px 14px rgba(0,0,0,0.4); overflow: hidden; }
+.me-avatar img, .prof-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
 .me-txt { min-width: 0; }
 .hub-me .hub-name { font-size: 1.5rem; }
 .me-chip { flex: 0 0 auto; font-size: 0.8rem; color: var(--muted); background: rgba(0,0,0,0.3);
@@ -229,10 +230,17 @@ body.is-hub   .hub   { display: block; }
 .prof-card { position: relative; text-align: center; }
 .prof-avatar { width: 84px; height: 84px; margin: 4px auto 0; display: grid; place-items: center; font-size: 2.6rem;
                background: linear-gradient(165deg, var(--ink-3), var(--ink-2)); border: 2px solid var(--brass);
-               border-radius: 50%; cursor: pointer; font-family: inherit; box-shadow: 0 6px 20px rgba(0,0,0,0.45); }
+               border-radius: 50%; cursor: pointer; font-family: inherit; box-shadow: 0 6px 20px rgba(0,0,0,0.45); overflow: hidden; }
 .prof-avatar:active { transform: scale(0.95); }
 .prof-avatar-hint { color: var(--muted); font-size: 0.7rem; margin: 8px 0 2px; }
 .prof-card .ov-title { margin: 6px 0 4px; }
+.prof-photo-row { display: flex; gap: 8px; margin: 4px 0 6px; }
+.prof-photo-row .btn { flex: 1; padding: 10px 8px; font-size: 0.78rem; }
+.hub-toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+    background: var(--ink-3); border: 1px solid var(--brass); color: var(--parchment); font-size: 0.85rem;
+    padding: 12px 18px; border-radius: 999px; z-index: 400; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    max-width: 90vw; text-align: center; }
+.hub-toast[hidden] { display: none; }
 .prof-meta { color: var(--muted); font-size: 0.78rem; margin: 0 0 14px; line-height: 1.4; }
 .avatar-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; margin: 0 0 14px; }
 .avatar-grid[hidden] { display: none; }

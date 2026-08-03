@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
     <title>Perudo Online 🏴‍☠️</title>
     <link rel="stylesheet" href="style.css">
 
@@ -75,12 +75,15 @@
     </div>
 
     <div id="settings-modal" class="cr-modal" style="display:none;">
-        <div class="settings-box">
+        <div class="settings-box settings-box-sticky">
             <div class="settings-head">
                 <div class="settings-title">⚙️ Réglages</div>
                 <button class="settings-close" onclick="closeSettings()" aria-label="Fermer">✕</button>
             </div>
             <div id="settings-body" class="settings-body"></div>
+            <div class="settings-footer">
+                <button class="cr-btn primary" onclick="closeSettings()">Fermer</button>
+            </div>
         </div>
     </div>
 
@@ -96,7 +99,8 @@
     </div>
 
     <div id="tourney-create-modal" class="cr-modal" style="display:none;">
-        <div class="tc-box">
+        <div class="tc-box tc-box-sticky">
+            <div class="tc-scroll">
             <div class="tc-title">Nouveau tournoi</div>
             <input id="tc-name" class="tc-input" maxlength="30" placeholder="Nom du tournoi">
 
@@ -127,6 +131,7 @@
             <div class="tc-switch-row">
                 <div><div class="tc-switch-label">Petite finale</div><div class="tc-hint">match pour la 3<sup>e</sup> place</div></div>
                 <button type="button" id="tc-third" class="set-switch on" onclick="this.classList.toggle('on')" aria-label="Petite finale"><span></span></button>
+            </div>
             </div>
 
             <div class="tc-actions">

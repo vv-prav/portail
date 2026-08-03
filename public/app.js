@@ -340,7 +340,7 @@ async function loadMiniProfile() {
     const { ok, data } = await api('/api/salon/profile');
     if (!ok) return;
     myProfile = data;
-    if (data.avatar) $('me-avatar').textContent = data.avatar;
+    setAvatarBubble($('me-avatar'), data.avatarPhoto, data.avatar);
 }
 function mmss(s) { return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 
@@ -391,12 +391,13 @@ function buildGameCards(p) {
 function openProfile() {
     if (!myProfile) return;
     const p = myProfile;
-    $('prof-avatar').textContent = p.avatar || '✦';
+    setAvatarBubble($('prof-avatar'), p.avatarPhoto, p.avatar);
     $('prof-name').textContent = p.pseudo;
     const created = p.created ? new Date(p.created).toLocaleDateString(LANG === 'en' ? 'en-GB' : (LANG === 'es' ? 'es-ES' : 'fr-FR'), { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
     const prev = p.prevLogin ? new Date(p.prevLogin).toLocaleDateString(LANG === 'en' ? 'en-GB' : (LANG === 'es' ? 'es-ES' : 'fr-FR'), { day: 'numeric', month: 'short' }) : null;
     $('prof-meta').textContent = t('prof_member') + ' ' + created + (prev ? ' · ' + t('prof_lastvisit') + ' ' + prev : '');
     $('prof-games').innerHTML = buildGameCards(p);
+    $('prof-photo-remove').hidden = !p.avatarPhoto;
     // grille d'avatars
     $('avatar-grid').innerHTML = (p.avatars || []).map(a =>
         `<button type="button" class="av${a === p.avatar ? ' on' : ''}" data-av="${a}">${a}</button>`).join('');
@@ -404,8 +405,8 @@ function openProfile() {
         const { ok } = await api('/api/salon/profile', { avatar: b.dataset.av });
         if (!ok) return;
         myProfile.avatar = b.dataset.av;
-        $('me-avatar').textContent = b.dataset.av;
-        $('prof-avatar').textContent = b.dataset.av;
+        setAvatarBubble($('me-avatar'), myProfile.avatarPhoto, b.dataset.av);
+        setAvatarBubble($('prof-avatar'), myProfile.avatarPhoto, b.dataset.av);
         $('avatar-grid').querySelectorAll('.av').forEach(x => x.classList.toggle('on', x === b));
     }));
     $('avatar-grid').hidden = true;
@@ -414,6 +415,67 @@ function openProfile() {
 $('hub-me').addEventListener('click', openProfile);
 $('prof-close').addEventListener('click', () => { $('ov-profile').hidden = true; });
 $('prof-avatar').addEventListener('click', () => { $('avatar-grid').hidden = !$('avatar-grid').hidden; });
+
+// ---------- Photo de profil : redimensionnée et compressée avant envoi ----------
+function toast(msg) {
+    const el = $('hub-toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.hidden = false;
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.hidden = true; }, 2600);
+}
+function setAvatarBubble(el, photo, emoji) {
+    if (!el) return;
+    el.innerHTML = photo ? `<img src="${photo}" alt="">` : esc(emoji || '✦');
+    el.classList.toggle('has-photo', !!photo);
+}
+function resizePhotoToDataUrl(file) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('lecture'));
+        reader.onload = () => {
+            img.onerror = () => reject(new Error('image'));
+            img.onload = () => {
+                const size = 160;
+                const canvas = document.createElement('canvas');
+                canvas.width = size; canvas.height = size;
+                const ctx = canvas.getContext('2d');
+                // Recadrage carré centré, quelle que soit l'orientation de la photo d'origine.
+                const side = Math.min(img.width, img.height);
+                const sx = (img.width - side) / 2, sy = (img.height - side) / 2;
+                ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+                resolve(canvas.toDataURL('image/jpeg', 0.78));
+            };
+            img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+$('prof-photo-btn').addEventListener('click', () => $('prof-photo-input').click());
+$('prof-photo-input').addEventListener('change', async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { toast(t('err_generic')); return; }
+    let dataUrl;
+    try { dataUrl = await resizePhotoToDataUrl(file); } catch (err) { toast(t('err_generic')); return; }
+    const { ok, data } = await api('/api/salon/avatar-photo', { photo: dataUrl });
+    if (!ok) { toast((data && data.error) || t('err_generic')); return; }
+    myProfile.avatarPhoto = data.photo;
+    setAvatarBubble($('me-avatar'), data.photo, myProfile.avatar);
+    setAvatarBubble($('prof-avatar'), data.photo, myProfile.avatar);
+    $('prof-photo-remove').hidden = false;
+});
+$('prof-photo-remove').addEventListener('click', async () => {
+    const { ok } = await api('/api/salon/avatar-photo', { photo: '' });
+    if (!ok) return;
+    myProfile.avatarPhoto = '';
+    setAvatarBubble($('me-avatar'), '', myProfile.avatar);
+    setAvatarBubble($('prof-avatar'), '', myProfile.avatar);
+    $('prof-photo-remove').hidden = true;
+});
 $('prof-code').addEventListener('click', async () => {
     const { ok, data } = await api('/api/new-code', {});
     if (ok && data.recoveryCode) { $('ov-profile').hidden = true; showCode(data.recoveryCode, null); }
