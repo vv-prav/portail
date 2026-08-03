@@ -1156,24 +1156,6 @@ function pollGameHistory() {
 setInterval(pollGameHistory, 20 * 1000);
 
 // ---------------------------------------------------------------------
-//  PURPLE — tirage de carte aléatoire, purement statique (aucun état
-//  serveur : c'est la personne qui tient le téléphone qui tire).
-// ---------------------------------------------------------------------
-app.use('/purple', requireAuth, express.static(__dirname + '/public/purple'));
-
-// ---------------------------------------------------------------------
-//  AUTOROUTE — jeu de cartes local, purement statique (même principe que
-//  Rouge ou Noir : pas d'état serveur, la personne au téléphone joue).
-// ---------------------------------------------------------------------
-app.use('/autoroute', requireAuth, express.static(__dirname + '/public/autoroute'));
-
-// ---------------------------------------------------------------------
-//  ROI DES CONS — jeu de cartes local, purement statique (même principe
-//  que les autres jeux d'alcool : aucun état serveur).
-// ---------------------------------------------------------------------
-app.use('/roidescons', requireAuth, express.static(__dirname + '/public/roidescons'));
-
-// ---------------------------------------------------------------------
 //  CHANCE — dé, carte ou pièce pour trancher au hasard, purement statique.
 // ---------------------------------------------------------------------
 app.use('/chance', requireAuth, express.static(__dirname + '/public/chance'));

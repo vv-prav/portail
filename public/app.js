@@ -125,11 +125,7 @@ const GAME_APPS = [
     { id: 'yams',     name: 'Yams',         dKey: 'app_yams_d',     emoji: '🎯', href: '/yams',         accent: '#ecca82', status: 'open' },
 ];
 const DRINK_APPS = [
-    { id: 'purple',     name: 'Purple',        dKey: 'app_rn_d',   emoji: '🃏', href: '/purple',    accent: '#9b6fc7', status: 'open' },
-    { id: 'autoroute',  name: 'Autoroute',     dKey: 'app_auto_d', emoji: '🛣️', href: '/autoroute', accent: '#b7454a', status: 'open' },
-    { id: 'roidescons', name: 'Roi des Cons',  dKey: 'app_roi_d',  emoji: '👑', href: '/roidescons', accent: '#a8563d', status: 'open' },
     { id: 'chance',     name: 'Chance',        dKey: 'app_ch_d',   emoji: '🎲', href: '/chance',     accent: '#c9a24a', status: 'open' },
-    { id: 'lebus',      name: 'Le Bus',        dKey: 'app_bus_d',  emoji: '🚌', href: '/lebus',      accent: '#b7454a', status: 'soon' },
 ];
 const OTHER_APPS = [
     { id: 'recettes', name: 'Recettes',     dKey: 'app_recettes_d', emoji: '🍽️', href: '/recettes',    accent: '#e07a4e', status: 'open' },
