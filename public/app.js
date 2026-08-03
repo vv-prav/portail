@@ -342,81 +342,7 @@ async function loadMiniProfile() {
     myProfile = data;
     setAvatarBubble($('me-avatar'), data.avatarPhoto, data.avatar);
 }
-function mmss(s) { return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
-
-// Une carte par jeu : nom + couleur d'accent + petites stats claires. Cache proprement
-// les jeux jamais joués (au lieu d'afficher des zéros), et signale les jeux sans suivi.
-function gameCard(emoji, name, accent, streak, stats, note) {
-    const streakBadge = streak ? `<span class="pg-streak">🔥 ${streak}</span>` : '';
-    const body = stats && stats.length
-        ? `<div class="pg-grid${stats.length <= 2 ? ' cols2' : ''}">${stats.map(([v, l]) => `<div class="pg-stat"><b>${v}</b><em>${l}</em></div>`).join('')}</div>`
-        : `<p class="pg-empty">${t('prof_none')}</p>`;
-    return `<div class="prof-game" style="--acc:${accent}">
-        <div class="pg-head"><span class="pg-emoji">${emoji}</span><span class="pg-name">${esc(name)}</span>${streakBadge}</div>
-        ${body}${note ? `<p class="pg-soon">${note}</p>` : ''}
-    </div>`;
-}
-function buildGameCards(p) {
-    const cards = [];
-    // Perudo
-    cards.push(gameCard('🎲', 'Perudo', '#d9a94e', p.perudo ? p.perudo.currentStreak : 0, p.perudo ? [
-        [p.perudo.wins, t('st_wins')], [p.perudo.played, t('st_played')], [p.perudo.rankPoints, t('st_points')],
-    ] : null));
-    // Mots fléchés
-    cards.push(gameCard('🧩', 'Mots Fléchés', '#5aa87a', p.mf.streak, p.mf.solved ? [
-        [p.mf.solved, t('st_solved')], [p.mf.best ? mmss(p.mf.best) : '—', t('st_best')], [p.mf.days, t('st_days')],
-    ] : null));
-    // Motus
-    cards.push(gameCard('🟨', 'Motus', '#c9a24a', p.motus && p.motus.streak, p.motus && p.motus.solved ? [
-        [p.motus.solved, t('st_solved')], [p.motus.bestTries ?? '—', t('st_best_tries')],
-        [p.motus.avgTries ?? '—', t('st_avg_tries')], [p.motus.days, t('st_days')],
-    ] : null));
-    // Le Mot Juste
-    cards.push(gameCard('🧊', 'Le Mot Juste', '#6fb8d9', p.motjuste && p.motjuste.streak, p.motjuste && p.motjuste.solved ? [
-        [p.motjuste.solved, t('st_solved')], [p.motjuste.bestTries ?? '—', t('st_best_tries')],
-        [p.motjuste.avgTries ?? '—', t('st_avg_tries')], [p.motjuste.days, t('st_days')],
-    ] : null));
-    // Petit Bac / Infiltré : pas encore de suivi persistant — on le dit clairement plutôt que de rien afficher.
-    cards.push(gameCard('✏️', 'Petit Bac', '#c2513a', 0, null, t('prof_soon')));
-    cards.push(gameCard('🕵️', 'Infiltré', '#6f7bb0', 0, null, t('prof_soon')));
-    // Yams
-    const y = p.yams;
-    const yamsNote = y && y.nemesis ? `Bête noire : ${esc(y.nemesis.pseudo)} vous a battu ${y.nemesis.losses} fois` : null;
-    cards.push(gameCard('🎯', 'Yams', '#ecca82', 0, y && y.gamesPlayed ? [
-        [y.gamesWon, 'victoires'], [y.gamesPlayed, 'parties'], [y.totalYams, 'Yams'], [y.bestScore, 'meilleur score'],
-    ] : null, yamsNote));
-    return cards.join('');
-}
-
-function openProfile() {
-    if (!myProfile) return;
-    const p = myProfile;
-    setAvatarBubble($('prof-avatar'), p.avatarPhoto, p.avatar);
-    $('prof-name').textContent = p.pseudo;
-    const created = p.created ? new Date(p.created).toLocaleDateString(LANG === 'en' ? 'en-GB' : (LANG === 'es' ? 'es-ES' : 'fr-FR'), { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
-    const prev = p.prevLogin ? new Date(p.prevLogin).toLocaleDateString(LANG === 'en' ? 'en-GB' : (LANG === 'es' ? 'es-ES' : 'fr-FR'), { day: 'numeric', month: 'short' }) : null;
-    $('prof-meta').textContent = t('prof_member') + ' ' + created + (prev ? ' · ' + t('prof_lastvisit') + ' ' + prev : '');
-    $('prof-games').innerHTML = buildGameCards(p);
-    $('prof-photo-remove').hidden = !p.avatarPhoto;
-    // grille d'avatars
-    $('avatar-grid').innerHTML = (p.avatars || []).map(a =>
-        `<button type="button" class="av${a === p.avatar ? ' on' : ''}" data-av="${a}">${a}</button>`).join('');
-    $('avatar-grid').querySelectorAll('.av').forEach(b => b.addEventListener('click', async () => {
-        const { ok } = await api('/api/salon/profile', { avatar: b.dataset.av });
-        if (!ok) return;
-        myProfile.avatar = b.dataset.av;
-        setAvatarBubble($('me-avatar'), myProfile.avatarPhoto, b.dataset.av);
-        setAvatarBubble($('prof-avatar'), myProfile.avatarPhoto, b.dataset.av);
-        $('avatar-grid').querySelectorAll('.av').forEach(x => x.classList.toggle('on', x === b));
-    }));
-    $('avatar-grid').hidden = true;
-    $('ov-profile').hidden = false;
-}
-$('hub-me').addEventListener('click', openProfile);
-$('prof-close').addEventListener('click', () => { $('ov-profile').hidden = true; });
-$('prof-avatar').addEventListener('click', () => { $('avatar-grid').hidden = !$('avatar-grid').hidden; });
-
-// ---------- Photo de profil : redimensionnée et compressée avant envoi ----------
+// Petite bulle d'avatar (photo ou emoji), utilisée dans l'en-tête du salon.
 function toast(msg) {
     const el = $('hub-toast');
     if (!el) return;
@@ -430,60 +356,6 @@ function setAvatarBubble(el, photo, emoji) {
     el.innerHTML = photo ? `<img src="${photo}" alt="">` : esc(emoji || '✦');
     el.classList.toggle('has-photo', !!photo);
 }
-function resizePhotoToDataUrl(file) {
-    return new Promise((resolve, reject) => {
-        const img = new Image();
-        const reader = new FileReader();
-        reader.onerror = () => reject(new Error('lecture'));
-        reader.onload = () => {
-            img.onerror = () => reject(new Error('image'));
-            img.onload = () => {
-                const size = 160;
-                const canvas = document.createElement('canvas');
-                canvas.width = size; canvas.height = size;
-                const ctx = canvas.getContext('2d');
-                // Recadrage carré centré, quelle que soit l'orientation de la photo d'origine.
-                const side = Math.min(img.width, img.height);
-                const sx = (img.width - side) / 2, sy = (img.height - side) / 2;
-                ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
-                resolve(canvas.toDataURL('image/jpeg', 0.78));
-            };
-            img.src = reader.result;
-        };
-        reader.readAsDataURL(file);
-    });
-}
-$('prof-photo-btn').addEventListener('click', () => $('prof-photo-input').click());
-$('prof-photo-input').addEventListener('change', async (e) => {
-    const file = e.target.files && e.target.files[0];
-    e.target.value = '';
-    if (!file) return;
-    if (!file.type.startsWith('image/')) { toast(t('err_generic')); return; }
-    let dataUrl;
-    try { dataUrl = await resizePhotoToDataUrl(file); } catch (err) { toast(t('err_generic')); return; }
-    const { ok, data } = await api('/api/salon/avatar-photo', { photo: dataUrl });
-    if (!ok) { toast((data && data.error) || t('err_generic')); return; }
-    myProfile.avatarPhoto = data.photo;
-    setAvatarBubble($('me-avatar'), data.photo, myProfile.avatar);
-    setAvatarBubble($('prof-avatar'), data.photo, myProfile.avatar);
-    $('prof-photo-remove').hidden = false;
-});
-$('prof-photo-remove').addEventListener('click', async () => {
-    const { ok } = await api('/api/salon/avatar-photo', { photo: '' });
-    if (!ok) return;
-    myProfile.avatarPhoto = '';
-    setAvatarBubble($('me-avatar'), '', myProfile.avatar);
-    setAvatarBubble($('prof-avatar'), '', myProfile.avatar);
-    $('prof-photo-remove').hidden = true;
-});
-$('prof-code').addEventListener('click', async () => {
-    const { ok, data } = await api('/api/new-code', {});
-    if (ok && data.recoveryCode) { $('ov-profile').hidden = true; showCode(data.recoveryCode, null); }
-});
-$('btn-logout').addEventListener('click', async () => {
-    await api('/api/logout', {});
-    location.reload();
-});
 
 // ---------- Connexion / inscription ----------
 function setError(msg) { $('entry-error').textContent = msg || ''; }

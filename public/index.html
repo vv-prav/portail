@@ -39,13 +39,13 @@
     <main class="hub" id="hub">
         <div class="hub-inner">
             <header class="hub-head">
-                <button class="hub-me" id="hub-me" type="button" aria-label="Profil">
+                <a class="hub-me" id="hub-me" href="/profil/" aria-label="Profil">
                     <span class="me-avatar" id="me-avatar">✦</span>
                     <span class="me-txt">
                         <span class="hub-eyebrow" data-i="hub_welcome">Bienvenue</span>
                         <span class="hub-name" id="hub-name">—</span>
                     </span>
-                </button>
+                </a>
                 <span class="me-chip" id="me-streak" hidden>🔥 <b>0</b></span>
             </header>
 
@@ -70,30 +70,6 @@
             <p class="hub-foot" data-i="hub_foot">D'autres pièces ouvriront bientôt.</p>
         </div>
     </main>
-
-    <!-- PROFIL -->
-    <div class="ov" id="ov-profile" hidden>
-        <div class="ov-card prof-card ov-card-sticky">
-            <div class="ov-scroll">
-                <button class="prof-avatar" id="prof-avatar" type="button" aria-label="Changer d'avatar">✦</button>
-                <p class="prof-avatar-hint" data-i="prof_tap">Touche l'avatar pour le changer</p>
-                <h2 class="ov-title" id="prof-name">—</h2>
-                <p class="prof-meta" id="prof-meta">—</p>
-                <div class="avatar-grid" id="avatar-grid" hidden></div>
-                <div class="prof-photo-row">
-                    <button class="btn btn-ghost" id="prof-photo-btn" type="button">📷 Mettre une photo</button>
-                    <button class="btn btn-ghost" id="prof-photo-remove" type="button" hidden>Retirer la photo</button>
-                </div>
-                <input type="file" id="prof-photo-input" accept="image/*" hidden>
-                <div class="prof-games" id="prof-games"></div>
-                <button class="btn btn-ghost" id="prof-code" type="button" data-i="prof_code">Nouveau code de récupération</button>
-                <button class="btn btn-ghost logout" id="btn-logout" type="button" data-i="btn_logout">Se déconnecter</button>
-            </div>
-            <div class="ov-footer">
-                <button class="btn" id="prof-close" type="button">Fermer</button>
-            </div>
-        </div>
-    </div>
 
     <!-- Code de récupération -->
     <div class="ov" id="ov-code" hidden>

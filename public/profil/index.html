@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, interactive-widget=resizes-content">
+    <meta name="theme-color" content="#14100b">
+    <title>Mon profil</title>
+    <link rel="icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <a class="pr-back" href="/" aria-label="Retour au salon">←</a>
+
+    <div class="pr-wrap">
+        <!-- EN-TÊTE -->
+        <header class="pr-hero">
+            <button class="pr-avatar" id="pr-avatar" type="button" aria-label="Changer d'avatar">✦</button>
+            <p class="pr-avatar-hint">Touchez l'avatar pour le changer</p>
+            <h1 class="pr-name" id="pr-name">—</h1>
+            <p class="pr-meta" id="pr-meta">—</p>
+        </header>
+
+        <!-- ACTIONS -->
+        <section class="pr-section">
+            <h2 class="pr-section-title">Mon compte</h2>
+            <div class="pr-actions">
+                <button type="button" class="pr-action" id="act-rename">
+                    <span class="pr-action-ico">✏️</span>
+                    <span class="pr-action-body"><b>Changer de pseudo</b><em>Votre nom affiché partout dans le salon</em></span>
+                    <span class="pr-action-go">›</span>
+                </button>
+                <button type="button" class="pr-action" id="act-password">
+                    <span class="pr-action-ico">🔒</span>
+                    <span class="pr-action-body"><b>Changer de mot de passe</b><em>À faire de temps en temps, c'est plus sûr</em></span>
+                    <span class="pr-action-go">›</span>
+                </button>
+                <button type="button" class="pr-action" id="act-recovery">
+                    <span class="pr-action-ico">🔑</span>
+                    <span class="pr-action-body"><b>Nouveau code de récupération</b><em>Pour retrouver votre compte en cas d'oubli</em></span>
+                    <span class="pr-action-go">›</span>
+                </button>
+                <button type="button" class="pr-action danger" id="act-logout">
+                    <span class="pr-action-ico">🚪</span>
+                    <span class="pr-action-body"><b>Se déconnecter</b><em>Il faudra vous reconnecter la prochaine fois</em></span>
+                    <span class="pr-action-go">›</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- STATISTIQUES -->
+        <section class="pr-section">
+            <h2 class="pr-section-title">Mes statistiques</h2>
+            <div class="pr-games" id="pr-games"></div>
+        </section>
+    </div>
+
+    <!-- CHANGER D'AVATAR -->
+    <div class="pr-overlay" id="ov-avatar" hidden>
+        <div class="pr-panel">
+            <h2 class="pr-panel-title">Changer d'avatar</h2>
+            <div class="pr-photo-row">
+                <button class="pr-btn ghost" id="photo-btn">📷 Mettre une photo</button>
+                <button class="pr-btn ghost" id="photo-remove" hidden>Retirer la photo</button>
+            </div>
+            <input type="file" id="photo-input" accept="image/*" hidden>
+            <p class="pr-panel-hint">Ou choisissez un symbole</p>
+            <div class="pr-emoji-grid" id="emoji-grid"></div>
+            <button class="pr-btn ghost" id="avatar-close">Fermer</button>
+        </div>
+    </div>
+
+    <!-- CHANGER DE PSEUDO -->
+    <div class="pr-overlay" id="ov-rename" hidden>
+        <div class="pr-panel">
+            <h2 class="pr-panel-title">Changer de pseudo</h2>
+            <p class="pr-panel-hint">Les statistiques déjà accumulées dans les jeux restent sous votre pseudo actuel — c'est un peu comme repartir de zéro pour ces compteurs-là.</p>
+            <input type="text" id="rename-pseudo" class="pr-input" placeholder="Nouveau pseudo" maxlength="20" autocomplete="off">
+            <input type="password" id="rename-password" class="pr-input" placeholder="Votre mot de passe actuel" autocomplete="current-password">
+            <p class="pr-panel-error" id="rename-error" hidden></p>
+            <button class="pr-btn" id="rename-submit">Valider</button>
+            <button class="pr-btn ghost" id="rename-close">Annuler</button>
+        </div>
+    </div>
+
+    <!-- CHANGER DE MOT DE PASSE -->
+    <div class="pr-overlay" id="ov-password" hidden>
+        <div class="pr-panel">
+            <h2 class="pr-panel-title">Changer de mot de passe</h2>
+            <input type="password" id="pwd-current" class="pr-input" placeholder="Mot de passe actuel" autocomplete="current-password">
+            <input type="password" id="pwd-next" class="pr-input" placeholder="Nouveau mot de passe (6 caractères min.)" autocomplete="new-password">
+            <p class="pr-panel-error" id="pwd-error" hidden></p>
+            <button class="pr-btn" id="pwd-submit">Valider</button>
+            <button class="pr-btn ghost" id="pwd-close">Annuler</button>
+        </div>
+    </div>
+
+    <!-- NOUVEAU CODE DE RÉCUPÉRATION -->
+    <div class="pr-overlay" id="ov-recovery" hidden>
+        <div class="pr-panel">
+            <h2 class="pr-panel-title">Votre nouveau code</h2>
+            <p class="pr-panel-hint">Notez-le quelque part sûr, il ne sera plus jamais réaffiché.</p>
+            <p class="pr-recovery-code" id="recovery-code">—</p>
+            <button class="pr-btn" id="recovery-close">J'ai bien noté</button>
+        </div>
+    </div>
+
+    <p class="pr-toast" id="pr-toast" hidden></p>
+
+    <script src="app.js"></script>
+</body>
+</html>

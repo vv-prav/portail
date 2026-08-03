@@ -771,6 +771,7 @@ function motusDefFor(word) {
 }
 
 app.use('/motus', requireAuth, express.static(__dirname + '/public/motus'));
+app.use('/profil', requireAuth, express.static(__dirname + '/public/profil'));
 const motusPartyApi = require('./motusparty/game')(app, io, {
     motusPool, motusKnown, motusMarks, motusDef: motusDefFor,
     get: mfGet, set: mfSet,
@@ -1582,12 +1583,14 @@ app.get('/api/salon/profile', requireAuthApi, (req, res) => {
     // stats yams
     let yams = null;
     try { yams = yamsApi.statsFor(pseudo); } catch (e) {}
+    let motusparty = null;
+    try { motusparty = motusPartyApi.statsFor(pseudo); } catch (e) {}
     res.json({
         pseudo, avatar: user.avatar || '', avatarPhoto: user.avatarPhoto || '',
         created: user.created || 0, prevLogin: user.prevLogin || 0,
         isAdmin: isAdmin(pseudo),
         mf: { solved, best, streak: mfStreak, days: mfDays.size },
-        perudo, motus, motjuste, yams,
+        perudo, motus, motjuste, yams, motusparty,
         avatars: SALON_AVATARS,
     });
 });
@@ -1625,6 +1628,42 @@ app.get('/api/avatars', requireAuthApi, (req, res) => {
         out[pseudo] = u ? { photo: u.avatarPhoto || '', emoji: u.avatar || '' } : { photo: '', emoji: '' };
     }
     res.json(out);
+});
+
+// Changer de pseudo : déplace le compte vers la nouvelle clé et réémet une
+// session à jour. Honnêteté nécessaire : les statistiques déjà accumulées
+// dans les différents jeux (Motus, Yams, Petit Bac...) restent rangées sous
+// l'ancien nom, comme un nouveau départ pour ces compteurs-là — les migrer
+// toutes sans risque demanderait de toucher trop de systèmes différents
+// pour le faire correctement dans l'immédiat.
+app.post('/api/account/rename', requireAuthApi, (req, res) => {
+    const oldPseudo = currentUser(req);
+    const user = registeredUsers[oldPseudo];
+    if (!user) return res.status(404).json({ error: 'Compte introuvable.' });
+    const newPseudo = String((req.body && req.body.pseudo) || '').trim();
+    if (!PSEUDO_REGEX.test(newPseudo)) return res.status(400).json({ error: 'Nom invalide (3 à 20 caractères).' });
+    if (newPseudo === oldPseudo) return res.status(400).json({ error: 'C\u2019est déjà votre pseudo.' });
+    if (registeredUsers[newPseudo]) return res.status(409).json({ error: 'Ce nom est déjà pris.' });
+    const password = String((req.body && req.body.password) || '');
+    if (!verifyPassword(password, user.passwordHash)) return res.status(401).json({ error: 'Mot de passe incorrect.' });
+    delete registeredUsers[oldPseudo];
+    user.pseudo = newPseudo;
+    registeredUsers[newPseudo] = user;
+    saveUsers(true);
+    setSessionCookie(res, newPseudo);
+    res.json({ ok: true, pseudo: newPseudo });
+});
+
+app.post('/api/account/change-password', requireAuthApi, (req, res) => {
+    const user = registeredUsers[currentUser(req)];
+    if (!user) return res.status(404).json({ error: 'Compte introuvable.' });
+    const current = String((req.body && req.body.current) || '');
+    const next = String((req.body && req.body.next) || '');
+    if (!verifyPassword(current, user.passwordHash)) return res.status(401).json({ error: 'Mot de passe actuel incorrect.' });
+    if (next.length < MIN_PASSWORD) return res.status(400).json({ error: `Mot de passe trop court (${MIN_PASSWORD} caractères minimum).` });
+    user.passwordHash = hashPassword(next);
+    saveUsers(true);
+    res.json({ ok: true });
 });
 
 // ---------------------------------------------------------------------
