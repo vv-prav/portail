@@ -25,7 +25,7 @@ function setAvatarBubble(el, photo, emoji) {
     el.innerHTML = photo ? `<img src="${photo}" alt="">` : esc(emoji || '✦');
 }
 
-// ---------- Cartes de statistiques par jeu ----------
+// ---------- Cartes de statistiques par jeu, présentées en onglets ----------
 function gameCard(emoji, name, accent, streak, stats, note) {
     const streakBadge = streak ? `<span class="pg-streak">🔥 ${streak}</span>` : '';
     const body = stats && stats.length
@@ -38,34 +38,65 @@ function gameCard(emoji, name, accent, streak, stats, note) {
 }
 function mmss(s) { return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 function buildGameCards(p) {
-    const cards = [];
-    cards.push(gameCard('🎲', 'Perudo', '#d9a94e', p.perudo ? p.perudo.currentStreak : 0, p.perudo ? [
-        [p.perudo.wins, 'victoires'], [p.perudo.played, 'parties'], [p.perudo.rankPoints, 'points'],
-    ] : null));
-    cards.push(gameCard('🧩', 'Mots Fléchés', '#5aa87a', p.mf.streak, p.mf.solved ? [
-        [p.mf.solved, 'résolues'], [p.mf.best ? mmss(p.mf.best) : '—', 'meilleur temps'], [p.mf.days, 'jours'],
-    ] : null));
-    cards.push(gameCard('🟨', 'Motus', '#c9a24a', p.motus && p.motus.streak, p.motus && p.motus.solved ? [
-        [p.motus.solved, 'résolues'], [p.motus.bestTries ?? '—', 'meilleurs essais'],
-        [p.motus.avgTries ?? '—', 'essais moyens'], [p.motus.days, 'jours'],
-    ] : null));
-    cards.push(gameCard('🧊', 'Le Mot Juste', '#6fb8d9', p.motjuste && p.motjuste.streak, p.motjuste && p.motjuste.solved ? [
-        [p.motjuste.solved, 'résolues'], [p.motjuste.bestTries ?? '—', 'meilleurs essais'],
-        [p.motjuste.avgTries ?? '—', 'essais moyens'], [p.motjuste.days, 'jours'],
-    ] : null));
+    const games = [];
+    games.push({ id: 'Perudo', emoji: '🎲', volume: p.perudo ? p.perudo.played : 0,
+        html: gameCard('🎲', 'Perudo', '#d9a94e', p.perudo ? p.perudo.currentStreak : 0, p.perudo ? [
+            [p.perudo.wins, 'victoires'], [p.perudo.played, 'parties'], [p.perudo.rankPoints, 'points'],
+        ] : null) });
+    games.push({ id: 'Mots Fléchés', emoji: '🧩', volume: p.mf.solved || 0,
+        html: gameCard('🧩', 'Mots Fléchés', '#5aa87a', p.mf.streak, p.mf.solved ? [
+            [p.mf.solved, 'résolues'], [p.mf.best ? mmss(p.mf.best) : '—', 'meilleur temps'], [p.mf.days, 'jours'],
+        ] : null) });
+    games.push({ id: 'Motus', emoji: '🟨', volume: p.motus ? p.motus.solved || 0 : 0,
+        html: gameCard('🟨', 'Motus', '#c9a24a', p.motus && p.motus.streak, p.motus && p.motus.solved ? [
+            [p.motus.solved, 'résolues'], [p.motus.bestTries ?? '—', 'meilleurs essais'],
+            [p.motus.avgTries ?? '—', 'essais moyens'], [p.motus.days, 'jours'],
+        ] : null) });
+    games.push({ id: 'Le Mot Juste', emoji: '🧊', volume: p.motjuste ? p.motjuste.solved || 0 : 0,
+        html: gameCard('🧊', 'Le Mot Juste', '#6fb8d9', p.motjuste && p.motjuste.streak, p.motjuste && p.motjuste.solved ? [
+            [p.motjuste.solved, 'résolues'], [p.motjuste.bestTries ?? '—', 'meilleurs essais'],
+            [p.motjuste.avgTries ?? '—', 'essais moyens'], [p.motjuste.days, 'jours'],
+        ] : null) });
     const mp = p.motusparty;
-    cards.push(gameCard('🏁', 'Motus Party', '#d9a94e', 0, mp && mp.matchesPlayed ? [
-        [mp.matchesWon, 'courses gagnées'], [mp.matchesPlayed, 'courses jouées'],
-        [mp.wordsFound, 'mots trouvés'], [mp.bestRank ? (mp.bestRank === 1 ? '🥇' : mp.bestRank === 2 ? '🥈' : mp.bestRank === 3 ? '🥉' : mp.bestRank + 'e') : '—', 'meilleur classement'],
-    ] : null));
-    cards.push(gameCard('✏️', 'Petit Bac', '#c2513a', 0, null, 'Suivi des statistiques à venir'));
-    cards.push(gameCard('🕵️', 'Infiltré', '#6f7bb0', 0, null, 'Suivi des statistiques à venir'));
+    games.push({ id: 'Motus Party', emoji: '🏁', volume: mp ? mp.matchesPlayed || 0 : 0,
+        html: gameCard('🏁', 'Motus Party', '#d9a94e', 0, mp && mp.matchesPlayed ? [
+            [mp.matchesWon, 'courses gagnées'], [mp.matchesPlayed, 'courses jouées'],
+            [mp.wordsFound, 'mots trouvés'], [mp.bestRank ? (mp.bestRank === 1 ? '🥇' : mp.bestRank === 2 ? '🥈' : mp.bestRank === 3 ? '🥉' : mp.bestRank + 'e') : '—', 'meilleur classement'],
+        ] : null) });
+    games.push({ id: 'Petit Bac', emoji: '✏️', volume: 0,
+        html: gameCard('✏️', 'Petit Bac', '#c2513a', 0, null, 'Suivi des statistiques à venir') });
+    games.push({ id: 'Infiltré', emoji: '🕵️', volume: 0,
+        html: gameCard('🕵️', 'Infiltré', '#6f7bb0', 0, null, 'Suivi des statistiques à venir') });
     const y = p.yams;
     const yamsNote = y && y.nemesis ? `Bête noire : ${esc(y.nemesis.pseudo)} vous a battu ${y.nemesis.losses} fois` : null;
-    cards.push(gameCard('🎯', 'Yams', '#ecca82', 0, y && y.gamesPlayed ? [
-        [y.gamesWon, 'victoires'], [y.gamesPlayed, 'parties'], [y.totalYams, 'Yams'], [y.bestScore, 'meilleur score'],
-    ] : null, yamsNote));
-    return cards.join('');
+    games.push({ id: 'Yams', emoji: '🎯', volume: y ? y.gamesPlayed || 0 : 0,
+        html: gameCard('🎯', 'Yams', '#ecca82', 0, y && y.gamesPlayed ? [
+            [y.gamesWon, 'victoires'], [y.gamesPlayed, 'parties'], [y.totalYams, 'Yams'], [y.bestScore, 'meilleur score'],
+        ] : null, yamsNote) });
+    return games;
+}
+let allGames = [], activeGameTab = null, favoriteGameName = null;
+function renderTabs() {
+    $('pr-tabs').innerHTML = allGames.map(g => `
+        <button type="button" class="pr-tab${g.id === activeGameTab ? ' active' : ''}${g.id === favoriteGameName ? ' fav' : ''}" data-g="${esc(g.id)}">
+            ${g.emoji} ${esc(g.id)}${g.id === favoriteGameName ? ' ⭐' : ''}
+        </button>`).join('');
+    $('pr-tabs').querySelectorAll('.pr-tab').forEach(b => b.addEventListener('click', () => {
+        activeGameTab = b.dataset.g;
+        renderTabs();
+        $('pr-games').innerHTML = allGames.find(g => g.id === activeGameTab).html;
+    }));
+}
+
+// ---------- Résumé transversal ----------
+async function loadSummary() {
+    const { ok, data } = await api('/api/salon/mystats-summary');
+    if (!ok) return;
+    favoriteGameName = data.favoriteGame;
+    $('sum-week').textContent = data.weekCount;
+    $('sum-fav').textContent = data.favoriteGame || '—';
+    $('pr-summary').hidden = false;
+    if (allGames.length) renderTabs();
 }
 
 // ---------- Chargement du profil ----------
@@ -78,9 +109,25 @@ async function loadProfile() {
     const created = profile.created ? new Date(profile.created).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
     const prev = profile.prevLogin ? new Date(profile.prevLogin).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : null;
     $('pr-meta').textContent = 'Membre depuis le ' + created + (prev ? ' · vu la dernière fois le ' + prev : '');
-    $('pr-games').innerHTML = buildGameCards(profile);
+    allGames = buildGameCards(profile);
+    activeGameTab = allGames[0].id;
+    renderTabs();
+    $('pr-games').innerHTML = allGames[0].html;
+    loadSummary();
 }
 loadProfile();
+
+// ---------- Langue ----------
+let LANG = localStorage.getItem('erquy_lang') || 'fr';
+document.querySelectorAll('#pr-lang-btns button').forEach(b => {
+    b.classList.toggle('on', b.dataset.lang === LANG);
+    b.addEventListener('click', () => {
+        LANG = b.dataset.lang;
+        localStorage.setItem('erquy_lang', LANG);
+        document.querySelectorAll('#pr-lang-btns button').forEach(x => x.classList.toggle('on', x === b));
+        toast('Langue enregistrée.');
+    });
+});
 
 // ---------- Changer d'avatar ----------
 $('pr-avatar').addEventListener('click', () => {

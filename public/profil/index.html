@@ -21,10 +21,27 @@
             <p class="pr-meta" id="pr-meta">—</p>
         </header>
 
+        <!-- RÉSUMÉ TRANSVERSAL -->
+        <section class="pr-summary" id="pr-summary" hidden>
+            <div class="pr-summary-item">
+                <b id="sum-week">0</b>
+                <span>parties jouées cette semaine</span>
+            </div>
+            <div class="pr-summary-item">
+                <b id="sum-fav">—</b>
+                <span>jeu le plus joué</span>
+            </div>
+        </section>
+
         <!-- ACTIONS -->
         <section class="pr-section">
             <h2 class="pr-section-title">Mon compte</h2>
             <div class="pr-actions">
+                <a href="/profil/style/" class="pr-action">
+                    <span class="pr-action-ico">🎨</span>
+                    <span class="pr-action-body"><b>Style des jeux</b><em>Dés, tuiles, et tout ce qui se personnalise</em></span>
+                    <span class="pr-action-go">›</span>
+                </a>
                 <button type="button" class="pr-action" id="act-rename">
                     <span class="pr-action-ico">✏️</span>
                     <span class="pr-action-body"><b>Changer de pseudo</b><em>Votre nom affiché partout dans le salon</em></span>
@@ -35,6 +52,12 @@
                     <span class="pr-action-body"><b>Changer de mot de passe</b><em>À faire de temps en temps, c'est plus sûr</em></span>
                     <span class="pr-action-go">›</span>
                 </button>
+                <div class="pr-lang-row">
+                    <span class="pr-lang-label">🌐 Langue</span>
+                    <div class="pr-lang-btns" id="pr-lang-btns">
+                        <button type="button" data-lang="fr">FR</button><button type="button" data-lang="en">EN</button><button type="button" data-lang="es">ES</button>
+                    </div>
+                </div>
                 <button type="button" class="pr-action" id="act-recovery">
                     <span class="pr-action-ico">🔑</span>
                     <span class="pr-action-body"><b>Nouveau code de récupération</b><em>Pour retrouver votre compte en cas d'oubli</em></span>
@@ -51,6 +74,7 @@
         <!-- STATISTIQUES -->
         <section class="pr-section">
             <h2 class="pr-section-title">Mes statistiques</h2>
+            <div class="pr-tabs" id="pr-tabs"></div>
             <div class="pr-games" id="pr-games"></div>
         </section>
     </div>

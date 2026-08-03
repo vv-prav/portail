@@ -42,7 +42,7 @@ function fmtDur(sec) {
 
 // ---------- Onglets ----------
 function switchTab(tab) {
-    ['home', 'accounts', 'perudo', 'grids', 'motus', 'motjuste', 'pbac', 'dict', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== tab); });
+    ['home', 'accounts', 'perudo', 'grids', 'motus', 'motjuste', 'pbac', 'undercover', 'yams', 'motusparty', 'dict', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== tab); });
     document.querySelectorAll('.ad-tile').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
     if (tab === 'home') loadOverview();
     if (tab === 'accounts') loadAccounts();
@@ -51,16 +51,50 @@ function switchTab(tab) {
     if (tab === 'motus') loadMotus();
     if (tab === 'motjuste') loadMotJuste();
     if (tab === 'pbac') loadPbac();
+    if (tab === 'undercover') loadUndercover();
+    if (tab === 'yams') loadYams();
+    if (tab === 'motusparty') loadMotusParty();
     if (tab === 'dict') { loadDictStats(); loadDict(); }
     if (tab === 'system') { loadOverview(); loadAdmins(); }
     window.scrollTo(0, 0);
 }
 document.querySelectorAll('.ad-tile').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
-$('home-search-go').addEventListener('click', () => {
-    $('acc-q').value = $('home-search').value.trim();
-    switchTab('accounts');
+let homeSearchT = null;
+$('home-search').addEventListener('input', () => {
+    clearTimeout(homeSearchT);
+    const q = $('home-search').value.trim();
+    if (!q) { $('home-search-results').hidden = true; return; }
+    homeSearchT = setTimeout(async () => {
+        const { data } = await api('/api/admin/search?q=' + encodeURIComponent(q));
+        if (!data) return;
+        const parts = [];
+        if (data.accounts.length) parts.push(`
+            <p class="hsr-label">Comptes</p>
+            ${data.accounts.map(u => `
+                <button class="row" data-open-acc="${esc(u.pseudo)}">
+                    <span class="r-main"><span class="r-name">${esc(u.pseudo)}${u.online ? ' <i class="badge online">🟢</i>' : ''}${u.banned ? ' <i class="badge ban">suspendu</i>' : ''}</span></span>
+                    <span class="r-go">›</span>
+                </button>`).join('')}`);
+        if (data.games.length) parts.push(`
+            <p class="hsr-label">Parties passées</p>
+            ${data.games.map(g => `
+                <div class="row static">
+                    <span class="r-main">
+                        <span class="r-name">${GAME_LABEL_ICON[g.app] || ''} ${esc(g.label)}</span>
+                        <span class="r-sub">${g.players.map(esc).join(', ')} · ${fmtAgo(g.endedAt)}</span>
+                    </span>
+                </div>`).join('')}`);
+        $('home-search-results').innerHTML = parts.length ? parts.join('') : '<p class="empty">Rien trouvé.</p>';
+        $('home-search-results').hidden = false;
+    }, 250);
 });
-$('home-search').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('home-search-go').click(); } });
+$('home-search').addEventListener('keydown', (e) => { if (e.key === 'Enter') e.preventDefault(); });
+document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-open-acc]');
+    if (!b) return;
+    switchTab('accounts');
+    openAccount(b.dataset.openAcc);
+});
 
 // ---------- Boîte générique ----------
 function ask(emoji, title, sub, actions, code, confirmText) {
@@ -120,22 +154,23 @@ async function loadOverview() {
 async function loadAppsOverview() {
     const { data } = await api('/api/admin/apps-overview');
     if (!data) return;
-    $('ad-apps-stats').innerHTML = [
-        ['🧩', data.mf.solvedToday, 'mots fléchés résolus aujourd\u2019hui'],
-        ['🎲', data.perudo.online, 'en ligne sur Perudo'],
-        ['🎲', data.perudo.activeGames, 'partie(s) de Perudo en cours'],
-        ['🍎', data.pbac.online, 'en ligne sur Petit Bac'],
-        ['🍎', data.pbac.totalGamesPlayed, 'parties de Petit Bac jouées au total'],
-        ['🕵️', data.undercover.online, 'en ligne sur Infiltré'],
-        ['🎯', data.yams.online, 'en ligne sur Yams'],
-        ['🎯', data.yams.activeGames, 'partie(s) de Yams en cours'],
-        ['🎯', data.yams.totalGamesPlayed, 'parties de Yams jouées au total'],
-        ['🏁', data.motusparty.online, 'en ligne sur Motus Party'],
-        ['🏁', data.motusparty.activeGames, 'course(s) de Motus Party en cours'],
-        ['🏁', data.motusparty.totalMatchesPlayed, 'courses de Motus Party jouées au total'],
-        ['📝', data.motus.solversToday, 'ont trouvé le Motus du jour'],
-        ['🔤', data.motjuste.solversToday, 'ont trouvé le Mot Juste du jour'],
-    ].map(([i, v, l]) => `<div class="stat"><span class="s-ico">${i}</span><b>${v}</b><em>${l}</em></div>`).join('');
+    const groups = [
+        { icon: '🧩', name: 'Mots Fléchés', stats: [[data.mf.solvedToday, 'résolues aujourd\u2019hui']] },
+        { icon: '📝', name: 'Motus', stats: [[data.motus.solversToday, 'ont trouvé aujourd\u2019hui']] },
+        { icon: '🔤', name: 'Le Mot Juste', stats: [[data.motjuste.solversToday, 'ont trouvé aujourd\u2019hui']] },
+        { icon: '🎲', name: 'Perudo', stats: [[data.perudo.online, 'en ligne'], [data.perudo.activeGames, 'en cours']] },
+        { icon: '🍎', name: 'Petit Bac', stats: [[data.pbac.online, 'en ligne'], [data.pbac.totalGamesPlayed, 'jouées au total']] },
+        { icon: '🕵️', name: 'Infiltré', stats: [[data.undercover.online, 'en ligne']] },
+        { icon: '🎯', name: 'Yams', stats: [[data.yams.online, 'en ligne'], [data.yams.activeGames, 'en cours'], [data.yams.totalGamesPlayed, 'au total']] },
+        { icon: '🏁', name: 'Motus Party', stats: [[data.motusparty.online, 'en ligne'], [data.motusparty.activeGames, 'en cours'], [data.motusparty.totalMatchesPlayed, 'au total']] },
+    ];
+    $('ad-apps-stats').innerHTML = groups.map(g => `
+        <div class="game-overview-card">
+            <div class="game-overview-head"><span>${g.icon}</span><b>${g.name}</b></div>
+            <div class="game-overview-stats">
+                ${g.stats.map(([v, l]) => `<div class="game-overview-stat"><b>${v}</b><em>${l}</em></div>`).join('')}
+            </div>
+        </div>`).join('');
 }
 const GAME_LABEL_ICON = { perudo: '🎲', pbac: '🍎', undercover: '🕵️', yams: '🎯', motusparty: '🏁' };
 async function loadGameHistory() {
@@ -209,6 +244,7 @@ async function loadAccounts() {
     $('acc-count').textContent = list.length + ' compte(s) affiché(s) sur ' + (data.total || 0);
     $('acc-list').innerHTML = list.length ? list.map(u => `
         <button class="row" data-p="${esc(u.pseudo)}">
+            <span class="acc-avatar-bubble">${u.avatarPhoto ? `<img src="${u.avatarPhoto}" alt="">` : esc(u.avatar || '✦')}</span>
             <span class="r-main">
                 <span class="r-name">${esc(u.pseudo)}${u.online ? ' <i class="badge online">🟢 en ligne</i>' : ''}${u.admin ? ' <i class="badge adm">admin</i>' : ''}${u.banned ? ' <i class="badge ban">suspendu</i>' : ''}</span>
                 <span class="r-sub">inscrit ${fmtDate(u.created)} · vu ${fmtAgo(u.lastSeen)}</span>
@@ -221,17 +257,23 @@ async function loadAccounts() {
 async function openAccount(pseudo) {
     const { ok, data } = await api('/api/admin/account?pseudo=' + encodeURIComponent(pseudo));
     if (!ok) return toast(data.error || 'Erreur');
-    $('acc-name').textContent = data.pseudo;
+    $('acc-name').innerHTML = `${data.avatarPhoto ? `<img class="acc-avatar-img" src="${data.avatarPhoto}" alt="">` : (data.avatar ? esc(data.avatar) + ' ' : '')}${esc(data.pseudo)}`;
     const mfs = data.motsfleches || {};
-    $('acc-detail').innerHTML = [
-        ['Statut', data.admin ? 'Administrateur' : (data.banned ? 'Suspendu' : 'Actif')],
+    const mo = data.motus || {}, mj = data.motjuste || {};
+    const rows = [
+        ['Statut', data.admin ? 'Administrateur' : (data.banned ? `Suspendu${data.bannedAt ? ' le ' + fmtDate(data.bannedAt) : ''}` : 'Actif')],
         ['Inscrit le', fmtDate(data.created)],
         ['Dernière présence', (data.online ? '🟢 en ligne maintenant · ' : '') + fmtAgo(data.lastSeen)],
         ['Code de récupération', data.hasRecovery ? 'défini' : 'aucun'],
         ['Mots fléchés', `${mfs.solved || 0} réussies · ${mfs.gaveUp || 0} abandons · ${mfs.daysPlayed || 0} jours`],
-        ['Meilleur temps', mfs.best ? Math.floor(mfs.best / 60) + ':' + String(mfs.best % 60).padStart(2, '0') : '—'],
+        ['Meilleur temps (Mots Fléchés)', mfs.best ? Math.floor(mfs.best / 60) + ':' + String(mfs.best % 60).padStart(2, '0') : '—'],
         ['Perudo', data.perudo ? `${data.perudo.wins} victoires / ${data.perudo.played} parties · ${data.perudo.rankPoints} pts` : 'jamais joué'],
-    ].map(([k, v]) => `<div class="kv-row"><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('');
+        ['Motus', mo.started ? `${mo.solved} résolues · ${mo.gaveUp} ratées · meilleur ${mo.bestTries ?? '—'} essais` : 'jamais joué'],
+        ['Le Mot Juste', mj.started ? `${mj.solved} résolues · ${mj.gaveUp} ratées · meilleur ${mj.bestTries ?? '—'} essais` : 'jamais joué'],
+        ['Yams', data.yams ? `${data.yams.gamesWon} victoires / ${data.yams.gamesPlayed} parties · ${data.yams.totalYams} Yams · record ${data.yams.bestScore}` : 'jamais joué'],
+        ['Motus Party', data.motusparty ? `${data.motusparty.matchesWon} courses gagnées / ${data.motusparty.matchesPlayed} jouées · ${data.motusparty.wordsFound} mots trouvés` : 'jamais joué'],
+    ];
+    $('acc-detail').innerHTML = rows.map(([k, v]) => `<div class="kv-row"><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('');
 
     const acts = $('acc-acts'); acts.innerHTML = '';
     const add = (label, fn, danger) => {
@@ -752,6 +794,100 @@ async function loadPbac() {
     }));
 }
 $('pbac-refresh').addEventListener('click', loadPbac);
+
+// ---------- Infiltré ----------
+async function loadUndercover() {
+    const { data } = await api('/api/admin/undercover/overview');
+    if (!data || !data.available) { $('uc-games').innerHTML = '<p class="empty">Infiltré indisponible.</p>'; $('uc-online').innerHTML = ''; return; }
+    const g = data.games || [];
+    $('uc-games').innerHTML = g.length ? g.map(x => `
+        <div class="row static">
+            <span class="r-main">
+                <span class="r-name">Partie de ${esc(x.host)} <i class="badge adm">${esc(x.status)}</i></span>
+                <span class="r-sub">${x.players.map(esc).join(', ') || 'aucun joueur'}</span>
+            </span>
+            <button class="mini danger" data-close="${esc(x.id)}" type="button">Fermer</button>
+        </div>`).join('') : '<p class="empty">Aucune partie en cours.</p>';
+    $('uc-games').querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => {
+        ask('🛑', 'Fermer cette partie ?', 'Les joueurs seront renvoyés au salon des parties.', [
+            { label: 'Confirmer', danger: true, run: async () => {
+                await api('/api/admin/undercover/close', { id: b.dataset.close });
+                toast('Partie fermée.'); loadUndercover();
+            } }]);
+    }));
+    const on = data.online || [];
+    $('uc-online').innerHTML = on.length ? on.map(p => `
+        <div class="row static"><span class="r-main"><span class="r-name">${esc(p)}</span></span></div>`).join('')
+        : '<p class="empty">Personne en ligne.</p>';
+}
+
+// ---------- Yams ----------
+async function loadYams() {
+    const { data } = await api('/api/admin/yams/overview');
+    if (!data || !data.available) { $('ym-games').innerHTML = '<p class="empty">Yams indisponible.</p>'; $('ym-online').innerHTML = ''; $('ym-top').innerHTML = ''; return; }
+    const g = data.games || [];
+    $('ym-games').innerHTML = g.length ? g.map(x => `
+        <div class="row static">
+            <span class="r-main">
+                <span class="r-name">Table de ${esc(x.host)} <i class="badge adm">${esc(x.status)}</i></span>
+                <span class="r-sub">${x.players.map(esc).join(', ') || 'aucun joueur'}</span>
+            </span>
+            <button class="mini danger" data-close="${esc(x.id)}" type="button">Fermer</button>
+        </div>`).join('') : '<p class="empty">Aucune partie en cours.</p>';
+    $('ym-games').querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => {
+        ask('🛑', 'Fermer cette table ?', 'Les joueurs seront renvoyés au salon des parties.', [
+            { label: 'Confirmer', danger: true, run: async () => {
+                await api('/api/admin/yams/close', { id: b.dataset.close });
+                toast('Table fermée.'); loadYams();
+            } }]);
+    }));
+    const on = data.online || [];
+    $('ym-online').innerHTML = on.length ? on.map(p => `
+        <div class="row static"><span class="r-main"><span class="r-name">${esc(p)}</span></span></div>`).join('')
+        : '<p class="empty">Personne en ligne.</p>';
+    const top = data.leaderboard || [];
+    $('ym-top').innerHTML = top.length ? top.map((u, i) => `
+        <div class="row static">
+            <span class="r-main">
+                <span class="r-name">${i + 1}. ${esc(u.pseudo)}</span>
+                <span class="r-sub">${u.gamesWon} victoires / ${u.gamesPlayed} parties · ${u.totalYams} Yams · record ${u.bestScore}</span>
+            </span>
+        </div>`).join('') : '<p class="empty">Personne n\u2019a encore terminé de partie.</p>';
+}
+
+// ---------- Motus Party ----------
+async function loadMotusParty() {
+    const { data } = await api('/api/admin/motusparty/overview');
+    if (!data || !data.available) { $('mp-games').innerHTML = '<p class="empty">Motus Party indisponible.</p>'; $('mp-online').innerHTML = ''; $('mp-top').innerHTML = ''; return; }
+    const g = data.games || [];
+    $('mp-games').innerHTML = g.length ? g.map(x => `
+        <div class="row static">
+            <span class="r-main">
+                <span class="r-name">Course de ${esc(x.host)} <i class="badge adm">${esc(x.status)}</i></span>
+                <span class="r-sub">${x.players.map(esc).join(', ') || 'aucun joueur'}</span>
+            </span>
+            <button class="mini danger" data-close="${esc(x.id)}" type="button">Fermer</button>
+        </div>`).join('') : '<p class="empty">Aucune course en cours.</p>';
+    $('mp-games').querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => {
+        ask('🛑', 'Fermer cette course ?', 'Les joueurs seront renvoyés au salon des parties.', [
+            { label: 'Confirmer', danger: true, run: async () => {
+                await api('/api/admin/motusparty/close', { id: b.dataset.close });
+                toast('Course fermée.'); loadMotusParty();
+            } }]);
+    }));
+    const on = data.online || [];
+    $('mp-online').innerHTML = on.length ? on.map(p => `
+        <div class="row static"><span class="r-main"><span class="r-name">${esc(p)}</span></span></div>`).join('')
+        : '<p class="empty">Personne en ligne.</p>';
+    const top = data.leaderboard || [];
+    $('mp-top').innerHTML = top.length ? top.map((u, i) => `
+        <div class="row static">
+            <span class="r-main">
+                <span class="r-name">${i + 1}. ${esc(u.pseudo)}</span>
+                <span class="r-sub">${u.matchesWon} courses gagnées / ${u.matchesPlayed} jouées · ${u.wordsFound} mots trouvés</span>
+            </span>
+        </div>`).join('') : '<p class="empty">Personne n\u2019a encore terminé de course.</p>';
+}
 
 // ---------- Administrateurs ----------
 async function loadAdmins() {

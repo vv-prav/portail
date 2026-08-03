@@ -1586,6 +1586,34 @@ app.post('/api/salon/profile', requireAuthApi, (req, res) => {
     saveUsers();
     res.json({ ok: true, avatar: av });
 });
+app.get('/api/salon/mystats-summary', requireAuthApi, (req, res) => {
+    const pseudo = currentUser(req);
+    const today = mfTodayId();
+    // "Cette semaine" ne compte honnêtement que ce qu'on peut vraiment dater : les
+    // jeux du jour (Motus, Le Mot Juste, Mots Fléchés) ont une clé par date, donc
+    // on regarde les 7 derniers jours. Perudo, Yams et Motus Party n'ont que des
+    // totaux cumulés sans horodatage individuel, ils ne rentrent pas dans ce compte.
+    let weekCount = 0;
+    for (let i = 0; i < 7; i++) {
+        const d = mfShiftDay(today, -i);
+        if (mfGet(kMotusProg(pseudo, d))) weekCount++;
+        if (mfGet(kMjProg(pseudo, d))) weekCount++;
+        for (const lv of MF_LEVELS) { if (mfGet(`mf:prog:${pseudo}:${d}:${lv}`)) weekCount++; }
+    }
+    // "Jeu le plus joué" compare les totaux cumulés de chaque jeu entre eux.
+    const totals = [];
+    try { const p = perudoApi.users()[pseudo]; if (p && p.played) totals.push(['Perudo', p.played]); } catch (e) {}
+    const mfDays = mfGet(`mf:days:${pseudo}`) || [];
+    if (mfDays.length) totals.push(['Mots Fléchés', mfDays.length]);
+    const motusDays = mfGet(kMotusDays(pseudo)) || [];
+    if (motusDays.length) totals.push(['Motus', motusDays.length]);
+    const mjDays = mfGet(kMjDays(pseudo)) || [];
+    if (mjDays.length) totals.push(['Le Mot Juste', mjDays.length]);
+    try { const y = yamsApi.statsFor(pseudo); if (y && y.gamesPlayed) totals.push(['Yams', y.gamesPlayed]); } catch (e) {}
+    try { const m = motusPartyApi.statsFor(pseudo); if (m && m.matchesPlayed) totals.push(['Motus Party', m.matchesPlayed]); } catch (e) {}
+    totals.sort((a, b) => b[1] - a[1]);
+    res.json({ weekCount, favoriteGame: totals.length ? totals[0][0] : null });
+});
 app.post('/api/salon/avatar-photo', requireAuthApi, (req, res) => {
     const user = registeredUsers[currentUser(req)];
     if (!user) return res.status(404).json({ error: 'Compte introuvable.' });

@@ -126,15 +126,33 @@ module.exports = function attachAdmin(app, ctx) {
         res.json({ history: history.slice(0, 100) });
     });
 
+    // Recherche transversale : comptes ET historique des parties, pour ne plus
+    // avoir à changer d'onglet juste pour retrouver quelqu'un.
+    G('/search', (req, res) => {
+        const q = String(req.query.q || '').toLowerCase().trim();
+        if (!q) return res.json({ accounts: [], games: [] });
+        const accounts = Object.values(users())
+            .filter(u => u.pseudo.toLowerCase().includes(q))
+            .slice(0, 8)
+            .map(u => ({ pseudo: u.pseudo, online: !!(u.lastSeen && Date.now() - u.lastSeen < 90 * 1000), banned: !!u.banned }));
+        const history = mf.get('admin:gameHistory') || [];
+        const games = history
+            .filter(g => (g.players || []).some(p => String(p).toLowerCase().includes(q)))
+            .slice(0, 8);
+        res.json({ accounts, games });
+    });
+
     G('/accounts', (req, res) => {
         const q = String(req.query.q || '').toLowerCase().trim();
         const sort = req.query.sort || 'recent';
         const seenOf = (u) => u.lastSeen || u.lastLogin || 0;
         let list = Object.values(users()).filter(u => !q || u.pseudo.toLowerCase().includes(q));
+        if (sort === 'banned') list = list.filter(u => u.banned);
         const sorters = {
             recent: (a, b) => (b.created || 0) - (a.created || 0),
             active: (a, b) => seenOf(b) - seenOf(a),
             name: (a, b) => a.pseudo.localeCompare(b.pseudo),
+            banned: (a, b) => (b.bannedAt || 0) - (a.bannedAt || 0),
         };
         list.sort(sorters[sort] || sorters.recent);
         res.json({
@@ -147,6 +165,7 @@ module.exports = function attachAdmin(app, ctx) {
                 banned: !!u.banned,
                 admin: isAdmin(u.pseudo),
                 hasRecovery: !!u.recoveryHash,
+                avatar: u.avatar || '', avatarPhoto: u.avatarPhoto || '',
             })),
         });
     });
@@ -170,16 +189,37 @@ module.exports = function attachAdmin(app, ctx) {
             const pu = ctx.perudo().users()[pseudo];
             if (pu) perudo = { wins: pu.wins || 0, played: pu.played || 0, rankPoints: pu.rankPoints || 0, bestStreak: pu.bestStreak || 0 };
         } catch (e) {}
+        // Motus et Le Mot Juste partagent le même schéma de progression par jour :
+        // on compte directement dans le cache plutôt que de dupliquer motusStreak() ici.
+        function dailyStats(prefix) {
+            const s = { solved: 0, gaveUp: 0, started: 0, bestTries: null };
+            for (const [k, v] of Object.entries(cache)) {
+                if (!k.startsWith(`${prefix}:${pseudo}:`) || !v) continue;
+                s.started++;
+                const tries = (v.guesses || []).length;
+                if (v.solved) { s.solved++; if (!s.bestTries || tries < s.bestTries) s.bestTries = tries; }
+                else if (v.gaveUp || v.lost) s.gaveUp++;
+            }
+            return s;
+        }
+        const motus = dailyStats('motus:prog');
+        const motjuste = dailyStats('mj:prog');
+        let yams = null;
+        try { const s = cache[`yams:stats:${pseudo}`]; if (s && s.gamesPlayed) yams = s; } catch (e) {}
+        let motusparty = null;
+        try { const s = cache[`motusparty:stats:${pseudo}`]; if (s && s.matchesPlayed) motusparty = s; } catch (e) {}
         res.json({
             pseudo: u.pseudo,
             created: u.created || 0,
             lastSeen: u.lastSeen || u.lastLogin || 0,
             online: !!(u.lastSeen && Date.now() - u.lastSeen < 90 * 1000),
             banned: !!u.banned,
+            bannedAt: u.bannedAt || 0,
             admin: isAdmin(u.pseudo),
             hasRecovery: !!u.recoveryHash,
+            avatar: u.avatar || '', avatarPhoto: u.avatarPhoto || '',
             motsfleches: { ...mfStats, daysPlayed: days.length },
-            perudo,
+            perudo, motus, motjuste, yams, motusparty,
         });
     });
 
@@ -237,7 +277,7 @@ module.exports = function attachAdmin(app, ctx) {
         if (!u) return res.status(404).json({ error: 'Compte introuvable.' });
         if (isAdmin(pseudo) && banned) return res.status(400).json({ error: 'Impossible de suspendre un administrateur.' });
         u.banned = banned;
-        if (banned) u.sessionEpoch = Date.now();
+        if (banned) { u.sessionEpoch = Date.now(); u.bannedAt = Date.now(); }
         saveUsers(true);
         log(currentUser(req), banned ? 'suspendre' : 'réactiver', pseudo);
         res.json({ ok: true });
@@ -519,6 +559,93 @@ module.exports = function attachAdmin(app, ctx) {
         const api = PB(); if (!api) return res.status(400).json({ error: 'Petit Bac indisponible.' });
         const ok = api.endGame(String(req.body.id || ''));
         if (ok) log(currentUser(req), 'table Petit Bac fermée', String(req.body.id || ''));
+        res.json({ ok });
+    });
+
+    // =================================================================
+    //  INFILTRÉ
+    // =================================================================
+    const UC = () => ctx.undercover();
+
+    G('/undercover/overview', (req, res) => {
+        const api = UC();
+        if (!api) return res.json({ available: false });
+        res.json({
+            available: true,
+            games: api.games().filter(g => g.status !== 'lobby' && g.status !== 'ended'),
+            online: api.online(),
+        });
+    });
+    A('/undercover/close', (req, res) => {
+        const api = UC(); if (!api) return res.status(400).json({ error: 'Infiltré indisponible.' });
+        const ok = api.endGame(String(req.body.id || ''));
+        if (ok) log(currentUser(req), 'partie Infiltré fermée', String(req.body.id || ''));
+        res.json({ ok });
+    });
+
+    // =================================================================
+    //  YAMS
+    // =================================================================
+    const YM = () => ctx.yams();
+
+    G('/yams/overview', (req, res) => {
+        const api = YM();
+        if (!api) return res.json({ available: false });
+        const cache = mf.cache();
+        const leaderboard = [];
+        for (const k of Object.keys(cache)) {
+            if (!k.startsWith('yams:stats:')) continue;
+            const s = cache[k]; if (!s || !s.gamesPlayed) continue;
+            leaderboard.push({
+                pseudo: k.slice('yams:stats:'.length),
+                gamesPlayed: s.gamesPlayed, gamesWon: s.gamesWon, totalYams: s.totalYams, bestScore: s.bestScore,
+            });
+        }
+        leaderboard.sort((a, b) => b.gamesWon - a.gamesWon || b.gamesPlayed - a.gamesPlayed);
+        res.json({
+            available: true,
+            games: api.games().filter(g => g.status !== 'lobby' && g.status !== 'ended'),
+            online: api.online(),
+            leaderboard: leaderboard.slice(0, 20),
+        });
+    });
+    A('/yams/close', (req, res) => {
+        const api = YM(); if (!api) return res.status(400).json({ error: 'Yams indisponible.' });
+        const ok = api.endGame(String(req.body.id || ''));
+        if (ok) log(currentUser(req), 'partie Yams fermée', String(req.body.id || ''));
+        res.json({ ok });
+    });
+
+    // =================================================================
+    //  MOTUS PARTY
+    // =================================================================
+    const MP = () => ctx.motusparty();
+
+    G('/motusparty/overview', (req, res) => {
+        const api = MP();
+        if (!api) return res.json({ available: false });
+        const cache = mf.cache();
+        const leaderboard = [];
+        for (const k of Object.keys(cache)) {
+            if (!k.startsWith('motusparty:stats:')) continue;
+            const s = cache[k]; if (!s || !s.matchesPlayed) continue;
+            leaderboard.push({
+                pseudo: k.slice('motusparty:stats:'.length),
+                matchesPlayed: s.matchesPlayed, matchesWon: s.matchesWon, wordsFound: s.wordsFound, bestRank: s.bestRank,
+            });
+        }
+        leaderboard.sort((a, b) => b.matchesWon - a.matchesWon || b.matchesPlayed - a.matchesPlayed);
+        res.json({
+            available: true,
+            games: api.games().filter(g => g.status !== 'lobby' && g.status !== 'ended'),
+            online: api.online(),
+            leaderboard: leaderboard.slice(0, 20),
+        });
+    });
+    A('/motusparty/close', (req, res) => {
+        const api = MP(); if (!api) return res.status(400).json({ error: 'Motus Party indisponible.' });
+        const ok = api.endGame(String(req.body.id || ''));
+        if (ok) log(currentUser(req), 'course Motus Party fermée', String(req.body.id || ''));
         res.json({ ok });
     });
 

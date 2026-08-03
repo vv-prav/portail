@@ -30,6 +30,9 @@
             <button class="ad-tile" data-tab="motus" type="button"><span class="ad-tile-emoji">🟨</span><span>Motus</span></button>
             <button class="ad-tile" data-tab="motjuste" type="button"><span class="ad-tile-emoji">🧊</span><span>Le Mot Juste</span></button>
             <button class="ad-tile" data-tab="pbac" type="button"><span class="ad-tile-emoji">✏️</span><span>Petit Bac</span></button>
+            <button class="ad-tile" data-tab="undercover" type="button"><span class="ad-tile-emoji">🕵️</span><span>Infiltré</span></button>
+            <button class="ad-tile" data-tab="yams" type="button"><span class="ad-tile-emoji">🎯</span><span>Yams</span></button>
+            <button class="ad-tile" data-tab="motusparty" type="button"><span class="ad-tile-emoji">🏁</span><span>Motus Party</span></button>
             <button class="ad-tile" data-tab="dict" type="button"><span class="ad-tile-emoji">📖</span><span>Dictionnaire</span></button>
             <button class="ad-tile" data-tab="system" type="button"><span class="ad-tile-emoji">⚙️</span><span>Système</span></button>
         </nav>
@@ -38,15 +41,15 @@
         <section class="pane" id="pane-home">
             <div class="card">
                 <h2 class="card-title">Trouver quelqu'un vite</h2>
-                <p class="card-sub">Pour réinitialiser un mot de passe, voir ses infos ou lui envoyer un message.</p>
+                <p class="card-sub">Cherche à la fois dans les comptes et dans l'historique des parties.</p>
                 <input class="in" id="home-search" placeholder="Tape un pseudo…" autocapitalize="off">
-                <button class="btn" id="home-search-go" type="button">Chercher dans les comptes</button>
+                <div class="home-search-results" id="home-search-results" hidden></div>
             </div>
             <div class="stats" id="ad-stats"></div>
             <div class="card">
                 <h2 class="card-title">Toutes les apps réunies</h2>
                 <p class="card-sub">Vue d'ensemble, en plus des pages détaillées par jeu.</p>
-                <div class="stats" id="ad-apps-stats"></div>
+                <div class="game-overview-list" id="ad-apps-stats"></div>
             </div>
             <div class="card">
                 <h2 class="card-title">Historique des tables</h2>
@@ -81,6 +84,7 @@
                     <button class="on" data-sort="recent" type="button">Récents</button>
                     <button data-sort="active" type="button">Actifs</button>
                     <button data-sort="name" type="button">A-Z</button>
+                    <button data-sort="banned" type="button">⛔ Suspendus</button>
                 </div>
             </div>
             <p class="count" id="acc-count"></p>
@@ -197,6 +201,50 @@
                 <h2 class="card-title">Tables actives</h2>
                 <button class="btn ghost" id="pbac-refresh" type="button">Actualiser</button>
                 <div class="list" id="pbac-tables" style="margin-top:10px"></div>
+            </div>
+        </section>
+
+        <!-- INFILTRÉ -->
+        <section class="pane" id="pane-undercover" hidden>
+            <div class="card">
+                <h2 class="card-title">Parties en cours</h2>
+                <div class="list" id="uc-games"></div>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Joueurs connectés</h2>
+                <div class="list" id="uc-online"></div>
+            </div>
+        </section>
+
+        <!-- YAMS -->
+        <section class="pane" id="pane-yams" hidden>
+            <div class="card">
+                <h2 class="card-title">Parties en cours</h2>
+                <div class="list" id="ym-games"></div>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Joueurs connectés</h2>
+                <div class="list" id="ym-online"></div>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Classement</h2>
+                <div class="list" id="ym-top"></div>
+            </div>
+        </section>
+
+        <!-- MOTUS PARTY -->
+        <section class="pane" id="pane-motusparty" hidden>
+            <div class="card">
+                <h2 class="card-title">Courses en cours</h2>
+                <div class="list" id="mp-games"></div>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Joueurs connectés</h2>
+                <div class="list" id="mp-online"></div>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Classement</h2>
+                <div class="list" id="mp-top"></div>
             </div>
         </section>
 
