@@ -35,6 +35,7 @@ body {
 .mp-btn:active:not(:disabled) { transform:scale(.98); }
 
 .mp-view[hidden] { display:none; }
+.mp-view { display:flex; flex-direction:column; gap:12px; }
 .mp-field-label { font-size:.7rem; text-transform:uppercase; letter-spacing:.6px; color:var(--muted); margin:0 0 8px; text-align:center; }
 .mp-cat-hint { font-size:.78rem; color:var(--muted); text-align:center; margin:10px 0 0; }
 
@@ -57,7 +58,13 @@ body {
 
 /* Salle d'attente */
 .mp-wait-players { display:flex; flex-direction:column; gap:8px; margin-bottom:20px; }
-.mp-wait-chip { padding:12px 14px; border-radius:10px; background:rgba(255,255,255,.03); border:1px solid var(--line); font-size:.88rem; }
+.mp-wait-chip { display:flex; align-items:center; gap:8px; width:100%; padding:12px 14px; border-radius:10px;
+    background:rgba(255,255,255,.03); border:1px solid var(--line); font-size:.88rem; font-family:inherit;
+    color:var(--parchment); text-align:left; cursor:pointer; }
+.mp-wait-chip:active { transform:scale(.99); }
+.mp-wait-bubble, .mp-opp-bubble { flex:0 0 auto; width:24px; height:24px; border-radius:50%; display:grid; place-items:center;
+    font-size:.8rem; background:rgba(0,0,0,.3); overflow:hidden; }
+.mp-wait-bubble img, .mp-opp-bubble img { width:100%; height:100%; object-fit:cover; border-radius:50%; display:block; }
 
 /* Course en cours */
 .mp-race-head { display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center; }
@@ -84,7 +91,9 @@ body {
 
 .mp-opponents { display:flex; flex-direction:column; gap:6px; margin-top:6px; }
 .mp-opp-row { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px;
-    background:rgba(255,255,255,.02); border:1px solid var(--line); }
+    background:rgba(255,255,255,.02); border:1px solid var(--line); width:100%; font-family:inherit;
+    color:var(--parchment); text-align:left; cursor:pointer; }
+.mp-opp-row:active { transform:scale(.99); }
 .mp-opp-row.solved { border-color:rgba(90,168,122,.4); background:rgba(90,168,122,.08); }
 .mp-opp-row.gaveup { opacity:.55; }
 .mp-opp-name { flex:0 0 auto; width:88px; font-size:.78rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -108,7 +117,9 @@ body {
 .mp-re-def { text-align:center; font-size:.8rem; color:var(--muted); margin:0 0 18px; min-height:1em; }
 .mp-re-results { display:flex; flex-direction:column; gap:6px; margin-bottom:18px; }
 .mp-re-row { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px;
-    background:rgba(255,255,255,.02); border:1px solid var(--line); font-size:.82rem; }
+    background:rgba(255,255,255,.02); border:1px solid var(--line); font-size:.82rem; width:100%; font-family:inherit;
+    color:var(--parchment); text-align:left; cursor:pointer; }
+.mp-re-row:active { transform:scale(.99); }
 .mp-re-row.me { border-color:var(--brass); background:rgba(217,169,78,.1); }
 .mp-re-rank { flex:0 0 auto; width:26px; text-align:center; font-size:1rem; }
 .mp-re-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -120,7 +131,9 @@ body {
 .mp-end-title { text-align:center; margin:0 0 20px; font-size:1.3rem; }
 .mp-end-scores { display:flex; flex-direction:column; gap:8px; margin-bottom:24px; }
 .mp-end-row { display:flex; justify-content:space-between; padding:12px 16px; border-radius:10px;
-    background:rgba(255,255,255,.03); border:1px solid var(--line); }
+    background:rgba(255,255,255,.03); border:1px solid var(--line); width:100%; font-family:inherit;
+    color:var(--parchment); cursor:pointer; }
+.mp-end-row:active { transform:scale(.99); }
 .mp-end-row.win { border-color:var(--brass); background:rgba(217,169,78,.12); }
 .mp-end-row b { color:var(--brass-soft); }
 
@@ -154,8 +167,9 @@ body {
     background:rgba(10,8,5,.75); padding:20px; }
 .mp-overlay[hidden] { display:none; }
 .mp-stats-card { width:100%; max-width:400px; padding:22px; border-radius:18px;
+    display:flex; flex-direction:column; gap:14px;
     background:linear-gradient(165deg,var(--ink-2),var(--ink)); border:1px solid var(--line); box-shadow:0 20px 50px rgba(0,0,0,.6); }
-.mp-stats-title { margin:0 0 18px; text-align:center; font-size:1.1rem; }
+.mp-stats-title { margin:0; text-align:center; font-size:1.1rem; }
 .mp-stats-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
 .mp-stat-box { padding:14px 10px; border-radius:12px; background:rgba(255,255,255,.03); border:1px solid var(--line); text-align:center; }
 .mp-stat-box b { display:block; font-size:1.3rem; font-weight:800; color:var(--brass-soft); }

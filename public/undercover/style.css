@@ -70,7 +70,12 @@ body.is-ready .uc { display:flex; }
 /* Salle d'attente */
 .uc-players { display:flex; flex-direction:column; gap:8px; }
 .uc-player-row { display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:12px;
-                 background:rgba(255,255,255,.035); border:1px solid var(--line); }
+                 background:rgba(255,255,255,.035); border:1px solid var(--line); width:100%; font-family:inherit;
+                 color:inherit; text-align:left; cursor:pointer; }
+.uc-player-row:active { transform:scale(.99); }
+.uc-player-row .up-bubble { width:24px; height:24px; border-radius:50%; display:grid; place-items:center;
+    font-size:.8rem; background:rgba(0,0,0,.3); overflow:hidden; flex:0 0 auto; }
+.uc-player-row .up-bubble img { width:100%; height:100%; object-fit:cover; border-radius:50%; display:block; }
 .uc-player-row .up-dot { width:8px; height:8px; border-radius:50%; background:var(--good); flex:0 0 auto; }
 .uc-player-row.off .up-dot { background:var(--muted); opacity:.5; }
 .uc-player-row.dead { opacity:.4; text-decoration:line-through; }
@@ -135,7 +140,12 @@ body.is-ready .uc { display:flex; }
 .ue-winner.mrwhite { color:var(--tie); }
 .ue-reveal-list { display:flex; flex-direction:column; gap:6px; width:100%; max-width:320px; margin-top:10px; }
 .ue-reveal-row { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px;
-                 background:rgba(255,255,255,.03); border:1px solid var(--line); font-size:.84rem; }
+                 background:rgba(255,255,255,.03); border:1px solid var(--line); font-size:.84rem;
+                 width:100%; font-family:inherit; color:inherit; cursor:pointer; }
+.ue-reveal-row:active { transform:scale(.99); }
+.ue-reveal-row .er-bubble { width:22px; height:22px; border-radius:50%; display:grid; place-items:center;
+    font-size:.72rem; background:rgba(0,0,0,.3); overflow:hidden; flex:0 0 auto; }
+.ue-reveal-row .er-bubble img { width:100%; height:100%; object-fit:cover; border-radius:50%; display:block; }
 .ue-reveal-row .er-name { color:var(--parchment); font-weight:700; }
 .ue-reveal-row .er-word { margin-left:auto; color:var(--muted); }
 .ue-reveal-row.undercover { border-color:rgba(210,98,74,.4); }

@@ -107,10 +107,14 @@ function onState(s) {
 
 function renderWaiting(s) {
     $('wait-players').innerHTML = s.players.map(p => `
-        <div class="uc-player-row${p.connected ? '' : ' off'}">
-            <span class="up-dot"></span><span class="up-name">${esc(p.pseudo)}</span>
+        <button type="button" class="uc-player-row${p.connected ? '' : ' off'}" data-view="${esc(p.pseudo)}">
+            <span class="up-bubble" data-p="${esc(p.pseudo)}">✦</span><span class="up-dot"></span><span class="up-name">${esc(p.pseudo)}</span>
             ${p.host ? '<span class="up-host">Hôte</span>' : ''}
-        </div>`).join('');
+        </button>`).join('');
+    $('wait-players').querySelectorAll('.uc-player-row').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
+    PortailProfile.fetchAvatars(s.players.map(p => p.pseudo)).then(a => {
+        $('wait-players').querySelectorAll('.up-bubble').forEach(el => { el.innerHTML = PortailProfile.bubbleHTML(a[el.dataset.p]); });
+    });
     const isHost = s.host === myPseudo;
     $('btn-start').hidden = !isHost;
     $('wait-hint').hidden = isHost;
@@ -196,7 +200,14 @@ function renderEnded(s) {
     $('ended-box').innerHTML = `
         <p class="ue-winner ${s.winner}">${winnerLabel(s.winner)}</p>
         <div class="ue-reveal-list">${(s.finalReveal || []).map(p => `
-            <div class="ue-reveal-row ${p.role}"><span class="er-name">${esc(p.pseudo)}</span><span class="er-word">${p.word ? esc(p.word) : '(aucun mot)'}</span></div>`).join('')}</div>`;
+            <button type="button" class="ue-reveal-row ${p.role}" data-view="${esc(p.pseudo)}">
+                <span class="er-bubble" data-p="${esc(p.pseudo)}">✦</span>
+                <span class="er-name">${esc(p.pseudo)}</span><span class="er-word">${p.word ? esc(p.word) : '(aucun mot)'}</span>
+            </button>`).join('')}</div>`;
+    $('ended-box').querySelectorAll('.ue-reveal-row').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
+    PortailProfile.fetchAvatars((s.finalReveal || []).map(p => p.pseudo)).then(a => {
+        $('ended-box').querySelectorAll('.er-bubble').forEach(el => { el.innerHTML = PortailProfile.bubbleHTML(a[el.dataset.p]); });
+    });
     $('btn-rematch').hidden = s.host !== myPseudo;
 }
 $('btn-rematch').addEventListener('click', () => socket.emit('uc_rematch'));

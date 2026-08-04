@@ -1,0 +1,240 @@
+/* =====================================================================
+   DESIGN SYSTEM DU SALON — servi à la racine (/design-system.css),
+   chargé par chaque app AVANT son propre style.css pour pouvoir être
+   surchargé si besoin. Exclu volontairement de Voyages (identité très
+   personnalisée) et de Perudo (sa propre identité pirate/bois/or).
+
+   Chaque app garde son propre style.css pour ce qui lui est spécifique
+   (grille de Motus, dés de Yams...) mais réutilise les classes .ds-*
+   ci-dessous pour tout ce qui devrait se ressembler d'une app à l'autre.
+   ===================================================================== */
+
+/* ===== FONDATIONS ===== */
+:root {
+    /* Couleurs */
+    --ink: #14100b;
+    --ink-2: #1d1710;
+    --ink-3: #241b12;
+    --brass: #d9a94e;
+    --brass-soft: #ecca82;
+    --parchment: #efe4cf;
+    --muted: #a08f74;
+    --line: rgba(217, 169, 78, 0.20);
+    --good: #5aa87a;
+    --bad: #d2624a;
+    --present: #c9a24a;
+
+    /* Typographie */
+    --ds-font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    --ds-fs-xs: .68rem;
+    --ds-fs-sm: .78rem;
+    --ds-fs-base: .88rem;
+    --ds-fs-lg: 1.05rem;
+    --ds-fs-xl: 1.3rem;
+    --ds-fs-2xl: 1.7rem;
+    --ds-fs-3xl: 2.1rem;
+
+    /* Espacements — une échelle commune plutôt que des valeurs au cas par cas */
+    --ds-sp-1: 4px;
+    --ds-sp-2: 8px;
+    --ds-sp-3: 12px;
+    --ds-sp-4: 16px;
+    --ds-sp-5: 24px;
+    --ds-sp-6: 32px;
+
+    /* Rayons et ombres */
+    --ds-radius-sm: 8px;
+    --ds-radius: 14px;
+    --ds-radius-lg: 20px;
+    --ds-radius-full: 999px;
+    --ds-shadow-sm: 0 4px 14px rgba(0,0,0,.35);
+    --ds-shadow: 0 10px 30px rgba(0,0,0,.5);
+    --ds-shadow-lg: 0 20px 50px rgba(0,0,0,.6);
+}
+
+.ds-scope, body { font-family: var(--ds-font); }
+
+/* ===== NAVIGATION ===== */
+
+/* Bouton retour, coin haut gauche, cercle translucide — identique partout */
+.ds-back {
+    position: fixed; top: max(14px, env(safe-area-inset-top)); left: 14px; z-index: 20;
+    width: 42px; height: 42px; display: grid; place-items: center; border-radius: 50%;
+    background: rgba(217, 169, 78, .14); backdrop-filter: blur(8px); border: 1px solid var(--line);
+    color: var(--brass-soft); text-decoration: none; font-size: 1.1rem;
+}
+.ds-back:active { transform: scale(.92); }
+
+/* Barre de tuiles de navigation (comme dans l'admin) */
+.ds-tile-nav { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; }
+.ds-tile-nav button {
+    flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 10px 14px; border-radius: var(--ds-radius-sm); background: rgba(255,255,255,.03);
+    border: 1px solid var(--line); color: var(--muted); font-family: inherit; font-size: var(--ds-fs-xs);
+    cursor: pointer;
+}
+.ds-tile-nav button.on { border-color: var(--brass); color: var(--brass-soft); background: rgba(217,169,78,.14); }
+.ds-tile-nav button .ds-tile-emoji { font-size: 1.15rem; }
+
+/* ===== BOUTONS ===== */
+.ds-btn {
+    display: block; width: 100%; padding: 14px; border-radius: var(--ds-radius-sm);
+    font-size: var(--ds-fs-base); font-weight: 700; font-family: inherit; border: none;
+    background: linear-gradient(180deg, var(--brass-soft), var(--brass)); color: #2a1c07;
+    cursor: pointer; box-shadow: 0 6px 16px rgba(217, 169, 78, .25);
+    transition: transform .12s ease, box-shadow .12s ease;
+}
+.ds-btn:active:not(:disabled) { transform: scale(.98); }
+.ds-btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--brass-soft); box-shadow: none; }
+.ds-btn.danger { background: linear-gradient(180deg, #e0836a, var(--bad)); color: #2a0f08; box-shadow: 0 6px 16px rgba(210, 98, 74, .3); }
+.ds-btn.danger.ghost { background: transparent; border: 1px solid rgba(210, 98, 74, .5); color: #ffb4a0; box-shadow: none; }
+.ds-btn:disabled { opacity: .4; cursor: default; box-shadow: none; }
+.ds-btn.small { padding: 9px 14px; width: auto; font-size: var(--ds-fs-sm); }
+
+/* ===== FENÊTRES ET POPUPS ===== */
+.ds-overlay {
+    position: fixed; inset: 0; z-index: 500; display: flex; align-items: center; justify-content: center;
+    background: rgba(10, 8, 5, .78); padding: 20px;
+    opacity: 0; visibility: hidden; transition: opacity .2s, visibility .2s;
+}
+.ds-overlay.on, .ds-overlay:not([hidden]) { opacity: 1; visibility: visible; }
+.ds-overlay[hidden] { display: flex; opacity: 0; visibility: hidden; pointer-events: none; }
+
+.ds-card {
+    position: relative; width: 100%; max-width: 400px; max-height: 88vh; overflow-y: auto;
+    padding: 26px 22px 22px; border-radius: var(--ds-radius-lg); display: flex; flex-direction: column; gap: var(--ds-sp-3);
+    background: linear-gradient(165deg, var(--ink-2), var(--ink)); border: 1px solid var(--line);
+    box-shadow: var(--ds-shadow-lg); text-align: center;
+    transform: scale(.94) translateY(8px); transition: transform .22s cubic-bezier(.2,.9,.3,1);
+}
+.ds-overlay.on .ds-card, .ds-overlay:not([hidden]) .ds-card { transform: scale(1) translateY(0); }
+
+/* Bouton fermer : toujours en haut à droite, jamais en bas de la popup */
+.ds-card-close {
+    position: absolute; top: 14px; right: 14px; width: 32px; height: 32px; border-radius: 50%;
+    border: 1px solid var(--line); background: rgba(255,255,255,.04); color: var(--brass-soft);
+    font-size: .85rem; cursor: pointer; display: grid; place-items: center;
+}
+.ds-card-close:active { transform: scale(.9); }
+
+.ds-card-title { margin: 0; font-size: var(--ds-fs-lg); color: var(--parchment); }
+.ds-card-text { margin: 0; font-size: var(--ds-fs-sm); color: var(--muted); line-height: 1.5; }
+.ds-card-actions { display: flex; flex-direction: column; gap: var(--ds-sp-2); margin-top: var(--ds-sp-2); }
+
+/* Popup de confirmation générique ("Es-tu sûr ?") */
+.ds-confirm-emoji { font-size: 2.2rem; margin: 0 0 4px; }
+
+/* ===== LISTES ET CARTES ===== */
+
+/* Carte de statistique (comme dans le profil) */
+.ds-stat-card {
+    border: 1px solid var(--line); border-radius: var(--ds-radius); padding: var(--ds-sp-3);
+    background: linear-gradient(165deg, rgba(255,255,255,.03), rgba(0,0,0,.15));
+    border-left: 3px solid var(--acc, var(--brass)); text-align: left;
+}
+.ds-stat-card-head { display: flex; align-items: center; gap: var(--ds-sp-2); margin-bottom: var(--ds-sp-3); }
+.ds-stat-card-head b { color: var(--parchment); font-size: var(--ds-fs-base); }
+.ds-stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--ds-sp-2); }
+.ds-stat-grid.cols2 { grid-template-columns: repeat(2, 1fr); }
+.ds-stat-box { background: rgba(0,0,0,.22); border-radius: var(--ds-radius-sm); padding: var(--ds-sp-2) var(--ds-sp-1); text-align: center; }
+.ds-stat-box b { display: block; font-size: var(--ds-fs-xl); color: var(--acc, var(--brass-soft)); line-height: 1.2; }
+.ds-stat-box em { font-style: normal; font-size: var(--ds-fs-xs); color: var(--muted); display: block; margin-top: 2px; }
+
+/* Ligne de liste cliquable (comptes admin, salle d'attente, classement...) */
+.ds-row {
+    display: flex; align-items: center; gap: var(--ds-sp-3); width: 100%; padding: 13px 14px;
+    border-radius: var(--ds-radius-sm); background: linear-gradient(165deg, var(--ink-3), var(--ink-2));
+    border: 1px solid var(--line); color: var(--parchment); font-family: inherit; text-align: left; cursor: pointer;
+}
+.ds-row:active { transform: scale(.99); }
+.ds-row.static { cursor: default; }
+.ds-row.static:active { transform: none; }
+.ds-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ds-row-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-row-sub { font-size: var(--ds-fs-xs); color: var(--muted); }
+.ds-row-go { flex: 0 0 auto; color: var(--muted); font-size: 1rem; }
+
+/* Salle d'attente : même structure partout */
+.ds-waiting-list { display: flex; flex-direction: column; gap: var(--ds-sp-2); }
+.ds-waiting-chip {
+    display: flex; align-items: center; gap: var(--ds-sp-2); width: 100%; padding: 12px 14px;
+    border-radius: var(--ds-radius-sm); background: rgba(255,255,255,.03); border: 1px solid var(--line);
+    font-size: var(--ds-fs-base); font-family: inherit; color: var(--parchment); text-align: left; cursor: pointer;
+}
+.ds-waiting-chip:active { transform: scale(.99); }
+.ds-waiting-chip.off { opacity: .55; }
+.ds-waiting-host { margin-left: auto; font-size: var(--ds-fs-xs); color: var(--brass); text-transform: uppercase; letter-spacing: 1px; }
+.ds-waiting-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); flex: 0 0 auto; }
+.ds-waiting-chip.off .ds-waiting-dot { background: var(--muted); opacity: .5; }
+
+/* Classement / podium générique — un podium plus riche et animé reste possible
+   par-dessus dans un jeu qui en a besoin, ceci couvre le cas simple. */
+.ds-lb-row {
+    display: flex; align-items: center; gap: var(--ds-sp-3); width: 100%; padding: 10px 12px;
+    border-radius: var(--ds-radius-sm); background: rgba(255,255,255,.02); border: 1px solid var(--line);
+    font-family: inherit; color: var(--parchment); text-align: left; cursor: pointer; font-size: var(--ds-fs-sm);
+}
+.ds-lb-row:active { transform: scale(.99); }
+.ds-lb-row.me { border-color: var(--brass); background: rgba(217,169,78,.1); }
+.ds-lb-row.win { border-color: var(--brass); background: rgba(217,169,78,.12); }
+.ds-lb-rank { flex: 0 0 auto; width: 24px; text-align: center; }
+.ds-lb-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ds-lb-value { flex: 0 0 auto; font-weight: 800; color: var(--brass-soft); }
+
+/* ===== CHAMPS ET FORMULAIRES ===== */
+.ds-input {
+    width: 100%; padding: 13px 14px; border-radius: var(--ds-radius-sm); background: var(--ink-2);
+    border: 1px solid var(--line); color: var(--parchment); font-family: inherit; font-size: 16px;
+}
+.ds-input:focus { outline: none; border-color: var(--brass); }
+.ds-field-error { margin: -6px 0 0; font-size: var(--ds-fs-sm); color: var(--bad); text-align: center; }
+.ds-field-error[hidden] { display: none; }
+
+/* Sélecteur segmenté (onglets de tri, choix à options limitées) */
+.ds-segmented { display: flex; gap: 6px; }
+.ds-segmented button {
+    flex: 1; padding: 9px 8px; border-radius: var(--ds-radius-sm); background: rgba(255,255,255,.03);
+    border: 1px solid var(--line); color: var(--muted); font-family: inherit; font-size: var(--ds-fs-sm);
+    font-weight: 700; cursor: pointer;
+}
+.ds-segmented button.on { border-color: var(--brass); color: var(--brass-soft); background: rgba(217,169,78,.16); }
+
+/* ===== RETOURS VISUELS ===== */
+
+/* Toast — un seul composant, plus une version par jeu */
+.ds-toast {
+    position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(0);
+    background: var(--ink-3); border: 1px solid var(--brass); color: var(--parchment); font-size: var(--ds-fs-sm);
+    padding: 12px 18px; border-radius: var(--ds-radius-full); z-index: 600; box-shadow: var(--ds-shadow);
+    max-width: 90vw; text-align: center; opacity: 0; visibility: hidden; transition: opacity .25s, visibility .25s, transform .25s;
+}
+.ds-toast.on { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(-6px); }
+
+/* Badge de statut */
+.ds-badge { font-style: normal; font-size: var(--ds-fs-xs); padding: 2px 8px; border-radius: var(--ds-radius-full); vertical-align: middle; }
+.ds-badge.admin { background: rgba(217,169,78,.25); color: var(--brass-soft); }
+.ds-badge.ban { background: rgba(224,122,95,.25); color: #ffb4a0; }
+.ds-badge.online { background: rgba(90,168,122,.22); color: #9ec9ad; }
+.ds-badge.neutral { background: rgba(255,255,255,.08); color: var(--muted); }
+
+/* Puce / chip */
+.ds-chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px; border-radius: var(--ds-radius-full);
+    background: rgba(217,169,78,.1); border: 1px solid var(--line); font-size: var(--ds-fs-sm); color: var(--parchment);
+}
+
+/* ===== BULLES D'AVATAR ===== */
+.ds-avatar {
+    flex: 0 0 auto; border-radius: 50%; display: grid; place-items: center; overflow: hidden;
+    background: rgba(0,0,0,.3); font-size: .8rem;
+}
+.ds-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
+.ds-avatar.xs { width: 22px; height: 22px; font-size: .68rem; }
+.ds-avatar.sm { width: 28px; height: 28px; font-size: .78rem; }
+.ds-avatar.md { width: 40px; height: 40px; font-size: 1.1rem; }
+.ds-avatar.lg { width: 64px; height: 64px; font-size: 1.8rem; }
+.ds-avatar.xl { width: 88px; height: 88px; font-size: 2.6rem; }
+
+@media (prefers-reduced-motion: reduce) {
+    .ds-overlay, .ds-card, .ds-toast, .ds-btn { transition-duration: .001ms !important; }
+}

@@ -79,8 +79,15 @@ function renderStats(s) {
 function renderWaiting(s) {
     $('waitRounds').textContent = s.maxRounds;
     $('wait-players').innerHTML = s.players.map(p => `
-        <div class="mp-wait-chip">${p.connected ? '🟢' : '⚪'} ${esc(p.pseudo)}${p.pseudo === s.host ? ' (hôte)' : ''}</div>
+        <button type="button" class="mp-wait-chip" data-view="${esc(p.pseudo)}">
+            <span class="mp-wait-bubble" data-p="${esc(p.pseudo)}">✦</span>
+            ${p.connected ? '🟢' : '⚪'} ${esc(p.pseudo)}${p.pseudo === s.host ? ' (hôte)' : ''}
+        </button>
     `).join('');
+    $('wait-players').querySelectorAll('.mp-wait-chip').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
+    PortailProfile.fetchAvatars(s.players.map(p => p.pseudo)).then(a => {
+        $('wait-players').querySelectorAll('.mp-wait-bubble').forEach(el => { el.innerHTML = PortailProfile.bubbleHTML(a[el.dataset.p]); });
+    });
     const isHost = myPseudo === s.host;
     $('btn-start').hidden = !isHost;
     $('wait-hint').hidden = isHost;
@@ -115,12 +122,17 @@ function renderOpponents(s) {
         if (p.solved) status = `<span class="mp-opp-status solved">${rankLabel(p.rank)} +${p.score > 0 ? '' : ''}</span>`;
         else if (p.gaveUp) status = `<span class="mp-opp-status gaveup">✗</span>`;
         return `
-            <div class="mp-opp-row${p.solved ? ' solved' : ''}${p.gaveUp ? ' gaveup' : ''}">
+            <button type="button" class="mp-opp-row${p.solved ? ' solved' : ''}${p.gaveUp ? ' gaveup' : ''}" data-view="${esc(p.pseudo)}">
+                <span class="mp-opp-bubble" data-p="${esc(p.pseudo)}">✦</span>
                 <span class="mp-opp-name">${p.connected ? '' : '⚪ '}${esc(p.pseudo)}</span>
                 <span class="mp-opp-dots">${dots}</span>
                 ${status}
-            </div>`;
+            </button>`;
     }).join('');
+    $('opponents').querySelectorAll('.mp-opp-row').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
+    PortailProfile.fetchAvatars(others.map(p => p.pseudo)).then(a => {
+        $('opponents').querySelectorAll('.mp-opp-bubble').forEach(el => { el.innerHTML = PortailProfile.bubbleHTML(a[el.dataset.p]); });
+    });
 }
 const guessForm = $('guessForm');
 guessForm.addEventListener('submit', (e) => {
@@ -171,13 +183,14 @@ function renderRoundEnd(s) {
     $('reDef').textContent = s.wordDef || '';
     const sorted = [...s.players].sort((a, b) => (a.rank || 99) - (b.rank || 99));
     $('reResults').innerHTML = sorted.map(p => `
-        <div class="mp-re-row${p.pseudo === myPseudo ? ' me' : ''}">
+        <button type="button" class="mp-re-row${p.pseudo === myPseudo ? ' me' : ''}" data-view="${esc(p.pseudo)}">
             <span class="mp-re-rank">${p.solved ? rankLabel(p.rank) : '✗'}</span>
             <span class="mp-re-name">${esc(p.pseudo)}</span>
             <span class="mp-re-tries">${p.triesCount} essai${p.triesCount > 1 ? 's' : ''}</span>
             <span class="mp-re-score">${p.score} pts</span>
-        </div>
+        </button>
     `).join('');
+    $('reResults').querySelectorAll('.mp-re-row').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
     const isHost = myPseudo === s.host;
     const isLast = s.round >= s.maxRounds;
     $('btn-next-round').hidden = !isHost;
@@ -191,10 +204,11 @@ function renderEnded(s) {
     const ranking = s.finalRanking || [];
     $('endTitle').textContent = ranking[0] && ranking[0].pseudo === myPseudo ? 'Vous avez gagné la course !' : `${ranking[0] ? ranking[0].pseudo : '—'} a gagné la course !`;
     $('endScores').innerHTML = ranking.map((p, i) => `
-        <div class="mp-end-row${i === 0 ? ' win' : ''}">
+        <button type="button" class="mp-end-row${i === 0 ? ' win' : ''}" data-view="${esc(p.pseudo)}">
             <span>${i === 0 ? '🏆 ' : ''}${esc(p.pseudo)}</span><b>${p.score} pts</b>
-        </div>
+        </button>
     `).join('');
+    $('endScores').querySelectorAll('.mp-end-row').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
     $('btn-rematch').hidden = myPseudo !== s.host;
     if (ranking[0] && ranking[0].pseudo === myPseudo) playBigCelebration('🏆', 'Victoire finale !');
 }

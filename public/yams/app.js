@@ -299,13 +299,14 @@ $('btn-skins').addEventListener('click', () => { socket.emit('yams_stats'); rend
 let myOpponents = [];
 function renderLeaderboard(rows) {
     $('paneLb').innerHTML = rows.length ? rows.map((r, i) => `
-        <div class="ym-lb-row${r.pseudo === myPseudo ? ' me' : ''}">
+        <button type="button" class="ym-lb-row${r.pseudo === myPseudo ? ' me' : ''}" data-view="${esc(r.pseudo)}">
             <span class="ym-lb-rank">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1)}</span>
             <span class="ym-lb-name">${esc(r.pseudo)}</span>
             <span class="ym-lb-stat"><b>${r.gamesWon}</b> victoires</span>
             <span class="ym-lb-stat">${r.winRate}%</span>
-        </div>
+        </button>
     `).join('') : `<p class="ym-list-label">Personne n'a encore terminé de partie.</p>`;
+    $('paneLb').querySelectorAll('.ym-lb-row').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
 }
 function renderHistory(list) {
     $('paneHist').innerHTML = list.length ? list.map(g => {
@@ -359,8 +360,15 @@ function socket_list_poll() {
 // ---------- Salle d'attente ----------
 function renderWaiting(s) {
     $('wait-players').innerHTML = s.players.map(p => `
-        <div class="ym-wait-chip">${p.connected ? '🟢' : '⚪'} ${esc(p.pseudo)}${p.pseudo === s.host ? ' (hôte)' : ''}</div>
+        <button type="button" class="ym-wait-chip" data-view="${esc(p.pseudo)}">
+            <span class="ym-wait-bubble" data-p="${esc(p.pseudo)}">✦</span>
+            ${p.connected ? '🟢' : '⚪'} ${esc(p.pseudo)}${p.pseudo === s.host ? ' (hôte)' : ''}
+        </button>
     `).join('');
+    $('wait-players').querySelectorAll('.ym-wait-chip').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
+    PortailProfile.fetchAvatars(s.players.map(p => p.pseudo)).then(a => {
+        $('wait-players').querySelectorAll('.ym-wait-bubble').forEach(el => { el.innerHTML = PortailProfile.bubbleHTML(a[el.dataset.p]); });
+    });
     const isHost = myPseudo === s.host;
     $('btn-start').hidden = !isHost;
     $('wait-hint').hidden = isHost;
@@ -372,13 +380,14 @@ $('btn-leave-lobby').addEventListener('click', () => { socket.emit('yams_leave')
 $('btn-back-lobby').addEventListener('click', () => { socket.emit('yams_leave'); localStorage.removeItem(LS_KEY); showView('v-lobby'); socket.emit('yams_list'); });
 
 // ---------- Partie ----------
-let lastTurnPseudo = null;
+let lastTurnPseudo = null, scoreAvatars = {};
 function renderScoresStrip(s) {
     const turnChanged = lastTurnPseudo !== null && lastTurnPseudo !== s.turnPseudo;
     lastTurnPseudo = s.turnPseudo;
     if (focusedPlayerIndex >= s.players.length) focusedPlayerIndex = 0;
     $('scoresStrip').innerHTML = s.players.map((p, i) => `
         <div class="ym-score-band${p.pseudo === s.turnPseudo ? ' current' : ''}${i === focusedPlayerIndex ? ' focused' : ''}" data-i="${i}" style="--pcolor:${playerColor(i)}">
+            <button type="button" class="ym-score-band-bubble" data-view="${esc(p.pseudo)}">${PortailProfile.bubbleHTML(scoreAvatars[p.pseudo])}</button>
             <span class="ym-score-band-name">${p.connected ? '' : '⚪ '}${esc(p.pseudo)}</span>
             <b class="ym-score-band-total">${p.total}</b>
         </div>
@@ -387,6 +396,14 @@ function renderScoresStrip(s) {
         focusedPlayerIndex = Number(b.dataset.i);
         renderScoresStrip(state); renderSheet(state);
     }));
+    document.querySelectorAll('.ym-score-band-bubble').forEach(b => b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        PortailProfile.open(b.dataset.view);
+    }));
+    PortailProfile.fetchAvatars(s.players.map(p => p.pseudo)).then(a => {
+        scoreAvatars = a;
+        document.querySelectorAll('.ym-score-band-bubble').forEach(b => { b.innerHTML = PortailProfile.bubbleHTML(a[b.dataset.view]); });
+    });
     if (turnChanged) {
         const band = document.querySelector('.ym-score-band.current');
         if (band) { band.classList.add('handoff'); setTimeout(() => band.classList.remove('handoff'), 700); }

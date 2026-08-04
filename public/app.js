@@ -289,11 +289,16 @@ async function loadPulse() {
     else st.hidden = true;
 }
 
-function renderOnlinePlayers(list) {
+async function renderOnlinePlayers(list) {
     const box = $('hub-online'), host = $('hub-online-chips');
     if (!box || !host) return;
     if (!Array.isArray(list) || !list.length) { box.hidden = true; return; }
-    host.innerHTML = list.map(p => `<span class="hub-online-chip">${esc(p)}</span>`).join('');
+    const avatars = await PortailProfile.fetchAvatars(list);
+    host.innerHTML = list.map(p => `
+        <button type="button" class="hub-online-chip" data-p="${esc(p)}">
+            <span class="hub-online-bubble">${PortailProfile.bubbleHTML(avatars[p])}</span>${esc(p)}
+        </button>`).join('');
+    host.querySelectorAll('.hub-online-chip').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.p)));
     box.hidden = false;
 }
 

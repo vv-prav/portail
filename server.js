@@ -1640,6 +1640,37 @@ app.get('/api/avatars', requireAuthApi, (req, res) => {
     res.json(out);
 });
 
+// Profil public en lecture seule : ce que n'importe quel joueur connecté peut
+// voir du profil d'un autre, en cliquant sur sa bulle depuis n'importe quel
+// jeu. Volontairement limité : jamais de mot de passe, code de récupération,
+// statut de suspension ou autre donnée sensible — juste de quoi se situer.
+app.get('/api/public-profile', requireAuthApi, (req, res) => {
+    const pseudo = String(req.query.pseudo || '');
+    const u = registeredUsers[pseudo];
+    if (!u) return res.status(404).json({ error: 'Compte introuvable.' });
+    const totals = [];
+    try { const p = perudoApi.users()[pseudo]; if (p && p.played) totals.push(['Perudo', p.played]); } catch (e) {}
+    const mfDays = mfGet(`mf:days:${pseudo}`) || [];
+    if (mfDays.length) totals.push(['Mots Fléchés', mfDays.length]);
+    const motusDays = mfGet(kMotusDays(pseudo)) || [];
+    if (motusDays.length) totals.push(['Motus', motusDays.length]);
+    const mjDays = mfGet(kMjDays(pseudo)) || [];
+    if (mjDays.length) totals.push(['Le Mot Juste', mjDays.length]);
+    let yams = null, motusparty = null;
+    try { const y = yamsApi.statsFor(pseudo); if (y && y.gamesPlayed) { yams = y; totals.push(['Yams', y.gamesPlayed]); } } catch (e) {}
+    try { const m = motusPartyApi.statsFor(pseudo); if (m && m.matchesPlayed) { motusparty = m; totals.push(['Motus Party', m.matchesPlayed]); } } catch (e) {}
+    totals.sort((a, b) => b[1] - a[1]);
+    res.json({
+        pseudo: u.pseudo,
+        avatar: u.avatar || '', avatarPhoto: u.avatarPhoto || '',
+        created: u.created || 0,
+        online: !!(u.lastSeen && Date.now() - u.lastSeen < 90 * 1000),
+        favoriteGame: totals.length ? totals[0][0] : null,
+        yams: yams ? { gamesWon: yams.gamesWon, gamesPlayed: yams.gamesPlayed, bestScore: yams.bestScore } : null,
+        motusparty: motusparty ? { matchesWon: motusparty.matchesWon, matchesPlayed: motusparty.matchesPlayed } : null,
+    });
+});
+
 // Changer de pseudo : déplace le compte vers la nouvelle clé et réémet une
 // session à jour. Honnêteté nécessaire : les statistiques déjà accumulées
 // dans les différents jeux (Motus, Yams, Petit Bac...) restent rangées sous
