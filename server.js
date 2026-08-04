@@ -1474,6 +1474,17 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
         .map(u => u.pseudo)
         .sort((a, b) => a.localeCompare(b));
 
+    // Un aperçu des dernières personnes passées sur l'appli (pas la liste complète),
+    // juste pour donner une sensation de vie. Fenêtre large de 48h, mais volontairement
+    // court : on ne montre jamais tout le monde, seulement les plus récents.
+    const me = currentUser(req);
+    const RECENT_WINDOW_MS = 48 * 60 * 60 * 1000;
+    const recentlyActive = Object.values(registeredUsers)
+        .filter(u => u && u.lastSeen && u.pseudo !== me && (now - u.lastSeen) < RECENT_WINDOW_MS)
+        .sort((a, b) => b.lastSeen - a.lastSeen)
+        .slice(0, 6)
+        .map(u => ({ pseudo: u.pseudo, lastSeen: u.lastSeen }));
+
     // Parties en cours, tous jeux confondus, avec les prénoms des joueurs présents.
     const activeGames = [];
     try {
@@ -1506,7 +1517,7 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
         undercover: { online: undercoverOnlineCount, names: undercoverNames },
         yams: { online: yamsOnlineCount, names: yamsNames },
         motusparty: { online: mpOnlineCount, names: mpNames },
-        salonOnline, activeGames,
+        salonOnline, activeGames, recentlyActive,
     });
 });
 

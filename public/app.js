@@ -283,6 +283,7 @@ async function loadPulse() {
     pulse = data;
     renderTiles();
     renderOnlinePlayers(data.salonOnline);
+    renderRecentlyActive(data.recentlyActive);
     renderLiveGames(data.activeGames);
     const st = $('me-streak');
     if (data.mf && data.mf.streak > 0) { st.innerHTML = '🔥 <b>' + data.mf.streak + '</b>'; st.hidden = false; }
@@ -299,6 +300,29 @@ async function renderOnlinePlayers(list) {
             <span class="hub-online-bubble">${PortailProfile.bubbleHTML(avatars[p])}</span>${esc(p)}
         </button>`).join('');
     host.querySelectorAll('.hub-online-chip').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.p)));
+    box.hidden = false;
+}
+
+function timeAgoShort(ts) {
+    const mins = Math.max(1, Math.round((Date.now() - ts) / 60000));
+    if (mins < 60) return `il y a ${mins} min`;
+    const hours = Math.round(mins / 60);
+    if (hours < 24) return `il y a ${hours} h`;
+    const days = Math.round(hours / 24);
+    return `il y a ${days} j`;
+}
+async function renderRecentlyActive(list) {
+    const box = $('hub-recent'), host = $('hub-recent-list');
+    if (!box || !host) return;
+    if (!Array.isArray(list) || !list.length) { box.hidden = true; return; }
+    const avatars = await PortailProfile.fetchAvatars(list.map(u => u.pseudo));
+    host.innerHTML = list.map(u => `
+        <button type="button" class="hub-recent-row" data-p="${esc(u.pseudo)}">
+            <span class="hub-recent-bubble">${PortailProfile.bubbleHTML(avatars[u.pseudo])}</span>
+            <span class="hub-recent-name">${esc(u.pseudo)}</span>
+            <span class="hub-recent-time">${timeAgoShort(u.lastSeen)}</span>
+        </button>`).join('');
+    host.querySelectorAll('.hub-recent-row').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.p)));
     box.hidden = false;
 }
 
