@@ -106,12 +106,7 @@ async function api(path, body) {
 const dq = () => (viewDate ? '&date=' + viewDate : '');
 const mbody = (o) => (viewDate ? { ...o, date: viewDate } : o);
 
-let toastT = null;
-function toast(msg) {
-    const el = $('mj-toast');
-    el.textContent = msg; el.hidden = false;
-    clearTimeout(toastT); toastT = setTimeout(() => { el.hidden = true; }, 2400);
-}
+function toast(msg) { DS.toast(msg); }
 
 // ---------- Paliers de température ----------
 function tierOf(score) {
@@ -376,20 +371,8 @@ $('arch-today').addEventListener('click', () => {
 
 // ---------- Confirmation générique ----------
 function ask(emoji, title, sub, actions) {
-    $('ask-emoji').textContent = emoji;
-    $('ask-title').textContent = title;
-    $('ask-sub').textContent = sub || '';
-    const box = $('ask-acts'); box.innerHTML = '';
-    actions.forEach(a => {
-        const b = document.createElement('button');
-        b.className = 'mj-btn' + (a.danger ? ' danger' : '');
-        b.type = 'button'; b.textContent = a.label;
-        b.addEventListener('click', () => { $('mj-ask').hidden = true; a.run(); });
-        box.appendChild(b);
-    });
-    $('mj-ask').hidden = false;
+    DS.confirm({ emoji, title, text: sub, actions, cancelLabel: t('cancel') });
 }
-$('ask-cancel').addEventListener('click', () => { $('mj-ask').hidden = true; });
 
 // ---------- Démarrage ----------
 function tickClock() {
@@ -404,7 +387,7 @@ function startTicker() { if (!timerId) timerId = setInterval(tickClock, 1000); t
 
 async function load() {
     document.body.className = 'is-boot';
-    ['mj-end', 'mj-ask', 'mj-comments', 'mj-archive'].forEach(id => { $(id).hidden = true; });
+    ['mj-end', 'mj-comments', 'mj-archive'].forEach(id => { $(id).hidden = true; });
     guesses = []; solved = false; gaveUp = false; bestScore = -100;
 
     const { ok, data } = await api('/api/juste/today' + dq());

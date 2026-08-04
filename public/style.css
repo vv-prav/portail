@@ -41,16 +41,7 @@ body.is-hub   .hub   { display: block; }
 .boot { position: fixed; inset: 0; place-items: center; }
 .boot-ring { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--brass); animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-
-/* --- Boutons génériques --- */
-.btn { width: 100%; padding: 15px 16px; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; border: 1px solid transparent; font-family: inherit; transition: transform 0.1s ease, filter 0.15s ease, background 0.15s ease; }
-.btn-primary { background: linear-gradient(180deg, var(--brass-soft), var(--brass)); color: #2a1c07; box-shadow: 0 6px 16px rgba(217,169,78,0.28); }
-.btn-primary:hover { filter: brightness(1.05); }
-.btn-ghost { background: transparent; border-color: var(--line); color: var(--brass-soft); }
-.btn-ghost:hover { background: rgba(217,169,78,0.10); }
-.btn:active { transform: scale(0.98); }
-.btn:disabled { opacity: 0.55; cursor: default; }
-.btn:focus-visible, .input:focus-visible, .tile:focus-visible, .btn-logout:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+.ds-btn:focus-visible, .ds-input:focus-visible, .tile:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
 
 /* =====================  SAS D'ENTRÉE  ===================== */
 .entry { min-height: 100dvh; place-items: center; padding: max(20px, env(safe-area-inset-top)) 18px max(20px, env(safe-area-inset-bottom)); }
@@ -76,7 +67,7 @@ body.is-hub   .hub   { display: block; }
 .input::placeholder { color: #7c6f5a; }
 .input:focus { outline: none; border-color: var(--brass); box-shadow: 0 0 0 3px rgba(217,169,78,0.18); }
 .hint { color: #7c6f5a; font-size: 0.78rem; margin: 2px 2px 18px; text-align: left; line-height: 1.45; }
-.entry-card .btn + .btn { margin-top: 10px; }
+.entry-card .ds-btn + .ds-btn { margin-top: 10px; }
 .entry-error { color: #ff9a7a; font-size: 0.85rem; min-height: 1.1em; margin-top: 12px; }
 
 /* =====================  LE SALON  ===================== */
@@ -86,8 +77,6 @@ body.is-hub   .hub   { display: block; }
 .hub-greet { min-width: 0; }
 .hub-eyebrow { display: block; text-transform: uppercase; letter-spacing: 3px; font-size: 0.66rem; color: var(--muted); margin-bottom: 3px; }
 .hub-name { font-family: 'Fraunces', Georgia, serif; font-weight: 900; font-size: 2rem; margin: 0; color: var(--brass-soft); line-height: 1.05; overflow-wrap: anywhere; }
-.btn-logout { flex: 0 0 auto; background: transparent; border: 1px solid var(--line); color: var(--muted); padding: 9px 16px; border-radius: 999px; font-size: 0.85rem; font-family: inherit; cursor: pointer; transition: color 0.15s, border-color 0.15s; }
-.btn-logout:hover { color: var(--brass-soft); border-color: var(--brass); }
 .rule { height: 1px; margin: 18px 0 20px; background: linear-gradient(90deg, transparent, var(--line) 15%, var(--line) 85%, transparent); position: relative; }
 .rule::after { content: "✦"; position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); background: var(--ink); padding: 0 10px; color: var(--brass); font-size: 0.68rem; }
 
@@ -129,14 +118,6 @@ body.is-hub   .hub   { display: block; }
 
 .hub-foot { text-align: center; color: #6f6350; font-size: 0.78rem; margin: 26px 0 4px; }
 
-/* --- Placeholder d'une app --- */
-.app-placeholder { min-height: 100dvh; display: grid; place-items: center; padding: 20px; }
-.ph-card { max-width: 400px; text-align: center; background: linear-gradient(165deg, var(--ink-2), var(--ink)); border: 1px solid var(--line); border-radius: 20px; padding: 40px 26px; box-shadow: var(--shadow); }
-.ph-emoji { font-size: 3rem; }
-.ph-card h1 { font-family: 'Fraunces', Georgia, serif; font-weight: 900; color: var(--brass-soft); margin: 8px 0 10px; }
-.ph-card p { color: var(--muted); line-height: 1.5; margin-bottom: 22px; }
-.ph-card .btn-ghost { display: inline-block; width: auto; text-decoration: none; padding: 12px 22px; }
-
 /* =====================  ÉCRANS PLUS LARGES  ===================== */
 @media (min-width: 600px) {
     .tiles { grid-template-columns: 1fr 1fr; gap: 14px; }
@@ -152,19 +133,6 @@ body.is-hub   .hub   { display: block; }
 .link-btn { background:none; border:none; color:var(--muted); font-size:.82rem; font-family:inherit;
             text-decoration:underline; cursor:pointer; margin-top:12px; padding:6px; }
 .link-btn:hover { color:var(--brass-soft); }
-.ov { position:fixed; inset:0; z-index:600; background:rgba(0,0,0,.78); display:flex;
-      align-items:center; justify-content:center; padding:18px; }
-.ov[hidden] { display:none; }
-.ov-card { width:100%; max-width:400px; max-height:90vh; overflow-y:auto; text-align:center;
-           background:linear-gradient(165deg,var(--ink-2),var(--ink)); border:2px solid var(--brass);
-           border-radius:20px; padding:28px 22px; box-shadow:var(--shadow); }
-/* Motif réutilisable : quand une popup peut devenir longue (contenu qui grandit), on sépare
-   le contenu défilant du bouton de fermeture, qui reste toujours accessible en bas. */
-.ov-card-sticky { display:flex; flex-direction:column; padding:0; overflow:hidden; }
-.ov-card-sticky .ov-scroll { overflow-y:auto; padding:28px 22px 4px; flex:1; min-height:0; }
-.ov-card-sticky .ov-footer { flex:0 0 auto; padding:14px 22px calc(16px + env(safe-area-inset-bottom));
-                              border-top:1px solid var(--line); background:var(--ink-2); }
-.ov-card-sticky .ov-footer .btn { margin-top:0; }
 .ov-emoji { font-size:2.6rem; }
 .ov-title { font-family:'Fraunces',Georgia,serif; font-weight:900; color:var(--brass-soft); margin:8px 0 10px; font-size:1.5rem; }
 .ov-sub { color:var(--muted); font-size:.88rem; line-height:1.5; margin:0 0 18px; }
@@ -172,7 +140,6 @@ body.is-hub   .hub   { display: block; }
             letter-spacing:1px; color:var(--brass-soft); background:rgba(0,0,0,.4);
             border:1px dashed var(--brass); border-radius:12px; padding:16px 10px; margin-bottom:16px;
             word-break:break-all; user-select:all; }
-.ov-card .btn + .btn { margin-top:10px; }
 
 /* Annonce publiée depuis l'administration */
 .hub-announce { position: relative; background: linear-gradient(165deg, rgba(217,169,78,.14), rgba(217,169,78,.06));
@@ -241,19 +208,10 @@ body.is-hub   .hub   { display: block; }
 .tile-badge.part { color: var(--brass-soft); border: 1px solid var(--brass); background: rgba(217,169,78,0.12); }
 .tile-badge.done { color: #9ec9ad; border: 1px solid rgba(90,168,122,0.45); background: rgba(90,168,122,0.1); }
 
-.hub-toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%);
-    background: var(--ink-3); border: 1px solid var(--brass); color: var(--parchment); font-size: 0.85rem;
-    padding: 12px 18px; border-radius: 999px; z-index: 400; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-    max-width: 90vw; text-align: center; }
-.hub-toast[hidden] { display: none; }
-
 /* ===== Écrans superposés restants (code de récupération) : ajustements petits écrans ===== */
 @media (max-width: 380px) {
-    .ov { padding: 10px; }
-    .ov-card { padding: 20px 15px; border-radius: 16px; }
-    .ov-card-sticky { padding: 0; border-radius: 16px; }
-    .ov-card-sticky .ov-scroll { padding: 20px 15px 4px; }
-    .ov-card-sticky .ov-footer { padding: 12px 15px calc(14px + env(safe-area-inset-bottom)); }
+    .ds-overlay { padding: 10px; }
+    .ds-card { padding: 20px 15px; border-radius: 16px; }
     .code-box { font-size: 1rem; padding: 14px 8px; }
 }
 @media (max-width: 340px) {
@@ -261,10 +219,7 @@ body.is-hub   .hub   { display: block; }
 }
 /* Téléphones très larges / tablettes en portrait : laisser la carte respirer davantage */
 @media (min-width: 480px) {
-    .ov-card { max-width: 430px; padding: 32px 28px; }
-    .ov-card-sticky { padding: 0; }
-    .ov-card-sticky .ov-scroll { padding: 32px 28px 4px; }
-    .ov-card-sticky .ov-footer { padding: 16px 28px calc(18px + env(safe-area-inset-bottom)); }
+    .ds-card { max-width: 430px; padding: 32px 28px; }
 }
 
 /* ===== Sélecteur de langue (écran d'entrée) ===== */

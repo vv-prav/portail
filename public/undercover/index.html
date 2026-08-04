@@ -10,6 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/design-system.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="is-boot">
@@ -17,7 +18,7 @@
 
     <div class="uc" id="uc">
         <header class="uc-head">
-            <a class="uc-back" href="/" aria-label="Retour au salon">←</a>
+            <a class="ds-back" href="/" aria-label="Retour au salon">←</a>
             <div class="uc-titles">
                 <h1 class="uc-title">Infiltré</h1>
                 <span class="uc-sub" id="uc-sub">Choisis comment jouer</span>
@@ -40,24 +41,24 @@
         <!-- ===================== MODE À DISTANCE ===================== -->
 
         <section class="uc-view" id="v-lobby" hidden>
-            <button class="uc-btn" id="btn-create">Créer une table</button>
+            <button class="ds-btn" id="btn-create">Créer une table</button>
             <p class="uc-list-label" id="lobby-empty-label" hidden>Aucune table ouverte pour l'instant.</p>
             <div class="uc-tables" id="uc-tables"></div>
-            <button class="uc-btn ghost" id="btn-mode-back">← Changer de mode</button>
+            <button class="ds-btn ghost" id="btn-mode-back">← Changer de mode</button>
         </section>
 
         <section class="uc-view" id="v-waiting" hidden>
-            <div class="uc-players" id="wait-players"></div>
+            <div class="ds-waiting-list" id="wait-players"></div>
             <div class="uc-uc-count" id="uc-count-box" hidden>
                 <p class="uc-field-label">Nombre d'infiltrés</p>
-                <div class="uc-choice" id="opt-uc-count"></div>
+                <div class="ds-segmented" id="opt-uc-count"></div>
                 <p class="uc-field-label">Options</p>
                 <label class="uc-check-row"><input type="checkbox" id="opt-mrwhite"> <span>Mr Blanc <i>(un joueur sans mot du tout, doit bluffer)</i></span></label>
                 <label class="uc-check-row"><input type="checkbox" id="opt-subgroups"> <span>Sous-groupes d'infiltrés <i>(ils n'ont pas tous le même mot)</i></span></label>
             </div>
             <p class="uc-hint" id="wait-hint">En attente de l'hôte…</p>
-            <button class="uc-btn" id="btn-start" hidden>Lancer la partie</button>
-            <button class="uc-btn ghost" id="btn-leave-lobby">Quitter la table</button>
+            <button class="ds-btn" id="btn-start" hidden>Lancer la partie</button>
+            <button class="ds-btn ghost" id="btn-leave-lobby">Quitter la table</button>
         </section>
 
         <!-- Bandeau persistant : mon mot (visible tout le round côté distant) -->
@@ -69,8 +70,8 @@
         <section class="uc-view" id="v-speaking" hidden>
             <p class="uc-hint">Chacun décrit son mot à voix haute, sans le dire, dans l'ordre.</p>
             <div class="uc-turn-order" id="turn-order"></div>
-            <button class="uc-btn" id="btn-next-turn" hidden>Joueur suivant</button>
-            <button class="uc-btn ghost" id="btn-go-vote" hidden>Lancer le vote</button>
+            <button class="ds-btn" id="btn-next-turn" hidden>Joueur suivant</button>
+            <button class="ds-btn ghost" id="btn-go-vote" hidden>Lancer le vote</button>
         </section>
 
         <section class="uc-view" id="v-voting" hidden>
@@ -83,16 +84,16 @@
             <div class="uc-result-box" id="result-box"></div>
             <div class="uc-mrwhite-guess" id="mrwhite-guess-box" hidden>
                 <p class="uc-hint" id="mrwhite-guess-hint">Mr Blanc, tente ta chance : devine le mot des civils !</p>
-                <input type="text" id="mrwhite-guess-input" maxlength="30" placeholder="Ton mot…" autocomplete="off">
-                <button class="uc-btn" id="mrwhite-guess-submit">Deviner</button>
-                <button class="uc-btn ghost" id="mrwhite-guess-skip" hidden>Passer (hôte)</button>
+                <input type="text" id="mrwhite-guess-input" class="ds-input" maxlength="30" placeholder="Ton mot…" autocomplete="off">
+                <button class="ds-btn" id="mrwhite-guess-submit">Deviner</button>
+                <button class="ds-btn ghost" id="mrwhite-guess-skip" hidden>Passer (hôte)</button>
             </div>
         </section>
 
         <section class="uc-view" id="v-ended" hidden>
             <div class="uc-ended-box" id="ended-box"></div>
-            <button class="uc-btn" id="btn-rematch" hidden>Rejouer</button>
-            <a class="uc-btn ghost" href="/">Retour au salon</a>
+            <button class="ds-btn" id="btn-rematch" hidden>Rejouer</button>
+            <a class="ds-btn ghost" href="/">Retour au salon</a>
         </section>
 
         <!-- ===================== MODE LOCAL (passe le téléphone) ===================== -->
@@ -100,24 +101,24 @@
         <section class="uc-view" id="v-local-setup" hidden>
             <p class="uc-field-label">Joueurs (3 à 12)</p>
             <div class="uc-name-list" id="local-name-list"></div>
-            <button class="uc-btn ghost" id="local-add-name">Ajouter un joueur</button>
+            <button class="ds-btn ghost" id="local-add-name">Ajouter un joueur</button>
             <p class="uc-field-label">Nombre d'infiltrés</p>
-            <div class="uc-choice" id="local-uc-count"></div>
+            <div class="ds-segmented" id="local-uc-count"></div>
             <p class="uc-field-label">Options</p>
             <label class="uc-check-row"><input type="checkbox" id="local-opt-mrwhite"> <span>Mr Blanc <i>(un joueur sans mot du tout, doit bluffer)</i></span></label>
             <label class="uc-check-row"><input type="checkbox" id="local-opt-subgroups"> <span>Sous-groupes d'infiltrés <i>(ils n'ont pas tous le même mot)</i></span></label>
-            <button class="uc-btn" id="local-start">Lancer</button>
-            <button class="uc-btn ghost" id="btn-mode-back-2">← Changer de mode</button>
+            <button class="ds-btn" id="local-start">Lancer</button>
+            <button class="ds-btn ghost" id="btn-mode-back-2">← Changer de mode</button>
         </section>
 
         <section class="uc-view" id="v-local-reveal" hidden>
             <div class="uc-pass-box">
                 <p class="uc-pass-title">Passe le téléphone à</p>
                 <p class="uc-pass-name" id="local-reveal-name">—</p>
-                <button class="uc-btn" id="local-reveal-show">Voir mon mot</button>
+                <button class="ds-btn" id="local-reveal-show">Voir mon mot</button>
                 <div class="uc-word-reveal" id="local-word-reveal" hidden>
                     <p class="uc-word-big" id="local-word-big">—</p>
-                    <button class="uc-btn" id="local-reveal-next">C'est vu, passer au suivant</button>
+                    <button class="ds-btn" id="local-reveal-next">C'est vu, passer au suivant</button>
                 </div>
             </div>
         </section>
@@ -125,15 +126,15 @@
         <section class="uc-view" id="v-local-speaking" hidden>
             <p class="uc-hint">Chacun décrit son mot à voix haute, sans le dire, dans l'ordre.</p>
             <div class="uc-turn-order" id="local-turn-order"></div>
-            <button class="uc-btn" id="local-next-turn">Joueur suivant</button>
-            <button class="uc-btn ghost" id="local-go-vote">Lancer le vote</button>
+            <button class="ds-btn" id="local-next-turn">Joueur suivant</button>
+            <button class="ds-btn ghost" id="local-go-vote">Lancer le vote</button>
         </section>
 
         <section class="uc-view" id="v-local-vote-pass" hidden>
             <div class="uc-pass-box">
                 <p class="uc-pass-title">Passe le téléphone à</p>
                 <p class="uc-pass-name" id="local-voter-name">—</p>
-                <button class="uc-btn" id="local-vote-show">C'est à moi de voter</button>
+                <button class="ds-btn" id="local-vote-show">C'est à moi de voter</button>
                 <div class="uc-vote-grid" id="local-vote-grid" hidden></div>
             </div>
         </section>
@@ -142,22 +143,22 @@
             <div class="uc-result-box" id="local-result-box"></div>
             <div class="uc-mrwhite-guess" id="local-mrwhite-guess-box" hidden>
                 <p class="uc-hint">Passe le téléphone à <b id="local-mrwhite-name">—</b> pour deviner le mot des civils.</p>
-                <input type="text" id="local-mrwhite-input" maxlength="30" placeholder="Son mot…" autocomplete="off">
-                <button class="uc-btn" id="local-mrwhite-submit">Deviner</button>
+                <input type="text" id="local-mrwhite-input" class="ds-input" maxlength="30" placeholder="Son mot…" autocomplete="off">
+                <button class="ds-btn" id="local-mrwhite-submit">Deviner</button>
             </div>
-            <button class="uc-btn" id="local-result-continue">Continuer</button>
+            <button class="ds-btn" id="local-result-continue">Continuer</button>
         </section>
 
         <section class="uc-view" id="v-local-ended" hidden>
             <div class="uc-ended-box" id="local-ended-box"></div>
-            <button class="uc-btn" id="local-rematch">Rejouer (mêmes joueurs)</button>
-            <button class="uc-btn ghost" id="local-new-game">Nouvelle partie</button>
+            <button class="ds-btn" id="local-rematch">Rejouer (mêmes joueurs)</button>
+            <button class="ds-btn ghost" id="local-new-game">Nouvelle partie</button>
         </section>
     </div>
 
-    <div class="uc-toast" id="uc-toast" hidden></div>
     <script src="/socket.io/socket.io.js"></script>
     <script src="/profile-viewer.js"></script>
+    <script src="/design-system.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

@@ -21,11 +21,7 @@ let answers = {};          // brouillon local des réponses (catégorie -> texte
 let timerId = null;
 let selectedCats = DEFAULT_CATEGORIES.slice();   // catégories choisies pour la prochaine table créée
 
-function toast(msg) {
-    const el = $('pb-toast');
-    el.textContent = msg; el.hidden = false;
-    clearTimeout(el._t); el._t = setTimeout(() => { el.hidden = true; }, 2600);
-}
+function toast(msg) { DS.toast(msg); }
 function showView(id) {
     ['v-lobby', 'v-join-pending', 'v-waiting', 'v-spectator', 'v-choose-letter', 'v-countdown', 'v-writing', 'v-voting', 'v-parallel', 'v-cat-summary', 'v-round-end', 'v-ended']
         .forEach(v => { $(v).hidden = (v !== id); });
@@ -94,8 +90,8 @@ function connect() {
         const row = document.createElement('div');
         row.className = 'pb-join-request';
         row.innerHTML = `<span>${esc(pseudo)} demande à rejoindre</span>
-            <button type="button" class="pb-btn ghost small" data-decline>Refuser</button>
-            <button type="button" class="pb-btn small" data-accept>Accepter</button>`;
+            <button type="button" class="ds-btn ghost small" data-decline>Refuser</button>
+            <button type="button" class="ds-btn small" data-accept>Accepter</button>`;
         row.querySelector('[data-accept]').addEventListener('click', () => {
             socket.emit('pbac_join_decide', { pseudo, accept: true });
             row.remove();
@@ -122,18 +118,18 @@ function renderLobby(games) {
     $('pb-tables').innerHTML = (games || []).map(g => {
         const live = g.status !== 'lobby';
         const statusText = STATUS_LABEL[g.status] || 'En cours';
-        return `<button class="pb-table-row${live ? ' live' : ''}" data-id="${g.id}">
+        return `<button class="ds-row${live ? ' live' : ''}" data-id="${g.id}">
             ${live ? '<span class="pt-live-dot"></span>' : ''}
-            <span class="pt-main">
-                <span class="pt-title">Table de <b>${esc(g.host)}</b></span>
-                <span class="pt-meta">${live
+            <span class="ds-row-main">
+                <span class="ds-row-name">Table de ${esc(g.host)}</span>
+                <span class="ds-row-sub">${live
                     ? `🔴 ${esc(statusText)} · Manche ${g.round}/${g.rounds} · ${g.alive} connecté${g.alive > 1 ? 's' : ''}`
                     : `${g.players}/${g.maxPlayers} joueurs · ${g.rounds} manches · ${g.duration} s`}</span>
             </span>
-            ${live ? '<span class="pt-join-hint">Demander à rejoindre ›</span>' : ''}
+            <span class="ds-row-go">${live ? 'Demander à rejoindre ›' : '›'}</span>
         </button>`;
     }).join('');
-    $('pb-tables').querySelectorAll('.pb-table-row').forEach(b => b.addEventListener('click', () => {
+    $('pb-tables').querySelectorAll('.ds-row').forEach(b => b.addEventListener('click', () => {
         socket.emit('pbac_join', { id: b.dataset.id });
     }));
 }
@@ -147,6 +143,7 @@ $('btn-create').addEventListener('click', () => {
     $('v-create').hidden = false;
 });
 $('create-cancel').addEventListener('click', () => { $('v-create').hidden = true; });
+$('create-close').addEventListener('click', () => { $('v-create').hidden = true; });
 $('btn-stats').addEventListener('click', () => {
     socket.emit('pbac_stats');
     $('v-stats').hidden = false;
@@ -225,7 +222,7 @@ function renderStats(data) {
         ['Meilleur score de manche', data.bestRoundScore],
         ['Réponses acceptées', data.answersValid],
         ['Réponses refusées', data.answersRejected],
-    ].map(([label, val]) => `<div class="pb-stat-box"><b>${val}</b><span>${label}</span></div>`).join('');
+    ].map(([label, val]) => `<div class="ds-stat-box"><b>${val}</b><em>${label}</em></div>`).join('');
 
     const strength = $('stats-strength');
     const lines = [];
@@ -244,10 +241,11 @@ function renderStats(data) {
             <div class="pb-leaderboard-cat">
                 <p class="pb-leaderboard-cat-name">${esc(cat)}</p>
                 ${data.leaderboard[cat].map((e, i) => `
-                    <div class="pb-leaderboard-row"><span>${i + 1}. ${esc(e.pseudo)}</span><b>${Math.round(e.rate * 100)}%</b></div>
+                    <button type="button" class="ds-lb-row" data-view="${esc(e.pseudo)}"><span class="ds-lb-name">${i + 1}. ${esc(e.pseudo)}</span><span class="ds-lb-value">${Math.round(e.rate * 100)}%</span></button>
                 `).join('')}
             </div>
         `).join('');
+        board.querySelectorAll('.ds-lb-row').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
     }
 }
 
@@ -418,10 +416,14 @@ function renderCountdown(s) {
 // ---------- Salle d'attente ----------
 function renderWaiting(s) {
     $('wait-players').innerHTML = s.players.map(p => `
-        <div class="pb-player-row${p.connected ? '' : ' off'}">
-            <span class="pp-dot"></span><span class="pp-name">${esc(p.pseudo)}</span>
-            ${p.host ? '<span class="pp-host">Hôte</span>' : ''}
-        </div>`).join('');
+        <button type="button" class="ds-waiting-chip${p.connected ? '' : ' off'}" data-view="${esc(p.pseudo)}">
+            <span class="ds-avatar sm" data-p="${esc(p.pseudo)}">✦</span>
+            ${esc(p.pseudo)}${p.host ? '<span class="ds-waiting-host">Hôte</span>' : ''}
+        </button>`).join('');
+    $('wait-players').querySelectorAll('.ds-waiting-chip').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
+    PortailProfile.fetchAvatars(s.players.map(p => p.pseudo)).then(a => {
+        $('wait-players').querySelectorAll('.ds-avatar').forEach(el => { el.innerHTML = PortailProfile.bubbleHTML(a[el.dataset.p]); });
+    });
     const isHost = s.host === myPseudo;
     $('btn-start').hidden = !isHost;
     $('wait-hint').hidden = isHost;
@@ -724,6 +726,7 @@ function renderFinal(s) {
         return `<div class="pod-row tier-${tier}" data-tier="${tier}">
             <span class="pod-rank">${i + 1}</span>
             ${tier === 1 ? CROWN_SVG.replace('show', '') : ''}
+            <button type="button" class="ds-avatar sm pod-bubble" data-view="${esc(p.pseudo)}">✦</button>
             <span class="pod-pname">${esc(p.pseudo)}</span>
             <span class="pod-pscore">${p.score} pts</span>
         </div>`;
@@ -732,6 +735,10 @@ function renderFinal(s) {
     const podiumEl = $('pb-podium');
     podiumEl.classList.toggle('tie-final', tiedTop);
     podiumEl.innerHTML = bannerHtml + `<div class="pod-list">${rowsHtml}</div>`;
+    podiumEl.querySelectorAll('.pod-bubble').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); PortailProfile.open(b.dataset.view); }));
+    PortailProfile.fetchAvatars(ranked.map(p => p.pseudo)).then(a => {
+        podiumEl.querySelectorAll('.pod-bubble').forEach(b => { b.innerHTML = PortailProfile.bubbleHTML(a[b.dataset.view]); });
+    });
 
     // Révélation qui remonte le classement : dernier -> premier, en ralentissant
     // et en intensifiant l'animation à mesure qu'on approche du sommet.

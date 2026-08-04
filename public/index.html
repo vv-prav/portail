@@ -10,6 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/design-system.css">
     <link rel="stylesheet" href="/style.css">
 </head>
 <body class="is-boot">
@@ -22,11 +23,11 @@
             <div class="crest"><img src="/logo-bretagne.svg" alt="Erquy" class="crest-logo"></div>
             <h1 class="entry-title">Le Salon</h1>
             <p class="entry-sub" data-i="entry_sub">Un nom, un mot de passe, et la porte s'ouvre.</p>
-            <input class="input" id="pseudo" type="text" data-ph="ph_name" placeholder="Ton nom" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="20">
-            <input class="input" id="password" type="password" data-ph="ph_pass" placeholder="Ton mot de passe" autocomplete="current-password">
+            <input class="ds-input" id="pseudo" type="text" data-ph="ph_name" placeholder="Ton nom" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="20">
+            <input class="ds-input" id="password" type="password" data-ph="ph_pass" placeholder="Ton mot de passe" autocomplete="current-password">
             <p class="hint" data-i="entry_hint">6 caractères minimum. Choisis un mot de passe unique, pas un que tu utilises ailleurs.</p>
-            <button class="btn btn-primary" id="btn-login" type="submit" data-i="btn_enter">Entrer</button>
-            <button class="btn btn-ghost" id="btn-register" type="button" data-i="btn_register">Créer un compte</button>
+            <button class="ds-btn" id="btn-login" type="submit" data-i="btn_enter">Entrer</button>
+            <button class="ds-btn ghost" id="btn-register" type="button" data-i="btn_register">Créer un compte</button>
             <button class="link-btn" id="btn-forgot" type="button" data-i="btn_forgot">Mot de passe oublié ?</button>
             <div class="lang-row" id="lang-row">
                 <button type="button" data-lang="fr">FR</button><button type="button" data-lang="en">EN</button><button type="button" data-lang="es">ES</button>
@@ -77,35 +78,36 @@
     </main>
 
     <!-- Code de récupération -->
-    <div class="ov" id="ov-code" hidden>
-        <div class="ov-card">
+    <div class="ds-overlay" id="ov-code" hidden>
+        <div class="ds-card">
             <div class="ov-emoji">🔑</div>
-            <h2 class="ov-title" data-i="code_title">Note ce code</h2>
+            <h2 class="ds-card-title ov-title" data-i="code_title">Note ce code</h2>
             <p class="ov-sub" data-i="code_sub">C'est le seul moyen de récupérer ton compte si tu oublies ton mot de passe. Il ne sera plus jamais affiché.</p>
             <div class="code-box" id="code-box">—</div>
-            <button class="btn btn-ghost" id="code-copy" type="button" data-i="code_copy">Copier le code</button>
-            <button class="btn btn-primary" id="code-ok" type="button" data-i="code_ok">C'est noté</button>
+            <button class="ds-btn ghost" id="code-copy" type="button" data-i="code_copy">Copier le code</button>
+            <button class="ds-btn" id="code-ok" type="button" data-i="code_ok">C'est noté</button>
         </div>
     </div>
 
     <!-- Mot de passe oublié -->
-    <div class="ov" id="ov-forgot" hidden>
-        <div class="ov-card">
+    <div class="ds-overlay" id="ov-forgot" hidden>
+        <div class="ds-card">
+            <button type="button" class="ds-card-close" id="ov-forgot-close" aria-label="Fermer">✕</button>
             <div class="ov-emoji">🔓</div>
-            <h2 class="ov-title" data-i="forgot_title">Mot de passe oublié</h2>
+            <h2 class="ds-card-title ov-title" data-i="forgot_title">Mot de passe oublié</h2>
             <p class="ov-sub" data-i="forgot_sub">Entre ton nom et le code de récupération noté à l'inscription.</p>
-            <input class="input" id="f-pseudo" type="text" data-ph="ph_name" placeholder="Ton nom" autocapitalize="off" autocorrect="off">
-            <input class="input" id="f-code" type="text" placeholder="XXXX-XXXX-XXXX-XXXX" autocapitalize="characters" autocorrect="off">
-            <input class="input" id="f-pass" type="password" data-ph="ph_newpass" placeholder="Nouveau mot de passe">
+            <input class="ds-input" id="f-pseudo" type="text" data-ph="ph_name" placeholder="Ton nom" autocapitalize="off" autocorrect="off">
+            <input class="ds-input" id="f-code" type="text" placeholder="XXXX-XXXX-XXXX-XXXX" autocapitalize="characters" autocorrect="off">
+            <input class="ds-input" id="f-pass" type="password" data-ph="ph_newpass" placeholder="Nouveau mot de passe">
             <div class="entry-error" id="f-error" role="alert"></div>
-            <button class="btn btn-primary" id="f-send" type="button" data-i="forgot_send">Réinitialiser</button>
-            <button class="btn btn-ghost" id="f-cancel" type="button" data-i="cancel">Annuler</button>
+            <button class="ds-btn" id="f-send" type="button" data-i="forgot_send">Réinitialiser</button>
+            <button class="ds-btn ghost" id="f-cancel" type="button" data-i="cancel">Annuler</button>
         </div>
     </div>
 
-    <p class="hub-toast" id="hub-toast" hidden></p>
 
     <script src="/profile-viewer.js"></script>
+    <script src="/design-system.js"></script>
     <script src="/app.js"></script>
 </body>
 </html>

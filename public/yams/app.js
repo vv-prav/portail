@@ -1,13 +1,7 @@
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-function toast(msg) {
-    const el = $('ym-toast');
-    el.textContent = msg;
-    el.hidden = false;
-    clearTimeout(el._t);
-    el._t = setTimeout(() => { el.hidden = true; }, 2600);
-}
+function toast(msg) { DS.toast(msg); }
 
 // Une couleur par joueur, pour se repérer d'un coup d'œil entre le score en
 // haut et ses cases remplies dans la feuille.
@@ -241,7 +235,7 @@ function renderStats(data) {
         ['Yams réalisés', data.totalYams],
         ['dont bonus', data.bonusYams],
         ['Meilleur score', data.bestScore],
-    ].map(([label, val]) => `<div class="ym-stat-box"><b>${val}</b><span>${label}</span></div>`).join('');
+    ].map(([label, val]) => `<div class="ds-stat-box"><b>${val}</b><em>${label}</em></div>`).join('');
     const nem = $('statsNemesis');
     if (data.nemesis) {
         nem.innerHTML = `😈 Votre bête noire : <b>${esc(data.nemesis.pseudo)}</b> vous a battu ${data.nemesis.losses} fois`;
@@ -253,15 +247,15 @@ function renderStats(data) {
 function renderLobby(games) {
     $('lobby-empty-label').hidden = !!games.length;
     $('ym-tables').innerHTML = games.map(g => `
-        <button type="button" class="ym-table-row" data-id="${g.id}">
-            <span class="ym-table-main">
-                <span class="ym-table-host">${esc(g.host)}</span>
-                <span class="ym-table-meta">${g.status === 'playing' ? '🔴 En cours' : 'En attente'} · ${g.alive}/${g.players} joueurs${g.spectators ? ` · 👀 ${g.spectators}` : ''}</span>
+        <button type="button" class="ds-row" data-id="${g.id}">
+            <span class="ds-row-main">
+                <span class="ds-row-name">${esc(g.host)}</span>
+                <span class="ds-row-sub">${g.status === 'playing' ? '🔴 En cours' : 'En attente'} · ${g.alive}/${g.players} joueurs${g.spectators ? ` · 👀 ${g.spectators}` : ''}</span>
             </span>
-            <span class="ym-table-join">${g.status === 'playing' ? 'Regarder ›' : 'Rejoindre ›'}</span>
+            <span class="ds-row-go">${g.status === 'playing' ? 'Regarder ›' : 'Rejoindre ›'}</span>
         </button>
     `).join('');
-    $('ym-tables').querySelectorAll('.ym-table-row').forEach(b => b.addEventListener('click', () => {
+    $('ym-tables').querySelectorAll('.ds-row').forEach(b => b.addEventListener('click', () => {
         socket.emit('yams_join', { id: b.dataset.id });
     }));
 }
@@ -299,23 +293,25 @@ $('btn-skins').addEventListener('click', () => { socket.emit('yams_stats'); rend
 let myOpponents = [];
 function renderLeaderboard(rows) {
     $('paneLb').innerHTML = rows.length ? rows.map((r, i) => `
-        <button type="button" class="ym-lb-row${r.pseudo === myPseudo ? ' me' : ''}" data-view="${esc(r.pseudo)}">
-            <span class="ym-lb-rank">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1)}</span>
-            <span class="ym-lb-name">${esc(r.pseudo)}</span>
-            <span class="ym-lb-stat"><b>${r.gamesWon}</b> victoires</span>
-            <span class="ym-lb-stat">${r.winRate}%</span>
+        <button type="button" class="ds-lb-row${r.pseudo === myPseudo ? ' me' : ''}" data-view="${esc(r.pseudo)}">
+            <span class="ds-lb-rank">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1)}</span>
+            <span class="ds-lb-name">${esc(r.pseudo)}</span>
+            <span class="ds-lb-value">${r.gamesWon} victoires</span>
+            <span class="ym-lb-winrate">${r.winRate}%</span>
         </button>
     `).join('') : `<p class="ym-list-label">Personne n'a encore terminé de partie.</p>`;
-    $('paneLb').querySelectorAll('.ym-lb-row').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
+    $('paneLb').querySelectorAll('.ds-lb-row').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
 }
 function renderHistory(list) {
     $('paneHist').innerHTML = list.length ? list.map(g => {
         const sorted = [...g.players].sort((a, b) => b.total - a.total);
         const when = new Date(g.endedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
         return `
-            <div class="ym-hist-row">
-                <span class="ym-hist-when">${when}</span>
-                <span class="ym-hist-players">${sorted.map((p, i) => `${i === 0 ? '🏆 ' : ''}${esc(p.pseudo)} (${p.total})`).join(' · ')}</span>
+            <div class="ds-row static">
+                <span class="ds-row-main">
+                    <span class="ds-row-name">${sorted.map((p, i) => `${i === 0 ? '🏆 ' : ''}${esc(p.pseudo)} (${p.total})`).join(' · ')}</span>
+                    <span class="ds-row-sub">${when}</span>
+                </span>
             </div>`;
     }).join('') : `<p class="ym-list-label">Aucune partie terminée pour l'instant.</p>`;
 }
@@ -339,8 +335,8 @@ function renderH2h(d) {
     ` : `<p class="ym-list-label">Vous n'avez pas encore joué contre ${esc(d.opponent)}.</p>`;
 }
 $('h2hSelect').addEventListener('change', (e) => socket.emit('yams_h2h', { opponent: e.target.value }));
-document.querySelectorAll('.ym-lb-tab').forEach(tab => tab.addEventListener('click', () => {
-    document.querySelectorAll('.ym-lb-tab').forEach(t => t.classList.toggle('active', t === tab));
+document.querySelectorAll('.ds-segmented button').forEach(tab => tab.addEventListener('click', () => {
+    document.querySelectorAll('.ds-segmented button').forEach(t => t.classList.toggle('on', t === tab));
     ['lb', 'hist', 'h2h'].forEach(k => { $('pane' + k[0].toUpperCase() + k.slice(1)).hidden = tab.dataset.tab !== k; });
 }));
 $('btn-leaderboard').addEventListener('click', () => {
@@ -360,14 +356,14 @@ function socket_list_poll() {
 // ---------- Salle d'attente ----------
 function renderWaiting(s) {
     $('wait-players').innerHTML = s.players.map(p => `
-        <button type="button" class="ym-wait-chip" data-view="${esc(p.pseudo)}">
-            <span class="ym-wait-bubble" data-p="${esc(p.pseudo)}">✦</span>
-            ${p.connected ? '🟢' : '⚪'} ${esc(p.pseudo)}${p.pseudo === s.host ? ' (hôte)' : ''}
+        <button type="button" class="ds-waiting-chip${p.connected ? '' : ' off'}" data-view="${esc(p.pseudo)}">
+            <span class="ds-avatar sm" data-p="${esc(p.pseudo)}">✦</span>
+            ${esc(p.pseudo)}${p.pseudo === s.host ? '<span class="ds-waiting-host">Hôte</span>' : ''}
         </button>
     `).join('');
-    $('wait-players').querySelectorAll('.ym-wait-chip').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
+    $('wait-players').querySelectorAll('.ds-waiting-chip').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
     PortailProfile.fetchAvatars(s.players.map(p => p.pseudo)).then(a => {
-        $('wait-players').querySelectorAll('.ym-wait-bubble').forEach(el => { el.innerHTML = PortailProfile.bubbleHTML(a[el.dataset.p]); });
+        $('wait-players').querySelectorAll('.ds-avatar').forEach(el => { el.innerHTML = PortailProfile.bubbleHTML(a[el.dataset.p]); });
     });
     const isHost = myPseudo === s.host;
     $('btn-start').hidden = !isHost;
@@ -387,7 +383,7 @@ function renderScoresStrip(s) {
     if (focusedPlayerIndex >= s.players.length) focusedPlayerIndex = 0;
     $('scoresStrip').innerHTML = s.players.map((p, i) => `
         <div class="ym-score-band${p.pseudo === s.turnPseudo ? ' current' : ''}${i === focusedPlayerIndex ? ' focused' : ''}" data-i="${i}" style="--pcolor:${playerColor(i)}">
-            <button type="button" class="ym-score-band-bubble" data-view="${esc(p.pseudo)}">${PortailProfile.bubbleHTML(scoreAvatars[p.pseudo])}</button>
+            <button type="button" class="ds-avatar sm ym-score-band-bubble" data-view="${esc(p.pseudo)}">${PortailProfile.bubbleHTML(scoreAvatars[p.pseudo])}</button>
             <span class="ym-score-band-name">${p.connected ? '' : '⚪ '}${esc(p.pseudo)}</span>
             <b class="ym-score-band-total">${p.total}</b>
         </div>
@@ -596,10 +592,11 @@ function renderEnded(s) {
     const sorted = [...s.players].sort((a, b) => b.total - a.total);
     $('endTitle').textContent = s.winner === myPseudo ? 'Vous avez gagné !' : `${s.winner} a gagné !`;
     $('endScores').innerHTML = sorted.map((p, i) => `
-        <div class="ym-end-row${i === 0 ? ' win' : ''}">
-            <span>${i === 0 ? '🏆 ' : ''}${esc(p.pseudo)}</span><b>${p.total}</b>
-        </div>
+        <button type="button" class="ds-lb-row${i === 0 ? ' win' : ''}" data-view="${esc(p.pseudo)}">
+            <span class="ds-lb-name">${i === 0 ? '🏆 ' : ''}${esc(p.pseudo)}</span><span class="ds-lb-value">${p.total}</span>
+        </button>
     `).join('');
+    $('endScores').querySelectorAll('.ds-lb-row').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
     $('btn-rematch').hidden = myPseudo !== s.host;
     // Les confettis de fin de partie : plus l'écart avec le deuxième est large, plus ça fête fort.
     const margin = sorted.length > 1 ? Math.max(0, sorted[0].total - sorted[1].total) : 40;

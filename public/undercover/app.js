@@ -5,11 +5,7 @@
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-function toast(msg) {
-    const el = $('uc-toast');
-    el.textContent = msg; el.hidden = false;
-    clearTimeout(el._t); el._t = setTimeout(() => { el.hidden = true; }, 2600);
-}
+function toast(msg) { DS.toast(msg); }
 const ALL_VIEWS = [
     'v-mode', 'v-lobby', 'v-waiting', 'v-speaking', 'v-voting', 'v-result', 'v-ended',
     'v-local-setup', 'v-local-reveal', 'v-local-speaking', 'v-local-vote-pass', 'v-local-result', 'v-local-ended',
@@ -75,11 +71,14 @@ function renderLobby(games) {
     if (state) return;   // déjà dans une table : pas la peine de retoucher la liste du lobby
     $('lobby-empty-label').hidden = !!(games && games.length);
     $('uc-tables').innerHTML = (games || []).map(g => `
-        <button class="uc-table-row" data-id="${g.id}">
-            <span>Table de <b>${esc(g.host)}</b></span>
-            <span class="ut-meta">${g.players}/${g.maxPlayers} joueurs</span>
+        <button class="ds-row" data-id="${g.id}">
+            <span class="ds-row-main">
+                <span class="ds-row-name">Table de ${esc(g.host)}</span>
+                <span class="ds-row-sub">${g.players}/${g.maxPlayers} joueurs</span>
+            </span>
+            <span class="ds-row-go">›</span>
         </button>`).join('');
-    $('uc-tables').querySelectorAll('.uc-table-row').forEach(b => b.addEventListener('click', () => {
+    $('uc-tables').querySelectorAll('.ds-row').forEach(b => b.addEventListener('click', () => {
         socket.emit('uc_join', { id: b.dataset.id });
     }));
 }
@@ -107,13 +106,13 @@ function onState(s) {
 
 function renderWaiting(s) {
     $('wait-players').innerHTML = s.players.map(p => `
-        <button type="button" class="uc-player-row${p.connected ? '' : ' off'}" data-view="${esc(p.pseudo)}">
-            <span class="up-bubble" data-p="${esc(p.pseudo)}">✦</span><span class="up-dot"></span><span class="up-name">${esc(p.pseudo)}</span>
-            ${p.host ? '<span class="up-host">Hôte</span>' : ''}
+        <button type="button" class="ds-waiting-chip${p.connected ? '' : ' off'}" data-view="${esc(p.pseudo)}">
+            <span class="ds-avatar sm" data-p="${esc(p.pseudo)}">✦</span>
+            ${esc(p.pseudo)}${p.host ? '<span class="ds-waiting-host">Hôte</span>' : ''}
         </button>`).join('');
-    $('wait-players').querySelectorAll('.uc-player-row').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
+    $('wait-players').querySelectorAll('.ds-waiting-chip').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
     PortailProfile.fetchAvatars(s.players.map(p => p.pseudo)).then(a => {
-        $('wait-players').querySelectorAll('.up-bubble').forEach(el => { el.innerHTML = PortailProfile.bubbleHTML(a[el.dataset.p]); });
+        $('wait-players').querySelectorAll('.ds-avatar').forEach(el => { el.innerHTML = PortailProfile.bubbleHTML(a[el.dataset.p]); });
     });
     const isHost = s.host === myPseudo;
     $('btn-start').hidden = !isHost;

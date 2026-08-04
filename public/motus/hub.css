@@ -13,11 +13,6 @@ body {
 }
 ::selection { background:var(--brass); color:var(--ink); }
 
-.mh-back { position:fixed; top:max(14px,env(safe-area-inset-top)); left:14px; z-index:20;
-    width:42px; height:42px; display:grid; place-items:center; border-radius:12px;
-    background:rgba(217,169,78,.14); backdrop-filter:blur(8px); border:1px solid var(--line);
-    color:var(--brass-soft); text-decoration:none; font-size:1.1rem; }
-
 .mh-head { max-width:480px; margin:46px auto 32px; text-align:center; }
 .mh-eyebrow { font-size:.72rem; letter-spacing:1px; text-transform:uppercase; color:var(--muted); margin:0 0 10px; }
 .mh-title { font-size:2.2rem; font-weight:800; margin:0; background:linear-gradient(180deg,var(--brass-soft),var(--brass));

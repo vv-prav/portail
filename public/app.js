@@ -368,14 +368,7 @@ async function loadMiniProfile() {
     setAvatarBubble($('me-avatar'), data.avatarPhoto, data.avatar);
 }
 // Petite bulle d'avatar (photo ou emoji), utilisée dans l'en-tête du salon.
-function toast(msg) {
-    const el = $('hub-toast');
-    if (!el) return;
-    el.textContent = msg;
-    el.hidden = false;
-    clearTimeout(el._t);
-    el._t = setTimeout(() => { el.hidden = true; }, 2600);
-}
+function toast(msg) { DS.toast(msg); }
 function setAvatarBubble(el, photo, emoji) {
     if (!el) return;
     el.innerHTML = photo ? `<img src="${photo}" alt="">` : esc(emoji || '✦');
@@ -426,6 +419,7 @@ $('btn-forgot').addEventListener('click', () => {
     $('ov-forgot').hidden = false;
 });
 $('f-cancel').addEventListener('click', () => { $('ov-forgot').hidden = true; });
+$('ov-forgot-close').addEventListener('click', () => { $('ov-forgot').hidden = true; });
 $('f-send').addEventListener('click', async () => {
     const pseudo = $('f-pseudo').value.trim();
     const code = $('f-code').value.trim().toUpperCase();

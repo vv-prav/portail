@@ -7,12 +7,13 @@
     <title>Yams</title>
     <link rel="icon" href="/icon-192.png">
     <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="stylesheet" href="/design-system.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="ym">
         <header class="ym-head">
-            <a class="ym-back" href="/" aria-label="Retour au salon">←</a>
+            <a class="ds-back" href="/" aria-label="Retour au salon">←</a>
             <div class="ym-titles">
                 <h1 class="ym-title">Yams</h1>
                 <span class="ym-sub" id="ym-sub">Salon des parties</span>
@@ -22,58 +23,60 @@
 
         <!-- LOBBY -->
         <section class="ym-view" id="v-lobby">
-            <button class="ym-btn" id="btn-create">Créer une table</button>
-            <button class="ym-btn ghost" id="btn-stats">Mes statistiques</button>
-            <button class="ym-btn ghost" id="btn-skins">🎨 Style des dés</button>
-            <button class="ym-btn ghost" id="btn-leaderboard">🏆 Classement &amp; historique</button>
+            <button class="ds-btn" id="btn-create">Créer une table</button>
+            <button class="ds-btn ghost" id="btn-stats">Mes statistiques</button>
+            <button class="ds-btn ghost" id="btn-skins">🎨 Style des dés</button>
+            <button class="ds-btn ghost" id="btn-leaderboard">🏆 Classement &amp; historique</button>
             <p class="ym-list-label" id="lobby-empty-label" hidden>Aucune table ouverte pour l'instant.</p>
             <div class="ym-tables" id="ym-tables"></div>
         </section>
 
         <!-- MES STATISTIQUES -->
-        <div class="ym-overlay" id="v-stats" hidden>
-            <div class="ym-stats-card">
-                <h2 class="ym-stats-title">Mes statistiques</h2>
-                <div class="ym-stats-grid" id="statsGrid"></div>
+        <div class="ds-overlay" id="v-stats" hidden>
+            <div class="ds-card">
+                <button type="button" class="ds-card-close" id="stats-close" aria-label="Fermer">✕</button>
+                <h2 class="ds-card-title">Mes statistiques</h2>
+                <div class="ds-stat-grid cols2" id="statsGrid"></div>
                 <p class="ym-stats-nemesis" id="statsNemesis" hidden></p>
-                <button class="ym-btn ghost" id="stats-close">Fermer</button>
             </div>
         </div>
 
-        <div class="ym-overlay" id="v-skins" hidden>
-            <div class="ym-stats-card ym-skins-card">
-                <h2 class="ym-stats-title">Style des dés</h2>
-                <p class="ym-skins-hint">Certains styles se débloquent avec vos victoires ou le nombre de Yams réalisés.</p>
+        <!-- STYLE DES DÉS -->
+        <div class="ds-overlay" id="v-skins" hidden>
+            <div class="ds-card">
+                <button type="button" class="ds-card-close" id="skins-close" aria-label="Fermer">✕</button>
+                <h2 class="ds-card-title">Style des dés</h2>
+                <p class="ds-card-text">Certains styles se débloquent avec vos victoires ou le nombre de Yams réalisés.</p>
                 <div class="ym-skins-grid" id="skinsGrid"></div>
-                <button class="ym-btn ghost" id="skins-close">Fermer</button>
             </div>
         </div>
 
-        <div class="ym-overlay" id="v-leaderboard" hidden>
-            <div class="ym-stats-card">
-                <h2 class="ym-stats-title">Classement &amp; historique</h2>
-                <div class="ym-lb-tabs">
-                    <button type="button" class="ym-lb-tab active" data-tab="lb">Classement</button>
-                    <button type="button" class="ym-lb-tab" data-tab="hist">Historique</button>
-                    <button type="button" class="ym-lb-tab" data-tab="h2h">Face à face</button>
+        <!-- CLASSEMENT & HISTORIQUE -->
+        <div class="ds-overlay" id="v-leaderboard" hidden>
+            <div class="ds-card">
+                <button type="button" class="ds-card-close" id="leaderboard-close" aria-label="Fermer">✕</button>
+                <h2 class="ds-card-title">Classement &amp; historique</h2>
+                <div class="ds-segmented">
+                    <button type="button" class="on" data-tab="lb">Classement</button>
+                    <button type="button" data-tab="hist">Historique</button>
+                    <button type="button" data-tab="h2h">Face à face</button>
                 </div>
                 <div class="ym-lb-pane" id="paneLb"></div>
                 <div class="ym-lb-pane" id="paneHist" hidden></div>
                 <div class="ym-lb-pane" id="paneH2h" hidden>
-                    <select class="ym-h2h-select" id="h2hSelect"></select>
+                    <select class="ds-input" id="h2hSelect"></select>
                     <div id="h2hResult"></div>
                 </div>
-                <button class="ym-btn ghost" id="leaderboard-close">Fermer</button>
             </div>
         </div>
 
         <!-- SALLE D'ATTENTE -->
         <section class="ym-view" id="v-waiting" hidden>
             <p class="ym-field-label">En attente d'au moins deux joueurs</p>
-            <div class="ym-wait-players" id="wait-players"></div>
-            <button class="ym-btn" id="btn-start" hidden>Lancer la partie</button>
+            <div class="ds-waiting-list" id="wait-players"></div>
+            <button class="ds-btn" id="btn-start" hidden>Lancer la partie</button>
             <p class="ym-cat-hint" id="wait-hint">En attente de l'hôte…</p>
-            <button class="ym-btn ghost" id="btn-leave-lobby">Quitter la table</button>
+            <button class="ds-btn ghost" id="btn-leave-lobby">Quitter la table</button>
         </section>
 
         <!-- PARTIE EN COURS -->
@@ -98,7 +101,7 @@
                 <p class="ym-turn-label" id="turnLabel">—</p>
                 <div class="ym-dice" id="diceRow"></div>
                 <p class="ym-rolls-left" id="rollsLeft"></p>
-                <button class="ym-btn" id="btn-roll">Lancer les dés</button>
+                <button class="ds-btn" id="btn-roll">Lancer les dés</button>
             </div>
         </section>
 
@@ -116,12 +119,10 @@
             <p class="ym-end-emoji">🏆</p>
             <h2 class="ym-end-title" id="endTitle">—</h2>
             <div class="ym-end-scores" id="endScores"></div>
-            <button class="ym-btn" id="btn-rematch" hidden>Rejouer</button>
-            <button class="ym-btn ghost" id="btn-back-lobby">Retour au salon des parties</button>
+            <button class="ds-btn" id="btn-rematch" hidden>Rejouer</button>
+            <button class="ds-btn ghost" id="btn-back-lobby">Retour au salon des parties</button>
         </section>
     </div>
-
-    <p class="ym-toast" id="ym-toast" hidden></p>
 
     <div class="ym-celebration" id="ymCelebration" aria-hidden="true">
         <div class="ym-confetti-field" id="ymConfetti"></div>
@@ -142,6 +143,7 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="/profile-viewer.js"></script>
+    <script src="/design-system.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

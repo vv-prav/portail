@@ -10,6 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/design-system.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="is-boot">
@@ -20,7 +21,7 @@
 
     <div class="pb" id="pb">
         <header class="pb-head">
-            <a class="pb-back" href="/" aria-label="Retour au salon">←</a>
+            <a class="ds-back" href="/" aria-label="Retour au salon">←</a>
             <div class="pb-titles">
                 <h1 class="pb-title">Petit Bac</h1>
                 <span class="pb-sub" id="pb-sub">Salon des parties</span>
@@ -32,8 +33,8 @@
 
         <!-- LOBBY : liste des tables -->
         <section class="pb-view" id="v-lobby">
-            <button class="pb-btn" id="btn-create">Créer une table</button>
-            <button class="pb-btn ghost" id="btn-stats">Mes statistiques</button>
+            <button class="ds-btn" id="btn-create">Créer une table</button>
+            <button class="ds-btn ghost" id="btn-stats">Mes statistiques</button>
             <p class="pb-list-label" id="lobby-empty-label" hidden>Aucune table ouverte pour l'instant.</p>
             <div class="pb-tables" id="pb-tables"></div>
         </section>
@@ -47,31 +48,32 @@
         </section>
 
         <!-- Mes statistiques -->
-        <div class="pb-overlay" id="v-stats" hidden>
-            <div class="pb-card">
-                <h2 class="pb-card-title">Mes statistiques</h2>
-                <div class="pb-stats-grid" id="stats-grid"></div>
+        <div class="ds-overlay" id="v-stats" hidden>
+            <div class="ds-card">
+                <button type="button" class="ds-card-close" id="stats-close" aria-label="Fermer">✕</button>
+                <h2 class="ds-card-title pb-card-title">Mes statistiques</h2>
+                <div class="ds-stat-grid cols2" id="stats-grid"></div>
                 <div class="pb-stats-strength" id="stats-strength"></div>
                 <p class="pb-field-label">Classement par catégorie</p>
                 <p class="pb-cat-hint">Seules les catégories jouées au moins 3 fois par au moins deux personnes apparaissent ici.</p>
                 <div class="pb-stats-leaderboard" id="stats-leaderboard"></div>
-                <button class="pb-btn ghost" id="stats-close">Fermer</button>
             </div>
         </div>
 
         <!-- Réglages d'une nouvelle table -->
-        <div class="pb-overlay" id="v-create" hidden>
-            <div class="pb-card pb-create-card">
-                <h2 class="pb-card-title">Nouvelle table</h2>
+        <div class="ds-overlay" id="v-create" hidden>
+            <div class="ds-card pb-create-card">
+                <button type="button" class="ds-card-close" id="create-close" aria-label="Fermer">✕</button>
+                <h2 class="ds-card-title pb-card-title">Nouvelle table</h2>
                 <div class="pb-create-scroll">
                     <p class="pb-field-label">Manches</p>
-                    <div class="pb-choice" id="opt-rounds">
+                    <div class="ds-segmented" id="opt-rounds">
                         <button type="button" data-v="3">3</button>
                         <button type="button" data-v="5" class="on">5</button>
                         <button type="button" data-v="7">7</button>
                     </div>
                     <p class="pb-field-label">Durée d'écriture</p>
-                    <div class="pb-choice" id="opt-duration">
+                    <div class="ds-segmented" id="opt-duration">
                         <button type="button" data-v="court">60 s</button>
                         <button type="button" data-v="moyen" class="on">90 s</button>
                         <button type="button" data-v="long">120 s</button>
@@ -82,7 +84,7 @@
                         <span>secondes (entre 20 et 300)</span>
                     </div>
                     <p class="pb-field-label">Lettre de chaque manche</p>
-                    <div class="pb-choice" id="opt-letter-mode">
+                    <div class="ds-segmented" id="opt-letter-mode">
                         <button type="button" data-v="random" class="on">Aléatoire</button>
                         <button type="button" data-v="host">Je choisis</button>
                     </div>
@@ -93,7 +95,7 @@
                     </button>
                     <div class="pb-advanced-body" id="advancedBody" hidden>
                         <p class="pb-field-label">Vote</p>
-                        <div class="pb-choice" id="opt-vote-mode">
+                        <div class="ds-segmented" id="opt-vote-mode">
                             <button type="button" data-v="sequential" class="on">Une réponse à la fois</button>
                             <button type="button" data-v="parallel">Toute la catégorie</button>
                         </div>
@@ -123,28 +125,28 @@
                     <p class="pb-cat-hint">Touche une catégorie pour l'ajouter ou la retirer. Il en faut exactement 8.</p>
                     <div class="pb-cat-grid" id="cat-grid"></div>
                     <div class="pb-cat-custom">
-                        <input id="cat-custom-input" type="text" maxlength="30" placeholder="Une catégorie perso…" autocomplete="off">
+                        <input id="cat-custom-input" class="ds-input" type="text" maxlength="30" placeholder="Une catégorie perso…" autocomplete="off">
                         <button type="button" id="cat-custom-add">Ajouter</button>
                     </div>
 
                     <div class="pb-pack-save-row">
-                        <input id="pack-save-name" type="text" maxlength="24" placeholder="Nom du pack à enregistrer…" autocomplete="off">
+                        <input id="pack-save-name" class="ds-input" type="text" maxlength="24" placeholder="Nom du pack à enregistrer…" autocomplete="off">
                         <button type="button" id="pack-save-btn">Enregistrer</button>
                     </div>
                 </div>
                 <div class="pb-create-footer">
-                    <button class="pb-btn" id="create-confirm">Créer</button>
-                    <button class="pb-btn ghost" id="create-cancel">Annuler</button>
+                    <button class="ds-btn" id="create-confirm">Créer</button>
+                    <button class="ds-btn ghost" id="create-cancel">Annuler</button>
                 </div>
             </div>
         </div>
 
         <!-- SALLE D'ATTENTE -->
         <section class="pb-view" id="v-waiting" hidden>
-            <div class="pb-players" id="wait-players"></div>
+            <div class="ds-waiting-list" id="wait-players"></div>
             <p class="pb-hint" id="wait-hint">En attente de l'hôte…</p>
-            <button class="pb-btn" id="btn-start" hidden>Lancer la partie</button>
-            <button class="pb-btn ghost" id="btn-leave-lobby">Quitter la table</button>
+            <button class="ds-btn" id="btn-start" hidden>Lancer la partie</button>
+            <button class="ds-btn ghost" id="btn-leave-lobby">Quitter la table</button>
         </section>
 
         <!-- SPECTATEUR (rejoint en cours de manche) -->
@@ -154,7 +156,7 @@
                 <p class="pb-spectator-letter" id="spectator-letter" hidden>A</p>
                 <p class="pb-hint">Tu observes cette manche — tu joueras dès la prochaine !</p>
             </div>
-            <button class="pb-btn ghost" id="btn-leave-spectator">Quitter la table</button>
+            <button class="ds-btn ghost" id="btn-leave-spectator">Quitter la table</button>
         </section>
 
         <!-- CHOIX DE LA LETTRE PAR L'HÔTE -->
@@ -191,8 +193,8 @@
                 <input id="step-input" type="text" maxlength="40" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false">
                 <input id="step-input-2" type="text" maxlength="40" autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false" placeholder="Deuxième mot…" hidden>
                 <div class="pb-step-nav">
-                    <button class="pb-btn ghost" id="step-prev">Précédent</button>
-                    <button class="pb-btn" id="step-next">Suivant</button>
+                    <button class="ds-btn ghost" id="step-prev">Précédent</button>
+                    <button class="ds-btn" id="step-next">Suivant</button>
                 </div>
             </div>
 
@@ -249,21 +251,22 @@
         <section class="pb-view" id="v-round-end" hidden>
             <h2 class="pb-section-title">Résultats de la manche</h2>
             <div class="pb-score-list" id="round-score-list"></div>
-            <button class="pb-btn" id="btn-next-round">Manche suivante</button>
+            <button class="ds-btn" id="btn-next-round">Manche suivante</button>
             <p class="pb-hint" id="round-wait-hint" hidden>En attente de l'hôte…</p>
         </section>
 
         <!-- FIN DE PARTIE -->
         <section class="pb-view" id="v-ended" hidden>
             <div class="pb-podium" id="pb-podium"></div>
-            <button class="pb-btn" id="btn-rematch">Rejouer</button>
+            <button class="ds-btn" id="btn-rematch">Rejouer</button>
             <p class="pb-hint" id="final-wait-hint" hidden>En attente de l'hôte…</p>
-            <a class="pb-btn ghost" href="/">Retour au salon</a>
+            <a class="ds-btn ghost" href="/">Retour au salon</a>
         </section>
     </div>
 
-    <div class="pb-toast" id="pb-toast" hidden></div>
     <script src="/socket.io/socket.io.js"></script>
+    <script src="/profile-viewer.js"></script>
+    <script src="/design-system.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

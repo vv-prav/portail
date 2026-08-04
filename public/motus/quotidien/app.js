@@ -129,12 +129,7 @@ async function api(path, body) {
 const dq = () => (viewDate ? '&date=' + viewDate : '');
 const mbody = (o) => (viewDate ? { ...o, date: viewDate } : o);
 
-let toastT = null;
-function toast(msg) {
-    const el = $('mt-toast');
-    el.textContent = msg; el.hidden = false;
-    clearTimeout(toastT); toastT = setTimeout(() => { el.hidden = true; }, 2400);
-}
+function toast(msg) { DS.toast(msg); }
 
 // ---------- Grille ----------
 function buildGrid() {
@@ -435,20 +430,8 @@ $('arch-today').addEventListener('click', () => {
 
 // ---------- Confirmation générique ----------
 function ask(emoji, title, sub, actions) {
-    $('ask-emoji').textContent = emoji;
-    $('ask-title').textContent = title;
-    $('ask-sub').textContent = sub || '';
-    const box = $('ask-acts'); box.innerHTML = '';
-    actions.forEach(a => {
-        const b = document.createElement('button');
-        b.className = 'mt-btn' + (a.danger ? ' danger' : '');
-        b.type = 'button'; b.textContent = a.label;
-        b.addEventListener('click', () => { $('mt-ask').hidden = true; a.run(); });
-        box.appendChild(b);
-    });
-    $('mt-ask').hidden = false;
+    DS.confirm({ emoji, title, text: sub, actions, cancelLabel: t('cancel') });
 }
-$('ask-cancel').addEventListener('click', () => { $('mt-ask').hidden = true; });
 
 // ---------- Démarrage ----------
 function tick() {
@@ -469,7 +452,7 @@ $('mt-start-btn').addEventListener('click', () => {
 
 async function load() {
     document.body.className = 'is-boot';
-    ['mt-end', 'mt-ask', 'mt-comments', 'mt-archive'].forEach(id => { $(id).hidden = true; });
+    ['mt-end', 'mt-comments', 'mt-archive'].forEach(id => { $(id).hidden = true; });
     $('mt-inline-board').hidden = true;
     solved = false; lost = false; gaveUp = false; started = false;
     guesses = []; draft = Array(WORD_LEN).fill(''); curCol = 1;
@@ -548,7 +531,7 @@ $('mt-stats-btn').addEventListener('click', async () => {
         ['Grilles résolues', s.solved ?? 0],
         ['Taux de réussite', s.successRate === null || s.successRate === undefined ? '—' : s.successRate + '%'],
         ['Essais moyens', s.avgTries ?? '—'],
-    ].map(([label, val]) => `<div class="mt-stat-box"><b>${val}</b><span>${label}</span></div>`).join('');
+    ].map(([label, val]) => `<div class="ds-stat-box"><b>${val}</b><em>${label}</em></div>`).join('');
 });
 $('mt-stats-close').addEventListener('click', () => { $('mt-stats-screen').hidden = true; });
 

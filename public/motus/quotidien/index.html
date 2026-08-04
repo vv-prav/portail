@@ -10,6 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/design-system.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="is-boot">
@@ -18,7 +19,7 @@
 
     <div class="mt" id="mt">
         <header class="mt-head">
-            <a class="mt-back" href="/motus/" aria-label="Retour au menu Motus">←</a>
+            <a class="ds-back" href="/motus/" aria-label="Retour au menu Motus">←</a>
             <div class="mt-titles">
                 <h1 class="mt-title">Motus</h1>
                 <span class="mt-date" id="mt-date"></span>
@@ -40,21 +41,21 @@
         <p class="mt-clue" id="mt-clue" data-i="clue_start">Devine le mot en 6 essais. La première lettre est offerte.</p>
 
         <!-- STATISTIQUES -->
-        <div class="mt-overlay" id="mt-stats-screen" hidden>
-            <div class="mt-overlay-card">
-                <h2 class="mt-overlay-title">Statistiques</h2>
-                <div class="mt-stats-grid" id="mt-statsGrid"></div>
-                <button class="mt-overlay-close" id="mt-stats-close">Fermer</button>
+        <div class="ds-overlay" id="mt-stats-screen" hidden>
+            <div class="ds-card">
+                <button type="button" class="ds-card-close" id="mt-stats-close" aria-label="Fermer">✕</button>
+                <h2 class="ds-card-title">Statistiques</h2>
+                <div class="ds-stat-grid cols2" id="mt-statsGrid"></div>
             </div>
         </div>
 
         <!-- STYLE -->
-        <div class="mt-overlay" id="mt-style-screen" hidden>
-            <div class="mt-overlay-card">
-                <h2 class="mt-overlay-title">Style des tuiles</h2>
-                <p class="mt-overlay-hint">S'applique tout de suite.</p>
+        <div class="ds-overlay" id="mt-style-screen" hidden>
+            <div class="ds-card">
+                <button type="button" class="ds-card-close" id="mt-style-close" aria-label="Fermer">✕</button>
+                <h2 class="ds-card-title">Style des tuiles</h2>
+                <p class="ds-card-text">S'applique tout de suite.</p>
                 <div class="mt-theme-grid" id="mt-themeGrid"></div>
-                <button class="mt-overlay-close" id="mt-style-close">Fermer</button>
             </div>
         </div>
 
@@ -68,7 +69,7 @@
                 <div class="mt-start-box">
                     <div class="mt-start-emoji">🟨</div>
                     <p class="mt-start-txt" data-i="start_txt">Un mot à deviner, une couleur pour chaque indice.</p>
-                    <button class="mt-btn" id="mt-start-btn" type="button" data-i="start_btn">Commencer</button>
+                    <button class="ds-btn" id="mt-start-btn" type="button" data-i="start_btn">Commencer</button>
                 </div>
             </div>
         </div>
@@ -88,58 +89,47 @@
     </div>
 
     <!-- Fin de partie -->
-    <div class="mt-overlay" id="mt-end" hidden>
-        <div class="mt-card">
+    <div class="ds-overlay" id="mt-end" hidden>
+        <div class="ds-card">
+            <button type="button" class="ds-card-close" id="mt-end-close" aria-label="Fermer">✕</button>
             <div class="mt-end-emoji" id="mt-end-emoji">🎉</div>
-            <h2 class="mt-end-title" id="mt-end-title">Trouvé !</h2>
+            <h2 class="ds-card-title mt-end-title" id="mt-end-title">Trouvé !</h2>
             <p class="mt-end-word" id="mt-end-word"></p>
             <p class="mt-end-def" id="mt-end-def"></p>
             <p class="mt-end-sub" id="mt-end-sub"></p>
             <div class="mt-board" id="mt-board"></div>
-            <button class="mt-btn" id="mt-end-close" type="button" data-i="close">Fermer</button>
-            <a class="mt-btn ghost" href="/" data-i="back_salon">Retour au salon</a>
+            <a class="ds-btn ghost" href="/" data-i="back_salon">Retour au salon</a>
         </div>
     </div>
 
     <!-- Discussion -->
-    <div class="mt-overlay" id="mt-comments" hidden>
-        <div class="mt-card tall">
-            <h2 class="mt-end-title" data-i="panel_chat">Discussion du jour</h2>
+    <div class="ds-overlay" id="mt-comments" hidden>
+        <div class="ds-card tall">
+            <button type="button" class="ds-card-close" id="cmt-close" aria-label="Fermer">✕</button>
+            <h2 class="ds-card-title mt-end-title" data-i="panel_chat">Discussion du jour</h2>
             <p class="mt-end-sub" data-i="chat_sub">Pas de spoilers, restez fair-play 🙂</p>
             <div class="mt-chat" id="cmt-list"></div>
             <div class="mt-chat-row">
-                <input id="cmt-input" maxlength="240" data-ph="chat_ph" placeholder="Ton message…" autocomplete="off">
-                <button class="mt-btn" id="cmt-send" type="button" data-i="chat_send">Envoyer</button>
+                <input id="cmt-input" class="ds-input" maxlength="240" data-ph="chat_ph" placeholder="Ton message…" autocomplete="off">
+                <button class="ds-btn" id="cmt-send" type="button" data-i="chat_send">Envoyer</button>
             </div>
-            <button class="mt-btn ghost" id="cmt-close" type="button" data-i="close">Fermer</button>
         </div>
     </div>
 
     <!-- Archives -->
-    <div class="mt-overlay" id="mt-archive" hidden>
-        <div class="mt-card tall">
-            <h2 class="mt-end-title" data-i="panel_arch">Mots précédents</h2>
+    <div class="ds-overlay" id="mt-archive" hidden>
+        <div class="ds-card tall">
+            <button type="button" class="ds-card-close" id="arch-close" aria-label="Fermer">✕</button>
+            <h2 class="ds-card-title mt-end-title" data-i="panel_arch">Mots précédents</h2>
             <p class="mt-end-sub" data-i="arch_sub">Rejouables, mais hors classement.</p>
             <div class="mt-arch-list" id="arch-list"></div>
-            <button class="mt-btn" id="arch-today" type="button" data-i="arch_today">Revenir à aujourd'hui</button>
-            <button class="mt-btn ghost" id="arch-close" type="button" data-i="close">Fermer</button>
+            <button class="ds-btn" id="arch-today" type="button" data-i="arch_today">Revenir à aujourd'hui</button>
         </div>
     </div>
 
-    <!-- Confirmation générique -->
-    <div class="mt-overlay" id="mt-ask" hidden>
-        <div class="mt-card">
-            <div class="mt-end-emoji" id="ask-emoji">🏳️</div>
-            <h2 class="mt-end-title" id="ask-title">—</h2>
-            <p class="mt-end-sub" id="ask-sub">—</p>
-            <div id="ask-acts"></div>
-            <button class="mt-btn ghost" id="ask-cancel" type="button" data-i="cancel">Annuler</button>
-        </div>
-    </div>
-
-    <div class="mt-toast" id="mt-toast" hidden></div>
     <div class="mt-live-feed" id="mt-live-feed" aria-live="polite"></div>
     <script src="/socket.io/socket.io.js"></script>
+    <script src="/design-system.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

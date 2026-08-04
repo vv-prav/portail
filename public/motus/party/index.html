@@ -4,111 +4,31 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, interactive-widget=resizes-content">
     <meta name="theme-color" content="#14100b">
-    <title>Motus Party</title>
+    <title>Motus</title>
     <link rel="icon" href="/icon-192.png">
     <link rel="apple-touch-icon" href="/icon-192.png">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="/design-system.css">
+    <link rel="stylesheet" href="hub.css">
 </head>
 <body>
-    <div class="mp">
-        <header class="mp-head">
-            <a class="mp-back" href="/motus/" aria-label="Retour au Motus">←</a>
-            <div class="mp-titles">
-                <h1 class="mp-title">Motus Party</h1>
-                <span class="mp-sub" id="mp-sub">Salon des courses</span>
-            </div>
-        </header>
+    <a class="ds-back" href="/" aria-label="Retour au salon">←</a>
 
-        <!-- LOBBY -->
-        <section class="mp-view" id="v-lobby">
-            <div class="mp-create-box">
-                <p class="mp-field-label">Nombre de manches</p>
-                <div class="mp-rounds-picker" id="roundsPicker">
-                    <button type="button" class="mp-rounds-opt" data-n="3">3</button>
-                    <button type="button" class="mp-rounds-opt active" data-n="5">5</button>
-                    <button type="button" class="mp-rounds-opt" data-n="7">7</button>
-                    <button type="button" class="mp-rounds-opt" data-n="10">10</button>
-                </div>
-                <button class="mp-btn" id="btn-create">Créer une course</button>
-            </div>
-            <button class="mp-btn ghost" id="btn-stats">Mes statistiques</button>
-            <p class="mp-list-label" id="lobby-empty-label" hidden>Aucune course ouverte pour l'instant.</p>
-            <div class="mp-tables" id="mp-tables"></div>
-        </section>
+    <header class="mh-head">
+        <p class="mh-eyebrow">Un mot par jour, ou une course entre nous</p>
+        <h1 class="mh-title">Motus</h1>
+    </header>
 
-        <!-- SALLE D'ATTENTE -->
-        <section class="mp-view" id="v-waiting" hidden>
-            <p class="mp-field-label">En attente d'au moins deux joueurs · <span id="waitRounds">5</span> manches</p>
-            <div class="mp-wait-players" id="wait-players"></div>
-            <button class="mp-btn" id="btn-start" hidden>Lancer la course</button>
-            <p class="mp-cat-hint" id="wait-hint">En attente de l'hôte…</p>
-            <button class="mp-btn ghost" id="btn-leave-lobby">Quitter la table</button>
-        </section>
-
-        <!-- COURSE EN COURS -->
-        <section class="mp-view" id="v-race" hidden>
-            <div class="mp-race-head">
-                <span class="mp-round-tag">Manche <b id="raceRound">1</b> / <span id="raceMaxRounds">5</span></span>
-                <p class="mp-spectator-banner" id="mpSpectatorBanner" hidden>👀 Vous regardez cette course</p>
-            </div>
-
-            <div class="mp-my-grid" id="myGrid"></div>
-
-            <form class="mp-guess-form" id="guessForm" autocomplete="off">
-                <input type="text" id="guessInput" class="mp-guess-input" maxlength="7" placeholder="Votre mot" autocapitalize="characters">
-                <button type="submit" class="mp-btn" id="guessSubmit">Valider</button>
-            </form>
-            <p class="mp-guess-hint" id="guessHint">—</p>
-
-            <div class="mp-opponents" id="opponents"></div>
-        </section>
-
-        <!-- FIN DE MANCHE -->
-        <section class="mp-view" id="v-round-end" hidden>
-            <p class="mp-re-word-label">Le mot était</p>
-            <h2 class="mp-re-word" id="reWord">—</h2>
-            <p class="mp-re-def" id="reDef"></p>
-            <div class="mp-re-results" id="reResults"></div>
-            <button class="mp-btn" id="btn-next-round" hidden>Manche suivante</button>
-            <p class="mp-cat-hint" id="reHint">En attente de l'hôte…</p>
-        </section>
-
-        <!-- FIN DE MATCH -->
-        <section class="mp-view" id="v-ended" hidden>
-            <p class="mp-end-emoji">🏆</p>
-            <h2 class="mp-end-title" id="endTitle">—</h2>
-            <div class="mp-end-scores" id="endScores"></div>
-            <button class="mp-btn" id="btn-rematch" hidden>Rejouer</button>
-            <button class="mp-btn ghost" id="btn-back-lobby">Retour au salon des courses</button>
-        </section>
-    </div>
-
-    <p class="mp-toast" id="mp-toast" hidden></p>
-
-    <div class="mp-finish-banner" id="finishBanner" aria-hidden="true">
-        <p class="mp-finish-rank" id="finishRankTxt">—</p>
-        <p class="mp-finish-who" id="finishWhoTxt">—</p>
-    </div>
-
-    <div class="mp-celebration" id="mpCelebration" aria-hidden="true">
-        <div class="mp-confetti-field" id="mpConfetti"></div>
-        <div class="mp-celebration-inner">
-            <p class="mp-celebration-word" id="mpCelebrationWord">🏆</p>
-            <p class="mp-celebration-who" id="mpCelebrationWho">—</p>
-        </div>
-    </div>
-
-    <!-- MES STATISTIQUES -->
-    <div class="mp-overlay" id="v-stats" hidden>
-        <div class="mp-stats-card">
-            <h2 class="mp-stats-title">Mes statistiques</h2>
-            <div class="mp-stats-grid" id="statsGrid"></div>
-            <button class="mp-btn ghost" id="stats-close">Fermer</button>
-        </div>
-    </div>
-
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="/profile-viewer.js"></script>
-    <script src="app.js"></script>
+    <main class="mh-grid">
+        <a class="mh-card" href="quotidien/" style="--accent:#c9a24a">
+            <span class="mh-card-mark">🟨</span>
+            <span class="mh-card-name">Motus du jour</span>
+            <span class="mh-card-sub">Le mot du jour, une seule grille pour tout le monde</span>
+        </a>
+        <a class="mh-card" href="party/" style="--accent:#d9a94e">
+            <span class="mh-card-mark">🏁</span>
+            <span class="mh-card-name">Motus Party</span>
+            <span class="mh-card-sub">En direct contre les autres, classé par ordre d'arrivée</span>
+        </a>
+    </main>
 </body>
 </html>
