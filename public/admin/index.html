@@ -10,12 +10,13 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/design-system.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="ad">
         <header class="ad-head">
-            <a class="ad-back" href="/" aria-label="Retour au salon">←</a>
+            <a class="ds-back" href="/" aria-label="Retour au salon">←</a>
             <div class="ad-titles">
                 <h1 class="ad-title">Administration</h1>
                 <span class="ad-sub" id="ad-who">—</span>
@@ -42,7 +43,7 @@
             <div class="card">
                 <h2 class="card-title">Trouver quelqu'un vite</h2>
                 <p class="card-sub">Cherche à la fois dans les comptes et dans l'historique des parties.</p>
-                <input class="in" id="home-search" placeholder="Tape un pseudo…" autocapitalize="off">
+                <input class="ds-input" id="home-search" placeholder="Tape un pseudo…" autocapitalize="off">
                 <div class="home-search-results" id="home-search-results" hidden></div>
             </div>
             <div class="stats" id="ad-stats"></div>
@@ -64,23 +65,23 @@
             <div class="card">
                 <h2 class="card-title">Annonce du salon</h2>
                 <p class="card-sub">Affichée à tous en haut du salon. Laisser vide pour la retirer.</p>
-                <input class="in" id="ann-text" maxlength="200" placeholder="Ex : nouvelle grille difficile ce week-end !">
-                <button class="btn" id="ann-save" type="button">Publier l'annonce</button>
-                <button class="btn ghost" id="ann-clear" type="button" hidden>Retirer l'annonce</button>
+                <input class="ds-input" id="ann-text" maxlength="200" placeholder="Ex : nouvelle grille difficile ce week-end !">
+                <button class="ds-btn" id="ann-save" type="button">Publier l'annonce</button>
+                <button class="ds-btn ghost" id="ann-clear" type="button" hidden>Retirer l'annonce</button>
             </div>
             <div class="card">
                 <h2 class="card-title">Dernières actions</h2>
-                <input class="in" id="log-q" placeholder="Filtrer (action, pseudo…)">
+                <input class="ds-input" id="log-q" placeholder="Filtrer (action, pseudo…)">
                 <div class="log" id="ad-log"></div>
-                <button class="btn ghost" id="log-export" type="button" style="margin-top:10px">Exporter en CSV</button>
+                <button class="ds-btn ghost" id="log-export" type="button" style="margin-top:10px">Exporter en CSV</button>
             </div>
         </section>
 
         <!-- COMPTES -->
         <section class="pane" id="pane-accounts" hidden>
             <div class="card">
-                <input class="in" id="acc-q" placeholder="Rechercher un pseudo…" autocapitalize="off">
-                <div class="seg" id="acc-sort">
+                <input class="ds-input" id="acc-q" placeholder="Rechercher un pseudo…" autocapitalize="off">
+                <div class="ds-segmented" id="acc-sort">
                     <button class="on" data-sort="recent" type="button">Récents</button>
                     <button data-sort="active" type="button">Actifs</button>
                     <button data-sort="name" type="button">A-Z</button>
@@ -116,7 +117,7 @@
             </div>
             <div class="card">
                 <h2 class="card-title">Grilles du jour</h2>
-                <input class="in" id="gr-date" type="date">
+                <input class="ds-input" id="gr-date" type="date">
                 <div id="gr-levels"></div>
             </div>
             <div class="card">
@@ -126,7 +127,7 @@
             <div class="card">
                 <h2 class="card-title">Grilles à venir</h2>
                 <p class="card-sub">Aperçu des 7 prochains jours (non figées, elles peuvent encore changer).</p>
-                <button class="btn ghost" id="gr-next" type="button">Afficher l'aperçu</button>
+                <button class="ds-btn ghost" id="gr-next" type="button">Afficher l'aperçu</button>
                 <div class="log" id="gr-upcoming"></div>
             </div>
         </section>
@@ -139,7 +140,7 @@
             </div>
             <div class="card">
                 <h2 class="card-title">Mot du jour</h2>
-                <input class="in" id="mt-date" type="date">
+                <input class="ds-input" id="mt-date" type="date">
                 <div id="mt-word-box"></div>
                 <div id="mt-board-box"></div>
                 <button class="mini danger wide" id="mt-regen" type="button">Régénérer ce mot</button>
@@ -151,7 +152,7 @@
             <div class="card">
                 <h2 class="card-title">Mots à venir</h2>
                 <p class="card-sub">Aperçu des 7 prochains jours (pas encore figés, ils peuvent encore changer).</p>
-                <button class="btn ghost" id="mt-next" type="button">Afficher l'aperçu</button>
+                <button class="ds-btn ghost" id="mt-next" type="button">Afficher l'aperçu</button>
                 <div class="log" id="mt-upcoming"></div>
             </div>
         </section>
@@ -164,7 +165,7 @@
             </div>
             <div class="card">
                 <h2 class="card-title">Mot du jour</h2>
-                <input class="in" id="mj-date" type="date">
+                <input class="ds-input" id="mj-date" type="date">
                 <div id="mj-word-box"></div>
                 <div id="mj-neighbors-box"></div>
                 <div id="mj-board-box"></div>
@@ -177,16 +178,16 @@
             <div class="card">
                 <h2 class="card-title">Mots à venir</h2>
                 <p class="card-sub">Aperçu des 7 prochains jours (pas encore figés).</p>
-                <button class="btn ghost" id="mj-next" type="button">Afficher l'aperçu</button>
+                <button class="ds-btn ghost" id="mj-next" type="button">Afficher l'aperçu</button>
                 <div class="log" id="mj-upcoming"></div>
             </div>
             <div class="card">
                 <h2 class="card-title">Vocabulaire (<span id="mj-vocab-count">—</span> mots)</h2>
                 <p class="card-sub">Ajoute un mot en indiquant le mot déjà connu dont il est le plus proche — sa position dans l'espace sémantique sera calquée dessus.</p>
-                <input class="in" id="mj-new-word" placeholder="Nouveau mot…" autocapitalize="off">
-                <input class="in" id="mj-new-like" placeholder="Mot déjà connu le plus proche…" autocapitalize="off">
-                <button class="btn" id="mj-vocab-add" type="button">Ajouter au vocabulaire</button>
-                <input class="in" id="mj-vocab-q" placeholder="Rechercher dans le vocabulaire…" style="margin-top:14px">
+                <input class="ds-input" id="mj-new-word" placeholder="Nouveau mot…" autocapitalize="off">
+                <input class="ds-input" id="mj-new-like" placeholder="Mot déjà connu le plus proche…" autocapitalize="off">
+                <button class="ds-btn" id="mj-vocab-add" type="button">Ajouter au vocabulaire</button>
+                <input class="ds-input" id="mj-vocab-q" placeholder="Rechercher dans le vocabulaire…" style="margin-top:14px">
                 <div class="list" id="mj-vocab-list"></div>
             </div>
         </section>
@@ -199,7 +200,7 @@
             </div>
             <div class="card">
                 <h2 class="card-title">Tables actives</h2>
-                <button class="btn ghost" id="pbac-refresh" type="button">Actualiser</button>
+                <button class="ds-btn ghost" id="pbac-refresh" type="button">Actualiser</button>
                 <div class="list" id="pbac-tables" style="margin-top:10px"></div>
             </div>
         </section>
@@ -253,12 +254,12 @@
             <div class="stats" id="dict-stats"></div>
 
             <div class="card">
-                <button class="btn" id="dict-new" type="button">➕ Ajouter un mot</button>
+                <button class="ds-btn" id="dict-new" type="button">➕ Ajouter un mot</button>
             </div>
 
             <div class="card">
-                <input class="in" id="dict-q" placeholder="Rechercher un mot…" autocapitalize="characters">
-                <div class="seg" id="dict-len">
+                <input class="ds-input" id="dict-q" placeholder="Rechercher un mot…" autocapitalize="characters">
+                <div class="ds-segmented" id="dict-len">
                     <button class="on" data-len="0" type="button">Toutes</button>
                     <button data-len="3" type="button">3</button>
                     <button data-len="4" type="button">4</button>
@@ -267,13 +268,13 @@
                     <button data-len="7" type="button">7</button>
                     <button data-len="8" type="button">8</button>
                 </div>
-                <div class="seg" id="dict-lvl" style="margin-top:6px">
+                <div class="ds-segmented" id="dict-lvl" style="margin-top:6px">
                     <button class="on" data-level="0" type="button">Tous</button>
                     <button data-level="1" type="button">Courant</button>
                     <button data-level="2" type="button">Moyen</button>
                     <button data-level="3" type="button">Rare</button>
                 </div>
-                <div class="seg" id="dict-only" style="margin-top:6px">
+                <div class="ds-segmented" id="dict-only" style="margin-top:6px">
                     <button class="on" data-only="" type="button">Tout</button>
                     <button data-only="custom" type="button">Mes ajouts</button>
                     <button data-only="unused" type="button">Jamais sortis</button>
@@ -289,19 +290,19 @@
             <div class="card">
                 <h2 class="card-title">Sauvegarde</h2>
                 <p class="card-sub">Télécharge toutes les données (comptes + mots fléchés) en JSON. À faire régulièrement.</p>
-                <a class="btn" href="/api/admin/backup" download>Télécharger la sauvegarde</a>
+                <a class="ds-btn" href="/api/admin/backup" download>Télécharger la sauvegarde</a>
             </div>
             <div class="card">
                 <h2 class="card-title">Entretien</h2>
                 <p class="card-sub">Supprime les classements et messages de plus de 15 jours, et les grilles de plus de 20 jours.</p>
-                <button class="btn ghost" id="sys-purge" type="button">Lancer le ménage</button>
+                <button class="ds-btn ghost" id="sys-purge" type="button">Lancer le ménage</button>
             </div>
             <div class="card">
                 <h2 class="card-title">Administrateurs</h2>
                 <p class="card-sub">Ils ont accès à cet espace. L'administrateur principal ne peut pas être retiré.</p>
                 <div class="list" id="sys-admins"></div>
-                <input class="in" id="adm-new" placeholder="Pseudo à promouvoir…" autocapitalize="off" style="margin-top:10px">
-                <button class="btn" id="adm-add" type="button">Ajouter cet administrateur</button>
+                <input class="ds-input" id="adm-new" placeholder="Pseudo à promouvoir…" autocapitalize="off" style="margin-top:10px">
+                <button class="ds-btn" id="adm-add" type="button">Ajouter cet administrateur</button>
             </div>
             <div class="card">
                 <h2 class="card-title">État du serveur</h2>
@@ -311,75 +312,62 @@
     </div>
 
     <!-- Fiche d'un compte -->
-    <div class="ov" id="ov-acc" hidden>
-        <div class="ov-card">
-            <h2 class="ov-title" id="acc-name">—</h2>
+    <div class="ds-overlay" id="ov-acc" hidden>
+        <div class="ds-card">
+            <button type="button" class="ds-card-close" id="acc-close" aria-label="Fermer">✕</button>
+            <h2 class="ds-card-title ov-title" id="acc-name">—</h2>
             <div class="kv" id="acc-detail"></div>
             <div class="acts" id="acc-acts"></div>
-            <button class="btn ghost" id="acc-close" type="button">Fermer</button>
         </div>
     </div>
 
     <!-- Édition d'un mot -->
-    <div class="ov" id="ov-word" hidden>
-        <div class="ov-card">
-            <h2 class="ov-title" id="w-title">Nouveau mot</h2>
+    <div class="ds-overlay" id="ov-word" hidden>
+        <div class="ds-card">
+            <button type="button" class="ds-card-close" id="w-close" aria-label="Fermer">✕</button>
+            <h2 class="ds-card-title ov-title" id="w-title">Nouveau mot</h2>
             <p class="ov-sub" id="w-info">3 à 8 lettres, sans accent ni espace.</p>
-            <input class="in" id="w-mot" maxlength="8" placeholder="MOT" autocapitalize="characters" autocomplete="off">
-            <div class="seg" id="w-level">
+            <input class="ds-input" id="w-mot" maxlength="8" placeholder="MOT" autocapitalize="characters" autocomplete="off">
+            <div class="ds-segmented" id="w-level">
                 <button class="on" data-n="1" type="button">Courant</button>
                 <button data-n="2" type="button">Moyen</button>
                 <button data-n="3" type="button">Rare</button>
             </div>
             <p class="w-lab">Définitions (une par ligne, tirées au hasard chaque jour)</p>
-            <textarea class="in ta" id="w-defs" rows="4" placeholder="Il vole avec des passagers&#10;Long-courrier"></textarea>
+            <textarea class="ds-input ta" id="w-defs" rows="4" placeholder="Il vole avec des passagers&#10;Long-courrier"></textarea>
             <div class="entry-err" id="w-err"></div>
-            <button class="btn" id="w-save" type="button">Enregistrer</button>
-            <button class="btn danger" id="w-del" type="button" hidden>Retirer du jeu</button>
-            <button class="btn ghost" id="w-restore" type="button" hidden>Annuler mes modifications</button>
-            <button class="btn ghost" id="w-close" type="button">Fermer</button>
+            <button class="ds-btn" id="w-save" type="button">Enregistrer</button>
+            <button class="ds-btn danger" id="w-del" type="button" hidden>Retirer du jeu</button>
+            <button class="ds-btn ghost" id="w-restore" type="button" hidden>Annuler mes modifications</button>
         </div>
     </div>
 
     <!-- Édition d'un joueur Perudo -->
-    <div class="ov" id="ov-pd" hidden>
-        <div class="ov-card">
-            <h2 class="ov-title" id="pd-name">—</h2>
+    <div class="ds-overlay" id="ov-pd" hidden>
+        <div class="ds-card">
+            <button type="button" class="ds-card-close" id="pd-close" aria-label="Fermer">✕</button>
+            <h2 class="ds-card-title ov-title" id="pd-name">—</h2>
             <p class="ov-sub">Stats et cosmétiques Perudo.</p>
             <div class="grid2">
-                <label class="fld">Victoires<input class="in" id="pd-wins" type="number" min="0" inputmode="numeric"></label>
-                <label class="fld">Parties<input class="in" id="pd-played" type="number" min="0" inputmode="numeric"></label>
-                <label class="fld">Points<input class="in" id="pd-points" type="number" min="0" inputmode="numeric"></label>
-                <label class="fld">Meilleure série<input class="in" id="pd-streak" type="number" min="0" inputmode="numeric"></label>
+                <label class="fld">Victoires<input class="ds-input" id="pd-wins" type="number" min="0" inputmode="numeric"></label>
+                <label class="fld">Parties<input class="ds-input" id="pd-played" type="number" min="0" inputmode="numeric"></label>
+                <label class="fld">Points<input class="ds-input" id="pd-points" type="number" min="0" inputmode="numeric"></label>
+                <label class="fld">Meilleure série<input class="ds-input" id="pd-streak" type="number" min="0" inputmode="numeric"></label>
             </div>
             <p class="w-lab">Cosmétiques</p>
             <div class="grid2">
-                <label class="fld">Avatar<select class="in" id="pd-avatar"></select></label>
-                <label class="fld">Cadre<select class="in" id="pd-frame"></select></label>
-                <label class="fld">Bannière<select class="in" id="pd-banner"></select></label>
-                <label class="fld">Couleur du nom<input class="in" id="pd-color" type="color"></label>
+                <label class="fld">Avatar<select class="ds-input" id="pd-avatar"></select></label>
+                <label class="fld">Cadre<select class="ds-input" id="pd-frame"></select></label>
+                <label class="fld">Bannière<select class="ds-input" id="pd-banner"></select></label>
+                <label class="fld">Couleur du nom<input class="ds-input" id="pd-color" type="color"></label>
             </div>
             <div class="entry-err" id="pd-err"></div>
-            <button class="btn" id="pd-save" type="button">Enregistrer</button>
-            <button class="btn danger" id="pd-reset" type="button">Réinitialiser le profil</button>
-            <button class="btn ghost" id="pd-close" type="button">Fermer</button>
+            <button class="ds-btn" id="pd-save" type="button">Enregistrer</button>
+            <button class="ds-btn danger" id="pd-reset" type="button">Réinitialiser le profil</button>
         </div>
     </div>
 
-    <!-- Confirmation / résultat -->
-    <div class="ov" id="ov-ask" hidden>
-        <div class="ov-card">
-            <div class="ov-emoji" id="ask-emoji">❓</div>
-            <h2 class="ov-title" id="ask-title">Confirmer</h2>
-            <p class="ov-sub" id="ask-sub"></p>
-            <div class="code-box" id="ask-code" hidden>—</div>
-            <input class="in" id="ask-input" hidden autocapitalize="off" autocorrect="off" autocomplete="off">
-            <div id="ask-acts"></div>
-            <button class="btn ghost" id="ask-cancel" type="button">Fermer</button>
-        </div>
-    </div>
-
-    <div class="toast" id="toast" hidden></div>
+    <script src="/design-system.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

@@ -43,6 +43,8 @@
                 <p class="ds-confirm-emoji" id="ds-confirm-emoji">❓</p>
                 <h2 class="ds-card-title" id="ds-confirm-title">—</h2>
                 <p class="ds-card-text" id="ds-confirm-text"></p>
+                <div class="ds-confirm-code" id="ds-confirm-code" hidden></div>
+                <input class="ds-input" id="ds-confirm-input" hidden autocapitalize="off" autocorrect="off" autocomplete="off">
                 <div class="ds-card-actions" id="ds-confirm-actions"></div>
             </div>`;
         document.body.appendChild(confirmEl);
@@ -61,6 +63,14 @@
         const textEl = el.querySelector('#ds-confirm-text');
         textEl.textContent = o.text || '';
         textEl.hidden = !o.text;
+        // Encadré de code : pour montrer un code généré (ex. récupération) au passage.
+        const codeEl = el.querySelector('#ds-confirm-code');
+        if (o.code) { codeEl.textContent = o.code; codeEl.hidden = false; } else codeEl.hidden = true;
+        // Saisie obligatoire : les actions restent désactivées tant que le texte ne
+        // correspond pas exactement — pour les actions vraiment dangereuses.
+        const inputEl = el.querySelector('#ds-confirm-input');
+        inputEl.value = '';
+        if (o.confirmText) { inputEl.placeholder = o.confirmText; inputEl.hidden = false; } else inputEl.hidden = true;
         const box = el.querySelector('#ds-confirm-actions');
         box.innerHTML = '';
         (o.actions || [{ label: 'OK', run: () => {} }]).forEach(a => {
@@ -68,6 +78,10 @@
             b.type = 'button';
             b.className = 'ds-btn' + (a.danger ? ' danger' : (a.ghost ? ' ghost' : ''));
             b.textContent = a.label;
+            if (o.confirmText) {
+                b.disabled = true;
+                inputEl.addEventListener('input', () => { b.disabled = (inputEl.value.trim() !== o.confirmText); });
+            }
             b.addEventListener('click', () => { closeConfirm(); if (a.run) a.run(); });
             box.appendChild(b);
         });

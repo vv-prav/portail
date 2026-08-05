@@ -123,8 +123,16 @@ function nemesisOf(stats) {
 // chacun, une victoire pour le gagnant, une défaite face à lui pour tous les autres.
 function finalizeYamsStats(g) {
     const winner = winnerOf(g);
+    const nemesisDefeats = [];
     for (const p of g.players) {
         const stats = loadYamsStats(p.pseudo);
+        // Avant de toucher aux stats de ce tour-ci : est-ce que l'adversaire qui vient
+        // de perdre était justement la bête noire du gagnant ?
+        if (p.pseudo === winner) {
+            const oldNemesis = nemesisOf(stats);
+            const beatenNemesis = g.players.find(o => o.pseudo !== winner && oldNemesis && oldNemesis.pseudo === o.pseudo);
+            if (beatenNemesis) nemesisDefeats.push({ winner, nemesis: beatenNemesis.pseudo });
+        }
         stats.gamesPlayed++;
         const myTotal = grandTotal(p);
         if (myTotal > stats.bestScore) stats.bestScore = myTotal;
@@ -137,6 +145,19 @@ function finalizeYamsStats(g) {
         }
         saveYamsStats(p.pseudo, stats);
     }
+    recordYamsHistory(g, winner);
+    return nemesisDefeats;
+}
+const HISTORY_KEY = 'yams:history';
+const HISTORY_MAX = 150;
+function recordYamsHistory(g, winner) {
+    const list = mfGet(HISTORY_KEY) || [];
+    list.unshift({
+        id: g.id, endedAt: Date.now(), winner,
+        players: g.players.map(p => ({ pseudo: p.pseudo, total: grandTotal(p), yams: p.yamsThisGame || 0 })),
+    });
+    if (list.length > HISTORY_MAX) list.length = HISTORY_MAX;
+    mfSet(HISTORY_KEY, list);
 }
 
 // =====================================================================
@@ -163,6 +184,7 @@ function publicGames() {
         id: g.id, host: g.host, status: g.status,
         players: g.players.length, maxPlayers: MAX_PLAYERS,
         alive: g.players.filter(p => p.connected).length,
+        spectators: (g.spectators || []).length,
     }));
 }
 function broadcastLobby() { io.emit('yams_games', publicGames()); }
@@ -177,6 +199,7 @@ function stateForClient(g) {
     return {
         id: g.id, host: g.host, status: g.status,
         players: playerView(g),
+        spectators: (g.spectators || []).map(x => x.pseudo),
         turnIndex: g.turnIndex, turnPseudo: current ? current.pseudo : null,
         dice: g.dice, held: g.held, rollsLeft: g.rollsLeft, hasRolled: g.hasRolled,
         possible: g.hasRolled ? Object.fromEntries(CATEGORIES.map(c => [c, computePossibleScore(c, g.dice)])) : null,
@@ -208,7 +231,8 @@ function advanceTurn(g) {
     // Si tout le monde a fini, la partie se termine.
     if (g.players.every(allCategoriesFilled)) {
         g.status = 'ended';
-        finalizeYamsStats(g);
+        const nemesisDefeats = finalizeYamsStats(g);
+        nemesisDefeats.forEach(d => io.to(roomOf(g)).emit('yams_nemesis_defeated', d));
         broadcastState(g);
         broadcastLobby();
         return;
@@ -230,6 +254,7 @@ function leaveCurrent(socket) {
     if (!g) return;
     const p = g.players.find(x => x.sid === socket.id);
     if (p) p.connected = false;
+    if (g.spectators) g.spectators = g.spectators.filter(x => x.sid !== socket.id);
     if (g.status === 'lobby') {
         g.players = g.players.filter(x => x.sid !== socket.id);
         if (!g.players.length) { delete games[gid]; broadcastLobby(); return; }
@@ -257,6 +282,7 @@ io.on('connection', (socket) => {
         const g = {
             id, host: pseudo, status: 'lobby',
             players: [{ sid: socket.id, pseudo, connected: true, scores: freshScores(), yamsBonus: 0 }],
+            spectators: [],
             turnIndex: 0, dice: [1, 1, 1, 1, 1], held: [false, false, false, false, false],
             rollsLeft: MAX_ROLLS, hasRolled: false,
         };
@@ -270,13 +296,16 @@ io.on('connection', (socket) => {
     socket.on('yams_join', ({ id }) => {
         const pseudo = socket.data.yamsPseudo;
         const g = games[id];
-        if (!pseudo) return socket.emit('yams_error', 'Session expirée, reviens au salon.');
+        if (!pseudo) return socket.emit('yams_error', 'Session expir\u00e9e, reviens au salon.');
         if (!g) return socket.emit('yams_error', 'Cette partie n\u2019existe plus.');
         let p = g.players.find(x => x.pseudo === pseudo);
         if (p) { p.sid = socket.id; p.connected = true; }
-        else {
-            if (g.status !== 'lobby') return socket.emit('yams_error', 'La partie a déjà commencé.');
-            if (g.players.length >= MAX_PLAYERS) return socket.emit('yams_error', 'Table complète.');
+        else if (g.status !== 'lobby') {
+            // La partie est d\u00e9j\u00e0 lanc\u00e9e : on rejoint en simple spectateur plut\u00f4t que de refuser.
+            g.spectators = (g.spectators || []).filter(x => x.pseudo !== pseudo);
+            g.spectators.push({ sid: socket.id, pseudo });
+        } else {
+            if (g.players.length >= MAX_PLAYERS) return socket.emit('yams_error', 'Table compl\u00e8te.');
             g.players.push({ sid: socket.id, pseudo, connected: true, scores: freshScores(), yamsBonus: 0 });
         }
         socketGame[socket.id] = g.id;
@@ -341,6 +370,7 @@ io.on('connection', (socket) => {
         current.scores[category] = computePossibleScore(category, g.dice);
 
         if (isYamsRoll) {
+            current.yamsThisGame = (current.yamsThisGame || 0) + 1;
             io.to(roomOf(g)).emit('yams_celebration', { pseudo, bonus: extraYamsBonus });
             const stats = loadYamsStats(pseudo);
             stats.totalYams++;
@@ -361,6 +391,40 @@ io.on('connection', (socket) => {
             totalYams: stats.totalYams, bonusYams: stats.bonusYams, bestScore: stats.bestScore,
             winRate: stats.gamesPlayed ? Math.round((stats.gamesWon / stats.gamesPlayed) * 100) : null,
             nemesis: nemesisOf(stats),
+            opponents: Object.keys(stats.vsOpponent),
+        });
+    });
+
+    socket.on('yams_leaderboard', () => {
+        const index = mfGet(STATS_INDEX_KEY) || [];
+        const rows = index.map(pseudo => {
+            const s = loadYamsStats(pseudo);
+            return {
+                pseudo, gamesPlayed: s.gamesPlayed, gamesWon: s.gamesWon, bestScore: s.bestScore,
+                totalYams: s.totalYams,
+                winRate: s.gamesPlayed ? Math.round((s.gamesWon / s.gamesPlayed) * 100) : 0,
+            };
+        }).filter(r => r.gamesPlayed > 0);
+        rows.sort((a, b) => b.gamesWon - a.gamesWon || b.winRate - a.winRate || b.gamesPlayed - a.gamesPlayed);
+        socket.emit('yams_leaderboard_result', rows);
+    });
+
+    socket.on('yams_history', () => {
+        const list = mfGet(HISTORY_KEY) || [];
+        socket.emit('yams_history_result', list.slice(0, 30));
+    });
+
+    socket.on('yams_h2h', ({ opponent }) => {
+        const pseudo = socket.data.yamsPseudo;
+        if (!pseudo || !opponent) return;
+        const mine = loadYamsStats(pseudo);
+        const theirs = loadYamsStats(opponent);
+        const mineVs = mine.vsOpponent[opponent] || { wins: 0, losses: 0 };
+        socket.emit('yams_h2h_result', {
+            opponent,
+            myWins: mineVs.wins, myLosses: mineVs.losses,
+            totalGames: mineVs.wins + mineVs.losses,
+            myBest: mine.bestScore, theirBest: theirs.bestScore,
         });
     });
 
@@ -381,6 +445,7 @@ io.on('connection', (socket) => {
         if (!g) return;
         const p = g.players.find(x => x.sid === socket.id);
         if (p) p.connected = false;
+        if (g.spectators) g.spectators = g.spectators.filter(x => x.sid !== socket.id);
         broadcastState(g);
         broadcastLobby();
     });
