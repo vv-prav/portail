@@ -16,12 +16,7 @@ async function api(path, body) {
     return { ok: res.ok, data };
 }
 
-let toastT = null;
-function toast(msg) {
-    const t = $('toast');
-    t.textContent = msg; t.hidden = false;
-    clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 2600);
-}
+function toast(msg) { DS.toast(msg); }
 function fmtDate(ts) {
     if (!ts) return '—';
     return new Date(ts).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -71,17 +66,17 @@ $('home-search').addEventListener('input', () => {
         if (data.accounts.length) parts.push(`
             <p class="hsr-label">Comptes</p>
             ${data.accounts.map(u => `
-                <button class="row" data-open-acc="${esc(u.pseudo)}">
-                    <span class="r-main"><span class="r-name">${esc(u.pseudo)}${u.online ? ' <i class="badge online">🟢</i>' : ''}${u.banned ? ' <i class="badge ban">suspendu</i>' : ''}</span></span>
-                    <span class="r-go">›</span>
+                <button class="ds-row" data-open-acc="${esc(u.pseudo)}">
+                    <span class="ds-row-main"><span class="ds-row-name">${esc(u.pseudo)}${u.online ? ' <i class="badge online">🟢</i>' : ''}${u.banned ? ' <i class="badge ban">suspendu</i>' : ''}</span></span>
+                    <span class="ds-row-go">›</span>
                 </button>`).join('')}`);
         if (data.games.length) parts.push(`
             <p class="hsr-label">Parties passées</p>
             ${data.games.map(g => `
-                <div class="row static">
-                    <span class="r-main">
-                        <span class="r-name">${GAME_LABEL_ICON[g.app] || ''} ${esc(g.label)}</span>
-                        <span class="r-sub">${g.players.map(esc).join(', ')} · ${fmtAgo(g.endedAt)}</span>
+                <div class="ds-row static">
+                    <span class="ds-row-main">
+                        <span class="ds-row-name">${GAME_LABEL_ICON[g.app] || ''} ${esc(g.label)}</span>
+                        <span class="ds-row-sub">${g.players.map(esc).join(', ')} · ${fmtAgo(g.endedAt)}</span>
                     </span>
                 </div>`).join('')}`);
         $('home-search-results').innerHTML = parts.length ? parts.join('') : '<p class="empty">Rien trouvé.</p>';
@@ -98,30 +93,8 @@ document.addEventListener('click', (e) => {
 
 // ---------- Boîte générique ----------
 function ask(emoji, title, sub, actions, code, confirmText) {
-    $('ask-emoji').textContent = emoji;
-    $('ask-title').textContent = title;
-    $('ask-sub').textContent = sub || '';
-    const cb = $('ask-code');
-    if (code) { cb.textContent = code; cb.hidden = false; } else cb.hidden = true;
-    const inp = $('ask-input');
-    inp.value = '';
-    if (confirmText) { inp.placeholder = confirmText; inp.hidden = false; } else inp.hidden = true;
-    const box = $('ask-acts'); box.innerHTML = '';
-    (actions || []).forEach(a => {
-        const b = document.createElement('button');
-        b.className = 'btn' + (a.danger ? ' danger' : '');
-        b.type = 'button'; b.textContent = a.label;
-        if (confirmText) {
-            b.disabled = true;
-            inp.addEventListener('input', () => { b.disabled = (inp.value.trim() !== confirmText); });
-        }
-        b.addEventListener('click', () => { $('ov-ask').hidden = true; a.run(); });
-        box.appendChild(b);
-    });
-    $('ov-ask').hidden = false;
-    if (confirmText) setTimeout(() => inp.focus(), 80);
+    DS.confirm({ emoji, title, text: sub, actions, code, confirmText });
 }
-$('ask-cancel').addEventListener('click', () => { $('ov-ask').hidden = true; });
 
 // ---------- Vue d'ensemble ----------
 async function loadOverview() {
@@ -136,7 +109,7 @@ async function loadOverview() {
         ['⛔', data.banned, 'suspendus'],
     ].map(([i, v, l]) => `<div class="stat"><span class="s-ico">${i}</span><b>${v}</b><em>${l}</em></div>`).join('');
     $('ad-online').innerHTML = (data.onlineNow || []).length
-        ? data.onlineNow.map(p => `<div class="row static"><span class="r-main"><span class="r-name">🟢 ${esc(p)}</span></span></div>`).join('')
+        ? data.onlineNow.map(p => `<div class="ds-row static"><span class="ds-row-main"><span class="ds-row-name">🟢 ${esc(p)}</span></span></div>`).join('')
         : '<p class="empty">Personne pour l\u2019instant.</p>';
     $('ann-text').value = data.announce || '';
     $('ann-clear').hidden = !data.announce;
@@ -243,15 +216,15 @@ async function loadAccounts() {
     const list = (data && data.accounts) || [];
     $('acc-count').textContent = list.length + ' compte(s) affiché(s) sur ' + (data.total || 0);
     $('acc-list').innerHTML = list.length ? list.map(u => `
-        <button class="row" data-p="${esc(u.pseudo)}">
+        <button class="ds-row" data-p="${esc(u.pseudo)}">
             <span class="acc-avatar-bubble">${u.avatarPhoto ? `<img src="${u.avatarPhoto}" alt="">` : esc(u.avatar || '✦')}</span>
-            <span class="r-main">
-                <span class="r-name">${esc(u.pseudo)}${u.online ? ' <i class="badge online">🟢 en ligne</i>' : ''}${u.admin ? ' <i class="badge adm">admin</i>' : ''}${u.banned ? ' <i class="badge ban">suspendu</i>' : ''}</span>
-                <span class="r-sub">inscrit ${fmtDate(u.created)} · vu ${fmtAgo(u.lastSeen)}</span>
+            <span class="ds-row-main">
+                <span class="ds-row-name">${esc(u.pseudo)}${u.online ? ' <i class="badge online">🟢 en ligne</i>' : ''}${u.admin ? ' <i class="badge adm">admin</i>' : ''}${u.banned ? ' <i class="badge ban">suspendu</i>' : ''}</span>
+                <span class="ds-row-sub">inscrit ${fmtDate(u.created)} · vu ${fmtAgo(u.lastSeen)}</span>
             </span>
-            <span class="r-go">›</span>
+            <span class="ds-row-go">›</span>
         </button>`).join('') : '<p class="empty">Aucun compte trouvé.</p>';
-    $('acc-list').querySelectorAll('.row').forEach(b => b.addEventListener('click', () => openAccount(b.dataset.p)));
+    $('acc-list').querySelectorAll('.ds-row').forEach(b => b.addEventListener('click', () => openAccount(b.dataset.p)));
 }
 
 async function openAccount(pseudo) {
@@ -356,14 +329,14 @@ async function loadDict() {
     const list = (data && data.words) || [];
     $('dict-count').textContent = list.length + ' mot(s) affiché(s) sur ' + (data.total || 0);
     $('dict-list').innerHTML = list.length ? list.map(w => `
-        <button class="row" data-m="${esc(w.m)}">
-            <span class="r-main">
-                <span class="r-name">${esc(w.m)}${w.custom ? ' <i class="badge adm">modifié</i>' : ''}</span>
-                <span class="r-sub">${esc(w.defs[0] || '')}${w.defs.length > 1 ? ' · +' + (w.defs.length - 1) : ''} — ${LVL_NAME[w.n]} · vu ${w.used}×</span>
+        <button class="ds-row" data-m="${esc(w.m)}">
+            <span class="ds-row-main">
+                <span class="ds-row-name">${esc(w.m)}${w.custom ? ' <i class="badge adm">modifié</i>' : ''}</span>
+                <span class="ds-row-sub">${esc(w.defs[0] || '')}${w.defs.length > 1 ? ' · +' + (w.defs.length - 1) : ''} — ${LVL_NAME[w.n]} · vu ${w.used}×</span>
             </span>
-            <span class="r-go">›</span>
+            <span class="ds-row-go">›</span>
         </button>`).join('') : '<p class="empty">Aucun mot trouvé.</p>';
-    $('dict-list').querySelectorAll('.row').forEach(b => b.addEventListener('click', () => openWord(b.dataset.m)));
+    $('dict-list').querySelectorAll('.ds-row').forEach(b => b.addEventListener('click', () => openWord(b.dataset.m)));
 }
 
 async function loadDictStats() {
@@ -463,10 +436,10 @@ async function loadPerudo() {
     if (!data || !data.available) { $('pd-games').innerHTML = '<p class="empty">Perudo indisponible.</p>'; return; }
     const g = data.games || [];
     $('pd-games').innerHTML = g.length ? g.map(x => `
-        <div class="row static">
-            <span class="r-main">
-                <span class="r-name">${esc(x.id)}${x.vsBot ? ' <i class="badge adm">bot</i>' : ''}${x.isDuo ? ' <i class="badge adm">duo</i>' : ''}</span>
-                <span class="r-sub">${x.started ? 'en cours' : 'en attente'} · ${x.players.map(p => esc(p.pseudo) + (p.isBot ? '🤖' : '') + ' (' + p.dice + ')').join(', ')}</span>
+        <div class="ds-row static">
+            <span class="ds-row-main">
+                <span class="ds-row-name">${esc(x.id)}${x.vsBot ? ' <i class="badge adm">bot</i>' : ''}${x.isDuo ? ' <i class="badge adm">duo</i>' : ''}</span>
+                <span class="ds-row-sub">${x.started ? 'en cours' : 'en attente'} · ${x.players.map(p => esc(p.pseudo) + (p.isBot ? '🤖' : '') + ' (' + p.dice + ')').join(', ')}</span>
             </span>
             <button class="mini danger" data-end="${esc(x.id)}" type="button">Clore</button>
         </div>`).join('') : '<p class="empty">Aucune partie en cours.</p>';
@@ -477,8 +450,8 @@ async function loadPerudo() {
 
     const on = data.online || [];
     $('pd-online').innerHTML = on.length ? on.map(o => `
-        <div class="row static">
-            <span class="r-main"><span class="r-name">${esc(o.pseudo)}</span></span>
+        <div class="ds-row static">
+            <span class="ds-row-main"><span class="ds-row-name">${esc(o.pseudo)}</span></span>
             <button class="mini" data-kick="${esc(o.sid)}" data-p="${esc(o.pseudo)}" type="button">Déconnecter</button>
         </div>`).join('') : '<p class="empty">Personne en ligne.</p>';
     $('pd-online').querySelectorAll('[data-kick]').forEach(b => b.addEventListener('click', async () => {
@@ -488,13 +461,13 @@ async function loadPerudo() {
 
     const top = data.topPlayers || [];
     $('pd-top').innerHTML = top.length ? top.map((u, i) => `
-        <button class="row" data-p="${esc(u.pseudo)}">
-            <span class="r-main">
-                <span class="r-name">${i + 1}. ${esc(u.pseudo)}</span>
-                <span class="r-sub">${u.rankPoints} pts · ${u.wins} victoires / ${u.played} parties</span>
-            </span><span class="r-go">›</span>
+        <button class="ds-row" data-p="${esc(u.pseudo)}">
+            <span class="ds-row-main">
+                <span class="ds-row-name">${i + 1}. ${esc(u.pseudo)}</span>
+                <span class="ds-row-sub">${u.rankPoints} pts · ${u.wins} victoires / ${u.played} parties</span>
+            </span><span class="ds-row-go">›</span>
         </button>`).join('') : '<p class="empty">Aucun joueur.</p>';
-    $('pd-top').querySelectorAll('.row').forEach(b => b.addEventListener('click', () => openPerudoPlayer(b.dataset.p)));
+    $('pd-top').querySelectorAll('.ds-row').forEach(b => b.addEventListener('click', () => openPerudoPlayer(b.dataset.p)));
 }
 
 async function openPerudoPlayer(pseudo) {
@@ -745,8 +718,8 @@ async function loadMotJusteVocab() {
     if (!data) return;
     $('mj-vocab-count').textContent = data.count;
     $('mj-vocab-list').innerHTML = (data.words || []).map(w => `
-        <div class="row static">
-            <span class="r-main"><span class="r-name">${esc(w.m)}${w.custom ? ' <i class="badge adm">ajouté</i>' : ''}</span></span>
+        <div class="ds-row static">
+            <span class="ds-row-main"><span class="ds-row-name">${esc(w.m)}${w.custom ? ' <i class="badge adm">ajouté</i>' : ''}</span></span>
             ${w.custom ? `<button class="mini danger" data-rm="${esc(w.m)}" type="button">Retirer</button>` : ''}
         </div>`).join('') || '<p class="empty">Aucun résultat.</p>';
     $('mj-vocab-list').querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => {
@@ -778,10 +751,10 @@ async function loadPbac() {
     $('pbac-live').innerHTML = `<div class="kv-row"><span>Joueurs connectés</span><b>${data.online.length}</b></div>
         <div class="kv-row"><span>Tables actives</span><b>${data.tables.length}</b></div>`;
     $('pbac-tables').innerHTML = data.tables.length ? data.tables.map(t => `
-        <div class="row static">
-            <span class="r-main">
-                <span class="r-name">Table de ${esc(t.host)} <i class="badge adm">${esc(t.status)}</i></span>
-                <span class="r-sub">${t.players.map(esc).join(', ') || 'aucun joueur'}</span>
+        <div class="ds-row static">
+            <span class="ds-row-main">
+                <span class="ds-row-name">Table de ${esc(t.host)} <i class="badge adm">${esc(t.status)}</i></span>
+                <span class="ds-row-sub">${t.players.map(esc).join(', ') || 'aucun joueur'}</span>
             </span>
             <button class="mini danger" data-close="${esc(t.id)}" type="button">Fermer</button>
         </div>`).join('') : '<p class="empty">Aucune table active.</p>';
@@ -801,10 +774,10 @@ async function loadUndercover() {
     if (!data || !data.available) { $('uc-games').innerHTML = '<p class="empty">Infiltré indisponible.</p>'; $('uc-online').innerHTML = ''; return; }
     const g = data.games || [];
     $('uc-games').innerHTML = g.length ? g.map(x => `
-        <div class="row static">
-            <span class="r-main">
-                <span class="r-name">Partie de ${esc(x.host)} <i class="badge adm">${esc(x.status)}</i></span>
-                <span class="r-sub">${x.players.map(esc).join(', ') || 'aucun joueur'}</span>
+        <div class="ds-row static">
+            <span class="ds-row-main">
+                <span class="ds-row-name">Partie de ${esc(x.host)} <i class="badge adm">${esc(x.status)}</i></span>
+                <span class="ds-row-sub">${x.players.map(esc).join(', ') || 'aucun joueur'}</span>
             </span>
             <button class="mini danger" data-close="${esc(x.id)}" type="button">Fermer</button>
         </div>`).join('') : '<p class="empty">Aucune partie en cours.</p>';
@@ -817,7 +790,7 @@ async function loadUndercover() {
     }));
     const on = data.online || [];
     $('uc-online').innerHTML = on.length ? on.map(p => `
-        <div class="row static"><span class="r-main"><span class="r-name">${esc(p)}</span></span></div>`).join('')
+        <div class="ds-row static"><span class="ds-row-main"><span class="ds-row-name">${esc(p)}</span></span></div>`).join('')
         : '<p class="empty">Personne en ligne.</p>';
 }
 
@@ -827,10 +800,10 @@ async function loadYams() {
     if (!data || !data.available) { $('ym-games').innerHTML = '<p class="empty">Yams indisponible.</p>'; $('ym-online').innerHTML = ''; $('ym-top').innerHTML = ''; return; }
     const g = data.games || [];
     $('ym-games').innerHTML = g.length ? g.map(x => `
-        <div class="row static">
-            <span class="r-main">
-                <span class="r-name">Table de ${esc(x.host)} <i class="badge adm">${esc(x.status)}</i></span>
-                <span class="r-sub">${x.players.map(esc).join(', ') || 'aucun joueur'}</span>
+        <div class="ds-row static">
+            <span class="ds-row-main">
+                <span class="ds-row-name">Table de ${esc(x.host)} <i class="badge adm">${esc(x.status)}</i></span>
+                <span class="ds-row-sub">${x.players.map(esc).join(', ') || 'aucun joueur'}</span>
             </span>
             <button class="mini danger" data-close="${esc(x.id)}" type="button">Fermer</button>
         </div>`).join('') : '<p class="empty">Aucune partie en cours.</p>';
@@ -843,14 +816,14 @@ async function loadYams() {
     }));
     const on = data.online || [];
     $('ym-online').innerHTML = on.length ? on.map(p => `
-        <div class="row static"><span class="r-main"><span class="r-name">${esc(p)}</span></span></div>`).join('')
+        <div class="ds-row static"><span class="ds-row-main"><span class="ds-row-name">${esc(p)}</span></span></div>`).join('')
         : '<p class="empty">Personne en ligne.</p>';
     const top = data.leaderboard || [];
     $('ym-top').innerHTML = top.length ? top.map((u, i) => `
-        <div class="row static">
-            <span class="r-main">
-                <span class="r-name">${i + 1}. ${esc(u.pseudo)}</span>
-                <span class="r-sub">${u.gamesWon} victoires / ${u.gamesPlayed} parties · ${u.totalYams} Yams · record ${u.bestScore}</span>
+        <div class="ds-row static">
+            <span class="ds-row-main">
+                <span class="ds-row-name">${i + 1}. ${esc(u.pseudo)}</span>
+                <span class="ds-row-sub">${u.gamesWon} victoires / ${u.gamesPlayed} parties · ${u.totalYams} Yams · record ${u.bestScore}</span>
             </span>
         </div>`).join('') : '<p class="empty">Personne n\u2019a encore terminé de partie.</p>';
 }
@@ -861,10 +834,10 @@ async function loadMotusParty() {
     if (!data || !data.available) { $('mp-games').innerHTML = '<p class="empty">Motus Party indisponible.</p>'; $('mp-online').innerHTML = ''; $('mp-top').innerHTML = ''; return; }
     const g = data.games || [];
     $('mp-games').innerHTML = g.length ? g.map(x => `
-        <div class="row static">
-            <span class="r-main">
-                <span class="r-name">Course de ${esc(x.host)} <i class="badge adm">${esc(x.status)}</i></span>
-                <span class="r-sub">${x.players.map(esc).join(', ') || 'aucun joueur'}</span>
+        <div class="ds-row static">
+            <span class="ds-row-main">
+                <span class="ds-row-name">Course de ${esc(x.host)} <i class="badge adm">${esc(x.status)}</i></span>
+                <span class="ds-row-sub">${x.players.map(esc).join(', ') || 'aucun joueur'}</span>
             </span>
             <button class="mini danger" data-close="${esc(x.id)}" type="button">Fermer</button>
         </div>`).join('') : '<p class="empty">Aucune course en cours.</p>';
@@ -877,14 +850,14 @@ async function loadMotusParty() {
     }));
     const on = data.online || [];
     $('mp-online').innerHTML = on.length ? on.map(p => `
-        <div class="row static"><span class="r-main"><span class="r-name">${esc(p)}</span></span></div>`).join('')
+        <div class="ds-row static"><span class="ds-row-main"><span class="ds-row-name">${esc(p)}</span></span></div>`).join('')
         : '<p class="empty">Personne en ligne.</p>';
     const top = data.leaderboard || [];
     $('mp-top').innerHTML = top.length ? top.map((u, i) => `
-        <div class="row static">
-            <span class="r-main">
-                <span class="r-name">${i + 1}. ${esc(u.pseudo)}</span>
-                <span class="r-sub">${u.matchesWon} courses gagnées / ${u.matchesPlayed} jouées · ${u.wordsFound} mots trouvés</span>
+        <div class="ds-row static">
+            <span class="ds-row-main">
+                <span class="ds-row-name">${i + 1}. ${esc(u.pseudo)}</span>
+                <span class="ds-row-sub">${u.matchesWon} courses gagnées / ${u.matchesPlayed} jouées · ${u.wordsFound} mots trouvés</span>
             </span>
         </div>`).join('') : '<p class="empty">Personne n\u2019a encore terminé de course.</p>';
 }
@@ -895,8 +868,8 @@ async function loadAdmins() {
     if (!data || !data.all) return;
     $('sys-admins').innerHTML = data.all.map(p => {
         const root = (data.root || []).includes(p);
-        return `<div class="row static">
-            <span class="r-main"><span class="r-name">${esc(p)}${root ? ' <i class="badge adm">principal</i>' : ''}</span></span>
+        return `<div class="ds-row static">
+            <span class="ds-row-main"><span class="ds-row-name">${esc(p)}${root ? ' <i class="badge adm">principal</i>' : ''}</span></span>
             ${root || p === data.you ? '' : `<button class="mini danger" data-rm="${esc(p)}" type="button">Retirer</button>`}
         </div>`;
     }).join('');

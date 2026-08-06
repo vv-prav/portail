@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, interactive-widget=resizes-content">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, interactive-widget=overlays-content">
     <meta name="theme-color" content="#14100b">
     <title>Mots Fléchés du jour</title>
     <link rel="icon" href="/icon-192.png">
@@ -10,6 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/design-system.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="is-boot">
@@ -18,7 +19,7 @@
 
     <div class="mf" id="mf">
         <header class="mf-head">
-            <a class="mf-back" href="/" aria-label="Retour au salon">←</a>
+            <a class="ds-back" href="/" aria-label="Retour au salon">←</a>
             <div class="mf-titles">
                 <h1 class="mf-title">Mots Fléchés</h1>
                 <span class="mf-date" id="mf-date"></span>
@@ -49,7 +50,7 @@
                 <div class="mf-start-box">
                     <div class="mf-start-emoji">🧩</div>
                     <p class="mf-start-txt" data-i="start_txt">Le chrono démarre dès que tu commences et ne s'arrête plus.</p>
-                    <button class="mf-btn" id="mf-start-btn" type="button" data-i="start_btn">Commencer</button>
+                    <button class="ds-btn" id="mf-start-btn" type="button" data-i="start_btn">Commencer</button>
                 </div>
             </div>
         </div>
@@ -70,62 +71,52 @@
     </div>
 
     <!-- Fin de grille -->
-    <div class="mf-overlay" id="mf-end" hidden>
-        <div class="mf-card">
+    <div class="ds-overlay" id="mf-end" hidden>
+        <div class="ds-card">
+            <button type="button" class="ds-card-close" id="mf-end-close" aria-label="Fermer">✕</button>
             <div class="mf-end-emoji" id="mf-end-emoji">🎉</div>
-            <h2 class="mf-end-title" id="mf-end-title">Grille résolue !</h2>
+            <h2 class="ds-card-title mf-end-title" id="mf-end-title">Grille résolue !</h2>
             <p class="mf-end-sub" id="mf-end-sub"></p>
             <div class="mf-board" id="mf-board"></div>
-            <button class="mf-btn" id="mf-end-close" type="button" data-i="close">Fermer</button>
-            <a class="mf-btn ghost" href="/" data-i="back_salon">Retour au salon</a>
-        </div>
-    </div>
-
-    <!-- Confirmations génériques -->
-    <div class="mf-overlay" id="mf-ask" hidden>
-        <div class="mf-card">
-            <div class="mf-end-emoji" id="ask-emoji">❓</div>
-            <h2 class="mf-end-title" id="ask-title">Confirmer</h2>
-            <p class="mf-end-sub" id="ask-sub"></p>
-            <div id="ask-actions"></div>
-            <button class="mf-btn ghost" id="ask-cancel" type="button" data-i="cancel">Annuler</button>
+            <a class="ds-btn ghost" href="/" data-i="back_salon">Retour au salon</a>
         </div>
     </div>
 
     <!-- Discussion -->
-    <div class="mf-overlay" id="mf-comments" hidden>
-        <div class="mf-card">
-            <h2 class="mf-end-title" data-i="panel_chat">Discussion du jour</h2>
+    <div class="ds-overlay" id="mf-comments" hidden>
+        <div class="ds-card">
+            <button type="button" class="ds-card-close" id="cmt-close" aria-label="Fermer">✕</button>
+            <h2 class="ds-card-title mf-end-title" data-i="panel_chat">Discussion du jour</h2>
             <p class="mf-end-sub" data-i="chat_sub">Pas de spoilers, restez fair-play 🙂</p>
             <div class="cmt-list" id="cmt-list"></div>
             <div class="cmt-form">
-                <input id="cmt-input" maxlength="240" data-ph="chat_ph" placeholder="Ton message…" autocomplete="off">
-                <button class="mf-btn" id="cmt-send" type="button" data-i="chat_send">Envoyer</button>
+                <input id="cmt-input" class="ds-input" maxlength="240" data-ph="chat_ph" placeholder="Ton message…" autocomplete="off">
+                <button class="ds-btn" id="cmt-send" type="button" data-i="chat_send">Envoyer</button>
             </div>
-            <button class="mf-btn ghost" id="cmt-close" type="button" data-i="close">Fermer</button>
         </div>
     </div>
 
     <!-- Archives -->
-    <div class="mf-overlay" id="mf-archive" hidden>
-        <div class="mf-card">
-            <h2 class="mf-end-title" data-i="panel_arch">Grilles précédentes</h2>
+    <div class="ds-overlay" id="mf-archive" hidden>
+        <div class="ds-card">
+            <button type="button" class="ds-card-close" id="arch-close" aria-label="Fermer">✕</button>
+            <h2 class="ds-card-title mf-end-title" data-i="panel_arch">Grilles précédentes</h2>
             <p class="mf-end-sub" data-i="arch_sub">Rejouables, mais hors classement.</p>
             <div class="arch-list" id="arch-list"></div>
-            <button class="mf-btn" id="arch-today" type="button" data-i="arch_today">Revenir à aujourd'hui</button>
-            <button class="mf-btn ghost" id="arch-close" type="button" data-i="close">Fermer</button>
+            <button class="ds-btn" id="arch-today" type="button" data-i="arch_today">Revenir à aujourd'hui</button>
         </div>
     </div>
 
     <!-- Aperçu d'une définition en grand -->
-    <div class="mf-overlay def-zoom" id="mf-defzoom" hidden>
+    <div class="ds-overlay def-zoom" id="mf-defzoom" hidden>
         <div class="defzoom-card">
+            <button type="button" class="ds-card-close" id="defzoom-close" aria-label="Fermer">✕</button>
             <span class="defzoom-dir" id="defzoom-dir">▶</span>
             <p class="defzoom-txt" id="defzoom-txt"></p>
-            <button class="mf-btn" id="defzoom-close" type="button" data-i="close">Fermer</button>
         </div>
     </div>
 
+    <script src="/design-system.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

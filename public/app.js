@@ -293,14 +293,17 @@ async function loadPulse() {
 async function renderOnlinePlayers(list) {
     const box = $('hub-online'), host = $('hub-online-chips');
     if (!box || !host) return;
-    if (!Array.isArray(list) || !list.length) { box.hidden = true; return; }
+    box.hidden = false;
+    if (!Array.isArray(list) || !list.length) {
+        host.innerHTML = '<p class="hub-online-empty">Personne d\u2019autre en ligne pour l\u2019instant.</p>';
+        return;
+    }
     const avatars = await PortailProfile.fetchAvatars(list);
     host.innerHTML = list.map(p => `
         <button type="button" class="hub-online-chip" data-p="${esc(p)}">
             <span class="hub-online-bubble">${PortailProfile.bubbleHTML(avatars[p])}</span>${esc(p)}
         </button>`).join('');
     host.querySelectorAll('.hub-online-chip').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.p)));
-    box.hidden = false;
 }
 
 function timeAgoShort(ts) {
@@ -314,7 +317,11 @@ function timeAgoShort(ts) {
 async function renderRecentlyActive(list) {
     const box = $('hub-recent'), host = $('hub-recent-list');
     if (!box || !host) return;
-    if (!Array.isArray(list) || !list.length) { box.hidden = true; return; }
+    box.hidden = false;
+    if (!Array.isArray(list) || !list.length) {
+        host.innerHTML = '<p class="hub-online-empty">Rien à montrer pour l\u2019instant.</p>';
+        return;
+    }
     const avatars = await PortailProfile.fetchAvatars(list.map(u => u.pseudo));
     host.innerHTML = list.map(u => `
         <button type="button" class="hub-recent-row" data-p="${esc(u.pseudo)}">
@@ -323,7 +330,6 @@ async function renderRecentlyActive(list) {
             <span class="hub-recent-time">${timeAgoShort(u.lastSeen)}</span>
         </button>`).join('');
     host.querySelectorAll('.hub-recent-row').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.p)));
-    box.hidden = false;
 }
 
 const LIVE_GAME_LINK = { perudo: '/perudo/', pbac: '/pbac/', undercover: '/undercover/' };
