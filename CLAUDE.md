@@ -80,7 +80,7 @@ portail/
 └── public/
     ├── index.html / app.js / style.css     ← LE SALON (page d'accueil)
     ├── design-system.css / design-system.js ← voir section dédiée
-    ├── profil-viewer.js                     ← bulle de profil partagée
+    ├── profile-viewer.js                    ← bulle de profil partagée
     ├── sw.js                                ← service worker (cache hors-ligne)
     ├── admin/
     ├── chance/
@@ -153,7 +153,7 @@ S'auto-injecte dans la page (crée son propre DOM, pas besoin d'ajouter le moind
 - `DS.confirm({ emoji, title, text, actions: [{label, danger, run}], code, confirmText, cancelLabel })` — `code` affiche un encadré (ex. montrer un mot de passe temporaire généré), `confirmText` force à retaper un texte exact avant d'activer le bouton (actions dangereuses). Un bouton Annuler est toujours ajouté automatiquement si l'appelant n'en a pas prévu.
 - `DS.avatarHTML(avatarData, size)`
 
-### `public/profil-viewer.js`
+### `public/profile-viewer.js`
 
 Système séparé (avant le design system, mais du même esprit) : `PortailProfile.fetchAvatars([pseudos])`, `PortailProfile.bubbleHTML(avatarData)`, `PortailProfile.open(pseudo)` (ouvre un profil public en lecture seule, alimenté par `GET /api/public-profile`, qui ne renvoie **jamais** rien de sensible).
 
