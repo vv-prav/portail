@@ -1,5 +1,5 @@
 // Incrémente cette version à CHAQUE changement de fichier statique.
-const CACHE_VERSION = 'salon-v93';
+const CACHE_VERSION = 'salon-v94';
 const CORE = [
     '/', '/index.html', '/app.js', '/style.css', '/manifest.json',
     '/icon-192.png', '/icon-512.png', '/logo-bretagne.svg',
@@ -7,7 +7,7 @@ const CORE = [
     '/perudo/', '/perudo/app.js', '/perudo/style.css', '/perudo/glyphs.js',
     '/mots-fleches/', '/mots-fleches/app.js', '/mots-fleches/style.css',
     '/recettes/', '/recettes/app.js', '/recettes/style.css',
-    '/motus/', '/motus/hub.js', '/motus/hub.css',
+    '/motus/', '/motus/hub.css',
     '/motus/quotidien/', '/motus/quotidien/app.js', '/motus/quotidien/style.css',
     '/motjuste/', '/motjuste/app.js', '/motjuste/style.css',
     '/pbac/', '/pbac/app.js', '/pbac/style.css',
@@ -18,7 +18,16 @@ const CORE = [
 
 self.addEventListener('install', (e) => {
     self.skipWaiting();
-    e.waitUntil(caches.open(CACHE_VERSION).then(c => c.addAll(CORE)).catch(() => {}));
+    // Surtout pas addAll() : il est tout ou rien. Une seule URL invalide dans CORE
+    // (un fichier renommé, une app restructurée) faisait échouer le préchargement
+    // ENTIER, et le .catch() qui suivait avalait l'erreur — le mode hors-ligne
+    // mourait en silence. On met chaque entrée en cache indépendamment, et on
+    // signale celles qui échouent pour qu'une régression soit visible en console.
+    e.waitUntil(caches.open(CACHE_VERSION).then(async (c) => {
+        const resultats = await Promise.allSettled(CORE.map(u => c.add(u)));
+        const echecs = CORE.filter((u, i) => resultats[i].status === 'rejected');
+        if (echecs.length) console.warn('[sw] préchargement incomplet, entrées ignorées :', echecs);
+    }));
 });
 
 self.addEventListener('activate', (e) => {
