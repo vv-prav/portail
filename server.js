@@ -647,22 +647,21 @@ app.post('/api/mf/comments', requireAuth, (req, res) => {
 //  classement, discussion) — juste un autre "jeu du jour".
 // ---------------------------------------------------------------------
 const motusDict = require('./motsfleches/dict');
-const motusExtra6 = require('./motus/words6');   // vocabulaire complémentaire (vérifié à la main, 6 lettres)
-const motusExtra5b = require('./motus/words5-extra');   // vocabulaire complémentaire (vérifié à la main, 5 lettres)
-const motusExtra6b = require('./motus/words6-extra2');  // vocabulaire complémentaire (vérifié à la main, 6 lettres, second lot)
-const motusExtra7b = require('./motus/words7-extra');   // vocabulaire complémentaire (vérifié à la main, 7 lettres)
-// Deuxième vague : vocabulaire courant filtré par fréquence d'usage réelle (wordfreq)
-// et vérifié orthographiquement (hunspell fr_FR), pour doubler le bassin de tirage.
-const motusExtra4c = require('./motus/words4-extra');
-const motusExtra5c = require('./motus/words5-extra2');
-const motusExtra6c = require('./motus/words6-extra3');
-const motusExtra7c = require('./motus/words7-extra2');
-// Troisième vague : même méthode (wordfreq + hunspell fr_FR), seuil de
-// fréquence abaissé pour doubler encore le bassin de tirage.
-const motusExtra4d = require('./motus/words4-extra2');
-const motusExtra5d = require('./motus/words5-extra3');
-const motusExtra6d = require('./motus/words6-extra4');
-const motusExtra7d = require('./motus/words7-extra3');
+// Lots de vocabulaire complémentaire, rangés par longueur de mot. Chaque lot a été
+// extrait par fréquence d'usage réelle (wordfreq) puis vérifié orthographiquement
+// (hunspell fr_FR).
+//
+// SOURCE UNIQUE, volontairement : ce tableau alimente à la fois motusPool() (tirage
+// du mot du jour) et motusKnown() (validation des tentatives). Les deux fonctions
+// énuméraient les lots à la main chacune de leur côté et avaient fini par diverger —
+// certains lots étaient tirables comme mot du jour mais refusés comme tentative,
+// rendant le mot du jour intapable. Pour ajouter une vague : une seule ligne ici.
+const MOTUS_EXTRA = {
+    4: [require('./motus/words4-extra2')],
+    5: [require('./motus/words5-extra')],
+    6: [require('./motus/words6'), require('./motus/words6-extra4')],
+    7: [require('./motus/words7-extra4')],
+};
 const motusExtra = require('./motus/wordsExtra'); // vocabulaire élargi (4 à 7 lettres, filtré automatiquement)
 const MOTUS_LENGTHS = [4, 5, 6, 7];               // longueur du mot du jour, variable
 const MOTUS_TRIES = 6;
@@ -676,23 +675,23 @@ const MOTUS_KEEP_SHORT_DAYS = 15;   // classement / discussion / progression
 // jour : il peut contenir des mots plus rares, il ne sert qu'à valider les essais.
 function motusPool(len) {
     const base = (motusDict.words()[len] || []).filter(w => w.n <= 2).map(w => w.m);
+    // Le dédoublonnage se fait aussi ENTRE les lots, pas seulement contre le
+    // dictionnaire : deux lots partageant un mot le rendaient deux fois plus
+    // probable au tirage.
     const seen = new Set(base);
-    let extra = [];
-    if (len === 4) extra = [...motusExtra4c, ...motusExtra4d].filter(w => !seen.has(w));
-    else if (len === 5) extra = [...motusExtra5b, ...motusExtra5c, ...motusExtra5d].filter(w => !seen.has(w));
-    else if (len === 6) extra = [...motusExtra6, ...motusExtra6b, ...motusExtra6c, ...motusExtra6d].filter(w => !seen.has(w));
-    else if (len === 7) extra = [...motusExtra7b, ...motusExtra7c, ...motusExtra7d].filter(w => !seen.has(w));
-    return [...base, ...extra];
+    const pool = [...base];
+    for (const lot of (MOTUS_EXTRA[len] || [])) {
+        for (const mot of lot) if (!seen.has(mot)) { seen.add(mot); pool.push(mot); }
+    }
+    return pool;
 }
 // Mots acceptés en tentative : plus permissif (inclut aussi les mots rares du
 // dictionnaire pour cette longueur, et le vocabulaire élargi), pour ne jamais bloquer
 // un joueur qui propose un mot correct mais rare.
 function motusKnown(guess) {
     const len = guess.length;
-    if (len === 4 && (motusExtra4c.includes(guess) || motusExtra4d.includes(guess))) return true;
-    if (len === 5 && (motusExtra5c.includes(guess) || motusExtra5d.includes(guess))) return true;
-    if (len === 6 && (motusExtra6.includes(guess) || motusExtra6c.includes(guess) || motusExtra6d.includes(guess))) return true;
-    if (len === 7 && (motusExtra7c.includes(guess) || motusExtra7d.includes(guess))) return true;
+    // Tout ce qui est tirable est forcément acceptable : même source que motusPool().
+    if ((MOTUS_EXTRA[len] || []).some(lot => lot.includes(guess))) return true;
     if (motusExtra[len] && motusExtra[len].includes(guess)) return true;
     return (motusDict.words()[len] || []).some(w => w.m === guess);
 }

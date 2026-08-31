@@ -127,7 +127,13 @@ Chaque mini-app suit le même schéma : `public/<app>/index.html` + `app.js` + `
 
 ### Vocabulaire Motus — attention en cas d'ajout futur
 
-`server.js` importe une **dizaine de fichiers** de vocabulaire complémentaire (`motus/words{4,5,6,7}-extra{,2,3}.js`, `words6.js`, `wordsExtra.js`) en plus du dictionnaire principal des mots fléchés. Le bassin tirable (`motusPool(len)`) a été **doublé une première fois**, puis **doublé une seconde fois** (words*-extra2/3/4), chaque vague suivant la même méthode : extraction par fréquence d'usage réelle (`wordfreq`, Python), vérification orthographique (`hunspell fr_FR`, installé sur la machine), dédoublonnage contre absolument tout ce qui existe déjà. Total actuel : **10932 mots tirables** (4 lettres: 756, 5: 4268, 6: 3944, 7: 1964). Toute nouvelle vague doit suivre le même processus et être ajoutée à la fois dans `motusPool()` **et** `motusKnown()` (sinon les nouveaux mots ne seraient pas acceptés comme tentatives valides).
+Tous les lots de vocabulaire sont déclarés dans **un seul tableau `MOTUS_EXTRA`** en haut de la section Motus de `server.js`, rangés par longueur. `motusPool()` (tirage du mot du jour) et `motusKnown()` (validation des tentatives) lisent tous les deux ce tableau : **pour ajouter une vague, une seule ligne suffit**. Avant, les deux fonctions énuméraient les lots à la main chacune de leur côté et avaient fini par diverger — certains lots étaient tirables mais refusés comme tentative, ce qui rendait le mot du jour intapable.
+
+Chaque vague suit la même méthode : extraction par fréquence d'usage réelle (`wordfreq`, Python), vérification orthographique (`hunspell fr_FR`), dédoublonnage. `motusPool()` dédoublonne aussi **entre les lots**, pas seulement contre le dictionnaire.
+
+Total actuel : **6698 mots tirables uniques** (4 lettres : 567, 5 : 2469, 6 : 2487, 7 : 1175).
+
+⚠️ Une note antérieure annonçait 10932 mots et une dizaine de fichiers de vocabulaire. C'était faux : 7 fichiers (`words4-extra`, `words5-extra2`, `words6-extra2`, `words6-extra3`, `words7-extra`, `words7-extra2`, `words7-extra3`) étaient importés par `server.js` mais **n'ont jamais existé dans le dépôt** — ils bloquaient le démarrage du serveur (`MODULE_NOT_FOUND`) et donc tout déploiement. Ils ont été retirés. S'ils réapparaissent un jour, il suffit de les rajouter dans `MOTUS_EXTRA`.
 
 ### Autres
 
