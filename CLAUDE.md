@@ -167,6 +167,8 @@ Système séparé (avant le design system, mais du même esprit) : `PortailProfi
 
 ✅ Admin · ✅ Le Mot Juste · ✅ Mots Fléchés · ✅ Hub Motus · ✅ Motus du jour · ✅ Motus Party · ✅ Petit Bac · ✅ Infiltré · ✅ Yams · ✅ Le salon (`public/index.html`)
 
+⚠️ Le design system ne porte **aucune réinitialisation de base** : `box-sizing`, `-webkit-tap-highlight-color` et `::selection` restent à la charge de chaque app. Ne jamais les retirer d'un `style.css` local en croyant que `design-system.css` les fournit — la largeur des éléments à padding change silencieusement.
+
 ❌ **Profil et sa sous-page Style — PAS migrés**, malgré une note antérieure erronée disant le contraire. À faire.
 ❌ Recettes — pas commencé.
 ❌ Chance — jamais dans le plan de migration (petite page statique).
