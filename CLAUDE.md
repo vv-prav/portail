@@ -169,7 +169,7 @@ Système séparé (avant le design system, mais du même esprit) : `PortailProfi
 
 ⚠️ Le design system ne porte **aucune réinitialisation de base** : `box-sizing`, `-webkit-tap-highlight-color` et `::selection` restent à la charge de chaque app. Ne jamais les retirer d'un `style.css` local en croyant que `design-system.css` les fournit — la largeur des éléments à padding change silencieusement.
 
-❌ **Profil et sa sous-page Style — PAS migrés**, malgré une note antérieure erronée disant le contraire. À faire.
+✅ Profil et sa sous-page Style — migrés (toasts délégués à `DS.toast()`, popups en `.ds-overlay`/`.ds-card` avec fermeture en ✕, onglets en `.ds-segmented`, grilles de stats en `.ds-stat-grid`).
 ❌ Recettes — pas commencé.
 ❌ Chance — jamais dans le plan de migration (petite page statique).
 🚫 Perudo et Voyages — **exclusion volontaire et définitive**, pas des oublis. Chacun a sa propre identité visuelle forte qui serait appauvrie par le système commun.

@@ -1,13 +1,8 @@
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-function toast(msg) {
-    const el = $('st-toast');
-    el.textContent = msg;
-    el.hidden = false;
-    clearTimeout(el._t);
-    el._t = setTimeout(() => { el.hidden = true; }, 2600);
-}
+// Délègue au design system plutôt que d'entretenir un second toast.
+function toast(msg) { DS.toast(msg); }
 
 // =====================================================================
 //  CATALOGUES — copiés depuis chaque jeu (pas de module partagé dans ce

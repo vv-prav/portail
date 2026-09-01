@@ -7,10 +7,11 @@
     <title>Mon profil</title>
     <link rel="icon" href="/icon-192.png">
     <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="stylesheet" href="/design-system.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <a class="pr-back" href="/" aria-label="Retour au salon">←</a>
+    <a class="ds-back" href="/" aria-label="Retour au salon">←</a>
 
     <div class="pr-wrap">
         <!-- EN-TÊTE -->
@@ -74,63 +75,62 @@
         <!-- STATISTIQUES -->
         <section class="pr-section">
             <h2 class="pr-section-title">Mes statistiques</h2>
-            <div class="pr-tabs" id="pr-tabs"></div>
+            <div class="ds-segmented" id="pr-tabs"></div>
             <div class="pr-games" id="pr-games"></div>
         </section>
     </div>
 
     <!-- CHANGER D'AVATAR -->
-    <div class="pr-overlay" id="ov-avatar" hidden>
-        <div class="pr-panel">
-            <h2 class="pr-panel-title">Changer d'avatar</h2>
+    <div class="ds-overlay" id="ov-avatar" hidden>
+        <div class="ds-card">
+            <button type="button" class="ds-card-close" id="avatar-close" aria-label="Fermer">✕</button>
+            <h2 class="ds-card-title">Changer d'avatar</h2>
             <div class="pr-photo-row">
-                <button class="pr-btn ghost" id="photo-btn">📷 Mettre une photo</button>
-                <button class="pr-btn ghost" id="photo-remove" hidden>Retirer la photo</button>
+                <button class="ds-btn ghost" id="photo-btn">📷 Mettre une photo</button>
+                <button class="ds-btn ghost" id="photo-remove" hidden>Retirer la photo</button>
             </div>
             <input type="file" id="photo-input" accept="image/*" hidden>
-            <p class="pr-panel-hint">Ou choisissez un symbole</p>
+            <p class="ds-card-text">Ou choisissez un symbole</p>
             <div class="pr-emoji-grid" id="emoji-grid"></div>
-            <button class="pr-btn ghost" id="avatar-close">Fermer</button>
         </div>
     </div>
 
     <!-- CHANGER DE PSEUDO -->
-    <div class="pr-overlay" id="ov-rename" hidden>
-        <div class="pr-panel">
-            <h2 class="pr-panel-title">Changer de pseudo</h2>
-            <p class="pr-panel-hint">Les statistiques déjà accumulées dans les jeux restent sous votre pseudo actuel — c'est un peu comme repartir de zéro pour ces compteurs-là.</p>
-            <input type="text" id="rename-pseudo" class="pr-input" placeholder="Nouveau pseudo" maxlength="20" autocomplete="off">
-            <input type="password" id="rename-password" class="pr-input" placeholder="Votre mot de passe actuel" autocomplete="current-password">
-            <p class="pr-panel-error" id="rename-error" hidden></p>
-            <button class="pr-btn" id="rename-submit">Valider</button>
-            <button class="pr-btn ghost" id="rename-close">Annuler</button>
+    <div class="ds-overlay" id="ov-rename" hidden>
+        <div class="ds-card">
+            <button type="button" class="ds-card-close" id="rename-close" aria-label="Fermer">✕</button>
+            <h2 class="ds-card-title">Changer de pseudo</h2>
+            <p class="ds-card-text">Les statistiques déjà accumulées dans les jeux restent sous votre pseudo actuel — c'est un peu comme repartir de zéro pour ces compteurs-là.</p>
+            <input type="text" id="rename-pseudo" class="ds-input" placeholder="Nouveau pseudo" maxlength="20" autocomplete="off">
+            <input type="password" id="rename-password" class="ds-input" placeholder="Votre mot de passe actuel" autocomplete="current-password">
+            <p class="ds-field-error" id="rename-error" hidden></p>
+            <button class="ds-btn" id="rename-submit">Valider</button>
         </div>
     </div>
 
     <!-- CHANGER DE MOT DE PASSE -->
-    <div class="pr-overlay" id="ov-password" hidden>
-        <div class="pr-panel">
-            <h2 class="pr-panel-title">Changer de mot de passe</h2>
-            <input type="password" id="pwd-current" class="pr-input" placeholder="Mot de passe actuel" autocomplete="current-password">
-            <input type="password" id="pwd-next" class="pr-input" placeholder="Nouveau mot de passe (6 caractères min.)" autocomplete="new-password">
-            <p class="pr-panel-error" id="pwd-error" hidden></p>
-            <button class="pr-btn" id="pwd-submit">Valider</button>
-            <button class="pr-btn ghost" id="pwd-close">Annuler</button>
+    <div class="ds-overlay" id="ov-password" hidden>
+        <div class="ds-card">
+            <button type="button" class="ds-card-close" id="pwd-close" aria-label="Fermer">✕</button>
+            <h2 class="ds-card-title">Changer de mot de passe</h2>
+            <input type="password" id="pwd-current" class="ds-input" placeholder="Mot de passe actuel" autocomplete="current-password">
+            <input type="password" id="pwd-next" class="ds-input" placeholder="Nouveau mot de passe (6 caractères min.)" autocomplete="new-password">
+            <p class="ds-field-error" id="pwd-error" hidden></p>
+            <button class="ds-btn" id="pwd-submit">Valider</button>
         </div>
     </div>
 
     <!-- NOUVEAU CODE DE RÉCUPÉRATION -->
-    <div class="pr-overlay" id="ov-recovery" hidden>
-        <div class="pr-panel">
-            <h2 class="pr-panel-title">Votre nouveau code</h2>
-            <p class="pr-panel-hint">Notez-le quelque part sûr, il ne sera plus jamais réaffiché.</p>
+    <div class="ds-overlay" id="ov-recovery" hidden>
+        <div class="ds-card">
+            <button type="button" class="ds-card-close" id="recovery-close" aria-label="Fermer">✕</button>
+            <h2 class="ds-card-title">Votre nouveau code</h2>
+            <p class="ds-card-text">Notez-le quelque part sûr, il ne sera plus jamais réaffiché.</p>
             <p class="pr-recovery-code" id="recovery-code">—</p>
-            <button class="pr-btn" id="recovery-close">J'ai bien noté</button>
         </div>
     </div>
 
-    <p class="pr-toast" id="pr-toast" hidden></p>
-
+    <script src="/design-system.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

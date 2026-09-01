@@ -10,13 +10,8 @@ async function api(path, body) {
         return { ok: res.ok, data };
     } catch (e) { return { ok: false, data: { error: 'Connexion impossible.' } }; }
 }
-function toast(msg) {
-    const el = $('pr-toast');
-    el.textContent = msg;
-    el.hidden = false;
-    clearTimeout(el._t);
-    el._t = setTimeout(() => { el.hidden = true; }, 2600);
-}
+// Délègue au design system plutôt que d'entretenir un second toast.
+function toast(msg) { DS.toast(msg); }
 
 let profile = null;
 
@@ -29,7 +24,7 @@ function setAvatarBubble(el, photo, emoji) {
 function gameCard(emoji, name, accent, streak, stats, note) {
     const streakBadge = streak ? `<span class="pg-streak">🔥 ${streak}</span>` : '';
     const body = stats && stats.length
-        ? `<div class="pg-grid${stats.length <= 2 ? ' cols2' : ''}">${stats.map(([v, l]) => `<div class="pg-stat"><b>${v}</b><em>${l}</em></div>`).join('')}</div>`
+        ? `<div class="ds-stat-grid${stats.length <= 2 ? ' cols2' : ''}">${stats.map(([v, l]) => `<div class="ds-stat-box"><b>${v}</b><em>${l}</em></div>`).join('')}</div>`
         : `<p class="pg-empty">Rien à afficher pour l'instant</p>`;
     return `<div class="pr-game" style="--acc:${accent}">
         <div class="pg-head"><span class="pg-emoji">${emoji}</span><span class="pg-name">${esc(name)}</span>${streakBadge}</div>
@@ -78,7 +73,7 @@ function buildGameCards(p) {
 let allGames = [], activeGameTab = null, favoriteGameName = null;
 function renderTabs() {
     $('pr-tabs').innerHTML = allGames.map(g => `
-        <button type="button" class="pr-tab${g.id === activeGameTab ? ' active' : ''}${g.id === favoriteGameName ? ' fav' : ''}" data-g="${esc(g.id)}">
+        <button type="button" class="pr-tab${g.id === activeGameTab ? ' on' : ''}${g.id === favoriteGameName ? ' fav' : ''}" data-g="${esc(g.id)}">
             ${g.emoji} ${esc(g.id)}${g.id === favoriteGameName ? ' ⭐' : ''}
         </button>`).join('');
     $('pr-tabs').querySelectorAll('.pr-tab').forEach(b => b.addEventListener('click', () => {
