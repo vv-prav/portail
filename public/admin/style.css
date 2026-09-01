@@ -6,7 +6,6 @@
     --brass:#d9a94e; --brass-soft:#ecca82; --parchment:#efe4cf;
     --muted:#a08f74; --line:rgba(217,169,78,.20); --danger:#e07a5f;
 }
-* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 html { -webkit-text-size-adjust:100%; }
 html,body { margin:0; padding:0; }
 body {

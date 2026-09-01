@@ -175,7 +175,9 @@ Système séparé (avant le design system, mais du même esprit) : `PortailProfi
 
 ✅ Admin · ✅ Le Mot Juste · ✅ Mots Fléchés · ✅ Hub Motus · ✅ Motus du jour · ✅ Motus Party · ✅ Petit Bac · ✅ Infiltré · ✅ Yams · ✅ Le salon (`public/index.html`)
 
-⚠️ Le design system ne porte **aucune réinitialisation de base** : `box-sizing`, `-webkit-tap-highlight-color` et `::selection` restent à la charge de chaque app. Ne jamais les retirer d'un `style.css` local en croyant que `design-system.css` les fournit — la largeur des éléments à padding change silencieusement.
+Le design system porte désormais la **réinitialisation de base** (`box-sizing`, `-webkit-tap-highlight-color`, `::selection`) et une règle `:focus-visible` unique. Elles étaient auparavant recopiées dans 18 fichiers CSS.
+
+⚠️ **Perudo et Voyages ne chargent pas `design-system.css`** : ils gardent leur propre réinitialisation, ne la leur retirez pas — la largeur de tous leurs éléments à padding en dépend.
 
 ✅ Profil et sa sous-page Style — migrés (toasts délégués à `DS.toast()`, popups en `.ds-overlay`/`.ds-card` avec fermeture en ✕, onglets en `.ds-segmented`, grilles de stats en `.ds-stat-grid`).
 ❌ Recettes — pas commencé, et volontairement repoussé : zéro donnée en base, l'app n'a jamais servi.

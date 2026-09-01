@@ -8,7 +8,6 @@
     --cold:#4fb4e0; --mid:#e8c34f; --hot:#e0623f; --burn:#ff3b30;
     --heat: 0;   /* 0 = glacial, 1 = brûlant — piloté par JS selon ta meilleure proximité */
 }
-* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 html { -webkit-text-size-adjust:100%; }
 html,body { margin:0; padding:0; }
 body {

@@ -7,7 +7,6 @@
     --muted:#a08f74; --line:rgba(217,169,78,0.20);
     --good:#5aa87a; --bad:#d2624a; --tie:#c9a24a;
 }
-* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 html,body { margin:0; padding:0; }
 body {
     min-height:100dvh; overflow-x:hidden;

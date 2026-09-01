@@ -1,5 +1,4 @@
 
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html { -webkit-text-size-adjust: 100%; }
 html, body { margin: 0; padding: 0; }
 body {
@@ -9,7 +8,6 @@ body {
     background-attachment: fixed; -webkit-font-smoothing: antialiased;
     padding: max(20px, env(safe-area-inset-top)) 18px 60px;
 }
-::selection { background: var(--brass); color: var(--ink); }
 
 .pr-wrap { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 26px; }
 

@@ -8,7 +8,6 @@
     --correct:#5aa87a; --present:#c9a24a; --absent:#3a3024;
     --bad:#d2624a;
 }
-* { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 html,body { margin:0; padding:0; }
 body {
     min-height:100dvh; overflow-x:hidden;

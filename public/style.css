@@ -15,7 +15,6 @@
     --shadow:     0 18px 44px rgba(0,0,0,0.55);
 }
 
-* { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
 html, body { margin: 0; padding: 0; }
 body {
