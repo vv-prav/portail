@@ -1,12 +1,6 @@
 /* =====================================================================
    RECETTES — mobile-first, DA du salon (nuit chaude + laiton)
    ===================================================================== */
-:root {
-    --ink:#14100b; --ink-2:#1d1710; --ink-3:#241b12;
-    --brass:#d9a94e; --brass-soft:#ecca82; --parchment:#efe4cf;
-    --muted:#a08f74; --line:rgba(217,169,78,.20); --danger:#e07a5f;
-    --accent:#e07a4e;
-}
 * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 html { -webkit-text-size-adjust:100%; }
 html,body { margin:0; padding:0; }
@@ -27,12 +21,6 @@ body.is-boot .rc, body.is-boot .rc-fab { display:none; }
 
 /* En-tête */
 .rc-head { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
-.rc-back { flex:0 0 auto; width:44px; height:44px; display:grid; place-items:center; border-radius:12px;
-           background:rgba(255,255,255,.07); border:1px solid var(--line); color:var(--brass-soft);
-           text-decoration:none; font-size:1.25rem; cursor:pointer; font-family:inherit; }
-.rc-back:active { transform:scale(.93); }
-.rc-back.over { position:absolute; top:max(12px,env(safe-area-inset-top)); left:14px; z-index:5;
-                background:rgba(20,16,11,.72); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
 .rc-titles { min-width:0; }
 .rc-title { font-family:'Fraunces',Georgia,serif; font-weight:900; font-size:1.55rem; margin:0; color:var(--brass-soft); line-height:1.1; }
 .rc-sub { font-size:.74rem; color:var(--muted); }
@@ -163,10 +151,5 @@ body.is-boot .rc, body.is-boot .rc-fab { display:none; }
 .rc-ask-emoji { font-size:2.4rem; }
 .rc-ask-title { font-family:'Fraunces',Georgia,serif; font-weight:900; color:var(--brass-soft); margin:8px 0 6px; font-size:1.3rem; }
 .rc-ask-sub { color:var(--muted); font-size:.85rem; margin:0 0 18px; }
-.rc-toast { position:fixed; left:50%; bottom:calc(92px + env(safe-area-inset-bottom)); transform:translateX(-50%);
-            background:var(--ink-3); border:1px solid var(--brass); color:var(--parchment); font-size:.85rem;
-            padding:12px 18px; border-radius:999px; z-index:400; box-shadow:0 8px 24px rgba(0,0,0,.5);
-            max-width:90vw; text-align:center; }
-.rc-toast[hidden] { display:none; }
 
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.001ms !important; transition-duration:.001ms !important; } }

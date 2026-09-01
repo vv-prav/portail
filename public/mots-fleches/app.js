@@ -430,22 +430,17 @@ function bindProfiles(box, pseudos) {
 }
 function showInlineBoard(board) { renderBoard(board, $('mf-inline-board')); $('mf-inline-board').hidden = false; fitGridSoon(); }
 
-// ---------- Boîte de confirmation générique ----------
+// ---------- Boîte de confirmation ----------
+// Déléguée au design system. L'ancienne implémentation manipulait un overlay
+// (#mf-ask, #ask-emoji, le bouton d'annulation…) retiré du HTML lors de la
+// migration sans que ce fichier suive : l'écouteur posé sur ce bouton absent
+// levait une TypeError au chargement, et les 260 lignes suivantes — la barre
+// d'outils, la discussion, les archives, l'initialisation — ne s'exécutaient
+// jamais. Mots Fléchés était donc largement inutilisable.
 function ask(emoji, title, sub, actions) {
-    $('ask-emoji').textContent = emoji;
-    $('ask-title').textContent = title;
-    $('ask-sub').textContent = sub || '';
-    const box = $('ask-actions'); box.innerHTML = '';
-    actions.forEach(a => {
-        const b = document.createElement('button');
-        b.className = 'mf-btn' + (a.danger ? ' danger' : '');
-        b.type = 'button'; b.textContent = a.label;
-        b.addEventListener('click', () => { $('mf-ask').hidden = true; a.run(); });
-        box.appendChild(b);
-    });
-    $('mf-ask').hidden = false;
+    DS.confirm({ emoji, title, text: sub, actions, cancelLabel: t('cancel') });
 }
-$('ask-cancel').addEventListener('click', () => { $('mf-ask').hidden = true; });
+function toast(msg) { DS.toast(msg); }
 
 // ---------- Outils ----------
 $('t-check').addEventListener('click', () => { if (started) doCheck(true); });

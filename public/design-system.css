@@ -75,6 +75,23 @@
 }
 .ds-back:active { transform: scale(.92); }
 
+/* Variante EN LIGNE du bouton retour : même identité, mais posée dans un en-tête
+   plutôt qu'en position fixe. Chance et Recettes en avaient chacun leur copie
+   (.ch-back, .rc-back) — et Recettes s'en servait aussi pour un ✕ de fermeture,
+   donc ce n'est pas un « retour » mais bien un bouton-icône générique. */
+.ds-icon-btn {
+    flex: 0 0 auto; width: 44px; height: 44px; display: grid; place-items: center;
+    border-radius: 12px; background: rgba(255, 255, 255, .07); border: 1px solid var(--line);
+    color: var(--brass-soft); text-decoration: none; font-size: 1.25rem;
+    cursor: pointer; font-family: inherit;
+}
+.ds-icon-btn:active { transform: scale(.93); }
+/* Posé par-dessus une image ou une carte : il lui faut son propre fond. */
+.ds-icon-btn.over {
+    position: absolute; top: max(12px, env(safe-area-inset-top)); left: 14px; z-index: 5;
+    background: rgba(20, 16, 11, .72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+
 /* Barre de tuiles de navigation (comme dans l'admin) */
 .ds-tile-nav { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; }
 .ds-tile-nav button {

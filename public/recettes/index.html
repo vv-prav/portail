@@ -10,6 +10,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/design-system.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="is-boot">
@@ -18,7 +19,7 @@
 
     <div class="rc" id="rc">
         <header class="rc-head">
-            <a class="rc-back" href="/" aria-label="Retour au salon">←</a>
+            <a class="ds-icon-btn" href="/" aria-label="Retour au salon">←</a>
             <div class="rc-titles">
                 <h1 class="rc-title" data-i="title">Recettes</h1>
                 <span class="rc-sub" id="rc-count"></span>
@@ -42,7 +43,7 @@
     <!-- FORMULAIRE (ajout / édition) -->
     <div class="rc-screen" id="rc-form" hidden>
         <header class="rc-head">
-            <button class="rc-back" id="form-close" type="button" aria-label="Fermer">✕</button>
+            <button class="ds-icon-btn" id="form-close" type="button" aria-label="Fermer">✕</button>
             <div class="rc-titles"><h1 class="rc-title" id="form-title" data-i="form_new">Nouvelle recette</h1></div>
         </header>
         <div class="rc-form-body">
@@ -93,7 +94,7 @@
     <!-- DÉTAIL -->
     <div class="rc-screen" id="rc-detail" hidden>
         <div class="d-hero" id="d-hero">
-            <button class="rc-back over" id="d-close" type="button" aria-label="Retour">←</button>
+            <button class="ds-icon-btn over" id="d-close" type="button" aria-label="Retour">←</button>
             <img id="d-img" alt="" hidden>
             <span class="d-emoji" id="d-emoji">🍽️</span>
         </div>
@@ -123,8 +124,7 @@
             <button class="rc-btn ghost" id="ask-no" type="button" data-i="cancel">Annuler</button>
         </div>
     </div>
-
-    <div class="rc-toast" id="rc-toast" hidden></div>
+    <script src="/design-system.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

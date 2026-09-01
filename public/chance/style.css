@@ -1,12 +1,6 @@
 /* =====================================================================
    CHANCE — mobile-first, DA du salon (nuit chaude + laiton)
    ===================================================================== */
-:root {
-    --ink:#14100b; --ink-2:#1d1710; --ink-3:#241b12;
-    --brass:#d9a94e; --brass-soft:#ecca82; --parchment:#efe4cf;
-    --muted:#a08f74; --line:rgba(217,169,78,0.20);
-    --card-red:#c2453a; --card-black:#1a1712;
-}
 * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 html { -webkit-text-size-adjust:100%; }
 html,body { margin:0; padding:0; }
@@ -26,10 +20,6 @@ body.is-ready .ch { display:flex; }
       padding:max(10px,env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom)); gap:14px; }
 
 .ch-head { display:flex; align-items:center; gap:10px; }
-.ch-back { flex:0 0 auto; width:44px; height:44px; display:grid; place-items:center; border-radius:12px;
-           background:rgba(255,255,255,0.07); border:1px solid var(--line); color:var(--brass-soft);
-           text-decoration:none; font-size:1.3rem; }
-.ch-back:active { transform:scale(.93); }
 .ch-titles { flex:1; min-width:0; text-align:center; }
 .ch-title { font-family:'Fraunces',Georgia,serif; font-weight:900; font-size:1.28rem; margin:0; color:var(--brass-soft); line-height:1.1; }
 .ch-sub { display:block; font-size:.72rem; color:var(--muted); }

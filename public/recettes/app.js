@@ -116,11 +116,8 @@ async function api(path, body) {
     return { ok: res.ok, data };
 }
 let toastT = null;
-function toast(msg) {
-    const el = $('rc-toast');
-    el.textContent = msg; el.hidden = false;
-    clearTimeout(toastT); toastT = setTimeout(() => { el.hidden = true; }, 2400);
-}
+// Délègue au design system plutôt que d'entretenir un second toast.
+function toast(msg) { DS.toast(msg); }
 
 // ---------- Liste ----------
 async function load() {
