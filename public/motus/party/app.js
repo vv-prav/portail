@@ -14,7 +14,8 @@ function connect() {
         socket.emit('motusparty_identify', (res) => {
             if (!res || !res.ok) { toast('Reconnecte-toi au salon.'); return; }
             myPseudo = res.pseudo;
-            const saved = localStorage.getItem(LS_KEY);
+            // Un lien d'invitation prime sur la dernière course mémorisée.
+            const saved = Invitation.tableDuLien() || localStorage.getItem(LS_KEY);
             if (saved) socket.emit('motusparty_join', { id: saved });
             else socket.emit('motusparty_list');
         });
@@ -215,6 +216,8 @@ function onState(s) {
     localStorage.setItem(LS_KEY, s.id);
     isSpectator = !s.players.some(p => p.pseudo === myPseudo);
     $('mp-sub').textContent = s.status === 'playing' ? `Manche ${s.round} / ${s.maxRounds}` : (s.status === 'ended' ? 'Course terminée' : `Table de ${s.host}`);
+    // Le bouton d'invitation n'a de sens que dans la salle d'attente.
+    if (s.status === 'lobby') Invitation.definirTable(s.id); else Invitation.effacer();
     if (s.status === 'lobby') { showView('v-waiting'); renderWaiting(s); }
     else if (s.status === 'playing') {
         showView('v-race');

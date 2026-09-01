@@ -43,6 +43,8 @@ function connect() {
             if (!res || !res.ok) { toast('Session expirée, retourne au salon.'); return; }
             myPseudo = res.pseudo;
             document.body.className = 'is-ready';
+            // Un lien d'invitation prime sur la dernière table mémorisée.
+            lastGameId = Invitation.tableDuLien() || lastGameId;
             if (lastGameId) {
                 socket.emit('pbac_join', { id: lastGameId });
                 if (wasDisconnected) { toast('Reconnecté — partie resynchronisée.'); wasDisconnected = false; }
@@ -328,6 +330,8 @@ function onState(s) {
         return;
     }
 
+    // Le bouton d'invitation n'a de sens que dans la salle d'attente.
+    if (s.status === 'lobby') Invitation.definirTable(s.id); else Invitation.effacer();
     if (s.status === 'lobby') {
         $('pb-round-tag').hidden = true;
         renderWaiting(s);
