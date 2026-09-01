@@ -30,10 +30,12 @@ Sans variables Redis, les comptes sont stockés dans `users.json` (parfait pour 
 ### Avant chaque push — vérifier que le serveur démarre
 
 ```bash
-node -e "require('./server.js')" && echo OK
+npm run verifie
 ```
 
 Deux secondes, et ça attrape la panne la plus coûteuse du projet : un `require()` vers un fichier absent du dépôt. Quand ça arrive, Render refuse le déploiement et **garde silencieusement l'ancienne version en ligne** — le code semble correct en relecture mais la production ne bouge pas. C'est déjà arrivé plusieurs fois. Uploader les fichiers un par un via l'interface web de GitHub est la cause structurelle : préférer `git push`, qui envoie un état cohérent.
+
+Cette vérification tourne aussi automatiquement sur GitHub à chaque push sur `main` et à chaque pull request (`.github/workflows/verification.yml`), avec en plus un contrôle de syntaxe sur tous les fichiers JS.
 
 ## Comment marche l'auth partagée
 

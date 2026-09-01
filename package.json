@@ -5,7 +5,8 @@
   "main": "server.js",
   "type": "commonjs",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "verifie": "node scripts/verifie-demarrage.js"
   },
   "dependencies": {
     "express": "^5.2.1",

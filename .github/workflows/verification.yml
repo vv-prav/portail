@@ -1,0 +1,38 @@
+# Vérifie qu'une modification ne casse pas le démarrage du serveur.
+#
+# Sans ce garde-fou, un require() vers un fichier absent du dépôt passe
+# inaperçu : Render refuse le déploiement et garde l'ancienne version en
+# ligne, sans que rien ne le signale. C'est resté invisible quatre semaines.
+name: Vérification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  demarrage:
+    name: Le serveur démarre
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Installer les dépendances
+        run: npm ci || npm install
+
+      - name: Vérifier la syntaxe de tous les fichiers JS
+        run: |
+          erreurs=0
+          while IFS= read -r f; do
+            node --check "$f" || erreurs=1
+          done < <(git ls-files '*.js')
+          exit $erreurs
+
+      - name: Vérifier que server.js se lève
+        run: node scripts/verifie-demarrage.js
+        env:
+          SESSION_SECRET: verification-ci
