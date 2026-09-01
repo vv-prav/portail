@@ -299,6 +299,7 @@ app.get('/api/me', (req, res) => {
 // ---------------------------------------------------------------------
 const MF = require('./motsfleches/generator');
 const { planifierRenommage, appliquerPlan } = require('./comptes/renommage');
+const { calculerClassement, BAREME } = require('./comptes/classement');
 const MF_LEVELS = ['moyen', 'difficile', 'expert'];
 const MF_MIN_TIME = { moyen: 25, difficile: 40, expert: 60 };   // seuils anti-triche (secondes)
 
@@ -1566,6 +1567,38 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
         yams: { online: yamsOnlineCount, names: yamsNames },
         motusparty: { online: mpOnlineCount, names: mpNames },
         salonOnline, activeGames, recentlyActive,
+    });
+});
+
+// Série en cours d'un joueur pour un jeu du jour, à partir de sa liste de jours joués.
+function serieDepuisJours(jours) {
+    const set = new Set(jours || []);
+    let n = 0, d = mfTodayId();
+    if (!set.has(d)) d = mfShiftDay(d, -1);
+    while (set.has(d)) { n++; d = mfShiftDay(d, -1); }
+    return n;
+}
+
+// Le classement du Salon : un score transversal, recalculé à la demande depuis
+// les clés déjà en base. Rien n'est stocké, donc rien à migrer si le barème change.
+app.get('/api/salon/classement', requireAuthApi, (req, res) => {
+    const pseudos = Object.keys(registeredUsers);
+    const series = {};
+    for (const p of pseudos) {
+        series[p] = Math.max(
+            serieDepuisJours(mfGet(kMotusDays(p))),
+            serieDepuisJours(mfGet(`mf:days:${p}`)),
+            serieDepuisJours(mfGet(kMjDays(p))),
+        );
+    }
+    const lignes = calculerClassement(mfCache, pseudos, series);
+    const moi = currentUser(req);
+    res.json({
+        classement: lignes.slice(0, 20),
+        moi,
+        maPlace: lignes.findIndex(l => l.pseudo === moi) + 1 || null,
+        total: lignes.length,
+        bareme: BAREME,
     });
 });
 

@@ -31,6 +31,7 @@ const I18N = {
         b_grid_done: "Grille du jour ✓", b_grid_part: "faites aujourd'hui",
         app_ch_d: "Dé, carte ou pièce : tranchez au hasard.",
         b_rec_new: "cette semaine", b_rec_count: "recettes",
+        rank_title: "Classement du Salon", rank_loading: "Un instant…", rank_empty: "Personne n'a encore marqué de points.", rank_error: "Classement indisponible.",
         today_title: "Aujourd'hui", today_done: "Fait ✓", today_over: "Terminé", today_todo: "À faire", today_streak: "jours d'affilée",
         b_motus_done: "Trouvé ✓", b_motus_over: "Terminé", b_motus_solvers: "ont trouvé",
     },
@@ -59,6 +60,7 @@ const I18N = {
         b_grid_done: "Today's grid ✓", b_grid_part: "done today",
         app_ch_d: "Dice, card or coin: let chance decide.",
         b_rec_new: "this week", b_rec_count: "recipes",
+        rank_title: "Lounge leaderboard", rank_loading: "One moment…", rank_empty: "Nobody has scored yet.", rank_error: "Leaderboard unavailable.",
         today_title: "Today", today_done: "Done ✓", today_over: "Finished", today_todo: "To play", today_streak: "day streak",
         b_motus_done: "Found ✓", b_motus_over: "Finished", b_motus_solvers: "found it",
     },
@@ -87,6 +89,7 @@ const I18N = {
         b_grid_done: "Cuadrícula de hoy ✓", b_grid_part: "hechas hoy",
         app_ch_d: "Dado, carta o moneda: que decida el azar.",
         b_rec_new: "esta semana", b_rec_count: "recetas",
+        rank_title: "Clasificación del Salón", rank_loading: "Un momento…", rank_empty: "Nadie ha puntuado todavía.", rank_error: "Clasificación no disponible.",
         today_title: "Hoy", today_done: "Hecho ✓", today_over: "Terminado", today_todo: "Por jugar", today_streak: "días seguidos",
         b_motus_done: "Encontrada ✓", b_motus_over: "Terminado", b_motus_solvers: "lo encontraron",
     },
@@ -275,6 +278,7 @@ async function loadPulse() {
     pulse = data;
     renderTiles();
     renderToday(data);
+    if (!classement) chargerClassement();
     renderOnlinePlayers(data.salonOnline);
     renderRecentlyActive(data.recentlyActive);
     renderLiveGames(data.activeGames);
@@ -336,6 +340,58 @@ function renderToday(p) {
 
     box.hidden = false;
 }
+
+// ---------- Le classement du Salon ----------
+// Chaque app avait son classement, aucun ne parlait aux autres. Celui-ci est
+// transversal : il donne au salon une raison d'être en tant que lieu, et non
+// comme un couloir vers onze jeux séparés. Replié par défaut, chargé au premier
+// dépli seulement — inutile de peser sur l'arrivée pour une curiosité.
+let classement = null;      // réponse du serveur, récupérée une seule fois
+let classementRendu = false;
+async function chargerClassement() {
+    const { ok, data } = await api('/api/salon/classement');
+    classement = ok ? data : null;
+    majMaPlace(classement);
+}
+async function rendreClassement() {
+    const corps = $('rank-body');
+    const data = classement;
+    if (!data || !Array.isArray(data.classement)) {
+        corps.innerHTML = `<p class="rank-empty">${esc(t('rank_error'))}</p>`;
+        return;
+    }
+    if (!data.classement.length) {
+        corps.innerHTML = `<p class="rank-empty">${esc(t('rank_empty'))}</p>`;
+        return;
+    }
+    const avatars = await PortailProfile.fetchAvatars(data.classement.map(l => l.pseudo));
+    corps.innerHTML = data.classement.map((l, i) => {
+        const rang = ['🥇', '🥈', '🥉'][i] || (i + 1);
+        return `<button type="button" class="rank-row${l.pseudo === data.moi ? ' me' : ''}" data-view="${esc(l.pseudo)}">
+            <span class="rank-pos">${rang}</span>
+            <span class="ds-avatar xs">${PortailProfile.bubbleHTML(avatars[l.pseudo])}</span>
+            <span class="rank-name">${esc(l.pseudo)}</span>
+            <span class="rank-pts">${l.points}</span>
+        </button>`;
+    }).join('');
+    corps.querySelectorAll('.rank-row').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
+}
+function majMaPlace(data) {
+    const el = $('rank-mine');
+    if (!el || !data || !data.maPlace) { if (el) el.textContent = ''; return; }
+    el.textContent = `${data.maPlace}${data.maPlace === 1 ? 'ᵉʳ' : 'ᵉ'} / ${data.total}`;
+}
+$('rank-toggle').addEventListener('click', async () => {
+    const corps = $('rank-body'), bouton = $('rank-toggle');
+    const ouvert = !corps.hidden;
+    corps.hidden = ouvert;
+    bouton.setAttribute('aria-expanded', String(!ouvert));
+    if (!ouvert && !classementRendu) {
+        classementRendu = true;
+        corps.innerHTML = `<p class="rank-empty">${esc(t('rank_loading'))}</p>`;
+        await rendreClassement();
+    }
+});
 
 async function renderOnlinePlayers(list) {
     const box = $('hub-online'), host = $('hub-online-chips');

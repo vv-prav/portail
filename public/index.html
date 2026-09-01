@@ -83,6 +83,17 @@
 
             <section class="tiles" id="tiles" aria-label="Applications"></section>
 
+            <!-- Le classement du Salon : un score transversal, tous jeux confondus.
+                 Replié par défaut — c'est une curiosité, pas le sujet de l'accueil. -->
+            <section class="rank" id="rank">
+                <button type="button" class="rank-toggle" id="rank-toggle" aria-expanded="false" aria-controls="rank-body">
+                    <span class="rank-title" data-i="rank_title">Classement du Salon</span>
+                    <span class="rank-mine" id="rank-mine"></span>
+                    <span class="rank-chevron" aria-hidden="true">›</span>
+                </button>
+                <div class="rank-body" id="rank-body" hidden></div>
+            </section>
+
             <p class="hub-foot" data-i="hub_foot">D'autres pièces ouvriront bientôt.</p>
         </div>
     </main>

@@ -77,6 +77,33 @@ body.is-hub   .hub   { display: block; }
 .hub-greet { min-width: 0; }
 .hub-eyebrow { display: block; text-transform: uppercase; letter-spacing: 3px; font-size: 0.66rem; color: var(--muted); margin-bottom: 3px; }
 .hub-name { font-family: 'Fraunces', Georgia, serif; font-weight: 900; font-size: 2rem; margin: 0; color: var(--brass-soft); line-height: 1.05; overflow-wrap: anywhere; }
+/* ---------- Classement du Salon ----------
+   Replié par défaut : c'est une curiosité qu'on va chercher, pas le sujet de
+   l'accueil. Sa place personnelle reste visible sur le bouton, refermé — c'est
+   elle qui donne envie d'ouvrir. */
+.rank { margin: 18px 0 4px; }
+.rank-toggle { display: flex; align-items: center; gap: 10px; width: 100%; padding: 12px 14px; border-radius: 12px;
+    background: linear-gradient(165deg, rgba(255,255,255,.03), rgba(0,0,0,.16)); border: 1px solid var(--line);
+    color: inherit; font-family: inherit; cursor: pointer; text-align: left; }
+.rank-toggle:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+.rank-title { flex: 1; font-size: .82rem; font-weight: 700; }
+.rank-mine { font-size: .72rem; color: var(--brass-soft); font-variant-numeric: tabular-nums; }
+.rank-chevron { color: var(--muted); transition: transform .18s ease; }
+.rank-toggle[aria-expanded="true"] .rank-chevron { transform: rotate(90deg); }
+
+.rank-body { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.rank-body[hidden] { display: none; }
+.rank-row { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 12px; border-radius: 10px;
+    background: rgba(0,0,0,.2); border: 1px solid transparent; color: inherit; font-family: inherit;
+    font-size: .82rem; cursor: pointer; text-align: left; }
+.rank-row:hover { background: rgba(217,169,78,.12); }
+.rank-row:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+.rank-row.me { border-color: var(--brass); background: rgba(217,169,78,.14); }
+.rank-pos { flex: 0 0 auto; width: 22px; text-align: center; }
+.rank-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-pts { flex: 0 0 auto; font-weight: 700; color: var(--brass-soft); font-variant-numeric: tabular-nums; }
+.rank-empty { color: var(--muted); font-size: .78rem; text-align: center; margin: 8px 0; }
+
 /* ---------- Panneau « Aujourd'hui » ----------
    Les trois jeux du jour font 90 % de l'activité : ils sortent de la grille de
    tuiles pour répondre d'un coup d'œil à « qu'est-ce qu'il me reste à faire ? ».
