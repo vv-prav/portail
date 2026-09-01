@@ -911,12 +911,24 @@ app.get('/api/motus/archive', requireAuth, (req, res) => {
     res.json({ days: out });
 });
 
+// La discussion du jour porte forcément sur le mot du jour : l'ouvrir avant
+// d'avoir joué, c'est s'exposer au spoiler. Le sous-titre « pas de spoilers »
+// n'était qu'une prière — ici c'est le serveur qui garantit, pas l'interface.
+// Les archives restent librement lisibles : leur mot est déjà connu.
+function motusManchePassee(user, date) {
+    const p = mfGet(kMotusProg(user, date));
+    return !!(p && (p.solved || p.gaveUp || (p.guesses || []).length >= MOTUS_TRIES));
+}
 app.get('/api/motus/comments', requireAuth, (req, res) => {
     const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mfTodayId();
+    if (date === mfTodayId() && !motusManchePassee(currentUser(req), date)) {
+        return res.json({ locked: true, comments: [] });
+    }
     res.json({ comments: (mfGet(kMotusCmt(date)) || []).slice(-60) });
 });
 app.post('/api/motus/comments', requireAuth, (req, res) => {
     const user = currentUser(req), date = mfTodayId();
+    if (!motusManchePassee(user, date)) return res.status(403).json({ error: 'Termine la manche du jour avant d’écrire.' });
     const txt = String((req.body && req.body.text) || '').trim().slice(0, 240);
     if (!txt) return res.status(400).json({ error: 'Message vide.' });
     const list = (mfGet(kMotusCmt(date)) || []).slice();
@@ -1084,12 +1096,22 @@ app.get('/api/juste/archive', requireAuth, (req, res) => {
     res.json({ days: out });
 });
 
+// Même garde que pour Motus : un seul mot pour tout le monde, donc la discussion
+// du jour reste fermée tant qu'on n'a pas fini sa manche. Archives libres.
+function mjManchePassee(user, date) {
+    const p = mfGet(kMjProg(user, date));
+    return !!(p && (p.solved || p.gaveUp));
+}
 app.get('/api/juste/comments', requireAuth, (req, res) => {
     const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mfTodayId();
+    if (date === mfTodayId() && !mjManchePassee(currentUser(req), date)) {
+        return res.json({ locked: true, comments: [] });
+    }
     res.json({ comments: (mfGet(kMjCmt(date)) || []).slice(-60) });
 });
 app.post('/api/juste/comments', requireAuth, (req, res) => {
     const user = currentUser(req), date = mfTodayId();
+    if (!mjManchePassee(user, date)) return res.status(403).json({ error: 'Termine la manche du jour avant d’écrire.' });
     const txt = String((req.body && req.body.text) || '').trim().slice(0, 240);
     if (!txt) return res.status(400).json({ error: 'Message vide.' });
     const list = (mfGet(kMjCmt(date)) || []).slice();

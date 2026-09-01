@@ -11,6 +11,7 @@ const I18N = {
         tool_giveup: "Rendre", panel_chat: "Discussion", panel_arch: "Archives",
         list_word: "Mot", list_score: "Proximité", list_empty: "Tape un premier mot pour commencer à chercher.",
         chat_sub: "Pas de spoilers, restez fair-play 🙂", chat_ph: "Ton message…", chat_send: "Envoyer",
+        chat_locked: "Termine la manche du jour pour ouvrir la discussion — on évite les spoilers.",
         chat_empty: "Personne n'a encore écrit aujourd'hui.",
         arch_sub: "Rejouables, mais hors classement.", arch_today: "Revenir à aujourd'hui", arch_none: "Aucune archive.",
         clue_start: "Devine le mot secret : plus tu es proche par le sens, plus c'est chaud.",
@@ -34,6 +35,7 @@ const I18N = {
         tool_giveup: "Give up", panel_chat: "Chat", panel_arch: "Archives",
         list_word: "Word", list_score: "Closeness", list_empty: "Type a first word to start searching.",
         chat_sub: "No spoilers, play fair 🙂", chat_ph: "Your message…", chat_send: "Send",
+        chat_locked: "Finish today's round to open the chat — no spoilers.",
         chat_empty: "Nobody has written today yet.",
         arch_sub: "Replayable, but off the leaderboard.", arch_today: "Back to today", arch_none: "No archives.",
         clue_start: "Guess the secret word: the closer in meaning, the hotter it gets.",
@@ -57,6 +59,7 @@ const I18N = {
         tool_giveup: "Rendirse", panel_chat: "Charla", panel_arch: "Archivos",
         list_word: "Palabra", list_score: "Cercanía", list_empty: "Escribe una primera palabra para empezar a buscar.",
         chat_sub: "Sin spoilers, juega limpio 🙂", chat_ph: "Tu mensaje…", chat_send: "Enviar",
+        chat_locked: "Termina la ronda de hoy para abrir la charla — sin spoilers.",
         chat_empty: "Nadie ha escrito hoy todavía.",
         arch_sub: "Rejugables, pero fuera de la clasificación.", arch_today: "Volver a hoy", arch_none: "Sin archivos.",
         clue_start: "Adivina la palabra secreta: cuanto más cerca en significado, más caliente.",
@@ -348,6 +351,15 @@ function renderComments(list) {
 }
 async function loadComments() {
     const { data } = await api('/api/juste/comments');
+    // Même garde que Motus : la discussion du jour reste fermée avant d'avoir joué.
+    if (data && data.locked) {
+        $('cmt-list').innerHTML = '<p class="mj-board-empty">' + t('chat_locked') + '</p>';
+        $('cmt-input').disabled = true;
+        $('cmt-send').disabled = true;
+        return;
+    }
+    $('cmt-input').disabled = false;
+    $('cmt-send').disabled = false;
     renderComments((data && data.comments) || []);
 }
 $('btn-comments').addEventListener('click', () => { $('mj-comments').hidden = false; loadComments(); });

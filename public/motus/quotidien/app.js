@@ -26,10 +26,12 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '
 const I18N = {
     fr: {
         start_txt: "Un mot à deviner, une couleur pour chaque indice.", start_btn: "Commencer",
+        share_btn: "Partager mon résultat", share_copied: "Résultat copié ✓",
         close: "Fermer", cancel: "Annuler", back_salon: "Retour au salon",
         tool_erase: "Effacer", tool_valid: "Valider", tool_giveup: "Rendre",
         panel_chat: "Discussion du jour", panel_arch: "Mots précédents",
         chat_sub: "Pas de spoilers, restez fair-play 🙂", chat_ph: "Ton message…", chat_send: "Envoyer",
+        chat_locked: "Termine la manche du jour pour ouvrir la discussion — on évite les spoilers.",
         chat_empty: "Personne n'a encore écrit aujourd'hui.",
         arch_sub: "Rejouables, mais hors classement.", arch_today: "Revenir à aujourd'hui", arch_none: "Aucune archive.",
         clue_start: "Devine le mot en 6 essais. La première lettre est offerte.",
@@ -49,10 +51,12 @@ const I18N = {
     },
     en: {
         start_txt: "A word to guess in 6 tries — the first letter is free.", start_btn: "Start",
+        share_btn: "Share my result", share_copied: "Result copied ✓",
         close: "Close", cancel: "Cancel", back_salon: "Back to the lounge",
         tool_erase: "Erase", tool_valid: "Submit", tool_giveup: "Give up",
         panel_chat: "Today's chat", panel_arch: "Past words",
         chat_sub: "No spoilers, play fair 🙂", chat_ph: "Your message…", chat_send: "Send",
+        chat_locked: "Finish today's round to open the chat — no spoilers.",
         chat_empty: "Nobody has written today yet.",
         arch_sub: "Replayable, but off the leaderboard.", arch_today: "Back to today", arch_none: "No archives.",
         clue_start: "Guess the word in 6 tries. The first letter is free.",
@@ -72,10 +76,12 @@ const I18N = {
     },
     es: {
         start_txt: "Una palabra que adivinar en 6 intentos — la primera letra es gratis.", start_btn: "Empezar",
+        share_btn: "Compartir mi resultado", share_copied: "Resultado copiado ✓",
         close: "Cerrar", cancel: "Cancelar", back_salon: "Volver al salón",
         tool_erase: "Borrar", tool_valid: "Validar", tool_giveup: "Rendirse",
         panel_chat: "Charla del día", panel_arch: "Palabras anteriores",
         chat_sub: "Sin spoilers, juega limpio 🙂", chat_ph: "Tu mensaje…", chat_send: "Enviar",
+        chat_locked: "Termina la ronda de hoy para abrir la charla — sin spoilers.",
         chat_empty: "Nadie ha escrito hoy todavía.",
         arch_sub: "Rejugables, pero fuera de la clasificación.", arch_today: "Volver a hoy", arch_none: "Sin archivos.",
         clue_start: "Adivina la palabra en 6 intentos. La primera letra es gratis.",
@@ -362,6 +368,40 @@ async function showEnd(kind, data) {
 }
 $('mt-end-close').addEventListener('click', () => { $('mt-end').hidden = true; });
 
+// ---------- Partage du résultat ----------
+// Une grille d'émojis qui raconte la partie sans jamais révéler le mot : c'est ce
+// qui fait exister le jeu du jour hors du site, dans la conversation du groupe.
+// Les carrés sont volontairement ceux que tout le monde reconnaît, indépendants
+// du thème de tuiles choisi par le joueur — sinon le message serait illisible
+// pour qui ne partage pas son thème.
+const CARRES = { correct: '🟩', present: '🟨', absent: '⬛' };
+function texteDePartage() {
+    // P.date porte toujours la date affichée, archive comprise — viewDate, lui,
+    // reste nul sur la partie du jour.
+    const date = (P && P.date) || viewDate || '';
+    const trouve = guesses.length && guesses[guesses.length - 1].marks.every(m => m === 'correct');
+    const score = trouve ? guesses.length + '/' + MAX_TRIES : 'X/' + MAX_TRIES;
+    const grille = guesses.map(g => g.marks.map(m => CARRES[m] || '⬛').join('')).join('\n');
+    return `Le Salon · Motus ${date} — ${score}\n\n${grille}`;
+}
+async function partagerResultat() {
+    const texte = texteDePartage();
+    // Sur téléphone, la feuille de partage native est bien plus pratique qu'un
+    // presse-papier muet ; ailleurs on retombe sur la copie.
+    try {
+        if (navigator.share) { await navigator.share({ text: texte }); return; }
+    } catch (e) { if (e && e.name === 'AbortError') return; }
+    try {
+        await navigator.clipboard.writeText(texte);
+        DS.toast(t('share_copied'));
+    } catch (e) {
+        // Navigateurs sans presse-papier (ou hors contexte sécurisé) : on montre le
+        // texte, à charge pour le joueur de le copier à la main.
+        DS.confirm({ emoji: '📋', title: t('share_btn'), code: texte, cancelLabel: t('close') });
+    }
+}
+$('mt-share').addEventListener('click', partagerResultat);
+
 function renderBoard(board) {
     const box = $('mt-board');
     if (!board.length) { box.innerHTML = '<p class="mt-board-empty">' + t('board_empty') + '</p>'; return; }
@@ -414,6 +454,16 @@ function renderComments(list) {
 }
 async function loadComments() {
     const { data } = await api('/api/motus/comments');
+    // Le serveur ferme la discussion du jour tant que la manche n'est pas finie :
+    // on explique pourquoi plutôt que d'afficher une liste vide inexplicable.
+    if (data && data.locked) {
+        $('cmt-list').innerHTML = '<p class="mt-board-empty">' + t('chat_locked') + '</p>';
+        $('cmt-input').disabled = true;
+        $('cmt-send').disabled = true;
+        return;
+    }
+    $('cmt-input').disabled = false;
+    $('cmt-send').disabled = false;
     renderComments((data && data.comments) || []);
 }
 $('btn-comments').addEventListener('click', () => { $('mt-comments').hidden = false; loadComments(); });
