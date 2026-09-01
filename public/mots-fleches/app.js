@@ -12,6 +12,7 @@ const I18N = {
         start_btn: "Commencer", close: "Fermer", cancel: "Annuler", back_salon: "Retour au salon",
         tool_hint: "Indice", tool_erase: "Effacer", tool_check: "Vérifier", tool_giveup: "Rendre",
         panel_chat: "Discussion du jour", panel_arch: "Grilles précédentes",
+        share_btn: "Partager mon résultat", share_copied: "Résultat copié ✓",
         chat_sub: "Pas de spoilers, restez fair-play 🙂", chat_ph: "Ton message…", chat_send: "Envoyer",
         chat_empty: "Personne n'a encore écrit aujourd'hui.",
         arch_sub: "Rejouables, mais hors classement.", arch_today: "Revenir à aujourd'hui", arch_none: "Aucune archive.",
@@ -37,6 +38,7 @@ const I18N = {
         start_btn: "Start", close: "Close", cancel: "Cancel", back_salon: "Back to the lounge",
         tool_hint: "Hint", tool_erase: "Erase", tool_check: "Check", tool_giveup: "Give up",
         panel_chat: "Today's chat", panel_arch: "Past grids",
+        share_btn: "Share my result", share_copied: "Result copied ✓",
         chat_sub: "No spoilers, play fair 🙂", chat_ph: "Your message…", chat_send: "Send",
         chat_empty: "Nobody has written today yet.",
         arch_sub: "Replayable, but off the leaderboard.", arch_today: "Back to today", arch_none: "No archives.",
@@ -62,6 +64,7 @@ const I18N = {
         start_btn: "Empezar", close: "Cerrar", cancel: "Cancelar", back_salon: "Volver al salón",
         tool_hint: "Pista", tool_erase: "Borrar", tool_check: "Comprobar", tool_giveup: "Rendirse",
         panel_chat: "Charla del día", panel_arch: "Cuadrículas pasadas",
+        share_btn: "Compartir mi resultado", share_copied: "Resultado copiado ✓",
         chat_sub: "Sin spoilers, juega limpio 🙂", chat_ph: "Tu mensaje…", chat_send: "Enviar",
         chat_empty: "Nadie ha escrito hoy todavía.",
         arch_sub: "Rejugables, pero fuera de la clasificación.", arch_today: "Volver a hoy", arch_none: "Sin archivos.",
@@ -441,6 +444,28 @@ function ask(emoji, title, sub, actions) {
     DS.confirm({ emoji, title, text: sub, actions, cancelLabel: t('cancel') });
 }
 function toast(msg) { DS.toast(msg); }
+
+
+// ---------- Partage du résultat ----------
+// Une grille de mots fléchés ne se raconte pas en émojis : ce qui se compare
+// ici, c'est le temps et le niveau. Les indices demandés apparaissent aussi,
+// puisqu'ils pèsent dans le score — et rien de tout cela ne révèle une réponse.
+function texteDePartage() {
+    const date = (P && P.date) || viewDate || '';
+    const niveau = t('lv_' + level);
+    const tps = fmt(seconds);
+    const bonus = penalty ? ` (dont ${fmt(penalty)} d'indices)` : ' sans aucun indice';
+    const etat = solved ? `résolue en ${tps}${bonus}` : 'abandonnée';
+    return `Le Salon · Mots Fléchés ${date} · ${niveau} — ${etat}`;
+}
+async function partagerResultat() {
+    const texte = texteDePartage();
+    try { if (navigator.share) { await navigator.share({ text: texte }); return; } }
+    catch (e) { if (e && e.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(texte); DS.toast(t('share_copied')); }
+    catch (e) { DS.confirm({ emoji: '📋', title: t('share_btn'), code: texte, cancelLabel: t('close') }); }
+}
+$('mf-share').addEventListener('click', partagerResultat);
 
 // ---------- Outils ----------
 $('t-check').addEventListener('click', () => { if (started) doCheck(true); });

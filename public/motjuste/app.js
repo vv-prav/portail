@@ -10,6 +10,7 @@ const I18N = {
         guess_ph: "Un mot…", guess_send: "Envoyer", close: "Fermer", cancel: "Annuler", back_salon: "Retour au salon",
         tool_giveup: "Rendre", panel_chat: "Discussion", panel_arch: "Archives",
         list_word: "Mot", list_score: "Proximité", list_empty: "Tape un premier mot pour commencer à chercher.",
+        share_btn: "Partager mon résultat", share_copied: "Résultat copié ✓",
         chat_sub: "Pas de spoilers, restez fair-play 🙂", chat_ph: "Ton message…", chat_send: "Envoyer",
         chat_locked: "Termine la manche du jour pour ouvrir la discussion — on évite les spoilers.",
         chat_empty: "Personne n'a encore écrit aujourd'hui.",
@@ -34,6 +35,7 @@ const I18N = {
         guess_ph: "A word…", guess_send: "Send", close: "Close", cancel: "Cancel", back_salon: "Back to the lounge",
         tool_giveup: "Give up", panel_chat: "Chat", panel_arch: "Archives",
         list_word: "Word", list_score: "Closeness", list_empty: "Type a first word to start searching.",
+        share_btn: "Share my result", share_copied: "Result copied ✓",
         chat_sub: "No spoilers, play fair 🙂", chat_ph: "Your message…", chat_send: "Send",
         chat_locked: "Finish today's round to open the chat — no spoilers.",
         chat_empty: "Nobody has written today yet.",
@@ -58,6 +60,7 @@ const I18N = {
         guess_ph: "Una palabra…", guess_send: "Enviar", close: "Cerrar", cancel: "Cancelar", back_salon: "Volver al salón",
         tool_giveup: "Rendirse", panel_chat: "Charla", panel_arch: "Archivos",
         list_word: "Palabra", list_score: "Cercanía", list_empty: "Escribe una primera palabra para empezar a buscar.",
+        share_btn: "Compartir mi resultado", share_copied: "Resultado copiado ✓",
         chat_sub: "Sin spoilers, juega limpio 🙂", chat_ph: "Tu mensaje…", chat_send: "Enviar",
         chat_locked: "Termina la ronda de hoy para abrir la charla — sin spoilers.",
         chat_empty: "Nadie ha escrito hoy todavía.",
@@ -343,6 +346,34 @@ async function refreshLive() {
 }
 let liveTimer = null;
 function startLive() { clearInterval(liveTimer); liveTimer = setInterval(refreshLive, 30000); refreshLive(); }
+
+
+// ---------- Partage du résultat ----------
+// Contexto ne se raconte pas avec une grille : ce qui compte ici, c'est le
+// chemin parcouru. On partage donc le nombre de mots essayés et leur
+// répartition par palier de température — assez pour comparer une partie,
+// jamais assez pour souffler le mot.
+const PALIERS = ['trouve', 'brulant', 'chaud', 'tiede', 'frais', 'froid', 'glacial'];
+function texteDePartage() {
+    const date = (P && P.date) || viewDate || '';
+    const total = guesses.length;
+    const compte = {};
+    for (const g of guesses) { const p = tierOf(g.score); compte[p] = (compte[p] || 0) + 1; }
+    const ligne = PALIERS
+        .filter(p => compte[p])
+        .map(p => emojiOf(p) + ' ' + compte[p])
+        .join('   ');
+    const titre = solved ? `trouvé en ${total} mot${total > 1 ? 's' : ''}` : 'abandonné';
+    return `Le Salon · Le Mot Juste ${date} — ${titre}\n\n${ligne}`;
+}
+async function partagerResultat() {
+    const texte = texteDePartage();
+    try { if (navigator.share) { await navigator.share({ text: texte }); return; } }
+    catch (e) { if (e && e.name === 'AbortError') return; }
+    try { await navigator.clipboard.writeText(texte); DS.toast(t('share_copied')); }
+    catch (e) { DS.confirm({ emoji: '📋', title: t('share_btn'), code: texte, cancelLabel: t('close') }); }
+}
+$('mj-share').addEventListener('click', partagerResultat);
 
 // ---------- Discussion ----------
 function renderComments(list) {
