@@ -68,6 +68,9 @@ portail/
 ├── server.js                 ← point d'entrée, ~1800 lignes, monte tout
 ├── package.json
 ├── users.json                ← généré localement, jamais commité
+├── scripts/verifie-demarrage.js ← garde-fou : `npm run verifie`
+├── comptes/renommage.js       ← migration des données au changement de pseudo
+├── comptes/classement.js      ← le classement transversal du Salon
 ├── admin/routes.js            ← toutes les routes /api/admin/*
 ├── motjuste/{engine,words}.js
 ├── motsfleches/{dict,generator,words,words-extra}.js
@@ -81,6 +84,7 @@ portail/
     ├── index.html / app.js / style.css     ← LE SALON (page d'accueil)
     ├── design-system.css / design-system.js ← voir section dédiée
     ├── profile-viewer.js                    ← bulle de profil partagée
+    ├── invitation.js                        ← bouton « Inviter » + lien ?table=<id>
     ├── sw.js                                ← service worker (cache hors-ligne)
     ├── admin/
     ├── chance/
@@ -159,6 +163,10 @@ S'auto-injecte dans la page (crée son propre DOM, pas besoin d'ajouter le moind
 - `DS.confirm({ emoji, title, text, actions: [{label, danger, run}], code, confirmText, cancelLabel })` — `code` affiche un encadré (ex. montrer un mot de passe temporaire généré), `confirmText` force à retaper un texte exact avant d'activer le bouton (actions dangereuses). Un bouton Annuler est toujours ajouté automatiquement si l'appelant n'en a pas prévu.
 - `DS.avatarHTML(avatarData, size)`
 
+### `public/invitation.js`
+
+S'auto-injecte lui aussi. Les quatre jeux multijoueurs partagent `#v-waiting` et `#wait-players`, donc le bouton « Inviter » se place seul sous la liste des joueurs — aucune app n'a de HTML à ajouter. Expose `Invitation.tableDuLien()` (l'id présent dans `?table=`), `Invitation.definirTable(id)` et `Invitation.effacer()`. Le paramètre d'URL est retiré une fois la table rejointe, sinon un rechargement après avoir quitté la table la rejoindrait en boucle.
+
 ### `public/profile-viewer.js`
 
 Système séparé (avant le design system, mais du même esprit) : `PortailProfile.fetchAvatars([pseudos])`, `PortailProfile.bubbleHTML(avatarData)`, `PortailProfile.open(pseudo)` (ouvre un profil public en lecture seule, alimenté par `GET /api/public-profile`, qui ne renvoie **jamais** rien de sensible).
@@ -185,6 +193,12 @@ Système séparé (avant le design system, mais du même esprit) : `PortailProfi
 7. **Toujours revérifier à la main après le nettoyage automatique** : les sélecteurs combinés (`.ancienne-classe.modificateur`) et les sélecteurs descendants (`.parent-vivant .ancienne-classe`) ne sont jamais détectés par un script qui ne regarde qu'un sélecteur isolé — chercher chaque ancienne classe individuellement dans le fichier final.
 8. Vérifier qu'aucun bouton "Fermer" texte ne subsiste (`grep -n "Fermer"`) — tous doivent être devenus des `.ds-card-close` en ✕, toujours en haut à droite.
 9. Vérification croisée finale : tous les `id` référencés en JS existent en HTML, toutes les classes générées dynamiquement ont une règle CSS quelque part (design-system.css ou le style.css local).
+
+## Le classement du Salon
+
+`comptes/classement.js` calcule un score transversal à tous les jeux, exposé par `GET /api/salon/classement` et affiché replié en bas de l'accueil. **Il ne stocke rien** : tout est recalculé à la demande depuis les clés existantes, donc changer le barème ne demande aucune migration. Le barème est isolé en haut du fichier — c'est un choix de jeu, pas une contrainte technique.
+
+Piège à connaître si tu ajoutes un jeu au calcul : Yams et Petit Bac indexent leurs stats par pseudo **normalisé** (`yams:stats:ALIX`), Motus Party par pseudo brut. Le module tient une table `norm(pseudo) → pseudo` pour ça.
 
 ## Conventions générales du projet
 
