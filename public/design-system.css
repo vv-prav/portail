@@ -9,6 +9,16 @@
    ci-dessous pour tout ce qui devrait se ressembler d'une app à l'autre.
    ===================================================================== */
 
+/* ===== FOCUS CLAVIER =====
+   Une règle unique plutôt qu'au cas par cas : sans elle, la plupart des éléments
+   héritent du contour par défaut du navigateur, souvent invisible sur fond sombre.
+   Les apps qui veulent un focus particulier n'ont qu'à le redéfinir après. */
+:focus-visible {
+    outline: 2px solid var(--brass);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
 /* ===== FONDATIONS ===== */
 :root {
     /* Couleurs */

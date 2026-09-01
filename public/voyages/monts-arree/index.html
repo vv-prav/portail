@@ -258,7 +258,7 @@
                 </div>
                 <div class="vy-guess" data-answer="150">
                     <p class="vy-guess-q">À votre avis, combien de mètres de dénivelé positif aujourd'hui ?</p>
-                    <input type="range" min="0" max="600" step="10" value="300" class="vy-guess-slider">
+                    <input type="range" min="0" max="600" step="10" value="300" class="vy-guess-slider" aria-label="Estimation en mètres">
                     <div class="vy-guess-row"><span class="vy-guess-val">300</span><span class="vy-guess-unit">mètres</span><button type="button" class="vy-guess-btn">Vérifier</button></div>
                     <p class="vy-guess-result" hidden></p>
                 </div>
@@ -312,7 +312,7 @@
                 </div>
                 <div class="vy-guess" data-answer="320">
                     <p class="vy-guess-q">À votre avis, combien de mètres de dénivelé positif aujourd'hui ?</p>
-                    <input type="range" min="0" max="600" step="10" value="300" class="vy-guess-slider">
+                    <input type="range" min="0" max="600" step="10" value="300" class="vy-guess-slider" aria-label="Estimation en mètres">
                     <div class="vy-guess-row"><span class="vy-guess-val">300</span><span class="vy-guess-unit">mètres</span><button type="button" class="vy-guess-btn">Vérifier</button></div>
                     <p class="vy-guess-result" hidden></p>
                 </div>
@@ -368,7 +368,7 @@
                 </div>
                 <div class="vy-guess" data-answer="460">
                     <p class="vy-guess-q">À votre avis, combien de mètres de dénivelé positif aujourd'hui ?</p>
-                    <input type="range" min="0" max="600" step="10" value="300" class="vy-guess-slider">
+                    <input type="range" min="0" max="600" step="10" value="300" class="vy-guess-slider" aria-label="Estimation en mètres">
                     <div class="vy-guess-row"><span class="vy-guess-val">300</span><span class="vy-guess-unit">mètres</span><button type="button" class="vy-guess-btn">Vérifier</button></div>
                     <p class="vy-guess-result" hidden></p>
                 </div>
@@ -428,7 +428,7 @@
                 </div>
                 <div class="vy-guess" data-answer="180">
                     <p class="vy-guess-q">À votre avis, combien de mètres de dénivelé positif aujourd'hui ?</p>
-                    <input type="range" min="0" max="600" step="10" value="300" class="vy-guess-slider">
+                    <input type="range" min="0" max="600" step="10" value="300" class="vy-guess-slider" aria-label="Estimation en mètres">
                     <div class="vy-guess-row"><span class="vy-guess-val">300</span><span class="vy-guess-unit">mètres</span><button type="button" class="vy-guess-btn">Vérifier</button></div>
                     <p class="vy-guess-result" hidden></p>
                 </div>
@@ -475,7 +475,7 @@
                 </div>
                 <div class="vy-guess" data-answer="90">
                     <p class="vy-guess-q">À votre avis, combien de mètres de dénivelé positif aujourd'hui ?</p>
-                    <input type="range" min="0" max="600" step="10" value="300" class="vy-guess-slider">
+                    <input type="range" min="0" max="600" step="10" value="300" class="vy-guess-slider" aria-label="Estimation en mètres">
                     <div class="vy-guess-row"><span class="vy-guess-val">300</span><span class="vy-guess-unit">mètres</span><button type="button" class="vy-guess-btn">Vérifier</button></div>
                     <p class="vy-guess-result" hidden></p>
                 </div>
@@ -568,7 +568,7 @@
         <div class="vy-lockgate" id="lockGate">
             <p class="vy-kicker">Réservé à nous trois</p>
             <h2 class="vy-h2">La suite est privée</h2>
-            <input type="password" id="lockInput" placeholder="Mot de passe" autocomplete="off">
+            <input type="password" id="lockInput" placeholder="Mot de passe" autocomplete="off" aria-label="Mot de passe du voyage">
             <button type="button" class="vy-btn" id="lockSubmit">Déverrouiller</button>
             <p class="vy-lock-error" id="lockError" hidden>Mot de passe incorrect.</p>
         </div>
@@ -581,9 +581,9 @@
                 <p class="vy-map-note">Vos prénoms servent à répartir le matériel et les frais ci-dessous. Une seule personne
                     a besoin de les saisir, ils sont partagés entre vos téléphones.</p>
                 <div class="vy-names-row" id="namesRow">
-                    <input type="text" class="vy-name-input" data-idx="0" maxlength="24" placeholder="Prénom 1">
-                    <input type="text" class="vy-name-input" data-idx="1" maxlength="24" placeholder="Prénom 2">
-                    <input type="text" class="vy-name-input" data-idx="2" maxlength="24" placeholder="Prénom 3">
+                    <input type="text" class="vy-name-input" data-idx="0" maxlength="24" placeholder="Prénom 1" aria-label="Prénom du marcheur 1">
+                    <input type="text" class="vy-name-input" data-idx="1" maxlength="24" placeholder="Prénom 2" aria-label="Prénom du marcheur 2">
+                    <input type="text" class="vy-name-input" data-idx="2" maxlength="24" placeholder="Prénom 3" aria-label="Prénom du marcheur 3">
                 </div>
                 <button type="button" class="vy-btn" id="namesSave">Enregistrer</button>
             </div>
@@ -599,7 +599,7 @@
         <div class="vy-gear-filter" id="gearFilter"></div>
         <div class="vy-gear-categories" id="gearCategories"></div>
         <div class="vy-add-row">
-            <input type="text" id="catInput" maxlength="40" placeholder="Nouvelle catégorie">
+            <input type="text" id="catInput" maxlength="40" placeholder="Nouvelle catégorie" aria-label="Nouvelle catégorie">
             <button type="button" class="vy-btn ghost" id="catAdd">Créer</button>
         </div>
         <button type="button" class="vy-btn ghost" id="gearResetBtn">Remplacer par la liste complète de matériel</button>
@@ -610,8 +610,8 @@
         <p class="vy-kicker">À suivre</p>
         <h2 class="vy-h2">Les frais du voyage</h2>
         <div class="vy-expense-form" id="expenseForm">
-            <input type="text" id="expLabel" maxlength="60" placeholder="Essence, hébergement...">
-            <input type="number" id="expAmount" min="0" step="0.5" placeholder="Montant en euros">
+            <input type="text" id="expLabel" maxlength="60" placeholder="Essence, hébergement..." aria-label="Intitulé de la dépense">
+            <input type="number" id="expAmount" min="0" step="0.5" placeholder="Montant en euros" aria-label="Montant en euros">
             <p class="vy-field-label">Qui a payé</p>
             <div class="vy-avatar-row" id="expPaidByRow"></div>
             <p class="vy-field-label">Pour qui</p>
@@ -633,7 +633,7 @@
         <div class="vy-tabs" id="checklistTabs"></div>
         <div class="vy-checklist" id="checklist"></div>
         <div class="vy-checklist-add">
-            <input type="text" id="checklistInput" maxlength="40" placeholder="Ajouter un élément">
+            <input type="text" id="checklistInput" maxlength="40" placeholder="Ajouter un élément" aria-label="Élément à ajouter">
             <button type="button" class="vy-btn ghost" id="checklistAdd">Ajouter</button>
         </div>
         <button type="button" class="vy-btn ghost" id="checklistFillBtn">Remplir avec la liste type (sans écraser ce qui existe déjà)</button>

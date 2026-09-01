@@ -23,8 +23,8 @@
             <div class="crest"><img src="/logo-bretagne.svg" alt="Erquy" class="crest-logo"></div>
             <h1 class="entry-title">Le Salon</h1>
             <p class="entry-sub" data-i="entry_sub">Un nom, un mot de passe, et la porte s'ouvre.</p>
-            <input class="ds-input" id="pseudo" type="text" data-ph="ph_name" placeholder="Ton nom" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="20">
-            <input class="ds-input" id="password" type="password" data-ph="ph_pass" placeholder="Ton mot de passe" autocomplete="current-password">
+            <input class="ds-input" id="pseudo" type="text" data-ph="ph_name" placeholder="Ton nom" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="20" aria-label="Ton nom">
+            <input class="ds-input" id="password" type="password" data-ph="ph_pass" placeholder="Ton mot de passe" autocomplete="current-password" aria-label="Ton mot de passe">
             <p class="hint" data-i="entry_hint">6 caractères minimum. Choisis un mot de passe unique, pas un que tu utilises ailleurs.</p>
             <button class="ds-btn" id="btn-login" type="submit" data-i="btn_enter">Entrer</button>
             <button class="ds-btn ghost" id="btn-register" type="button" data-i="btn_register">Créer un compte</button>
@@ -117,9 +117,9 @@
             <div class="ov-emoji">🔓</div>
             <h2 class="ds-card-title ov-title" data-i="forgot_title">Mot de passe oublié</h2>
             <p class="ov-sub" data-i="forgot_sub">Entre ton nom et le code de récupération noté à l'inscription.</p>
-            <input class="ds-input" id="f-pseudo" type="text" data-ph="ph_name" placeholder="Ton nom" autocapitalize="off" autocorrect="off">
-            <input class="ds-input" id="f-code" type="text" placeholder="XXXX-XXXX-XXXX-XXXX" autocapitalize="characters" autocorrect="off">
-            <input class="ds-input" id="f-pass" type="password" data-ph="ph_newpass" placeholder="Nouveau mot de passe">
+            <input class="ds-input" id="f-pseudo" type="text" data-ph="ph_name" placeholder="Ton nom" autocapitalize="off" autocorrect="off" aria-label="Ton nom">
+            <input class="ds-input" id="f-code" type="text" placeholder="XXXX-XXXX-XXXX-XXXX" autocapitalize="characters" autocorrect="off" aria-label="Code de récupération">
+            <input class="ds-input" id="f-pass" type="password" data-ph="ph_newpass" placeholder="Nouveau mot de passe" aria-label="Nouveau mot de passe">
             <div class="entry-error" id="f-error" role="alert"></div>
             <button class="ds-btn" id="f-send" type="button" data-i="forgot_send">Réinitialiser</button>
             <button class="ds-btn ghost" id="f-cancel" type="button" data-i="cancel">Annuler</button>

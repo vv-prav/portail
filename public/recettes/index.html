@@ -27,7 +27,7 @@
 
         <div class="rc-search">
             <span class="rc-search-ico">🔎</span>
-            <input id="rc-q" type="search" data-ph="search_ph" placeholder="Chercher une recette…" autocomplete="off">
+            <input id="rc-q" type="search" data-ph="search_ph" placeholder="Chercher une recette…" autocomplete="off" aria-label="Chercher une recette">
         </div>
 
         <div class="rc-chips" id="rc-cats"></div>
@@ -47,7 +47,7 @@
         </header>
         <div class="rc-form-body">
             <label class="f-label" data-i="f_title">Titre</label>
-            <input class="f-in" id="f-title" maxlength="120" data-ph="f_title_ph" placeholder="Tarte aux pommes de Mamie…">
+            <input class="f-in" id="f-title" maxlength="120" data-ph="f_title_ph" placeholder="Tarte aux pommes de Mamie…" aria-label="Titre de la recette">
 
             <label class="f-label" data-i="f_cat">Catégorie</label>
             <div class="rc-chips" id="f-cats"></div>
@@ -59,9 +59,9 @@
                 </div>
                 <div class="f-col">
                     <label class="f-label" data-i="f_time">Temps (min)</label>
-                    <input class="f-in" id="f-time" type="number" min="0" max="600" inputmode="numeric" placeholder="30">
+                    <input class="f-in" id="f-time" type="number" min="0" max="600" inputmode="numeric" placeholder="30" aria-label="Temps de préparation en minutes">
                     <label class="f-label" data-i="f_serv">Personnes</label>
-                    <input class="f-in" id="f-serv" type="number" min="1" max="50" inputmode="numeric" value="4">
+                    <input class="f-in" id="f-serv" type="number" min="1" max="50" inputmode="numeric" value="4" aria-label="Nombre de parts">
                 </div>
             </div>
 
@@ -69,7 +69,7 @@
             <div class="rc-chips small" id="f-tags"></div>
 
             <label class="f-label" data-i="f_photo">Photo</label>
-            <input id="f-photo" type="file" accept="image/*" hidden>
+            <input id="f-photo" type="file" accept="image/*" hidden aria-label="Photo de la recette">
             <button class="f-photo" id="f-photo-btn" type="button">
                 <img id="f-photo-img" alt="" hidden>
                 <span id="f-photo-txt">📷 <span data-i="f_photo_add">Ajouter une photo</span></span>

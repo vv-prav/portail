@@ -43,7 +43,7 @@
             <div class="card">
                 <h2 class="card-title">Trouver quelqu'un vite</h2>
                 <p class="card-sub">Cherche à la fois dans les comptes et dans l'historique des parties.</p>
-                <input class="ds-input" id="home-search" placeholder="Tape un pseudo…" autocapitalize="off">
+                <input class="ds-input" id="home-search" placeholder="Tape un pseudo…" autocapitalize="off" aria-label="Rechercher un pseudo ou une partie">
                 <div class="home-search-results" id="home-search-results" hidden></div>
             </div>
             <div class="stats" id="ad-stats"></div>
@@ -65,13 +65,13 @@
             <div class="card">
                 <h2 class="card-title">Annonce du salon</h2>
                 <p class="card-sub">Affichée à tous en haut du salon. Laisser vide pour la retirer.</p>
-                <input class="ds-input" id="ann-text" maxlength="200" placeholder="Ex : nouvelle grille difficile ce week-end !">
+                <input class="ds-input" id="ann-text" maxlength="200" placeholder="Ex : nouvelle grille difficile ce week-end !" aria-label="Texte de l'annonce">
                 <button class="ds-btn" id="ann-save" type="button">Publier l'annonce</button>
                 <button class="ds-btn ghost" id="ann-clear" type="button" hidden>Retirer l'annonce</button>
             </div>
             <div class="card">
                 <h2 class="card-title">Dernières actions</h2>
-                <input class="ds-input" id="log-q" placeholder="Filtrer (action, pseudo…)">
+                <input class="ds-input" id="log-q" placeholder="Filtrer (action, pseudo…)" aria-label="Filtrer le journal">
                 <div class="log" id="ad-log"></div>
                 <button class="ds-btn ghost" id="log-export" type="button" style="margin-top:10px">Exporter en CSV</button>
             </div>
@@ -80,7 +80,7 @@
         <!-- COMPTES -->
         <section class="pane" id="pane-accounts" hidden>
             <div class="card">
-                <input class="ds-input" id="acc-q" placeholder="Rechercher un pseudo…" autocapitalize="off">
+                <input class="ds-input" id="acc-q" placeholder="Rechercher un pseudo…" autocapitalize="off" aria-label="Rechercher un compte">
                 <div class="ds-segmented" id="acc-sort">
                     <button class="on" data-sort="recent" type="button">Récents</button>
                     <button data-sort="active" type="button">Actifs</button>
@@ -117,7 +117,7 @@
             </div>
             <div class="card">
                 <h2 class="card-title">Grilles du jour</h2>
-                <input class="ds-input" id="gr-date" type="date">
+                <input class="ds-input" id="gr-date" type="date" aria-label="Date de la grille">
                 <div id="gr-levels"></div>
             </div>
             <div class="card">
@@ -140,7 +140,7 @@
             </div>
             <div class="card">
                 <h2 class="card-title">Mot du jour</h2>
-                <input class="ds-input" id="mt-date" type="date">
+                <input class="ds-input" id="mt-date" type="date" aria-label="Date du mot Motus">
                 <div id="mt-word-box"></div>
                 <div id="mt-board-box"></div>
                 <button class="mini danger wide" id="mt-regen" type="button">Régénérer ce mot</button>
@@ -165,7 +165,7 @@
             </div>
             <div class="card">
                 <h2 class="card-title">Mot du jour</h2>
-                <input class="ds-input" id="mj-date" type="date">
+                <input class="ds-input" id="mj-date" type="date" aria-label="Date du Mot Juste">
                 <div id="mj-word-box"></div>
                 <div id="mj-neighbors-box"></div>
                 <div id="mj-board-box"></div>
@@ -184,10 +184,10 @@
             <div class="card">
                 <h2 class="card-title">Vocabulaire (<span id="mj-vocab-count">—</span> mots)</h2>
                 <p class="card-sub">Ajoute un mot en indiquant le mot déjà connu dont il est le plus proche — sa position dans l'espace sémantique sera calquée dessus.</p>
-                <input class="ds-input" id="mj-new-word" placeholder="Nouveau mot…" autocapitalize="off">
-                <input class="ds-input" id="mj-new-like" placeholder="Mot déjà connu le plus proche…" autocapitalize="off">
+                <input class="ds-input" id="mj-new-word" placeholder="Nouveau mot…" autocapitalize="off" aria-label="Nouveau mot à ajouter">
+                <input class="ds-input" id="mj-new-like" placeholder="Mot déjà connu le plus proche…" autocapitalize="off" aria-label="Mot connu le plus proche">
                 <button class="ds-btn" id="mj-vocab-add" type="button">Ajouter au vocabulaire</button>
-                <input class="ds-input" id="mj-vocab-q" placeholder="Rechercher dans le vocabulaire…" style="margin-top:14px">
+                <input class="ds-input" id="mj-vocab-q" placeholder="Rechercher dans le vocabulaire…" style="margin-top:14px" aria-label="Rechercher dans le vocabulaire">
                 <div class="list" id="mj-vocab-list"></div>
             </div>
         </section>
@@ -258,7 +258,7 @@
             </div>
 
             <div class="card">
-                <input class="ds-input" id="dict-q" placeholder="Rechercher un mot…" autocapitalize="characters">
+                <input class="ds-input" id="dict-q" placeholder="Rechercher un mot…" autocapitalize="characters" aria-label="Rechercher un mot du dictionnaire">
                 <div class="ds-segmented" id="dict-len">
                     <button class="on" data-len="0" type="button">Toutes</button>
                     <button data-len="3" type="button">3</button>
@@ -301,7 +301,7 @@
                 <h2 class="card-title">Administrateurs</h2>
                 <p class="card-sub">Ils ont accès à cet espace. L'administrateur principal ne peut pas être retiré.</p>
                 <div class="list" id="sys-admins"></div>
-                <input class="ds-input" id="adm-new" placeholder="Pseudo à promouvoir…" autocapitalize="off" style="margin-top:10px">
+                <input class="ds-input" id="adm-new" placeholder="Pseudo à promouvoir…" autocapitalize="off" style="margin-top:10px" aria-label="Pseudo à promouvoir administrateur">
                 <button class="ds-btn" id="adm-add" type="button">Ajouter cet administrateur</button>
             </div>
             <div class="card">
@@ -327,14 +327,14 @@
             <button type="button" class="ds-card-close" id="w-close" aria-label="Fermer">✕</button>
             <h2 class="ds-card-title ov-title" id="w-title">Nouveau mot</h2>
             <p class="ov-sub" id="w-info">3 à 8 lettres, sans accent ni espace.</p>
-            <input class="ds-input" id="w-mot" maxlength="8" placeholder="MOT" autocapitalize="characters" autocomplete="off">
+            <input class="ds-input" id="w-mot" maxlength="8" placeholder="MOT" autocapitalize="characters" autocomplete="off" aria-label="Le mot">
             <div class="ds-segmented" id="w-level">
                 <button class="on" data-n="1" type="button">Courant</button>
                 <button data-n="2" type="button">Moyen</button>
                 <button data-n="3" type="button">Rare</button>
             </div>
             <p class="w-lab">Définitions (une par ligne, tirées au hasard chaque jour)</p>
-            <textarea class="ds-input ta" id="w-defs" rows="4" placeholder="Il vole avec des passagers&#10;Long-courrier"></textarea>
+            <textarea class="ds-input ta" id="w-defs" rows="4" placeholder="Il vole avec des passagers&#10;Long-courrier" aria-label="Définitions, une par ligne"></textarea>
             <div class="entry-err" id="w-err"></div>
             <button class="ds-btn" id="w-save" type="button">Enregistrer</button>
             <button class="ds-btn danger" id="w-del" type="button" hidden>Retirer du jeu</button>

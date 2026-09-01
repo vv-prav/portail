@@ -89,7 +89,7 @@
                 <button class="ds-btn ghost" id="photo-btn">📷 Mettre une photo</button>
                 <button class="ds-btn ghost" id="photo-remove" hidden>Retirer la photo</button>
             </div>
-            <input type="file" id="photo-input" accept="image/*" hidden>
+            <input type="file" id="photo-input" accept="image/*" hidden aria-label="Choisir une photo de profil">
             <p class="ds-card-text">Ou choisissez un symbole</p>
             <div class="pr-emoji-grid" id="emoji-grid"></div>
         </div>
@@ -101,8 +101,8 @@
             <button type="button" class="ds-card-close" id="rename-close" aria-label="Fermer">✕</button>
             <h2 class="ds-card-title">Changer de pseudo</h2>
             <p class="ds-card-text">Vos statistiques, classements et séries suivent le compte : tout est migré sous le nouveau nom.</p>
-            <input type="text" id="rename-pseudo" class="ds-input" placeholder="Nouveau pseudo" maxlength="20" autocomplete="off">
-            <input type="password" id="rename-password" class="ds-input" placeholder="Votre mot de passe actuel" autocomplete="current-password">
+            <input type="text" id="rename-pseudo" class="ds-input" placeholder="Nouveau pseudo" maxlength="20" autocomplete="off" aria-label="Nouveau pseudo">
+            <input type="password" id="rename-password" class="ds-input" placeholder="Votre mot de passe actuel" autocomplete="current-password" aria-label="Ton mot de passe actuel">
             <p class="ds-field-error" id="rename-error" hidden></p>
             <button class="ds-btn" id="rename-submit">Valider</button>
         </div>
@@ -113,8 +113,8 @@
         <div class="ds-card">
             <button type="button" class="ds-card-close" id="pwd-close" aria-label="Fermer">✕</button>
             <h2 class="ds-card-title">Changer de mot de passe</h2>
-            <input type="password" id="pwd-current" class="ds-input" placeholder="Mot de passe actuel" autocomplete="current-password">
-            <input type="password" id="pwd-next" class="ds-input" placeholder="Nouveau mot de passe (6 caractères min.)" autocomplete="new-password">
+            <input type="password" id="pwd-current" class="ds-input" placeholder="Mot de passe actuel" autocomplete="current-password" aria-label="Mot de passe actuel">
+            <input type="password" id="pwd-next" class="ds-input" placeholder="Nouveau mot de passe (6 caractères min.)" autocomplete="new-password" aria-label="Nouveau mot de passe">
             <p class="ds-field-error" id="pwd-error" hidden></p>
             <button class="ds-btn" id="pwd-submit">Valider</button>
         </div>
