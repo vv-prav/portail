@@ -196,10 +196,17 @@ body.not-started .mf-tools { opacity:.35; pointer-events:none; }
 .mf-inline-board[hidden] { display:none; }
 .mf-board { margin-bottom:16px; }
 .mf-board-title { color:var(--brass); font-size:.72rem; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:8px; text-align:center; }
-.mf-board-row { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; background:rgba(0,0,0,.28); margin-bottom:5px; }
+/* Ligne de classement : c'est un bouton (le pseudo ouvre le profil), d'où la
+   réinitialisation ciblée — surtout pas all:unset, qui effacerait aussi le fond
+   des trois premières places et le style des bulles d'avatar. */
+.mf-board-row { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:8px; background:rgba(0,0,0,.28); margin-bottom:5px;
+                width:100%; border:none; font-family:inherit; color:inherit; font-size:inherit; cursor:pointer; text-align:left; }
+.mf-board-row:focus-visible { outline:2px solid var(--brass); outline-offset:2px; }
 .mf-board-row.top1 { background:rgba(217,169,78,.22); border:1px solid var(--brass); }
 .mf-board-row.top2 { background:rgba(200,200,210,.12); }
 .mf-board-row.top3 { background:rgba(190,120,70,.14); }
+/* Après les variantes de podium, sinon leur fond gagnerait à spécificité égale. */
+.mf-board-row:hover, .mf-board-row.top1:hover, .mf-board-row.top2:hover, .mf-board-row.top3:hover { background:rgba(217,169,78,.24); }
 .bpos { flex:0 0 26px; color:var(--brass); font-weight:800; font-size:.85rem; text-align:center; }
 .bname { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.88rem; }
 .btime { flex:0 0 auto; font-variant-numeric:tabular-nums; color:var(--brass-soft); font-weight:700; font-size:.88rem; }
@@ -208,7 +215,9 @@ body.not-started .mf-tools { opacity:.35; pointer-events:none; }
 /* Discussion */
 .cmt-list { text-align:left; max-height:38vh; overflow-y:auto; margin-bottom:10px; display:flex; flex-direction:column; gap:6px; }
 .cmt { background:rgba(0,0,0,.28); border-radius:8px; padding:7px 10px; font-size:.85rem; line-height:1.35; }
-.cmt b { color:var(--brass-soft); display:block; font-size:.72rem; margin-bottom:2px; }
+.cmt-auteur { display:flex; align-items:center; gap:6px; color:var(--brass-soft); font-size:.72rem; margin-bottom:4px;
+              border:none; background:none; padding:0; font-family:inherit; font-weight:700; cursor:pointer; }
+.cmt-auteur:focus-visible { outline:2px solid var(--brass); outline-offset:2px; border-radius:4px; }
 .cmt-form { display:flex; gap:6px; margin-bottom:10px; }
 .cmt-form input { flex:1; min-width:0; padding:12px; border-radius:10px; background:rgba(0,0,0,.35);
                   border:1px solid var(--line); color:var(--parchment); font-size:16px; font-family:inherit; }

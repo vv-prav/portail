@@ -302,8 +302,20 @@ function renderBoard(board, target) {
     if (!board.length) { box.innerHTML = '<p class="mj-board-empty">' + t('board_empty') + '</p>'; return; }
     const medal = ['🥇', '🥈', '🥉'];
     box.innerHTML = '<div class="mj-board-title">' + t('board_title') + '</div>' +
-        board.slice(0, 15).map((e, i) => `<div class="mj-board-row${i < 3 ? ' top' + (i + 1) : ''}">
-            <span class="bpos">${medal[i] || (i + 1)}</span><span class="bname">${esc(e.u)}</span><span class="btime">${guessLabel(e.guesses)}</span></div>`).join('');
+        board.slice(0, 15).map((e, i) => `<button type="button" class="mj-board-row${i < 3 ? ' top' + (i + 1) : ''}" data-view="${esc(e.u)}">
+            <span class="bpos">${medal[i] || (i + 1)}</span><span class="ds-avatar xs" data-p="${esc(e.u)}"></span><span class="bname">${esc(e.u)}</span><span class="btime">${guessLabel(e.guesses)}</span></button>`).join('');
+    bindProfiles(box, board.map(e => e.u));
+}
+// Rend cliquable tout pseudo affiché dans `box` et y pose les bulles d'avatar.
+// Même motif que Petit Bac, Yams et Infiltré : une bulle partout où un nom apparaît.
+function bindProfiles(box, pseudos) {
+    if (!window.PortailProfile) return;
+    box.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
+    const cibles = box.querySelectorAll('.ds-avatar[data-p]');
+    if (!cibles.length) return;
+    PortailProfile.fetchAvatars(pseudos).then(a => {
+        cibles.forEach(el => { el.innerHTML = PortailProfile.bubbleHTML(a[el.dataset.p]); });
+    });
 }
 function showInlineBoard(board) { renderBoard(board, $('mj-inline-board')); $('mj-inline-board').hidden = false; }
 function hideInlineBoard() { $('mj-inline-board').hidden = true; }
@@ -326,13 +338,17 @@ let liveTimer = null;
 function startLive() { clearInterval(liveTimer); liveTimer = setInterval(refreshLive, 30000); refreshLive(); }
 
 // ---------- Discussion ----------
+function renderComments(list) {
+    const box = $('cmt-list');
+    box.innerHTML = list.length
+        ? list.map(c => `<div class="cmt"><button type="button" class="cmt-auteur" data-view="${esc(c.u)}"><span class="ds-avatar xs" data-p="${esc(c.u)}"></span>${esc(c.u)}</button><span>${c.t}</span></div>`).join('')
+        : '<p class="mj-board-empty">' + t('chat_empty') + '</p>';
+    bindProfiles(box, list.map(c => c.u));
+    box.scrollTop = box.scrollHeight;
+}
 async function loadComments() {
     const { data } = await api('/api/juste/comments');
-    const list = (data && data.comments) || [];
-    $('cmt-list').innerHTML = list.length
-        ? list.map(c => `<div class="cmt"><b>${esc(c.u)}</b><span>${c.t}</span></div>`).join('')
-        : '<p class="mj-board-empty">' + t('chat_empty') + '</p>';
-    $('cmt-list').scrollTop = $('cmt-list').scrollHeight;
+    renderComments((data && data.comments) || []);
 }
 $('btn-comments').addEventListener('click', () => { $('mj-comments').hidden = false; loadComments(); });
 $('cmt-close').addEventListener('click', () => { $('mj-comments').hidden = true; });
@@ -341,8 +357,7 @@ $('cmt-send').addEventListener('click', async () => {
     if (!val) return;
     $('cmt-input').value = '';
     const { ok, data } = await api('/api/juste/comments', { text: val });
-    if (ok) $('cmt-list').innerHTML = (data.comments || []).map(c => `<div class="cmt"><b>${esc(c.u)}</b><span>${c.t}</span></div>`).join('');
-    $('cmt-list').scrollTop = $('cmt-list').scrollHeight;
+    if (ok) renderComments(data.comments || []);
 });
 $('cmt-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('cmt-send').click(); });
 

@@ -409,8 +409,20 @@ function renderBoard(board, box) {
     if (!board.length) { box.innerHTML = '<p class="mf-board-empty">' + t('board_empty') + '</p>'; return; }
     const medal = ['🥇', '🥈', '🥉'];
     box.innerHTML = '<div class="mf-board-title">' + t('board_title') + ' · ' + t('lv_' + level) + '</div>' +
-        board.slice(0, 15).map((e, i) => `<div class="mf-board-row${i < 3 ? ' top top' + (i + 1) : ''}">
-            <span class="bpos">${medal[i] || (i + 1)}</span><span class="bname">${esc(e.u)}</span><span class="btime">${esc(e.t)}</span></div>`).join('');
+        board.slice(0, 15).map((e, i) => `<button type="button" class="mf-board-row${i < 3 ? ' top top' + (i + 1) : ''}" data-view="${esc(e.u)}">
+            <span class="bpos">${medal[i] || (i + 1)}</span><span class="ds-avatar xs" data-p="${esc(e.u)}"></span><span class="bname">${esc(e.u)}</span><span class="btime">${esc(e.t)}</span></button>`).join('');
+    bindProfiles(box, board.map(e => e.u));
+}
+// Rend cliquable tout pseudo affiché dans `box` et y pose les bulles d'avatar.
+// Même motif que Petit Bac, Yams et Infiltré : une bulle partout où un nom apparaît.
+function bindProfiles(box, pseudos) {
+    if (!window.PortailProfile) return;
+    box.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
+    const cibles = box.querySelectorAll('.ds-avatar[data-p]');
+    if (!cibles.length) return;
+    PortailProfile.fetchAvatars(pseudos).then(a => {
+        cibles.forEach(el => { el.innerHTML = PortailProfile.bubbleHTML(a[el.dataset.p]); });
+    });
 }
 function showInlineBoard(board) { renderBoard(board, $('mf-inline-board')); $('mf-inline-board').hidden = false; fitGridSoon(); }
 
@@ -575,24 +587,24 @@ async function refreshStates() {
 // ---------- Discussion ----------
 $('btn-comments').addEventListener('click', async () => { await loadComments(); $('mf-comments').hidden = false; });
 $('cmt-close').addEventListener('click', () => { $('mf-comments').hidden = true; });
+function renderComments(list) {
+    const box = $('cmt-list');
+    box.innerHTML = list.length
+        ? list.map(c => `<div class="cmt"><button type="button" class="cmt-auteur" data-view="${esc(c.u)}"><span class="ds-avatar xs" data-p="${esc(c.u)}"></span>${esc(c.u)}</button><span>${c.t}</span></div>`).join('')
+        : '<p class="mf-board-empty">' + t('chat_empty') + '</p>';
+    bindProfiles(box, list.map(c => c.u));
+    box.scrollTop = box.scrollHeight;
+}
 async function loadComments() {
     const { data } = await api('/api/mf/comments');
-    const box = $('cmt-list');
-    const list = (data && data.comments) || [];
-    box.innerHTML = list.length
-        ? list.map(c => `<div class="cmt"><b>${esc(c.u)}</b><span>${c.t}</span></div>`).join('')
-        : '<p class="mf-board-empty">' + t('chat_empty') + '</p>';
-    box.scrollTop = box.scrollHeight;
+    renderComments((data && data.comments) || []);
 }
 async function sendComment() {
     const inp = $('cmt-input'); const text = inp.value.trim();
     if (!text) return;
     inp.value = '';
     const { data } = await api('/api/mf/comments', { text });
-    if (data && data.comments) {
-        $('cmt-list').innerHTML = data.comments.map(c => `<div class="cmt"><b>${esc(c.u)}</b><span>${c.t}</span></div>`).join('');
-        $('cmt-list').scrollTop = $('cmt-list').scrollHeight;
-    }
+    if (data && data.comments) renderComments(data.comments);
 }
 $('cmt-send').addEventListener('click', sendComment);
 $('cmt-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendComment(); });

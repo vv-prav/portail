@@ -131,10 +131,17 @@ body.is-ready .mj { display:flex; }
 
 .mj-board { margin-bottom:14px; }
 .mj-board-title { font-size:.7rem; text-transform:uppercase; letter-spacing:1.5px; color:var(--ice); margin-bottom:8px; text-align:center; }
-.mj-board-row { display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:9px; font-size:.85rem; }
+/* Ligne de classement : c'est un bouton (le pseudo ouvre le profil), d'où la
+   réinitialisation ciblée — surtout pas all:unset, qui effacerait aussi le fond
+   des trois premières places et le style des bulles d'avatar. */
+.mj-board-row { display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:9px; font-size:.85rem;
+                width:100%; border:none; background:none; font-family:inherit; color:inherit; cursor:pointer; text-align:left; }
+.mj-board-row:focus-visible { outline:2px solid var(--ice); outline-offset:2px; }
 .mj-board-row.top1 { background:rgba(224,98,63,.16); }
 .mj-board-row.top2 { background:rgba(224,98,63,.09); }
 .mj-board-row.top3 { background:rgba(224,98,63,.05); }
+/* Après les variantes de podium, sinon leur fond gagnerait à spécificité égale. */
+.mj-board-row:hover, .mj-board-row.top1:hover, .mj-board-row.top2:hover, .mj-board-row.top3:hover { background:rgba(224,98,63,.24); }
 .bpos { flex:0 0 auto; width:24px; text-align:center; }
 .bname { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left; }
 .btime { flex:0 0 auto; color:var(--ice); font-variant-numeric:tabular-nums; font-weight:700; }
@@ -143,7 +150,9 @@ body.is-ready .mj { display:flex; }
 /* Discussion */
 .mj-chat { max-height:34vh; overflow-y:auto; margin:10px 0; display:flex; flex-direction:column; gap:8px; }
 .cmt { background:rgba(255,255,255,.04); border-radius:10px; padding:8px 10px; font-size:.82rem; }
-.cmt b { color:var(--ice); display:block; font-size:.72rem; margin-bottom:2px; }
+.cmt-auteur { display:flex; align-items:center; gap:6px; color:var(--ice); font-size:.72rem; margin-bottom:4px;
+              border:none; background:none; padding:0; font-family:inherit; font-weight:700; cursor:pointer; }
+.cmt-auteur:focus-visible { outline:2px solid var(--ice); outline-offset:2px; border-radius:4px; }
 .mj-chat-row { display:flex; gap:8px; margin-bottom:10px; }
 .mj-chat-row input { flex:1; min-width:0; padding:12px; border-radius:10px; background:rgba(255,255,255,.05);
                       border:1px solid var(--line); color:var(--parchment); font-size:16px; font-family:inherit; }

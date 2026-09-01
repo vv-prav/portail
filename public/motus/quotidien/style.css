@@ -152,10 +152,17 @@ body.not-started .mt-tools { opacity:.35; pointer-events:none; }
 
 .mt-board { margin-bottom:14px; }
 .mt-board-title { font-size:.7rem; text-transform:uppercase; letter-spacing:1.5px; color:var(--brass); margin-bottom:8px; text-align:center; }
-.mt-board-row { display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:9px; font-size:.85rem; }
+/* Ligne de classement : c'est un bouton (le pseudo ouvre le profil), d'où la
+   réinitialisation ciblée — surtout pas all:unset, qui effacerait aussi le fond
+   des trois premières places et le style des bulles d'avatar. */
+.mt-board-row { display:flex; align-items:center; gap:10px; padding:7px 10px; border-radius:9px; font-size:.85rem;
+                width:100%; border:none; background:none; font-family:inherit; color:inherit; cursor:pointer; text-align:left; }
+.mt-board-row:focus-visible { outline:2px solid var(--brass); outline-offset:2px; }
 .mt-board-row.top1 { background:rgba(217,169,78,.16); }
 .mt-board-row.top2 { background:rgba(217,169,78,.09); }
 .mt-board-row.top3 { background:rgba(217,169,78,.05); }
+/* Après les variantes de podium, sinon leur fond gagnerait à spécificité égale. */
+.mt-board-row:hover, .mt-board-row.top1:hover, .mt-board-row.top2:hover, .mt-board-row.top3:hover { background:rgba(217,169,78,.24); }
 .bpos { flex:0 0 auto; width:24px; text-align:center; }
 .bname { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left; }
 .btime { flex:0 0 auto; color:var(--brass-soft); font-variant-numeric:tabular-nums; font-weight:700; }
@@ -164,7 +171,9 @@ body.not-started .mt-tools { opacity:.35; pointer-events:none; }
 /* Discussion */
 .mt-chat { max-height:34vh; overflow-y:auto; margin:10px 0; display:flex; flex-direction:column; gap:8px; }
 .cmt { background:rgba(0,0,0,.24); border-radius:10px; padding:8px 10px; font-size:.82rem; }
-.cmt b { color:var(--brass-soft); display:block; font-size:.72rem; margin-bottom:2px; }
+.cmt-auteur { display:flex; align-items:center; gap:6px; color:var(--brass-soft); font-size:.72rem; margin-bottom:4px;
+              border:none; background:none; padding:0; font-family:inherit; font-weight:700; cursor:pointer; }
+.cmt-auteur:focus-visible { outline:2px solid var(--brass); outline-offset:2px; border-radius:4px; }
 .mt-chat-row { display:flex; gap:8px; margin-bottom:10px; }
 .mt-chat-row input { flex:1; min-width:0; padding:12px; border-radius:10px; background:rgba(0,0,0,.32);
                       border:1px solid var(--line); color:var(--parchment); font-size:16px; font-family:inherit; }
