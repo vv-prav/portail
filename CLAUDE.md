@@ -59,7 +59,7 @@ Deux systèmes de stockage coexistent :
 - Code de récupération à l'inscription (`POST /api/new-code` pour en régénérer un).
 - `requireAuth` (pages) et `requireAuthApi` (API) sont les deux middlewares de garde ; ils mettent aussi à jour discrètement `user.lastSeen` (respectivement toutes les ~5 min pour les pages, ~30s pour les appels API) — c'est ce qui alimente le statut « en ligne » du salon.
 - `requireAdmin` protège tout `/admin` et `/api/admin/*`.
-- Changement de pseudo (`/api/account/rename`) et de mot de passe (`/api/account/change-password`) existent — **le renommage ne migre PAS les statistiques des différents jeux** (décision assumée : le faire correctement aurait touché trop de systèmes différents pour le faire sans risque). C'est écrit noir sur blanc dans l'interface du profil.
+- Changement de pseudo (`/api/account/rename`) et de mot de passe (`/api/account/change-password`). **Le renommage migre désormais les statistiques** : `comptes/renommage.js` planifie puis applique la migration (clés `<app>:<type>:<pseudo>` renommées, valeurs à champ `u` réécrites, index et `vsOpponent` suivis). Attention aux deux pièges que le module documente : Yams et Petit Bac indexent par pseudo **normalisé**, et `mf:hist:<date>` a une date au rang où les autres familles ont un pseudo.
 
 ## Arborescence complète
 

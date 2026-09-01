@@ -298,6 +298,7 @@ app.get('/api/me', (req, res) => {
 //  MOTS FLÉCHÉS — grilles du jour, classement, indices, séries, forum.
 // ---------------------------------------------------------------------
 const MF = require('./motsfleches/generator');
+const { planifierRenommage, appliquerPlan } = require('./comptes/renommage');
 const MF_LEVELS = ['moyen', 'difficile', 'expert'];
 const MF_MIN_TIME = { moyen: 25, difficile: 40, expert: 60 };   // seuils anti-triche (secondes)
 
@@ -1749,8 +1750,19 @@ app.post('/api/account/rename', requireAuthApi, (req, res) => {
     user.pseudo = newPseudo;
     registeredUsers[newPseudo] = user;
     saveUsers(true);
+
+    // Les statistiques suivent désormais le compte. Elles restaient auparavant
+    // sous l'ancien pseudo — c'était assumé, mais ça revenait à repartir de zéro
+    // à chaque changement de nom. Tout le risque est concentré dans un module à
+    // part, testé sur un export réel de la base.
+    const plan = planifierRenommage(mfCache, oldPseudo, newPseudo);
+    const bilan = appliquerPlan(mfCache, plan, mfSet, mfDel);
+    if (bilan.collisions) {
+        console.log(`⚠️  Renommage ${oldPseudo} → ${newPseudo} : ${bilan.collisions} clé(s) non migrée(s), destination déjà occupée.`);
+    }
+
     setSessionCookie(res, newPseudo);
-    res.json({ ok: true, pseudo: newPseudo });
+    res.json({ ok: true, pseudo: newPseudo, migration: bilan });
 });
 
 app.post('/api/account/change-password', requireAuthApi, (req, res) => {
