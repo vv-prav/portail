@@ -135,7 +135,17 @@ Tous les lots de vocabulaire sont déclarés dans **un seul tableau `MOTUS_EXTRA
 
 Chaque vague suit la même méthode : extraction par fréquence d'usage réelle (`wordfreq`, Python), vérification orthographique (`hunspell fr_FR`), dédoublonnage. `motusPool()` dédoublonne aussi **entre les lots**, pas seulement contre le dictionnaire.
 
-Total actuel : **6698 mots tirables uniques** (4 lettres : 567, 5 : 2469, 6 : 2487, 7 : 1175).
+Total actuel : **11 249 mots tirables uniques** (4 lettres : 1025, 5 : 3595, 6 : 3615, 7 : 3014) et **18 910 mots acceptés en tentative**.
+
+### La source de référence : Lexique383
+
+`motus/lexique-tirables.js` et `motus/lexique-acceptes.js` sont générés depuis **Lexique383** (lexique.org), la base lexicale universitaire du français, croisée avec les fréquences d'usage réelles de `wordfreq`. C'est la méthode à reprendre pour toute vague future, parce qu'elle règle trois problèmes d'un coup :
+
+- **Catégories grammaticales** : on ne garde que noms, adjectifs, adverbes, infinitifs et participes passés. Exit les mots grammaticaux (ELLE, COMME, QUAND) et les conjugaisons bancales (FASSIEZ, ENTRONS) que remontait `wordfreq` seul.
+- **Noms propres** : Lexique383 n'en contient pas. Vérifié — *france*, *paul*, *calgary*, *coluche*, *apple*, *cedex* sont tous absents.
+- **Deux niveaux** : au-dessus d'une fréquence Lexique de 2, le mot est *tirable* comme mot du jour ; entre 0.2 et 2, il est seulement *accepté* en tentative. De vrais mots trop rares pour être devinables en 6 essais (ABBESSE, ABYSSAL, ADAGIO) ne bloquent donc jamais un joueur sans pour autant tomber un matin.
+
+Une petite liste de mots vulgaires est écartée du **tirage** seulement — ils restent acceptés si quelqu'un les propose.
 
 ⚠️ Une note antérieure annonçait 10932 mots et une dizaine de fichiers de vocabulaire. C'était faux : 7 fichiers (`words4-extra`, `words5-extra2`, `words6-extra2`, `words6-extra3`, `words7-extra`, `words7-extra2`, `words7-extra3`) étaient importés par `server.js` mais **n'ont jamais existé dans le dépôt** — ils bloquaient le démarrage du serveur (`MODULE_NOT_FOUND`) et donc tout déploiement. Ils ont été retirés. S'ils réapparaissent un jour, il suffit de les rajouter dans `MOTUS_EXTRA`.
 

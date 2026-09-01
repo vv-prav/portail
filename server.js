@@ -693,13 +693,18 @@ const motusDict = require('./motsfleches/dict');
 // énuméraient les lots à la main chacune de leur côté et avaient fini par diverger —
 // certains lots étaient tirables comme mot du jour mais refusés comme tentative,
 // rendant le mot du jour intapable. Pour ajouter une vague : une seule ligne ici.
+const motusLexTirables = require('./motus/lexique-tirables');
 const MOTUS_EXTRA = {
-    4: [require('./motus/words4-extra2')],
-    5: [require('./motus/words5-extra')],
-    6: [require('./motus/words6'), require('./motus/words6-extra4')],
-    7: [require('./motus/words7-extra4')],
+    4: [require('./motus/words4-extra2'), motusLexTirables[4]],
+    5: [require('./motus/words5-extra'), motusLexTirables[5]],
+    6: [require('./motus/words6'), require('./motus/words6-extra4'), motusLexTirables[6]],
+    7: [require('./motus/words7-extra4'), motusLexTirables[7]],
 };
 const motusExtra = require('./motus/wordsExtra'); // vocabulaire élargi (4 à 7 lettres, filtré automatiquement)
+// Mots acceptés en tentative mais jamais tirés : de vrais mots français, trop
+// rares pour être devinables en 6 essais. Le but est de ne jamais bloquer
+// quelqu'un qui propose un mot correct.
+const motusLexAcceptes = require('./motus/lexique-acceptes');
 const MOTUS_LENGTHS = [4, 5, 6, 7];               // longueur du mot du jour, variable
 const MOTUS_TRIES = 6;
 const MOTUS_KEEP_WORD_DAYS = 60;    // recul pour éviter les répétitions de mot
@@ -730,6 +735,7 @@ function motusKnown(guess) {
     // Tout ce qui est tirable est forcément acceptable : même source que motusPool().
     if ((MOTUS_EXTRA[len] || []).some(lot => lot.includes(guess))) return true;
     if (motusExtra[len] && motusExtra[len].includes(guess)) return true;
+    if (motusLexAcceptes[len] && motusLexAcceptes[len].includes(guess)) return true;
     return (motusDict.words()[len] || []).some(w => w.m === guess);
 }
 // La longueur du jour est déterministe (même seed que le choix du mot), pour que tout
