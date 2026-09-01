@@ -170,7 +170,7 @@ Système séparé (avant le design system, mais du même esprit) : `PortailProfi
 ⚠️ Le design system ne porte **aucune réinitialisation de base** : `box-sizing`, `-webkit-tap-highlight-color` et `::selection` restent à la charge de chaque app. Ne jamais les retirer d'un `style.css` local en croyant que `design-system.css` les fournit — la largeur des éléments à padding change silencieusement.
 
 ✅ Profil et sa sous-page Style — migrés (toasts délégués à `DS.toast()`, popups en `.ds-overlay`/`.ds-card` avec fermeture en ✕, onglets en `.ds-segmented`, grilles de stats en `.ds-stat-grid`).
-❌ Recettes — pas commencé.
+❌ Recettes — pas commencé, et volontairement repoussé : zéro donnée en base, l'app n'a jamais servi.
 ❌ Chance — jamais dans le plan de migration (petite page statique).
 🚫 Perudo et Voyages — **exclusion volontaire et définitive**, pas des oublis. Chacun a sa propre identité visuelle forte qui serait appauvrie par le système commun.
 
@@ -201,10 +201,22 @@ Système séparé (avant le design system, mais du même esprit) : `PortailProfi
 - Le service worker (`public/sw.js`) a eu un bug majeur en tout début de session : plusieurs apps enregistraient `/sw.js` à portée racine, prenant le contrôle de tout le site (Voyages servait le contenu de Petit Bac). Corrigé : un seul enregistrement légitime (Voyages, scope `/voyages/monts-arree/`), nettoyage automatique des enregistrements fautifs au chargement du salon.
 - La liste de préchargement du service worker référençait encore l'ancien chemin plat de Motus après sa restructuration en hub — comme `cache.addAll()` est tout ou rien, une seule entrée invalide empêchait **tout** le mode hors-ligne de fonctionner silencieusement. Corrigé.
 - Purple, Autoroute et Roi des Cons ont été supprimés du site (jeux d'alcool retirés par choix personnel) — toutes leurs routes, tuiles et entrées de préchargement ont été nettoyées.
-- Un souci de déploiement récurrent a été rencontré plusieurs fois pendant la session (le code semblait correct en relecture mais le comportement en production ne correspondait pas) — toujours vérifier en premier que le dépôt distant reflète bien les derniers fichiers avant de chercher un bug de logique.
+- Un souci de déploiement récurrent a été rencontré plusieurs fois pendant la session (le code semblait correct en relecture mais le comportement en production ne correspondait pas) — la cause a été trouvée : `server.js` requérait 7 fichiers de vocabulaire absents du dépôt, Render refusait le déploiement et **gardait silencieusement l'ancienne version en ligne**. La production est restée figée quatre semaines. D'où `npm run verifie` et le workflow GitHub, à ne jamais retirer.
+- Le fichier `public/profil-viewer.js` était mal nommé : les 5 pages qui le chargent demandent `/profile-viewer.js` (orthographe anglaise). 404 en production, `PortailProfile` indéfini, et une `ReferenceError` en plein rendu de Petit Bac, Yams, Infiltré et Motus Party — ces quatre apps ne s'affichaient plus. Renommé.
 
-## Ce qu'il reste à faire (au moment de l'écriture)
+## Usage réel (export Redis du 1ᵉʳ septembre 2026, 320 clés)
 
-1. **Migrer Recettes** vers le système de design (prochain sur la liste, méthode ci-dessus).
-2. **Migrer le Profil et sa sous-page Style** — ce n'est PAS fait, malgré une confusion antérieure à ce sujet.
-3. Décider si Chance mérite la migration (petite app, faible priorité).
+Utile pour arbitrer les priorités — les intuitions se trompent souvent ici.
+
+- **Les jeux du jour font 90 % de l'activité** : Motus 186 clés (20 joueurs), Mots Fléchés 74 (14 joueurs), Le Mot Juste 28 (7 joueurs).
+- Petit Bac 15, Voyages 5, Yams 5, Motus Party 2. Perudo compte 19 profils, mais dans sa **propre clé `users`**, hors du cache commun — ne jamais la confondre avec `portail_users` (les 32 comptes du salon) ni la supprimer.
+- **Recettes : zéro donnée.** L'app est en ligne depuis des mois et n'a jamais servi. Ne pas investir dans sa migration avant de savoir ce qu'on veut en faire.
+- Deux clés mortes traînent, `mf_data` et `mf_progress` : aucun code ne les lit.
+
+## Ce qu'il reste à faire
+
+1. **Le pseudo sert d'identifiant** partout (stats, classements, progressions) — c'est la dette structurelle qui bloque le renommage propre, la fusion de comptes et tout classement transversal. Introduire un identifiant interne stable avec le pseudo comme simple libellé d'affichage.
+2. **Les trois jeux du jour sont trois implémentations du même modèle** (contenu par date, progression, classement, discussion, archives) : `/api/mf` 11 routes, `/api/motus` 8, `/api/juste` 6. Un moteur `quotidien/engine.js` paramétré les ramènerait à 6-8 routes génériques.
+3. **L'internationalisation est à moitié faite** : 6 apps portent chacune leur propre table `I18N` en fr/en/es, sans fichier partagé, et 8 pages n'ont aucune traduction. Soit un `/i18n.js` commun et on complète, soit on assume le français et on retire le sélecteur de langue.
+4. Migrer **Recettes** — mais seulement si l'app trouve une raison d'être (voir usage réel ci-dessus).
+5. Décider si **Chance** mérite la migration (petite app statique, faible priorité).
