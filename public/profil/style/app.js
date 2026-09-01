@@ -71,7 +71,7 @@ const DICE_SKINS = {
 // =====================================================================
 const GAME_STYLES = [
     { id: 'motus', name: 'Motus', emoji: '🟨', kind: 'colors', storageKey: 'motus_tile_theme', catalog: TILE_THEMES, hint: 'La couleur des tuiles de la grille du jour.' },
-    { id: 'yams', name: 'Yams', emoji: '🎯', kind: 'dice', storageKey: 'yams_dice_skin', catalog: DICE_SKINS, hint: 'Certains styles se débloquent avec vos victoires ou le nombre de Yams réalisés.' },
+    { id: 'yams', name: 'Yams', emoji: '🎯', kind: 'dice', storageKey: 'yams_dice_skin', catalog: DICE_SKINS, hint: 'Certains styles se débloquent avec tes victoires ou le nombre de Yams réalisés.' },
 ];
 
 let myYamsWins = 0, myYamsCount = 0;

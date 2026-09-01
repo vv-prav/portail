@@ -142,12 +142,12 @@ guessForm.addEventListener('submit', (e) => {
 function onPlayerFinish({ pseudo, rank, points }) {
     const el = $('finishBanner');
     $('finishRankTxt').textContent = rankLabel(rank);
-    $('finishWhoTxt').textContent = pseudo === myPseudo ? `Vous avez trouvé ! +${points} points` : `${pseudo} a trouvé !`;
+    $('finishWhoTxt').textContent = pseudo === myPseudo ? `Tu as trouvé ! +${points} points` : `${pseudo} a trouvé !`;
     el.classList.remove('on'); void el.offsetWidth;
     el.classList.add('on');
     if (pseudo === myPseudo && navigator.vibrate) { try { navigator.vibrate(rank === 1 ? [40, 60, 40, 60, 150] : [40, 80]); } catch (e) {} }
     setTimeout(() => el.classList.remove('on'), 2400);
-    if (pseudo === myPseudo && rank === 1) playBigCelebration('🥇', 'Vous avez trouvé en premier !');
+    if (pseudo === myPseudo && rank === 1) playBigCelebration('🥇', 'Tu as trouvé en premier !');
 }
 
 // ---------- Grosse célébration (1re place, ou victoire finale du match) ----------
@@ -197,7 +197,7 @@ $('btn-next-round').addEventListener('click', () => socket.emit('motusparty_next
 // ---------- Fin de match ----------
 function renderEnded(s) {
     const ranking = s.finalRanking || [];
-    $('endTitle').textContent = ranking[0] && ranking[0].pseudo === myPseudo ? 'Vous avez gagné la course !' : `${ranking[0] ? ranking[0].pseudo : '—'} a gagné la course !`;
+    $('endTitle').textContent = ranking[0] && ranking[0].pseudo === myPseudo ? 'Tu as gagné la course !' : `${ranking[0] ? ranking[0].pseudo : '—'} a gagné la course !`;
     $('endScores').innerHTML = ranking.map((p, i) => `
         <button type="button" class="ds-lb-row${i === 0 ? ' win' : ''}" data-view="${esc(p.pseudo)}">
             <span class="ds-lb-name">${i === 0 ? '🏆 ' : ''}${esc(p.pseudo)}</span><span class="ds-lb-value">${p.score} pts</span>
@@ -228,7 +228,7 @@ function onState(s) {
         const me = s.players.find(p => p.pseudo === myPseudo);
         const finished = !me || me.solved || me.gaveUp;
         $('guessForm').hidden = isSpectator || finished;
-        $('guessHint').textContent = isSpectator ? 'Vous regardez la course.' : (finished ? (me.solved ? 'Vous avez trouvé, en attente des autres…' : 'Essais épuisés, en attente des autres…') : `Mot de ${s.wordLen} lettres`);
+        $('guessHint').textContent = isSpectator ? 'Tu regardes la course.' : (finished ? (me.solved ? 'Tu as trouvé, en attente des autres…' : 'Essais épuisés, en attente des autres…') : `Mot de ${s.wordLen} lettres`);
         renderMyGrid(s);
         renderOpponents(s);
     } else if (s.status === 'round_end') { showView('v-round-end'); renderRoundEnd(s); }

@@ -228,11 +228,11 @@ function renderStats(data) {
 
     const strength = $('stats-strength');
     const lines = [];
-    if (data.best) lines.push(`<p class="pb-strength-line">🏆 Votre force : <b>${esc(data.best.cat)}</b> <span>(${Math.round(data.best.rate * 100)}% de réussite)</span></p>`);
+    if (data.best) lines.push(`<p class="pb-strength-line">🏆 Ta force : <b>${esc(data.best.cat)}</b> <span>(${Math.round(data.best.rate * 100)}% de réussite)</span></p>`);
     if (data.worst && (!data.best || data.worst.cat !== data.best.cat)) {
         lines.push(`<p class="pb-strength-line">🎯 À travailler : <b>${esc(data.worst.cat)}</b> <span>(${Math.round(data.worst.rate * 100)}% de réussite)</span></p>`);
     }
-    strength.innerHTML = lines.length ? lines.join('') : '<p class="pb-cat-hint">Jouez encore un peu pour révéler vos forces et vos faiblesses par catégorie.</p>';
+    strength.innerHTML = lines.length ? lines.join('') : '<p class="pb-cat-hint">Joue encore un peu pour révéler tes forces et tes faiblesses par catégorie.</p>';
 
     const board = $('stats-leaderboard');
     const cats = Object.keys(data.leaderboard || {});

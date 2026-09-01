@@ -63,7 +63,7 @@ function buildGameCards(p) {
     games.push({ id: 'Infiltré', emoji: '🕵️', volume: 0,
         html: gameCard('🕵️', 'Infiltré', '#6f7bb0', 0, null, 'Suivi des statistiques à venir') });
     const y = p.yams;
-    const yamsNote = y && y.nemesis ? `Bête noire : ${esc(y.nemesis.pseudo)} vous a battu ${y.nemesis.losses} fois` : null;
+    const yamsNote = y && y.nemesis ? `Bête noire : ${esc(y.nemesis.pseudo)} t’a battu ${y.nemesis.losses} fois` : null;
     games.push({ id: 'Yams', emoji: '🎯', volume: y ? y.gamesPlayed || 0 : 0,
         html: gameCard('🎯', 'Yams', '#ecca82', 0, y && y.gamesPlayed ? [
             [y.gamesWon, 'victoires'], [y.gamesPlayed, 'parties'], [y.totalYams, 'Yams'], [y.bestScore, 'meilleur score'],
@@ -199,7 +199,7 @@ $('rename-submit').addEventListener('click', async () => {
     const { ok, data } = await api('/api/account/rename', { pseudo, password });
     if (!ok) { $('rename-error').textContent = (data && data.error) || 'Erreur.'; $('rename-error').hidden = false; return; }
     $('ov-rename').hidden = true;
-    toast('Pseudo changé, vous êtes maintenant ' + data.pseudo + '.');
+    toast('Pseudo changé, tu es maintenant ' + data.pseudo + '.');
     loadProfile();
 });
 

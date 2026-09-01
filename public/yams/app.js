@@ -136,7 +136,7 @@ function playNemesisDefeated(winner, nemesis) {
     if (winner !== myPseudo) return;   // ce moment n'appartient qu'à celui qui vient de gagner
     const el = $('ymNemesisScreen');
     const field = $('ymNemesisConfetti');
-    $('ymNemesisWho').textContent = `Vous avez enfin battu ${nemesis} !`;
+    $('ymNemesisWho').textContent = `Tu as enfin battu ${nemesis} !`;
     field.innerHTML = '';
     for (let i = 0; i < 130; i++) {
         const bit = document.createElement('span');
@@ -156,11 +156,11 @@ function playNemesisDefeated(winner, nemesis) {
 function playCelebration(pseudo, bonus) {
     const el = $('ymCelebration');
     const field = $('ymConfetti');
-    const who = pseudo === myPseudo ? 'Vous' : pseudo;
+    const who = pseudo === myPseudo ? 'Tu' : pseudo;
     $('ymCelebrationWord').textContent = bonus ? 'BONUS YAMS !' : 'YAMS !';
     $('ymCelebrationWho').textContent = bonus
-        ? `${who === 'Vous' ? 'Vous enchaînez' : who + ' enchaîne'} un deuxième Yams !`
-        : `${who === 'Vous' ? 'Vous venez' : who + ' vient'} de faire un Yams !`;
+        ? `${who === 'Tu' ? 'Tu enchaînes' : who + ' enchaîne'} un deuxième Yams !`
+        : `${who === 'Tu' ? 'Tu viens' : who + ' vient'} de faire un Yams !`;
     $('ymCelebrationBonus').hidden = !bonus;
     el.classList.toggle('mega', !!bonus);
     field.innerHTML = '';
@@ -240,7 +240,7 @@ function renderStats(data) {
     ].map(([label, val]) => `<div class="ds-stat-box"><b>${val}</b><em>${label}</em></div>`).join('');
     const nem = $('statsNemesis');
     if (data.nemesis) {
-        nem.innerHTML = `😈 Votre bête noire : <b>${esc(data.nemesis.pseudo)}</b> vous a battu ${data.nemesis.losses} fois`;
+        nem.innerHTML = `😈 Ta bête noire : <b>${esc(data.nemesis.pseudo)}</b> t’a battu ${data.nemesis.losses} fois`;
         nem.hidden = false;
     } else {
         nem.hidden = true;
@@ -333,8 +333,8 @@ function renderH2h(d) {
             <div class="ym-h2h-vs">vs</div>
             <div><b>${d.myLosses}</b><span>défaites</span></div>
         </div>
-        <p class="ym-h2h-note">Sur ${total} partie${total > 1 ? 's' : ''} l'un contre l'autre. Meilleur score : vous ${d.myBest} · ${esc(d.opponent)} ${d.theirBest}.</p>
-    ` : `<p class="ym-list-label">Vous n'avez pas encore joué contre ${esc(d.opponent)}.</p>`;
+        <p class="ym-h2h-note">Sur ${total} partie${total > 1 ? 's' : ''} l'un contre l'autre. Meilleur score : toi ${d.myBest} · ${esc(d.opponent)} ${d.theirBest}.</p>
+    ` : `<p class="ym-list-label">Tu n’as pas encore joué contre ${esc(d.opponent)}.</p>`;
 }
 $('h2hSelect').addEventListener('change', (e) => socket.emit('yams_h2h', { opponent: e.target.value }));
 document.querySelectorAll('.ds-segmented button').forEach(tab => tab.addEventListener('click', () => {
@@ -483,7 +483,7 @@ function renderDice(s) {
             if (justRolled && !s.held[i]) runRollAnimation(b, s.dice[i], i * 70);
         });
     }
-    $('turnLabel').textContent = isMyTurn ? 'À vous de jouer' : `Au tour de ${s.turnPseudo}`;
+    $('turnLabel').textContent = isMyTurn ? 'À toi de jouer' : `Au tour de ${s.turnPseudo}`;
     $('btn-roll').disabled = !isMyTurn || s.rollsLeft <= 0;
     $('btn-roll').textContent = s.rollsLeft === 3 ? 'Lancer les dés' : 'Relancer';
     $('rollsLeft').textContent = s.hasRolled ? `${s.rollsLeft} lancer${s.rollsLeft > 1 ? 's' : ''} restant${s.rollsLeft > 1 ? 's' : ''}` : '3 lancers disponibles';
@@ -592,7 +592,7 @@ $('btn-roll').addEventListener('click', () => { clearPending(); socket.emit('yam
 // ---------- Fin de partie ----------
 function renderEnded(s) {
     const sorted = [...s.players].sort((a, b) => b.total - a.total);
-    $('endTitle').textContent = s.winner === myPseudo ? 'Vous avez gagné !' : `${s.winner} a gagné !`;
+    $('endTitle').textContent = s.winner === myPseudo ? 'Tu as gagné !' : `${s.winner} a gagné !`;
     $('endScores').innerHTML = sorted.map((p, i) => `
         <button type="button" class="ds-lb-row${i === 0 ? ' win' : ''}" data-view="${esc(p.pseudo)}">
             <span class="ds-lb-name">${i === 0 ? '🏆 ' : ''}${esc(p.pseudo)}</span><span class="ds-lb-value">${p.total}</span>
