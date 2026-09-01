@@ -1534,8 +1534,10 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
     res.json({
         mf: { done, total: MF_LEVELS.length, streak }, perudo: { online, games, names: perudoNames },
         rec: { count: recs.length, fresh: recNew },
-        motus: { done: motusDone, over: motusOver, solvers: motusSolversToday },
-        motjuste: { done: mjDone, over: mjOver, solvers: mjSolversToday },
+        // `streak` alimente la tuile « Aujourd'hui » du salon : la série en cours est
+        // la meilleure raison de revenir demain, elle mérite d'être visible dès l'accueil.
+        motus: { done: motusDone, over: motusOver, solvers: motusSolversToday, streak: motusStreak(user).current },
+        motjuste: { done: mjDone, over: mjOver, solvers: mjSolversToday, streak: mjStreak(user).current },
         pbac: { online: pbacOnline, names: pbacNames },
         undercover: { online: undercoverOnlineCount, names: undercoverNames },
         yams: { online: yamsOnlineCount, names: yamsNames },

@@ -77,6 +77,34 @@ body.is-hub   .hub   { display: block; }
 .hub-greet { min-width: 0; }
 .hub-eyebrow { display: block; text-transform: uppercase; letter-spacing: 3px; font-size: 0.66rem; color: var(--muted); margin-bottom: 3px; }
 .hub-name { font-family: 'Fraunces', Georgia, serif; font-weight: 900; font-size: 2rem; margin: 0; color: var(--brass-soft); line-height: 1.05; overflow-wrap: anywhere; }
+/* ---------- Panneau « Aujourd'hui » ----------
+   Les trois jeux du jour font 90 % de l'activité : ils sortent de la grille de
+   tuiles pour répondre d'un coup d'œil à « qu'est-ce qu'il me reste à faire ? ».
+   Volontairement plus sobre que les tuiles, pour ne pas leur voler la vedette. */
+.today { margin: 4px 0 18px; }
+.today[hidden] { display: none; }
+.today-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.today-label { font-size: .72rem; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin: 0; font-weight: 700; }
+.today-streak { font-size: .72rem; color: var(--brass-soft); margin: 0; }
+.today-streak b { font-size: .84rem; }
+.today-streak[hidden] { display: none; }
+
+.today-list { display: flex; flex-direction: column; gap: 6px; }
+.today-item { display: flex; align-items: center; gap: 10px; padding: 11px 13px; border-radius: 12px;
+    background: linear-gradient(165deg, rgba(255,255,255,.03), rgba(0,0,0,.16)); border: 1px solid var(--line);
+    border-left: 3px solid var(--accent); text-decoration: none; color: inherit; }
+.today-item:active { transform: scale(.995); }
+.today-mark { font-size: 1.1rem; flex: 0 0 auto; }
+.today-name { flex: 1; min-width: 0; font-size: .86rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.today-state { flex: 0 0 auto; font-size: .72rem; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+    background: rgba(255,255,255,.05); color: var(--muted); }
+/* L'état porte la couleur : ce qui reste à faire doit se voir sans lire. */
+.today-item.afaire .today-state { background: rgba(217,169,78,.16); color: var(--brass-soft); }
+.today-item.encours .today-state { background: rgba(217,169,78,.1); color: var(--brass-soft); }
+.today-item.fait { opacity: .62; }
+.today-item.fait .today-state { background: rgba(90,168,122,.16); color: #8fd0a8; }
+.today-item.fini { opacity: .62; }
+
 .rule { height: 1px; margin: 18px 0 20px; background: linear-gradient(90deg, transparent, var(--line) 15%, var(--line) 85%, transparent); position: relative; }
 .rule::after { content: "✦"; position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); background: var(--ink); padding: 0 10px; color: var(--brass); font-size: 0.68rem; }
 

@@ -64,6 +64,16 @@
 
             <p class="hub-announce" id="hub-announce" hidden></p>
 
+            <!-- Les trois jeux du jour font 90 % de l'activité du salon : ils ont
+                 leur propre panneau, au-dessus de la grille de tuiles. -->
+            <section class="today" id="today" hidden aria-label="Les jeux du jour">
+                <div class="today-head">
+                    <p class="today-label" data-i="today_title">Aujourd'hui</p>
+                    <p class="today-streak" id="today-streak" hidden></p>
+                </div>
+                <div class="today-list" id="today-list"></div>
+            </section>
+
             <div class="rule" aria-hidden="true"></div>
 
             <div class="tiles-toolbar">

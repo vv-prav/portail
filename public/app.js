@@ -31,6 +31,7 @@ const I18N = {
         b_grid_done: "Grille du jour ✓", b_grid_part: "faites aujourd'hui",
         app_ch_d: "Dé, carte ou pièce : tranchez au hasard.",
         b_rec_new: "cette semaine", b_rec_count: "recettes",
+        today_title: "Aujourd'hui", today_done: "Fait ✓", today_over: "Terminé", today_todo: "À faire", today_streak: "jours d'affilée",
         b_motus_done: "Trouvé ✓", b_motus_over: "Terminé", b_motus_solvers: "ont trouvé",
     },
     en: {
@@ -58,6 +59,7 @@ const I18N = {
         b_grid_done: "Today's grid ✓", b_grid_part: "done today",
         app_ch_d: "Dice, card or coin: let chance decide.",
         b_rec_new: "this week", b_rec_count: "recipes",
+        today_title: "Today", today_done: "Done ✓", today_over: "Finished", today_todo: "To play", today_streak: "day streak",
         b_motus_done: "Found ✓", b_motus_over: "Finished", b_motus_solvers: "found it",
     },
     es: {
@@ -85,6 +87,7 @@ const I18N = {
         b_grid_done: "Cuadrícula de hoy ✓", b_grid_part: "hechas hoy",
         app_ch_d: "Dado, carta o moneda: que decida el azar.",
         b_rec_new: "esta semana", b_rec_count: "recetas",
+        today_title: "Hoy", today_done: "Hecho ✓", today_over: "Terminado", today_todo: "Por jugar", today_streak: "días seguidos",
         b_motus_done: "Encontrada ✓", b_motus_over: "Terminado", b_motus_solvers: "lo encontraron",
     },
 };
@@ -271,12 +274,67 @@ async function loadPulse() {
     if (!ok) return;
     pulse = data;
     renderTiles();
+    renderToday(data);
     renderOnlinePlayers(data.salonOnline);
     renderRecentlyActive(data.recentlyActive);
     renderLiveGames(data.activeGames);
     const st = $('me-streak');
     if (data.mf && data.mf.streak > 0) { st.innerHTML = '🔥 <b>' + data.mf.streak + '</b>'; st.hidden = false; }
     else st.hidden = true;
+}
+
+// ---------- Le panneau « Aujourd'hui » ----------
+// Motus, Mots Fléchés et Le Mot Juste représentent 90 % de l'activité du salon,
+// mais l'accueil les noyait parmi onze tuiles à égalité avec le reste. Ce panneau
+// répond à la seule question qu'on se pose en arrivant : qu'est-ce qu'il me reste
+// à faire aujourd'hui ? Toutes les données viennent déjà du pouls, rien de neuf
+// n'est calculé côté serveur.
+const JEUX_DU_JOUR = [
+    { id: 'motus',    nom: 'Motus',        emoji: '🟨', href: '/motus/quotidien/', accent: '#c9a24a' },
+    { id: 'mf',       nom: 'Mots Fléchés', emoji: '🧩', href: '/mots-fleches',     accent: '#5aa87a' },
+    { id: 'motjuste', nom: 'Le Mot Juste', emoji: '🧊', href: '/motjuste',         accent: '#6fb8d9' },
+];
+// Ramène chaque jeu à un seul état, quelle que soit la forme de ses données.
+function etatDuJour(id, p) {
+    if (id === 'mf') {
+        const d = (p.mf && p.mf.done) || 0, total = (p.mf && p.mf.total) || 0;
+        if (total && d >= total) return { cle: 'fait',   texte: t('today_done') };
+        if (d > 0)               return { cle: 'encours', texte: `${d}/${total}` };
+        return { cle: 'afaire', texte: t('today_todo') };
+    }
+    const g = p[id] || {};
+    if (g.done) return { cle: 'fait',   texte: t('today_done') };
+    if (g.over) return { cle: 'fini',   texte: t('today_over') };
+    return { cle: 'afaire', texte: t('today_todo') };
+}
+function renderToday(p) {
+    const box = $('today'), liste = $('today-list');
+    if (!box || !liste) return;
+    const lignes = JEUX_DU_JOUR.map(j => {
+        const e = etatDuJour(j.id, p);
+        return `<a class="today-item ${e.cle}" href="${j.href}" style="--accent:${j.accent}">
+            <span class="today-mark">${j.emoji}</span>
+            <span class="today-name">${esc(j.nom)}</span>
+            <span class="today-state">${esc(e.texte)}</span>
+        </a>`;
+    });
+    liste.innerHTML = lignes.join('');
+
+    // La plus longue série en cours, tous jeux du jour confondus : c'est elle qui
+    // donne envie de revenir demain.
+    const series = [
+        (p.motus && p.motus.streak) || 0,
+        (p.mf && p.mf.streak) || 0,
+        (p.motjuste && p.motjuste.streak) || 0,
+    ];
+    const meilleure = Math.max(...series);
+    const el = $('today-streak');
+    if (meilleure > 1) {
+        el.innerHTML = `🔥 <b>${meilleure}</b> ${esc(t('today_streak'))}`;
+        el.hidden = false;
+    } else el.hidden = true;
+
+    box.hidden = false;
 }
 
 async function renderOnlinePlayers(list) {
