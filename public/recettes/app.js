@@ -80,6 +80,10 @@ let LANG = localStorage.getItem('erquy_lang') || 'fr';
 if (!I18N[LANG]) LANG = 'fr';
 const t = (k) => (I18N[LANG] && I18N[LANG][k]) || I18N.fr[k] || k;
 function applyI18n() {
+    // L'attribut lang de la page doit suivre la langue choisie : sinon un lecteur
+    // d'écran prononce l'anglais avec la phonétique française, et le navigateur
+    // propose de traduire une page déjà dans la bonne langue.
+    document.documentElement.lang = LANG;
     document.querySelectorAll('[data-i]').forEach(el => { el.textContent = t(el.dataset.i); });
     document.querySelectorAll('[data-ph]').forEach(el => { el.placeholder = t(el.dataset.ph); });
 }

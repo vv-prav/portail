@@ -4391,6 +4391,8 @@ let LANG = 'fr';
 try { const _l = localStorage.getItem('erquy_lang'); if (_l && I18N[_l]) LANG = _l; else { const n = (navigator.language || 'fr').slice(0, 2); if (I18N[n]) LANG = n; } } catch (e) {}
 function t(key, fallback) { return (I18N[LANG] && I18N[LANG][key] != null) ? I18N[LANG][key] : (I18N.fr[key] != null ? I18N.fr[key] : (fallback != null ? fallback : key)); }
 function applyI18n(root) {
+    // L'attribut lang doit suivre la langue choisie (accessibilité, traduction auto).
+    document.documentElement.lang = LANG;
     const scope = root || document;
     scope.querySelectorAll('[data-i18n]').forEach(el => { const k = el.getAttribute('data-i18n'); const v = t(k); if (v != null) el.textContent = v; });
     scope.querySelectorAll('[data-i18n-ph]').forEach(el => { const k = el.getAttribute('data-i18n-ph'); el.setAttribute('placeholder', t(k)); });

@@ -114,6 +114,7 @@ loadProfile();
 
 // ---------- Langue ----------
 let LANG = localStorage.getItem('erquy_lang') || 'fr';
+document.documentElement.lang = LANG;   // suit la langue choisie
 document.querySelectorAll('#pr-lang-btns button').forEach(b => {
     b.classList.toggle('on', b.dataset.lang === LANG);
     b.addEventListener('click', () => {

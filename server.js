@@ -15,6 +15,41 @@ const server = http.createServer(app);
 const io = new Server(server);
 
 app.use(compression());
+
+// En-têtes de sécurité. Le salon n'en posait aucun : rien n'empêchait de
+// l'afficher dans une iframe sur un autre site, ni de laisser fuiter l'URL
+// complète dans le référent.
+//
+// La CSP autorise 'unsafe-inline' pour les styles et les scripts parce que
+// plusieurs pages posent des styles en ligne (l'accent des tuiles, la taille
+// des cases) et de petits scripts d'amorçage. La resserrer demanderait de
+// passer ces cas en nonces — à faire, mais pas au prix de casser le site.
+//
+// Les hôtes externes autorisés ne sont pas décoratifs, chacun est utilisé :
+// Google Fonts (polices du salon), unpkg (Leaflet, la carte des Monts d'Arrée),
+// OpenStreetMap (ses tuiles) et Open-Meteo (la météo du voyage). Retirer l'un
+// d'eux casse une page — vérifier avant de toucher à cette liste.
+const CSP_POLICE = 'https://fonts.googleapis.com https://fonts.gstatic.com';
+const CSP_CARTE = 'https://unpkg.com https://*.tile.openstreetmap.org https://tile.openstreetmap.org';
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'same-origin');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Content-Security-Policy', [
+        "default-src 'self'",
+        `script-src 'self' 'unsafe-inline' https://unpkg.com`,
+        `style-src 'self' 'unsafe-inline' ${CSP_POLICE} https://unpkg.com`,
+        `img-src 'self' data: blob: ${CSP_CARTE}`,   // avatars base64, aperçus, tuiles
+        "media-src 'self'",
+        `connect-src 'self' ws: wss: https://api.open-meteo.com ${CSP_CARTE}`,
+        `font-src 'self' data: ${CSP_POLICE}`,
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+    ].join('; '));
+    next();
+});
+
 app.use(express.json({ limit: '1mb' }));
 
 // ---------------------------------------------------------------------
