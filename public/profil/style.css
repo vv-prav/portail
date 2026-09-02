@@ -111,3 +111,7 @@ body {
 .pr-cal i.n3, .pr-cal-legend i.n3 { background: var(--brass); }
 .pr-cal-legend { display: flex; align-items: center; gap: 4px; margin: 8px 0 0; font-size: .64rem; color: var(--muted); }
 .pr-cal-legend span { margin: 0 3px; }
+
+/* Sous-titre de section : sert à dire où vit un réglage qu'on ne peut pas
+   déplacer, plutôt que de le laisser introuvable. */
+.pr-section-sub { margin: -6px 0 12px; font-size: .74rem; color: var(--muted); line-height: 1.45; }

@@ -38,11 +38,6 @@
         <section class="pr-section">
             <h2 class="pr-section-title">Mon compte</h2>
             <div class="pr-actions">
-                <a href="/profil/style/" class="pr-action">
-                    <span class="pr-action-ico">🎨</span>
-                    <span class="pr-action-body"><b>Style des jeux</b><em>Dés, tuiles, et tout ce qui se personnalise</em></span>
-                    <span class="pr-action-go">›</span>
-                </a>
                 <button type="button" class="pr-action" id="act-rename">
                     <span class="pr-action-ico">✏️</span>
                     <span class="pr-action-body"><b>Changer de pseudo</b><em>Ton nom affiché partout dans le salon</em></span>
@@ -53,13 +48,7 @@
                     <span class="pr-action-body"><b>Changer de mot de passe</b><em>À faire de temps en temps, c'est plus sûr</em></span>
                     <span class="pr-action-go">›</span>
                 </button>
-                <div class="pr-lang-row">
-                    <span class="pr-lang-label">🌐 Langue</span>
-                    <div class="pr-lang-btns" id="pr-lang-btns">
-                        <button type="button" data-lang="fr">FR</button><button type="button" data-lang="en">EN</button><button type="button" data-lang="es">ES</button>
-                    </div>
-                </div>
-                <button type="button" class="pr-action" id="act-recovery">
+<button type="button" class="pr-action" id="act-recovery">
                     <span class="pr-action-ico">🔑</span>
                     <span class="pr-action-body"><b>Nouveau code de récupération</b><em>Pour retrouver ton compte en cas d'oubli</em></span>
                     <span class="pr-action-go">›</span>
@@ -69,6 +58,43 @@
                     <span class="pr-action-body"><b>Se déconnecter</b><em>Il faudra te reconnecter la prochaine fois</em></span>
                     <span class="pr-action-go">›</span>
                 </button>
+            </div>
+        </section>
+
+
+        <!-- RÉGLAGES -->
+        <section class="pr-section">
+            <h2 class="pr-section-title">Réglages</h2>
+            <p class="pr-section-sub">Tout ce qui se personnalise est listé ici, même quand le réglage vit dans son jeu.</p>
+            <div class="pr-actions">
+
+                <div class="pr-lang-row">
+                    <span class="pr-lang-label">🌐 Langue</span>
+                    <div class="pr-lang-btns" id="pr-lang-btns">
+                        <button type="button" data-lang="fr">FR</button><button type="button" data-lang="en">EN</button><button type="button" data-lang="es">ES</button>
+                    </div>
+                </div>
+                
+                <a href="/profil/style/" class="pr-action">
+                    <span class="pr-action-ico">🎨</span>
+                    <span class="pr-action-body"><b>Style des jeux</b><em>Tuiles de Motus, dés de Yams</em></span>
+                    <span class="pr-action-go">›</span>
+                </a>
+                <a href="/mots-fleches" class="pr-action">
+                    <span class="pr-action-ico">🧩</span>
+                    <span class="pr-action-body"><b>Niveau des Mots Fléchés</b><em>Se choisit dans le jeu, en haut de la grille</em></span>
+                    <span class="pr-action-go">›</span>
+                </a>
+                <a href="/perudo" class="pr-action">
+                    <span class="pr-action-ico">🔊</span>
+                    <span class="pr-action-body"><b>Sons de Perudo</b><em>Se coupent depuis Perudo</em></span>
+                    <span class="pr-action-go">›</span>
+                </a>
+                <a href="/" class="pr-action">
+                    <span class="pr-action-ico">🔀</span>
+                    <span class="pr-action-body"><b>Ordre des tuiles</b><em>Bouton « Réorganiser », sur l'accueil</em></span>
+                    <span class="pr-action-go">›</span>
+                </a>
             </div>
         </section>
 
