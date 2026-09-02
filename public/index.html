@@ -72,6 +72,7 @@
                     <p class="today-streak" id="today-streak" hidden></p>
                 </div>
                 <div class="today-list" id="today-list"></div>
+                <button type="button" class="today-resultats" id="today-resultats" hidden data-i="today_results">Les résultats du jour ›</button>
             </section>
 
             <div class="rule" aria-hidden="true"></div>
@@ -103,6 +104,16 @@
             <p class="hub-foot" data-i="hub_foot">D'autres pièces ouvriront bientôt.</p>
         </div>
     </main>
+
+    <!-- Les résultats du jour -->
+    <div class="ds-overlay" id="ov-resultats" hidden>
+        <div class="ds-card tall">
+            <button type="button" class="ds-card-close" id="res-close" aria-label="Fermer">✕</button>
+            <h2 class="ds-card-title" data-i="today_results_title">Les résultats du jour</h2>
+            <p class="ds-card-text" id="res-date"></p>
+            <div id="res-corps"></div>
+        </div>
+    </div>
 
     <!-- Code de récupération -->
     <div class="ds-overlay" id="ov-code" hidden>

@@ -34,6 +34,7 @@ const I18N = {
         b_rec_new: "cette semaine", b_rec_count: "recettes",
         rank_saison: "Ce mois-ci", rank_toujours: "Depuis toujours",
         rank_title: "Classement du Salon", rank_loading: "Un instant…", rank_empty: "Personne n'a encore marqué de points.", rank_error: "Classement indisponible.",
+        today_results: "Les résultats du jour ›", today_results_title: "Les résultats du jour", res_locked: "Termine ta manche pour voir le classement.", res_go: "Y aller ›", res_personne: "Personne n'a encore terminé.",
         today_title: "Aujourd'hui", today_done: "Fait ✓", today_over: "Terminé", today_todo: "À faire", today_streak: "jours d'affilée",
         b_motus_done: "Trouvé ✓", b_motus_over: "Terminé", b_motus_solvers: "ont trouvé",
     },
@@ -65,6 +66,7 @@ const I18N = {
         b_rec_new: "this week", b_rec_count: "recipes",
         rank_saison: "This month", rank_toujours: "All time",
         rank_title: "Lounge leaderboard", rank_loading: "One moment…", rank_empty: "Nobody has scored yet.", rank_error: "Leaderboard unavailable.",
+        today_results: "Today's results ›", today_results_title: "Today's results", res_locked: "Finish your round to see the leaderboard.", res_go: "Go ›", res_personne: "Nobody has finished yet.",
         today_title: "Today", today_done: "Done ✓", today_over: "Finished", today_todo: "To play", today_streak: "day streak",
         b_motus_done: "Found ✓", b_motus_over: "Finished", b_motus_solvers: "found it",
     },
@@ -96,6 +98,7 @@ const I18N = {
         b_rec_new: "esta semana", b_rec_count: "recetas",
         rank_saison: "Este mes", rank_toujours: "Desde siempre",
         rank_title: "Clasificación del Salón", rank_loading: "Un momento…", rank_empty: "Nadie ha puntuado todavía.", rank_error: "Clasificación no disponible.",
+        today_results: "Los resultados del día ›", today_results_title: "Los resultados del día", res_locked: "Termina tu ronda para ver la clasificación.", res_go: "Ir ›", res_personne: "Nadie ha terminado todavía.",
         today_title: "Hoy", today_done: "Hecho ✓", today_over: "Terminado", today_todo: "Por jugar", today_streak: "días seguidos",
         b_motus_done: "Encontrada ✓", b_motus_over: "Terminado", b_motus_solvers: "lo encontraron",
     },
@@ -103,6 +106,9 @@ const I18N = {
 let LANG = localStorage.getItem('erquy_lang') || (navigator.language || 'fr').slice(0, 2);
 if (!I18N[LANG]) LANG = 'fr';
 const t = (k) => (I18N[LANG] && I18N[LANG][k]) || I18N.fr[k] || k;
+// Les autres apps définissent leur LOCALE ; le salon ne l'avait jamais fait,
+// faute d'avoir eu une date à afficher jusqu'ici.
+const LOCALE = LANG === 'en' ? 'en-GB' : (LANG === 'es' ? 'es-ES' : 'fr-FR');
 function applyI18n() {
     // L'attribut lang de la page doit suivre la langue choisie : sinon un lecteur
     // d'écran prononce l'anglais avec la phonétique française, et le navigateur
@@ -333,8 +339,52 @@ function renderToday(p) {
         el.hidden = false;
     } else el.hidden = true;
 
+    // Le bouton des résultats n'apparaît qu'une fois au moins un jeu terminé :
+    // avant, il n'y aurait rien à montrer sans révéler qui a trouvé, et en
+    // combien d'essais.
+    const auMoinsUn = JEUX_DU_JOUR.some(j => ['fait', 'fini'].includes(etatDuJour(j.id, p).cle));
+    $('today-resultats').hidden = !auMoinsUn;
+
     box.hidden = false;
 }
+
+// ---------- Les résultats du jour ----------
+// Le pendant du panneau « Aujourd'hui » : celui-ci ouvre la journée, celle-là la
+// referme. Les trois classements étaient enfermés chacun derrière un bouton,
+// dans son propre jeu.
+async function ouvrirResultats() {
+    $('ov-resultats').hidden = false;
+    $('res-corps').innerHTML = `<p class="rank-empty">${esc(t('rank_loading'))}</p>`;
+    const { ok, data } = await api('/api/salon/resultats-du-jour');
+    if (!ok || !data) { $('res-corps').innerHTML = `<p class="rank-empty">${esc(t('rank_error'))}</p>`; return; }
+    $('res-date').textContent = new Date(data.date + 'T12:00:00')
+        .toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
+    const pseudos = [...new Set(data.jeux.flatMap(j => j.classement.map(e => e.pseudo)))];
+    const avatars = await PortailProfile.fetchAvatars(pseudos);
+    $('res-corps').innerHTML = data.jeux.map(j => {
+        if (!j.joue) {
+            return `<div class="res-jeu" style="--acc:${j.accent}">
+                <p class="res-jeu-tete">${j.emoji} <b>${esc(j.nom)}</b></p>
+                <p class="res-verrou">${esc(t('res_locked'))} <a href="${j.href}">${esc(t('res_go'))}</a></p>
+            </div>`;
+        }
+        const lignes = j.classement.length ? j.classement.map((e, i) => `
+            <button type="button" class="rank-row${e.pseudo === data.moi ? ' me' : ''}" data-view="${esc(e.pseudo)}">
+                <span class="rank-pos">${['🥇', '🥈', '🥉'][i] || (i + 1)}</span>
+                <span class="ds-avatar xs">${PortailProfile.bubbleHTML(avatars[e.pseudo])}</span>
+                <span class="rank-name">${esc(e.pseudo)}</span>
+                <span class="rank-pts">${esc(e.detail)}</span>
+            </button>`).join('') : `<p class="rank-empty">${esc(t('res_personne'))}</p>`;
+        return `<div class="res-jeu" style="--acc:${j.accent}">
+            <p class="res-jeu-tete">${j.emoji} <b>${esc(j.nom)}</b>${j.mot ? ` <span class="res-mot">${esc(j.mot)}</span>` : ''}</p>
+            <div class="rank-liste">${lignes}</div>
+        </div>`;
+    }).join('');
+    $('res-corps').querySelectorAll('.rank-row').forEach(b =>
+        b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
+}
+$('today-resultats').addEventListener('click', ouvrirResultats);
+$('res-close').addEventListener('click', () => { $('ov-resultats').hidden = true; });
 
 // ---------- Le classement du Salon ----------
 // Chaque app avait son classement, aucun ne parlait aux autres. Celui-ci est

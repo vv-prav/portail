@@ -286,3 +286,20 @@ body.is-hub   .hub   { display: block; }
 /* Sélecteur de période du classement : la saison par défaut, le cumul en second. */
 .rank-periode { margin-bottom: 8px; }
 .rank-liste { display: flex; flex-direction: column; gap: 4px; }
+
+/* ---------- Les résultats du jour ----------
+   Le pendant du panneau « Aujourd'hui » : il referme la journée. Un jeu non
+   terminé montre un verrou plutôt que son classement — le voir avant d'avoir
+   joué révélerait qui a trouvé, et en combien d'essais. */
+.today-resultats { display: block; width: 100%; margin-top: 8px; padding: 8px; border-radius: 10px;
+    background: rgba(217,169,78,.08); border: 1px solid var(--line); color: var(--brass-soft);
+    font-family: inherit; font-size: .76rem; font-weight: 700; cursor: pointer; }
+.today-resultats[hidden] { display: none; }
+.today-resultats:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+
+.res-jeu { margin-bottom: 16px; padding-left: 10px; border-left: 3px solid var(--acc, var(--brass)); }
+.res-jeu-tete { margin: 0 0 6px; font-size: .82rem; }
+.res-mot { font-family: ui-monospace, monospace; font-size: .74rem; color: var(--brass-soft);
+    background: rgba(217,169,78,.12); padding: 1px 7px; border-radius: 4px; margin-left: 4px; }
+.res-verrou { margin: 0; font-size: .76rem; color: var(--muted); }
+.res-verrou a { color: var(--brass-soft); }

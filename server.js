@@ -1837,6 +1837,60 @@ app.get('/api/salon/tables', requireAuthApi, (req, res) => {
     res.json({ tables, moi: currentUser(req) });
 });
 
+
+// ---------------------------------------------------------------------
+//  LES RÉSULTATS DU JOUR
+//  Le pendant du panneau « Aujourd'hui » : celui-ci ouvre la journée,
+//  celle-là la referme. Les trois classements étaient jusqu'ici enfermés
+//  chacun derrière un bouton, dans son propre jeu.
+//
+//  Un classement n'est renvoyé que si la manche est finie pour celui qui
+//  demande : le voir avant d'avoir joué révélerait qui a trouvé, et en
+//  combien d'essais.
+// ---------------------------------------------------------------------
+app.get('/api/salon/resultats-du-jour', requireAuthApi, (req, res) => {
+    const user = currentUser(req), date = mfTodayId();
+    const jeux = [];
+
+    const motusFini = motusManchePassee(user, date);
+    jeux.push({
+        id: 'motus', nom: 'Motus', emoji: '🟨', accent: '#c9a24a', href: '/motus/quotidien/',
+        joue: motusFini,
+        mot: motusFini ? motusWord(date) : null,
+        classement: motusFini
+            ? motusBoard(date).map(e => ({ pseudo: e.u, detail: e.tries + (e.tries > 1 ? ' essais' : ' essai') }))
+            : [],
+    });
+
+    // Mots Fléchés : une grille par niveau, on prend celle que le joueur a faite.
+    const niveau = mfLevel(req.query.level);
+    const progMf = mfGet(`mf:prog:${user}:${date}:${niveau}`);
+    const mfFini = !!(progMf && (progMf.solved || progMf.gaveUp));
+    jeux.push({
+        id: 'mf', nom: 'Mots Fléchés', emoji: '🧩', accent: '#5aa87a', href: '/mots-fleches',
+        joue: mfFini, mot: null,
+        classement: mfFini
+            ? mfBoard(date, niveau).map(e => ({ pseudo: e.u, detail: mfFormat(e.s) }))
+            : [],
+    });
+
+    const mjFini = mjManchePassee(user, date);
+    jeux.push({
+        id: 'motjuste', nom: 'Le Mot Juste', emoji: '🧊', accent: '#6fb8d9', href: '/motjuste',
+        joue: mjFini,
+        mot: mjFini ? mjWord(date) : null,
+        classement: mjFini
+            ? mjBoard(date).map(e => ({ pseudo: e.u, detail: (e.tries || e.guesses || 0) + ' mots' }))
+            : [],
+    });
+
+    for (const j of jeux) {
+        j.maPlace = j.classement.findIndex(e => e.pseudo === user) + 1 || null;
+        j.classement = j.classement.slice(0, 12);
+    }
+    res.json({ date, moi: user, jeux, tousFaits: jeux.every(j => j.joue) });
+});
+
 // Le classement du Salon : un score transversal, recalculé à la demande depuis
 // les clés déjà en base. Rien n'est stocké, donc rien à migrer si le barème change.
 app.get('/api/salon/classement', requireAuthApi, (req, res) => {
