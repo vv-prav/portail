@@ -834,6 +834,11 @@ function motusDefFor(word) {
     return found.defs[0];
 }
 
+// Le hub Motus n'existait que pour offrir deux liens : le jeu du jour, passé
+// dans le panneau « Aujourd'hui » du salon, et Motus Party, passé dans /jouer/.
+// On redirige plutôt que de supprimer : des liens et des favoris pointent
+// encore sur /motus/, et Motus est l'app la plus utilisée du site.
+app.get(['/motus', '/motus/'], requireAuth, (req, res) => res.redirect(302, '/motus/quotidien/'));
 app.use('/motus', requireAuth, express.static(__dirname + '/public/motus'));
 app.use('/profil', requireAuth, express.static(__dirname + '/public/profil'));
 const motusPartyApi = require('./motusparty/game')(app, io, {

@@ -25,6 +25,7 @@ const I18N = {
         forgot_title: "Mot de passe oublié", forgot_sub: "Entre ton nom et le code de récupération noté à l'inscription.",
         forgot_send: "Réinitialiser", cancel: "Annuler",
         app_perudo_d: "Le jeu de dés des pirates, en ligne.", app_motus_d: "Un mot à deviner en 6 essais.", app_pbac_d: "Une lettre, huit catégories, à plusieurs.", app_uc_d: "Démasque l'infiltré parmi vous.", app_juste_d: "Devine le mot secret à l'intuition.", app_mf_d: "Une nouvelle grille chaque jour.",
+        app_jouer_d: "Créer une table ou rejoindre les autres.",
         app_recettes_d: "Garde et partage tes recettes.", app_voyages_d: "La rando dans les Monts d'Arrée.", app_admin_d: "Comptes, données et réglages.",
         b_open: "Ouvert", b_soon: "Bientôt", b_online: "en ligne", b_nobody_online: "Personne pour l'instant", b_new_grid: "Nouvelle grille !",
         reorder_start: "Réorganiser", reorder_done: "Terminé", reorder_hint: "Tapez une tuile, puis une deuxième pour échanger leur place.",
@@ -54,6 +55,7 @@ const I18N = {
         forgot_title: "Forgot password", forgot_sub: "Enter your name and the recovery code from sign-up.",
         forgot_send: "Reset", cancel: "Cancel",
         app_perudo_d: "The pirates' dice game, online.", app_motus_d: "Guess the word in 6 tries.", app_pbac_d: "A letter, eight categories, with friends.", app_uc_d: "Unmask the impostor among you.", app_juste_d: "Guess the secret word by feel.", app_mf_d: "A fresh grid every day.",
+        app_jouer_d: "Start a table or join the others.",
         app_recettes_d: "Keep and share your recipes.", app_voyages_d: "The Monts d'Arrée hiking trip.", app_admin_d: "Accounts, data and settings.",
         b_open: "Open", b_soon: "Soon", b_online: "online", b_nobody_online: "Nobody right now", b_new_grid: "New grid!",
         reorder_start: "Reorder", reorder_done: "Done", reorder_hint: "Tap a tile, then a second one to swap places.",
@@ -83,6 +85,7 @@ const I18N = {
         forgot_title: "Contraseña olvidada", forgot_sub: "Escribe tu nombre y el código de recuperación.",
         forgot_send: "Restablecer", cancel: "Cancelar",
         app_perudo_d: "El juego de dados pirata, en línea.", app_motus_d: "Adivina la palabra en 6 intentos.", app_pbac_d: "Una letra, ocho categorías, en grupo.", app_uc_d: "Descubre al infiltrado entre vosotros.", app_juste_d: "Adivina la palabra secreta por intuición.", app_mf_d: "Una cuadrícula nueva cada día.",
+        app_jouer_d: "Crea una mesa o únete a los demás.",
         app_recettes_d: "Guarda y comparte tus recetas.", app_voyages_d: "La ruta por los Monts d'Arrée.", app_admin_d: "Cuentas, datos y ajustes.",
         b_open: "Abierto", b_soon: "Pronto", b_online: "en línea", b_nobody_online: "Nadie por ahora", b_new_grid: "¡Nueva cuadrícula!",
         reorder_start: "Reordenar", reorder_done: "Hecho", reorder_hint: "Toca una casilla, luego otra para intercambiarlas.",
@@ -113,14 +116,12 @@ document.querySelectorAll('#lang-row button').forEach(b => b.addEventListener('c
 }));
 
 // ---------- Apps (Média retiré) ----------
+// Une seule tuile pour tout le multijoueur : les quatre halls séparés
+// obligeaient à ouvrir chaque jeu pour savoir si quelqu'un attendait. Les jeux
+// du jour, eux, n'ont plus de tuile du tout — ils ont le panneau « Aujourd'hui »,
+// qui est désormais leur seule porte.
 const GAME_APPS = [
-    { id: 'perudo',   name: 'Perudo',       dKey: 'app_perudo_d',   emoji: '🎲', href: '/perudo',       accent: '#d9a94e', status: 'open' },
-    { id: 'pbac',     name: 'Petit Bac',    dKey: 'app_pbac_d',     emoji: '✏️', href: '/pbac',         accent: '#c2513a', status: 'open' },
-    { id: 'undercover', name: 'Infiltré',   dKey: 'app_uc_d',       emoji: '🕵️', href: '/undercover',  accent: '#6f7bb0', status: 'open' },
-    { id: 'motus',    name: 'Motus',        dKey: 'app_motus_d',    emoji: '🟨', href: '/motus',        accent: '#c9a24a', status: 'open' },
-    { id: 'motjuste', name: 'Le Mot Juste', dKey: 'app_juste_d',    emoji: '🧊', href: '/motjuste',     accent: '#6fb8d9', status: 'open' },
-    { id: 'mf',       name: 'Mots Fléchés', dKey: 'app_mf_d',       emoji: '🧩', href: '/mots-fleches', accent: '#5aa87a', status: 'open' },
-    { id: 'yams',     name: 'Yams',         dKey: 'app_yams_d',     emoji: '🎯', href: '/yams',         accent: '#ecca82', status: 'open' },
+    { id: 'jouer', name: 'Jouer ensemble', dKey: 'app_jouer_d', emoji: '🎮', href: '/jouer', accent: '#d9a94e', status: 'open' },
 ];
 // Chance était rangé dans une catégorie DRINK_APPS à part, vestige de l'époque
 // où le salon hébergeait des jeux d'alcool (Purple, Autoroute, Roi des Cons).
@@ -149,42 +150,24 @@ function setState(state) { document.body.className = 'is-' + state; }
 // ---------- Tuiles vivantes ----------
 function tileBadge(app) {
     if (app.status !== 'open') return `<span class="tile-badge soon">${t('b_soon')}</span>`;
-    if (app.id === 'perudo' && pulse && pulse.perudo && pulse.perudo.online > 0) {
-        return `<span class="tile-badge live">🟢 ${pulse.perudo.online} ${t('b_online')}</span>`;
-    }
+    // Les jeux du jour n'ont plus de tuile : leur état vit dans le panneau
+    // « Aujourd'hui », et le multijoueur a sa propre pastille de présence.
     if (app.id === 'recettes' && pulse && pulse.rec) {
         if (pulse.rec.fresh > 0) return `<span class="tile-badge new">✨ ${pulse.rec.fresh} ${t('b_rec_new')}</span>`;
         if (pulse.rec.count > 0) return `<span class="tile-badge part">${pulse.rec.count} ${t('b_rec_count')}</span>`;
         return `<span class="tile-badge open">${t('b_open')}</span>`;
     }
-    if (app.id === 'motus' && pulse && pulse.motus) {
-        if (pulse.motus.done) return `<span class="tile-badge done">${t('b_motus_done')}</span>`;
-        if (pulse.motus.over) return `<span class="tile-badge part">${t('b_motus_over')}</span>`;
-        if (pulse.motus.solvers > 0) return `<span class="tile-badge live">🟢 ${pulse.motus.solvers} ${t('b_motus_solvers')}</span>`;
-        return `<span class="tile-badge new">✨ ${t('b_new_grid')}</span>`;
-    }
-    if (app.id === 'pbac' && pulse && pulse.pbac) {
-        if (pulse.pbac.online > 0) return `<span class="tile-badge live">🟢 ${pulse.pbac.online} ${t('b_online')}</span>`;
-        return `<span class="tile-badge open">${t('b_open')}</span>`;
-    }
-    if (app.id === 'motjuste' && pulse && pulse.motjuste) {
-        if (pulse.motjuste.done) return `<span class="tile-badge done">${t('b_motus_done')}</span>`;
-        if (pulse.motjuste.over) return `<span class="tile-badge part">${t('b_motus_over')}</span>`;
-        if (pulse.motjuste.solvers > 0) return `<span class="tile-badge live">🟢 ${pulse.motjuste.solvers} ${t('b_motus_solvers')}</span>`;
-        return `<span class="tile-badge new">✨ ${t('b_new_grid')}</span>`;
-    }
-    if (app.id === 'mf' && pulse && pulse.mf) {
-        const { done, total } = pulse.mf;
-        if (done === 0) return `<span class="tile-badge new">✨ ${t('b_new_grid')}</span>`;
-        if (done >= total) return `<span class="tile-badge done">${t('b_grid_done')}</span>`;
-        return `<span class="tile-badge part">${done}/${total} ${t('b_grid_part')}</span>`;
-    }
     return `<span class="tile-badge open">${t('b_open')}</span>`;
 }
-const MULTIPLAYER_APPS = new Set(['perudo', 'pbac', 'undercover', 'yams']);
+// Une seule tuile multijoueur désormais : elle agrège les joueurs présents
+// dans les cinq jeux, puisqu'ils partagent tous l'espace /jouer/.
+const MULTIPLAYER_APPS = new Set(['jouer']);
+const JEUX_MULTI_IDS = ['perudo', 'pbac', 'undercover', 'yams', 'motusparty'];
 function tileOnlineInfo(a) {
-    const p = pulse && pulse[a.id];
-    const names = (p && p.names) || [];
+    // La tuile « Jouer ensemble » rassemble les présents de tous les jeux.
+    const names = a.id === 'jouer'
+        ? [...new Set(JEUX_MULTI_IDS.flatMap(id => ((pulse && pulse[id] && pulse[id].names) || [])))]
+        : (((pulse && pulse[a.id]) || {}).names || []);
     if (!names.length) return `<span class="tile-online empty">${t('b_nobody_online')}</span>`;
     const shown = names.slice(0, 3).map(esc).join(', ');
     const extra = names.length > 3 ? ` +${names.length - 3}` : '';
@@ -206,7 +189,7 @@ function renderTile(a) {
 const TILE_ORDER_KEY = 'erquy_tile_order';
 // Ordre de préférence par défaut, utilisé tant que personne n'a encore réorganisé les
 // tuiles à la main. Voyages et Recettes restent toujours tout en bas, même après.
-const DEFAULT_PRIORITY = ['yams', 'pbac', 'perudo', 'motus', 'mf', 'motjuste', 'undercover'];
+const DEFAULT_PRIORITY = ['jouer', 'chance'];
 const ALWAYS_LAST = ['voyages', 'recettes'];
 function loadTileOrder(allIds) {
     let saved = [];
@@ -221,7 +204,10 @@ function loadTileOrder(allIds) {
         order = [...DEFAULT_PRIORITY.filter(id => allIds.includes(id)), ...rest];
     }
     // Voyages et Recettes : toujours en dernier, qu'un ordre ait été sauvegardé ou non.
-    const last = ALWAYS_LAST.filter(id => order.includes(id));
+    // On les reprend depuis allIds et non depuis order : `rest` les avait
+    // volontairement écartés, donc les chercher dans order les faisait
+    // disparaître de la grille pour qui n'avait jamais réorganisé ses tuiles.
+    const last = ALWAYS_LAST.filter(id => allIds.includes(id));
     return [...order.filter(id => !ALWAYS_LAST.includes(id)), ...last];
 }
 function saveTileOrder(order) { localStorage.setItem(TILE_ORDER_KEY, JSON.stringify(order)); }
