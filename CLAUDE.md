@@ -175,7 +175,7 @@ Variables de couleur (`--ink`, `--brass`, `--parchment`...), typographie, échel
 S'auto-injecte dans la page (crée son propre DOM, pas besoin d'ajouter le moindre HTML). Expose `window.DS` :
 
 - `DS.toast(message)`
-- `DS.confirm({ emoji, title, text, actions: [{label, danger, run}], code, confirmText, cancelLabel })` — `code` affiche un encadré (ex. montrer un mot de passe temporaire généré), `confirmText` force à retaper un texte exact avant d'activer le bouton (actions dangereuses). Un bouton Annuler est toujours ajouté automatiquement si l'appelant n'en a pas prévu.
+- `DS.confirm({ emoji, title, text, actions: [{label, danger, run}], code, confirmText, cancelLabel, closeIcon })` — `code` affiche un encadré (ex. montrer un mot de passe temporaire généré), `confirmText` force à retaper un texte exact avant d'activer le bouton (actions dangereuses). `closeIcon: false` retire la croix pour une popup purement informative, où le bouton du bas suffit. Un bouton Annuler est toujours ajouté automatiquement si l'appelant n'en a pas prévu.
 - `DS.avatarHTML(avatarData, size)`
 
 ### `public/invitation.js`
@@ -205,7 +205,8 @@ Le design system porte désormais la **réinitialisation de base** (`box-sizing`
 2. Vérifier le nombre de colonnes des grilles de stats existantes avant de basculer vers `.ds-stat-grid` (certaines sont à 2 colonnes, la classe par défaut en fait 3 — utiliser `.ds-stat-grid.cols2` si besoin).
 3. Migrer `toast()` et une éventuelle confirmation maison (`ask()`) pour qu'ils délèguent à `DS.toast()`/`DS.confirm()` plutôt que dupliquer.
 4. Repérer si des titres de popup utilisent une police spéciale (Fraunces) via leur classe — **toujours garder cette classe en plus** de `.ds-card-title`, sinon la police festive disparaît silencieusement.
-5. **Piège `all:unset`** : si un ancien bouton-bulle d'avatar utilisait `all:unset` pour se réinitialiser, le combiner avec `.ds-avatar` efface le style de la bulle. Utiliser une réinitialisation ciblée (`border:none; padding:0; background:...`) à la place.
+5. **Piège du fond de bouton** : transformer un `<span>` en `<button>` lui donne le fond gris clair du navigateur. Si aucune règle ne déclare de fond (c'était le cas de `.pv-titre` et `.pr-titre`, dont seules les variantes `.unique`/`.rare` en avaient un), le texte prévu pour un fond sombre devient illisible sur du blanc — et rien dans le CSS ne le signale. Poser `background:transparent; appearance:none`.
+6. **Piège `all:unset`** : si un ancien bouton-bulle d'avatar utilisait `all:unset` pour se réinitialiser, le combiner avec `.ds-avatar` efface le style de la bulle. Utiliser une réinitialisation ciblée (`border:none; padding:0; background:...`) à la place.
 6. Nettoyer le CSS mort après coup — **ne jamais faire ça ligne par ligne** (un script naïf qui retire la ligne du sélecteur sans suivre les accolades sur plusieurs lignes casse le fichier, vécu sur Yams). Utiliser un vrai parseur de blocs qui compte les accolades et retire des règles entières, en traitant `@media`/`@keyframes` comme des blocs opaques à ne jamais découper.
 7. **Toujours revérifier à la main après le nettoyage automatique** : les sélecteurs combinés (`.ancienne-classe.modificateur`) et les sélecteurs descendants (`.parent-vivant .ancienne-classe`) ne sont jamais détectés par un script qui ne regarde qu'un sélecteur isolé — chercher chaque ancienne classe individuellement dans le fichier final.
 8. Vérifier qu'aucun bouton "Fermer" texte ne subsiste (`grep -n "Fermer"`) — tous doivent être devenus des `.ds-card-close` en ✕, toujours en haut à droite.

@@ -3,7 +3,7 @@
 //  Fournit deux briques qui se créent elles-mêmes dans la page (pas besoin
 //  d'ajouter le moindre HTML) :
 //    - DS.toast(message)
-//    - DS.confirm({ emoji, title, text, actions: [{label, danger, run}] })
+//    - DS.confirm({ emoji, title, text, actions: [{label, danger, run}], closeIcon })
 //
 //  Reste volontairement indépendant de tout jeu en particulier, comme
 //  profile-viewer.js, pour pouvoir être inclus partout à l'identique :
@@ -58,6 +58,9 @@
     function confirm(opts) {
         const o = opts || {};
         const el = ensureConfirmOverlay();
+        // closeIcon:false pour une popup purement informative : le bouton du bas
+        // suffit, et deux sorties pour la même chose n'aident personne.
+        el.querySelector('.ds-card-close').hidden = (o.closeIcon === false);
         el.querySelector('#ds-confirm-emoji').textContent = o.emoji || '❓';
         el.querySelector('#ds-confirm-title').textContent = o.title || '';
         const textEl = el.querySelector('#ds-confirm-text');

@@ -37,7 +37,7 @@ function expliquerTitre(t) {
         title: t.nom,
         text: t.desc + '\n\n' + (SENS_RARETE[t.rarete] || ''),
         actions: [],
-        cancelLabel: 'Fermer',
+        cancelLabel: 'Fermer', closeIcon: false,
     });
 }
 
