@@ -22,7 +22,12 @@ body.is-ready .mf { display:flex; }
 .boot-ring { width:34px; height:34px; border-radius:50%; border:3px solid var(--line); border-top-color:var(--brass); animation:spin .8s linear infinite; }
 @keyframes spin { to { transform:rotate(360deg); } }
 
-.mf { flex-direction:column; height:100dvh; max-width:560px; margin:0 auto; overflow:hidden;
+/* Hauteur STABLE, volontairement pas 100dvh : le dvh rétrécit quand le clavier
+   s'ouvre, la grille était alors recalculée sur une hauteur amputée et tombait
+   à sa taille minimale. Sur un grand écran il restait de la place, sur un
+   iPhone 11 la grille devenait minuscule. Le svh ne bouge pas, et le viewport
+   est en interactive-widget=overlays-content : le clavier passe par-dessus. */
+.mf { flex-direction:column; height:100vh; height:100svh; max-width:560px; margin:0 auto; overflow:hidden;
       padding:max(10px,env(safe-area-inset-top)) 10px calc(10px + env(safe-area-inset-bottom)); gap:9px; }
 .mf-head, .mf-levels, .mf-strip, .mf-clue, .mf-tools, .mf-panels { flex:0 0 auto; }
 .mf-inline-board:not([hidden]) { flex:0 0 auto; max-height:26vh; overflow-y:auto; }
@@ -254,3 +259,9 @@ body.not-started .mf-tools { opacity:.35; pointer-events:none; }
           box-shadow:0 10px 28px rgba(0,0,0,.55); animation:tipin .35s ease; }
 .mf-tip.bye { opacity:0; transition:opacity .4s; }
 @keyframes tipin { from { opacity:0; transform:translate(-50%,10px); } to { opacity:1; transform:translate(-50%,0); } }
+/* ---------- Pendant la saisie, sur petit téléphone ----------
+   Même principe que Motus : le clavier se pose par-dessus la page, on replie le
+   décor le temps de taper pour que la grille reste entièrement visible. */
+body.clavier-ouvert .mf-panels,
+body.clavier-ouvert .mf-inline-board { display: none; }
+body.clavier-ouvert .mf-grid-wrap { align-items: flex-start; }

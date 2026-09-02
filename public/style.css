@@ -303,3 +303,23 @@ body.is-hub   .hub   { display: block; }
     background: rgba(217,169,78,.12); padding: 1px 7px; border-radius: 4px; margin-left: 4px; }
 .res-verrou { margin: 0; font-size: .76rem; color: var(--muted); }
 .res-verrou a { color: var(--brass-soft); }
+
+
+/* ---------- Petits écrans (iPhone 11 et plus étroits) ----------
+   Rien ne débordait, mais plusieurs commandes tombaient sous les 40 px de haut :
+   sur un écran de 375 px on les rate. On leur rend de la hauteur, sans toucher
+   à la mise en page. */
+@media (max-width: 400px) {
+    .hub-online-chip, .hub-recent-item { min-height: 40px; }
+    .today-resultats { padding: 12px 8px; }
+    .tiles-reorder-btn { padding: 11px 14px; }
+    .rank-toggle { padding: 14px; }
+    .rank-row { padding: 10px 12px; }
+    .today-item { padding: 13px; }
+}
+
+/* Écrans courts : on récupère de la hauteur là où c'est décoratif. */
+@media (max-height: 700px) {
+    .hub-inner { padding-top: 10px; }
+    .hub-head { margin-bottom: 12px; }
+}

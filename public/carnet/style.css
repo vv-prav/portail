@@ -21,7 +21,10 @@ body {
 .ca-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .ca-section-title { font-size: .72rem; letter-spacing: 1px; text-transform: uppercase;
     color: var(--muted); font-weight: 700; margin: 0 0 10px; }
-.ca-ajouter { font-size: .74rem; color: var(--brass-soft); text-decoration: none; }
+/* Zone de contact confortable : le lien seul faisait 14 px de haut. */
+.ca-ajouter { position: relative; font-size: .74rem; color: var(--brass-soft); text-decoration: none;
+    padding: 12px 10px; margin: -12px -10px; border-radius: 8px; }
+.ca-ajouter:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
 
 .ca-liste { display: flex; flex-direction: column; gap: 7px; }
 .ca-carte { display: flex; align-items: center; gap: 11px; padding: 13px; border-radius: 12px;

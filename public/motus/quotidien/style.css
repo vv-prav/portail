@@ -20,7 +20,12 @@ body.is-ready .mt { display:flex; }
 .boot-ring { width:34px; height:34px; border-radius:50%; border:3px solid var(--line); border-top-color:var(--brass); animation:spin .8s linear infinite; }
 @keyframes spin { to { transform:rotate(360deg); } }
 
-.mt { flex-direction:column; height:100dvh; max-width:520px; margin:0 auto; overflow:hidden;
+/* Hauteur STABLE, volontairement pas 100dvh : le dvh rétrécit quand le clavier
+   s'ouvre, la grille était alors recalculée sur une hauteur amputée et tombait
+   à sa taille minimale. Sur un grand écran il restait de la place, sur un
+   iPhone 11 la grille devenait minuscule. Le svh ne bouge pas, et le viewport
+   est en interactive-widget=overlays-content : le clavier passe par-dessus. */
+.mt { flex-direction:column; height:100vh; height:100svh; max-width:520px; margin:0 auto; overflow:hidden;
       padding:max(10px,env(safe-area-inset-top)) 10px calc(10px + env(safe-area-inset-bottom)); gap:8px; }
 .mt-head, .mt-strip, .mt-clue, .mt-tools, .mt-panels { flex:0 0 auto; }
 
@@ -210,3 +215,20 @@ body.not-started .mt-tools { opacity:.35; pointer-events:none; }
 .mt-theme-name { font-size:.72rem; color:var(--parchment); }
 
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.001ms !important; transition-duration:.001ms !important; } }
+/* ---------- Pendant la saisie, sur petit téléphone ----------
+   Le clavier se pose par-dessus la page (interactive-widget=overlays-content).
+   Sur un iPhone 11 il recouvrait la grille : on replie donc le décor qui n'est
+   pas indispensable le temps de taper, et la grille se recalcule pour tenir
+   au-dessus du clavier. La classe est posée par surveillerClavier(). */
+body.clavier-ouvert .mt-party-link,
+body.clavier-ouvert .mt-panels,
+body.clavier-ouvert .mt-inline-board { display: none; }
+body.clavier-ouvert .mt-clue { margin: 4px 0; font-size: .74rem; }
+body.clavier-ouvert .mt-grid-wrap { align-items: flex-start; }
+body.clavier-ouvert .mt-strip { margin-bottom: 2px; }
+
+/* Très petits écrans : on récupère de la place verticale sans rien masquer. */
+@media (max-height: 700px) {
+    .mt-party-link { display: none; }
+    .mt-clue { margin: 4px 0; }
+}

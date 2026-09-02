@@ -191,11 +191,14 @@ function renderGrid() {
 
 // ---------- Dimensionnement dynamique : la grille remplit tout l'espace
 //            disponible (largeur ET hauteur), sans jamais déborder de l'écran. ----------
-function fitGrid() {
+function fitGrid(hauteurVisible) {
     if (!P) return;
     const wrap = $('mf-grid-wrap');
     const g = $('mf-grid');
-    const wrapW = wrap.clientWidth, wrapH = wrap.clientHeight;
+    const wrapW = wrap.clientWidth;
+    let wrapH = wrap.clientHeight;
+    // Clavier ouvert : la grille doit tenir au-dessus de lui, pas derrière.
+    if (hauteurVisible) wrapH = Math.max(140, hauteurVisible - wrap.getBoundingClientRect().top - 8);
     if (wrapW < 10 || wrapH < 10) return;           // pas encore mesurable (display:none, etc.)
     const gap = 2, pad = 4;                          // doit matcher gap/padding du CSS .mf-grid
     const cell = Math.floor(Math.min(
@@ -206,10 +209,38 @@ function fitGrid() {
     positionShadowInput();
 }
 let _fitT = null;
-function fitGridSoon() { clearTimeout(_fitT); _fitT = setTimeout(fitGrid, 60); }
+function fitGridSoon() { clearTimeout(_fitT); _fitT = setTimeout(() => fitGrid(), 60); }
 window.addEventListener('resize', fitGridSoon);
 window.addEventListener('orientationchange', fitGridSoon);
-if (window.visualViewport) window.visualViewport.addEventListener('resize', fitGridSoon);
+
+// ---------- Le clavier natif sur petit téléphone ----------
+// Le viewport est en interactive-widget=overlays-content : le clavier se pose
+// PAR-DESSUS la page sans la redimensionner. Sur un grand écran il reste de la
+// place ; sur un iPhone 11, il recouvrait la grille entière — d'où l'impression
+// qu'elle devenait minuscule.
+//
+// On replie donc ce qui n'est pas indispensable pendant la saisie, et on
+// recalcule la grille pour qu'elle tienne AU-DESSUS du clavier plutôt que
+// derrière lui. Recalculer sans replier le décor était l'erreur d'origine : la
+// grille tombait alors à sa taille minimale.
+function surveillerClavier() {
+    if (!window.visualViewport) return;
+    const vv = window.visualViewport;
+    const maj = () => {
+        const masque = window.innerHeight - vv.height;
+        const ouvert = masque > 120;                 // au-delà, c'est bien un clavier
+        document.body.classList.toggle('clavier-ouvert', ouvert);
+        fitGrid(ouvert ? vv.height : null);
+    };
+    vv.addEventListener('resize', maj);
+    vv.addEventListener('scroll', maj);
+    maj();
+}
+surveillerClavier();
+
+// On NE recalcule PAS la grille sur visualViewport : cet événement se déclenche
+// à l'ouverture du clavier, et refaire le calcul sur la hauteur visible amputée
+// écrasait la grille. Le redimensionnement de fenêtre et la rotation suffisent.
 function repaintValues() {
     for (const k in els) els[k].querySelector('.mf-letter').textContent = values[k] || '';
 }

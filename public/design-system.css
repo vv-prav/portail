@@ -153,11 +153,23 @@
 
 /* Bouton fermer : toujours en haut à droite, jamais en bas de la popup */
 .ds-card-close {
-    position: absolute; top: 14px; right: 14px; width: 32px; height: 32px; border-radius: 50%;
+    position: absolute; top: 14px; right: 14px; width: 40px; height: 40px; border-radius: 50%;
     border: 1px solid var(--line); background: rgba(255,255,255,.04); color: var(--brass-soft);
     font-size: .85rem; cursor: pointer; display: grid; place-items: center;
 }
 .ds-card-close:active { transform: scale(.9); }
+
+/* ---------- Cibles tactiles ----------
+   Sur un iPhone 11 (375 px de large), viser un bouton de 30 px est pénible :
+   la recommandation d'Apple comme de Google est 44 px. Plutôt que d'agrandir
+   visuellement tous les petits boutons, on leur donne une zone de contact
+   suffisante avec un pseudo-élément — l'aspect ne change pas, la main oui. */
+.ds-card-close::after,
+.ds-chip::after {
+    content: ""; position: absolute; top: 50%; left: 50%;
+    width: 44px; height: 44px; transform: translate(-50%, -50%);
+}
+.ds-chip { position: relative; }
 
 .ds-card-title { margin: 0; font-size: var(--ds-fs-lg); color: var(--parchment); }
 .ds-card-text { margin: 0; font-size: var(--ds-fs-sm); color: var(--muted); line-height: 1.5; }

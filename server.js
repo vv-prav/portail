@@ -1581,7 +1581,7 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
     const recentlyActive = Object.values(registeredUsers)
         .filter(u => u && u.lastSeen && u.pseudo !== me && (now - u.lastSeen) < RECENT_WINDOW_MS)
         .sort((a, b) => b.lastSeen - a.lastSeen)
-        .slice(0, 6)
+        .slice(0, 3)
         .map(u => ({ pseudo: u.pseudo, lastSeen: u.lastSeen }));
 
     // Parties en cours, tous jeux confondus, avec les prénoms des joueurs présents.
