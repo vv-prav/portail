@@ -20,71 +20,96 @@ function setAvatarBubble(el, photo, emoji) {
     el.innerHTML = photo ? `<img src="${photo}" alt="">` : esc(emoji || '✦');
 }
 
-// ---------- Cartes de statistiques par jeu, présentées en onglets ----------
-function gameCard(emoji, name, accent, streak, stats, note) {
-    const streakBadge = streak ? `<span class="pg-streak">🔥 ${streak}</span>` : '';
-    const body = stats && stats.length
-        ? `<div class="ds-stat-grid${stats.length <= 2 ? ' cols2' : ''}">${stats.map(([v, l]) => `<div class="ds-stat-box"><b>${v}</b><em>${l}</em></div>`).join('')}</div>`
-        : `<p class="pg-empty">Rien à afficher pour l'instant</p>`;
-    return `<div class="pr-game" style="--acc:${accent}">
-        <div class="pg-head"><span class="pg-emoji">${emoji}</span><span class="pg-name">${esc(name)}</span>${streakBadge}</div>
-        ${body}${note ? `<p class="pg-soon">${note}</p>` : ''}
-    </div>`;
+
+// ---------- Ce que veut dire un badge ----------
+// Un titre sans explication n'est qu'un émoji : on ne sait ni ce qu'il
+// récompense, ni comment l'obtenir. La popup le dit, et précise ce que « unique »
+// implique — un seul porteur à la fois, et il change de mains.
+const SENS_RARETE = {
+    unique: 'Titre unique : une seule personne le porte à la fois dans tout le salon. Il change de mains dès que quelqu’un fait mieux.',
+    rare: 'Titre rare : il faut vraiment aller le chercher.',
+    commun: 'Titre commun : une étape que tout le monde peut franchir.',
+};
+function expliquerTitre(t) {
+    if (!window.DS) return;
+    DS.confirm({
+        emoji: t.emoji,
+        title: t.nom,
+        text: t.desc + '\n\n' + (SENS_RARETE[t.rarete] || ''),
+        actions: [],
+        cancelLabel: 'Fermer',
+    });
 }
+
+// ---------- Statistiques par jeu ----------
+// Refonte : l'ancienne version alignait neuf onglets qui défilaient
+// horizontalement — un par jeu, y compris ceux jamais joués — et n'en montrait
+// qu'un à la fois, dans une grille de petites boîtes serrées.
+//
+// Elle recalculait aussi les chiffres depuis les anciens champs plats
+// (p.motus, p.mf…) alors que le serveur envoie déjà `jeux`, la liste que la
+// bulle de profil utilise. Deux sources pour la même chose, qui finissaient par
+// diverger : Petit Bac annonçait « suivi à venir » alors que ses stats
+// existaient. Une seule source désormais, et la même présentation qu'ailleurs.
+const TOUS_LES_JEUX = [
+    { id: 'motus', nom: 'Motus' }, { id: 'mf', nom: 'Mots Fléchés' },
+    { id: 'motjuste', nom: 'Le Mot Juste' }, { id: 'pbac', nom: 'Petit Bac' },
+    { id: 'yams', nom: 'Yams' }, { id: 'motusparty', nom: 'Motus Party' },
+    { id: 'perudo', nom: 'Perudo' },
+];
+
 function mmss(s) { return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
-function buildGameCards(p) {
-    const games = [];
-    games.push({ id: 'Perudo', emoji: '🎲', volume: p.perudo ? p.perudo.played : 0,
-        html: gameCard('🎲', 'Perudo', '#d9a94e', p.perudo ? p.perudo.currentStreak : 0, p.perudo ? [
-            [p.perudo.wins, 'victoires'], [p.perudo.played, 'parties'], [p.perudo.rankPoints, 'points'],
-        ] : null) });
-    games.push({ id: 'Mots Fléchés', emoji: '🧩', volume: p.mf.solved || 0,
-        html: gameCard('🧩', 'Mots Fléchés', '#5aa87a', p.mf.streak, p.mf.solved ? [
-            [p.mf.solved, 'résolues'], [p.mf.best ? mmss(p.mf.best) : '—', 'meilleur temps'], [p.mf.days, 'jours'],
-        ] : null) });
-    games.push({ id: 'Motus', emoji: '🟨', volume: p.motus ? p.motus.solved || 0 : 0,
-        html: gameCard('🟨', 'Motus', '#c9a24a', p.motus && p.motus.streak, p.motus && p.motus.solved ? [
-            [p.motus.solved, 'résolues'], [p.motus.bestTries ?? '—', 'meilleurs essais'],
-            [p.motus.avgTries ?? '—', 'essais moyens'], [p.motus.days, 'jours'],
-        ] : null) });
-    games.push({ id: 'Le Mot Juste', emoji: '🧊', volume: p.motjuste ? p.motjuste.solved || 0 : 0,
-        html: gameCard('🧊', 'Le Mot Juste', '#6fb8d9', p.motjuste && p.motjuste.streak, p.motjuste && p.motjuste.solved ? [
-            [p.motjuste.solved, 'résolues'], [p.motjuste.bestTries ?? '—', 'meilleurs essais'],
-            [p.motjuste.avgTries ?? '—', 'essais moyens'], [p.motjuste.days, 'jours'],
-        ] : null) });
-    const mp = p.motusparty;
-    games.push({ id: 'Motus Party', emoji: '🏁', volume: mp ? mp.matchesPlayed || 0 : 0,
-        html: gameCard('🏁', 'Motus Party', '#d9a94e', 0, mp && mp.matchesPlayed ? [
-            [mp.matchesWon, 'courses gagnées'], [mp.matchesPlayed, 'courses jouées'],
-            [mp.wordsFound, 'mots trouvés'], [mp.bestRank ? (mp.bestRank === 1 ? '🥇' : mp.bestRank === 2 ? '🥈' : mp.bestRank === 3 ? '🥉' : mp.bestRank + 'e') : '—', 'meilleur classement'],
-        ] : null) });
-    // Petit Bac : les stats existent bel et bien (pbac:stats:*), elles n'étaient
-    // simplement jamais remontées jusqu'ici. Elles arrivent dans p.jeux.
-    const pb = (p.jeux || []).find(j => j.id === 'pbac');
-    games.push({ id: 'Petit Bac', emoji: '✏️', volume: pb ? pb.parties : 0,
-        html: gameCard('✏️', 'Petit Bac', '#c2513a', 0, pb ? pb.lignes.map(([l, v]) => [v, l.toLowerCase()]) : null,
-            pb ? null : 'Aucune partie jouée pour l’instant') });
-    games.push({ id: 'Infiltré', emoji: '🕵️', volume: 0,
-        html: gameCard('🕵️', 'Infiltré', '#6f7bb0', 0, null, 'Ce jeu ne tient pas encore de statistiques') });
-    const y = p.yams;
-    const yamsNote = y && y.nemesis ? `Bête noire : ${esc(y.nemesis.pseudo)} t’a battu ${y.nemesis.losses} fois` : null;
-    games.push({ id: 'Yams', emoji: '🎯', volume: y ? y.gamesPlayed || 0 : 0,
-        html: gameCard('🎯', 'Yams', '#ecca82', 0, y && y.gamesPlayed ? [
-            [y.gamesWon, 'victoires'], [y.gamesPlayed, 'parties'], [y.totalYams, 'Yams'], [y.bestScore, 'meilleur score'],
-        ] : null, yamsNote) });
-    return games;
+
+// Trois chiffres en tête, ceux qu'on regarde en premier.
+function renderChiffres(p) {
+    const meilleureSerie = Math.max(
+        (p.motus && p.motus.bestStreak) || 0,
+        (p.motus && p.motus.streak) || 0,
+        (p.mf && p.mf.streak) || 0,
+        (p.motjuste && p.motjuste.streak) || 0,
+    );
+    const cases = [
+        p.rang ? [p.rang.place + '<sup>e</sup>', 'au classement'] : null,
+        [p.totalParties || 0, 'parties jouées'],
+        meilleureSerie ? ['🔥 ' + meilleureSerie, 'jours d\'affilée'] : null,
+    ].filter(Boolean);
+    $('pr-chiffres').innerHTML = cases.map(([v, l]) =>
+        `<div class="pr-chiffre"><b>${v}</b><span>${esc(l)}</span></div>`).join('');
 }
-let allGames = [], activeGameTab = null, favoriteGameName = null;
-function renderTabs() {
-    $('pr-tabs').innerHTML = allGames.map(g => `
-        <button type="button" class="pr-tab${g.id === activeGameTab ? ' on' : ''}${g.id === favoriteGameName ? ' fav' : ''}" data-g="${esc(g.id)}">
-            ${g.emoji} ${esc(g.id)}${g.id === favoriteGameName ? ' ⭐' : ''}
-        </button>`).join('');
-    $('pr-tabs').querySelectorAll('.pr-tab').forEach(b => b.addEventListener('click', () => {
-        activeGameTab = b.dataset.g;
-        renderTabs();
-        $('pr-games').innerHTML = allGames.find(g => g.id === activeGameTab).html;
+
+// Une carte par jeu réellement pratiqué, la plus jouée en premier, dépliable.
+// Même motif que la bulle de profil : on ne réapprend pas une interface en
+// passant de l'une à l'autre.
+function renderJeux(p) {
+    const jeux = (p.jeux || []).slice().sort((a, b) => b.parties - a.parties);
+    $('pr-games').innerHTML = jeux.map((j, i) => {
+        const lignes = j.lignes.map(([l, v]) =>
+            `<div class="pj-ligne"><span>${esc(l)}</span><b>${esc(String(v))}</b></div>`).join('');
+        const note = j.note ? `<p class="pj-note">${esc(j.note)}</p>` : '';
+        return `<div class="pj">
+            <button type="button" class="pj-tete" aria-expanded="${i === 0}">
+                <span class="pj-emoji">${j.emoji}</span>
+                <span class="pj-nom">${esc(j.nom)}</span>
+                <span class="pj-resume">${esc(j.resume)}</span>
+                <span class="pj-chev" aria-hidden="true">›</span>
+            </button>
+            <div class="pj-corps"${i === 0 ? '' : ' hidden'}>${lignes}${note}</div>
+        </div>`;
+    }).join('') || `<p class="pr-vide">Aucune partie pour l'instant. Le premier mot du jour t'attend.</p>`;
+
+    $('pr-games').querySelectorAll('.pj-tete').forEach(b => b.addEventListener('click', () => {
+        const corps = b.nextElementSibling;
+        const ouvert = !corps.hidden;
+        corps.hidden = ouvert;
+        b.setAttribute('aria-expanded', String(!ouvert));
     }));
+
+    // Les jeux jamais touchés tiennent en une ligne discrète, au lieu d'occuper
+    // chacun un onglet vide.
+    const joues = new Set(jeux.map(j => j.id));
+    const restants = TOUS_LES_JEUX.filter(j => !joues.has(j.id)).map(j => j.nom);
+    $('pr-jamais').textContent = restants.length ? 'Pas encore joué à : ' + restants.join(', ') + '.' : '';
+    $('pr-jamais').hidden = !restants.length;
 }
 
 // ---------- Ma place au Salon, et mon assiduité ----------
@@ -122,7 +147,6 @@ async function loadSummary() {
     $('sum-week').textContent = data.weekCount;
     $('sum-fav').textContent = data.favoriteGame || '—';
     $('pr-summary').hidden = false;
-    if (allGames.length) renderTabs();
 }
 
 // ---------- Chargement du profil ----------
@@ -137,17 +161,17 @@ async function loadProfile() {
     $('pr-meta').textContent = 'Membre depuis le ' + created + (prev ? ' · vu la dernière fois le ' + prev : '');
     // Les titres, juste sous l'identité : c'est ce qu'on montre.
     const titres = profile.titres || [];
-    $('pr-titres').innerHTML = titres.map(t =>
-        `<span class="pr-titre ${esc(t.rarete)}" title="${esc(t.desc)}">${esc(t.emoji)} ${esc(t.nom)}</span>`).join('');
+    $('pr-titres').innerHTML = titres.map((t, i) =>
+        `<button type="button" class="pr-titre ${esc(t.rarete)}" data-i="${i}">${esc(t.emoji)} ${esc(t.nom)}</button>`).join('');
     $('pr-titres').hidden = !titres.length;
+    $('pr-titres').querySelectorAll('.pr-titre').forEach(b =>
+        b.addEventListener('click', () => expliquerTitre(titres[Number(b.dataset.i)])));
 
     const aRang = renderRang(profile);
     const aCal = renderCalendrier(profile.calendrier);
     $('pr-rank-section').hidden = !(aRang || aCal);
-    allGames = buildGameCards(profile);
-    activeGameTab = allGames[0].id;
-    renderTabs();
-    $('pr-games').innerHTML = allGames[0].html;
+    renderChiffres(profile);
+    renderJeux(profile);
     loadSummary();
 }
 loadProfile();

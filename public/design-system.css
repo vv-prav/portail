@@ -159,6 +159,12 @@
 }
 .ds-card-close:active { transform: scale(.9); }
 
+/* Le texte d'une confirmation est posé en textContent : sans cette règle, un
+   saut de ligne volontaire dans le message serait avalé. Ciblé sur cette boîte
+   seulement — l'appliquer à toutes les cartes ferait apparaître les retours à
+   la ligne de l'indentation du HTML. */
+#ds-confirm-text { white-space: pre-line; }
+
 /* ---------- RÉINITIALISATION DES LIENS ----------
    Aucun lien souligné dans le salon : le soulignement n'apporte rien ici, tout
    ce qui est cliquable se distingue déjà par sa couleur, sa carte ou son

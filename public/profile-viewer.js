@@ -65,7 +65,8 @@
 .pv-note { margin:6px 0 0; font-size:.68rem; color:#8d8271; line-height:1.4; }
 .pv-titres { display:flex; flex-wrap:wrap; gap:5px; justify-content:center; margin:0 0 14px; }
 .pv-titre { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:999px;
-    font-size:.7rem; border:1px solid; }
+    font-size:.7rem; border:1px solid; font-family:inherit; cursor:pointer; }
+.pv-titre:focus-visible { outline:2px solid #d9a94e; outline-offset:2px; }
 .pv-titre.unique { color:#ecca82; border-color:#d9a94e; background:rgba(217,169,78,.16); }
 .pv-titre.rare { color:#c9b99c; border-color:rgba(217,169,78,.35); background:rgba(217,169,78,.07); }
 .pv-titre.commun { color:#a08f74; border-color:rgba(217,169,78,.18); }
@@ -167,8 +168,11 @@
 
             // Les titres, les plus rares d'abord : un titre unique se dispute,
             // c'est la première chose qu'on veut voir sur un profil.
-            el.querySelector('#pv-titres-el').innerHTML = (data.titres || []).map(t =>
-                `<span class="pv-titre ${esc(t.rarete)}" title="${esc(t.desc)}">${esc(t.emoji)} ${esc(t.nom)}</span>`).join('');
+            const titres = data.titres || [];
+            el.querySelector('#pv-titres-el').innerHTML = titres.map((t, i) =>
+                `<button type="button" class="pv-titre ${esc(t.rarete)}" data-t="${i}">${esc(t.emoji)} ${esc(t.nom)}</button>`).join('');
+            el.querySelectorAll('.pv-titre').forEach(b =>
+                b.addEventListener('click', () => expliquerTitre(titres[Number(b.dataset.t)])));
 
             const h2h = el.querySelector('#pv-h2h-el');
             const texte = texteFaceAface(data.faceAface, data.pseudo);
@@ -187,6 +191,20 @@
         } catch (e) {
             el.querySelector('#pv-meta-el').textContent = 'Connexion impossible.';
         }
+    }
+
+    // Un titre sans explication n'est qu'un émoji. Le design system est chargé
+    // partout où cette bulle l'est ; on reste prudent quand même.
+    const SENS_RARETE = {
+        unique: 'Titre unique : une seule personne le porte à la fois dans tout le salon. Il change de mains dès que quelqu’un fait mieux.',
+        rare: 'Titre rare : il faut vraiment aller le chercher.',
+        commun: 'Titre commun : une étape que tout le monde peut franchir.',
+    };
+    function expliquerTitre(t) {
+        if (!t || !window.DS) return;
+        DS.confirm({ emoji: t.emoji, title: t.nom,
+            text: t.desc + '\n\n' + (SENS_RARETE[t.rarete] || ''),
+            actions: [], cancelLabel: 'Fermer' });
     }
 
     function bubbleHTML(avatarData) {
