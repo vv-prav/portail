@@ -41,6 +41,13 @@ function suggestUcCount(n) {
 document.body.className = 'is-ready';
 $('mode-remote').addEventListener('click', () => { showView('v-lobby'); initRemote(); });
 $('mode-local').addEventListener('click', () => { showView('v-local-setup'); initLocalSetup(); });
+// Arrivée depuis la catégorie « à un seul téléphone » du catalogue : le mode
+// local est un jeu à part entière, pas une option cachée dans un hall réseau.
+if (new URLSearchParams(location.search).get('local') === '1') {
+    try { history.replaceState(null, '', location.pathname); } catch (e) {}
+    showView('v-local-setup');
+    initLocalSetup();
+}
 $('btn-mode-back').addEventListener('click', () => { $('uc-sub').textContent = 'Choisis comment jouer'; $('myword-band').hidden = true; showView('v-mode'); });
 $('btn-mode-back-2').addEventListener('click', () => { $('uc-sub').textContent = 'Choisis comment jouer'; showView('v-mode'); });
 

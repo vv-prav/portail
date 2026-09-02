@@ -16,6 +16,12 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '
 
 // Le catalogue est décrit ici et nulle part ailleurs : c'est le seul endroit
 // où l'on présente les jeux multijoueurs, donc le seul à tenir à jour.
+//
+// Deux familles, parce qu'on n'y joue pas dans les mêmes circonstances : en
+// réseau quand chacun est chez soi, à un seul téléphone quand on est six autour
+// d'une table — et c'est précisément là qu'on sort le salon en cherchant quoi
+// faire. Le mode local d'Infiltré était jusqu'ici enterré dans un hall conçu
+// pour le distanciel.
 const CATALOGUE = [
     { id: 'perudo', nom: 'Perudo', emoji: '🎲', accent: '#d9a94e', href: '/perudo',
       joueurs: '2 à 6 joueurs', duree: 'environ 20 min',
@@ -26,14 +32,24 @@ const CATALOGUE = [
       desc: 'Une lettre, huit catégories, tout le monde écrit en même temps. Les réponses se votent ensuite.' },
     { id: 'undercover', nom: 'Infiltré', emoji: '🕵️', accent: '#6f7bb0', href: '/undercover',
       joueurs: '3 à 12 joueurs', duree: 'environ 10 min',
-      desc: 'Un mot pour tous sauf un. Démasquez l’intrus avant qu’il ne vous démasque.',
-      note: 'Se joue aussi à plusieurs sur un seul téléphone.' },
+      desc: 'Un mot pour tous sauf un. Démasquez l’intrus avant qu’il ne vous démasque.' },
     { id: 'yams', nom: 'Yams', emoji: '🎯', accent: '#ecca82', href: '/yams',
       joueurs: '1 à 6 joueurs', duree: 'environ 15 min',
       desc: 'Le yams classique, avec ses skins de dés, sa bête noire et son classement.' },
     { id: 'motusparty', nom: 'Motus Party', emoji: '🏁', accent: '#d9a94e', href: '/motus/party',
       joueurs: '2 à 8 joueurs', duree: 'environ 5 min',
       desc: 'Tout le monde cherche le même mot en même temps. Le plus rapide marque le plus de points.' },
+];
+
+const CATALOGUE_LOCAL = [
+    { id: 'uc-local', nom: 'Infiltré', emoji: '🕵️', accent: '#6f7bb0', href: '/undercover/?local=1',
+      joueurs: '3 à 12 joueurs', duree: 'environ 10 min',
+      desc: 'Un mot pour tous sauf un. Le téléphone tourne, chacun lit son mot en secret.',
+      direct: true },
+    { id: 'chance', nom: 'Chance', emoji: '🎲', accent: '#c9a24a', href: '/chance',
+      joueurs: 'à volonté', duree: 'quelques secondes',
+      desc: 'Un dé, une carte, une pièce. Pour trancher quand personne ne veut décider.',
+      direct: true },
 ];
 
 async function api(path) {
@@ -44,8 +60,8 @@ async function api(path) {
 }
 
 // ---------- Catalogue ----------
-function ouvrirCatalogue() {
-    $('jo-cat-liste').innerHTML = CATALOGUE.map(j => `
+function carteJeu(j) {
+    return `
         <a class="jo-cat" href="${j.direct ? j.href : j.href + '/?creer=1'}" style="--acc:${j.accent}">
             <span class="jo-cat-emoji">${j.emoji}</span>
             <span class="jo-cat-corps">
@@ -55,7 +71,14 @@ function ouvrirCatalogue() {
                 ${j.note ? `<span class="jo-cat-note">${esc(j.note)}</span>` : ''}
             </span>
             <span class="jo-cat-go" aria-hidden="true">›</span>
-        </a>`).join('');
+        </a>`;
+}
+function ouvrirCatalogue() {
+    $('jo-cat-liste').innerHTML =
+        `<p class="jo-cat-famille">Chacun sur son téléphone</p>`
+        + CATALOGUE.map(carteJeu).join('')
+        + `<p class="jo-cat-famille">À un seul téléphone</p>`
+        + CATALOGUE_LOCAL.map(carteJeu).join('');
     $('jo-catalogue').hidden = false;
 }
 $('jo-creer').addEventListener('click', ouvrirCatalogue);

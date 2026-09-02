@@ -123,11 +123,10 @@ document.querySelectorAll('#lang-row button').forEach(b => b.addEventListener('c
 const GAME_APPS = [
     { id: 'jouer', name: 'Jouer ensemble', dKey: 'app_jouer_d', emoji: '🎮', href: '/jouer', accent: '#d9a94e', status: 'open' },
 ];
-// Chance était rangé dans une catégorie DRINK_APPS à part, vestige de l'époque
-// où le salon hébergeait des jeux d'alcool (Purple, Autoroute, Roi des Cons).
-// Depuis leur retrait il n'y restait que ce dé, qui n'a rien d'un jeu d'alcool.
+// Chance a rejoint le catalogue de /jouer/, dans la famille « à un seul
+// téléphone » : un dé qu'on se passe autour d'une table n'est pas une app à
+// part, c'est un jeu de société. Il n'a donc plus de tuile ici.
 const OTHER_APPS = [
-    { id: 'chance',   name: 'Chance',       dKey: 'app_ch_d',       emoji: '🎲', href: '/chance',      accent: '#c9a24a', status: 'open' },
     { id: 'recettes', name: 'Recettes',     dKey: 'app_recettes_d', emoji: '🍽️', href: '/recettes',    accent: '#e07a4e', status: 'open' },
     // Le hub Voyages ne liste qu'un seul voyage : une page d'accueil pour un
     // unique élément est une page de trop. La tuile mène directement aux Monts
@@ -192,7 +191,7 @@ function renderTile(a) {
 const TILE_ORDER_KEY = 'erquy_tile_order';
 // Ordre de préférence par défaut, utilisé tant que personne n'a encore réorganisé les
 // tuiles à la main. Voyages et Recettes restent toujours tout en bas, même après.
-const DEFAULT_PRIORITY = ['jouer', 'chance'];
+const DEFAULT_PRIORITY = ['jouer'];
 const ALWAYS_LAST = ['voyages', 'recettes'];
 function loadTileOrder(allIds) {
     let saved = [];

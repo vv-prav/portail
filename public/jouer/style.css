@@ -76,3 +76,8 @@ body {
 .jo-cat-meta { font-size: .68rem; color: var(--brass-soft); letter-spacing: .3px; }
 .jo-cat-note { font-size: .68rem; color: var(--muted); font-style: italic; }
 .jo-cat-go { flex: 0 0 auto; color: var(--muted); align-self: center; }
+
+/* Deux familles dans le catalogue : en réseau, et autour d'une table. */
+.jo-cat-famille { font-size: .68rem; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--muted); font-weight: 700; margin: 14px 0 2px; }
+.jo-cat-famille:first-child { margin-top: 4px; }
