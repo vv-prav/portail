@@ -58,10 +58,14 @@ function buildGameCards(p) {
             [mp.matchesWon, 'courses gagnées'], [mp.matchesPlayed, 'courses jouées'],
             [mp.wordsFound, 'mots trouvés'], [mp.bestRank ? (mp.bestRank === 1 ? '🥇' : mp.bestRank === 2 ? '🥈' : mp.bestRank === 3 ? '🥉' : mp.bestRank + 'e') : '—', 'meilleur classement'],
         ] : null) });
-    games.push({ id: 'Petit Bac', emoji: '✏️', volume: 0,
-        html: gameCard('✏️', 'Petit Bac', '#c2513a', 0, null, 'Suivi des statistiques à venir') });
+    // Petit Bac : les stats existent bel et bien (pbac:stats:*), elles n'étaient
+    // simplement jamais remontées jusqu'ici. Elles arrivent dans p.jeux.
+    const pb = (p.jeux || []).find(j => j.id === 'pbac');
+    games.push({ id: 'Petit Bac', emoji: '✏️', volume: pb ? pb.parties : 0,
+        html: gameCard('✏️', 'Petit Bac', '#c2513a', 0, pb ? pb.lignes.map(([l, v]) => [v, l.toLowerCase()]) : null,
+            pb ? null : 'Aucune partie jouée pour l’instant') });
     games.push({ id: 'Infiltré', emoji: '🕵️', volume: 0,
-        html: gameCard('🕵️', 'Infiltré', '#6f7bb0', 0, null, 'Suivi des statistiques à venir') });
+        html: gameCard('🕵️', 'Infiltré', '#6f7bb0', 0, null, 'Ce jeu ne tient pas encore de statistiques') });
     const y = p.yams;
     const yamsNote = y && y.nemesis ? `Bête noire : ${esc(y.nemesis.pseudo)} t’a battu ${y.nemesis.losses} fois` : null;
     games.push({ id: 'Yams', emoji: '🎯', volume: y ? y.gamesPlayed || 0 : 0,
@@ -81,6 +85,33 @@ function renderTabs() {
         renderTabs();
         $('pr-games').innerHTML = allGames.find(g => g.id === activeGameTab).html;
     }));
+}
+
+// ---------- Ma place au Salon, et mon assiduité ----------
+// Le classement transversal et le calendrier ne demandent aucune donnée
+// nouvelle : les jours joués sont déjà stockés par jeu, on les rapproche.
+function renderRang(p) {
+    if (!p.rang) return false;
+    const { place, points, total } = p.rang;
+    const medaille = place === 1 ? '🥇' : place === 2 ? '🥈' : place === 3 ? '🥉' : '🏅';
+    $('pr-rank').innerHTML = `
+        <div class="pr-rank-place"><b>${place}<sup>e</sup></b><span>${medaille} sur ${total} joueurs classés</span></div>
+        <div class="pr-rank-pts"><b>${points}</b><span>points au Salon</span></div>
+        <div class="pr-rank-pts"><b>${p.totalParties || 0}</b><span>parties tous jeux confondus</span></div>`;
+    return true;
+}
+const NOM_JEU = { motus: 'Motus', mf: 'Mots Fléchés', mj: 'Le Mot Juste' };
+function renderCalendrier(jours) {
+    if (!Array.isArray(jours) || !jours.length) return false;
+    $('pr-cal').innerHTML = jours.map(j => {
+        const n = Math.min(j.jeux.length, 3);
+        const quoi = j.jeux.length
+            ? j.jeux.map(g => NOM_JEU[g] || g).join(', ')
+            : 'rien ce jour-là';
+        const date = new Date(j.d + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
+        return `<i class="n${n}" title="${esc(date)} — ${esc(quoi)}"></i>`;
+    }).join('');
+    return true;
 }
 
 // ---------- Résumé transversal ----------
@@ -104,6 +135,9 @@ async function loadProfile() {
     const created = profile.created ? new Date(profile.created).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
     const prev = profile.prevLogin ? new Date(profile.prevLogin).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : null;
     $('pr-meta').textContent = 'Membre depuis le ' + created + (prev ? ' · vu la dernière fois le ' + prev : '');
+    const aRang = renderRang(profile);
+    const aCal = renderCalendrier(profile.calendrier);
+    $('pr-rank-section').hidden = !(aRang || aCal);
     allGames = buildGameCards(profile);
     activeGameTab = allGames[0].id;
     renderTabs();

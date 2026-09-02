@@ -1611,6 +1611,166 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
     });
 });
 
+// ---------------------------------------------------------------------
+//  PORTRAIT CHIFFRÉ D'UN JOUEUR
+//  Une seule source pour les deux interfaces de statistiques : la page de
+//  profil personnelle et la bulle qui s'ouvre au clic sur un pseudo. Les
+//  deux racontaient des choses différentes — la bulle ne montrait que Yams
+//  et Motus Party, en ignorant les jeux du jour qui font 90 % de l'activité.
+// ---------------------------------------------------------------------
+const { norm: normPseudo } = require('./comptes/renommage');
+
+// Stats des mots fléchés : progression par jour ET par niveau, donc une forme
+// différente des deux autres jeux du jour.
+function statsMotsFleches(pseudo) {
+    let resolues = 0, meilleurTemps = null, totalTemps = 0;
+    for (const [k, v] of Object.entries(mfCache)) {
+        if (!k.startsWith(`mf:prog:${pseudo}:`) || !v || !v.solved) continue;
+        resolues++;
+        if (v.seconds) {
+            totalTemps += v.seconds;
+            if (!meilleurTemps || v.seconds < meilleurTemps) meilleurTemps = v.seconds;
+        }
+    }
+    const jours = new Set(mfGet(`mf:days:${pseudo}`) || []);
+    return {
+        resolues, meilleurTemps, jours: jours.size,
+        tempsMoyen: resolues ? Math.round(totalTemps / resolues) : null,
+        serie: serieDepuisJours([...jours]),
+    };
+}
+
+const mmss = (s) => (s == null ? null : Math.floor(s / 60) + ' min ' + String(s % 60).padStart(2, '0'));
+
+// Construit les blocs de statistiques, un par jeu, en n'incluant que les jeux
+// réellement pratiqués : un profil vide vaut mieux qu'une page de zéros.
+function portraitJoueur(pseudo) {
+    const jeux = [];
+    // `note` sert à dire honnêtement sur quelle période portent les chiffres :
+    // les listes de jours joués sont conservées à vie, mais les progressions
+    // détaillées sont purgées au bout de 15 jours (20 pour les grilles). Afficher
+    // « 28 jours joués » à côté de « 12 trouvés » sans le préciser serait faux.
+    const ajoute = (id, nom, emoji, parties, resume, lignes, note) => {
+        if (!parties) return;
+        jeux.push({ id, nom, emoji, parties, resume, note: note || null,
+            lignes: lignes.filter(l => l[1] !== null && l[1] !== undefined) });
+    };
+
+    const motus = dailyGameStats('motus:prog', pseudo, u => kMotusDays(u), u => motusStreak(u));
+    ajoute('motus', 'Motus', '🟨', motus.days,
+        motus.days + ' jours joués', [
+            ['Jours joués', motus.days], ['Série en cours', motus.streak], ['Record de série', motus.bestStreak],
+            ['Trouvés', motus.solved],
+            ['Réussite', motus.successRate != null ? motus.successRate + ' %' : null],
+            ['Essais en moyenne', motus.avgTries], ['Meilleur', motus.bestTries ? motus.bestTries + ' essais' : null],
+        ], 'Jours joués et séries depuis toujours ; le détail porte sur les 15 derniers jours.');
+
+    const mf = statsMotsFleches(pseudo);
+    ajoute('mf', 'Mots Fléchés', '🧩', mf.jours,
+        mf.jours + ' jours joués', [
+            ['Jours joués', mf.jours], ['Série en cours', mf.serie],
+            ['Grilles résolues', mf.resolues],
+            ['Meilleur temps', mmss(mf.meilleurTemps)], ['Temps moyen', mmss(mf.tempsMoyen)],
+        ], 'Jours joués et série depuis toujours ; le détail porte sur les 20 derniers jours.');
+
+    const mj = dailyGameStats('mj:prog', pseudo, u => kMjDays(u), u => mjStreak(u));
+    ajoute('motjuste', 'Le Mot Juste', '🧊', mj.days,
+        mj.days + ' jours joués', [
+            ['Jours joués', mj.days], ['Série en cours', mj.streak],
+            ['Devinés', mj.solved],
+            ['Réussite', mj.successRate != null ? mj.successRate + ' %' : null],
+            ['Mots essayés en moyenne', mj.avgTries],
+        ], 'Jours joués et série depuis toujours ; le détail porte sur les 15 derniers jours.');
+
+    // Petit Bac n'expose pas de statsFor : ses stats vivent dans le cache commun,
+    // indexées par pseudo NORMALISÉ.
+    const pb = mfGet(`pbac:stats:${normPseudo(pseudo)}`);
+    if (pb && pb.gamesPlayed) {
+        ajoute('pbac', 'Petit Bac', '✏️', pb.gamesPlayed,
+            pb.gamesWon + ' parties gagnées', [
+                ['Parties', pb.gamesPlayed], ['Victoires', pb.gamesWon],
+                ['Manches jouées', pb.roundsPlayed], ['Total de points', pb.totalPoints],
+                ['Meilleure manche', pb.bestRoundScore],
+            ]);
+    }
+
+    let yams = null;
+    try { yams = yamsApi.statsFor(pseudo); } catch (e) {}
+    if (yams && yams.gamesPlayed) {
+        ajoute('yams', 'Yams', '🎯', yams.gamesPlayed,
+            yams.gamesWon + ' parties gagnées', [
+                ['Parties', yams.gamesPlayed], ['Victoires', yams.gamesWon],
+                ['Meilleur score', yams.bestScore], ['Yams réalisés', yams.totalYams],
+                ['Bête noire', yams.nemesis ? yams.nemesis.pseudo : null],
+            ]);
+    }
+
+    let mp = null;
+    try { mp = motusPartyApi.statsFor(pseudo); } catch (e) {}
+    if (mp && mp.matchesPlayed) {
+        ajoute('motusparty', 'Motus Party', '🏁', mp.matchesPlayed,
+            mp.matchesWon + ' courses gagnées', [
+                ['Courses', mp.matchesPlayed], ['Gagnées', mp.matchesWon],
+                ['Mots trouvés', mp.wordsFound], ['Meilleure place', mp.bestRank],
+            ]);
+    }
+
+    let perudo = null;
+    try { perudo = perudoApi.users()[pseudo]; } catch (e) {}
+    if (perudo && perudo.played) {
+        ajoute('perudo', 'Perudo', '🎲', perudo.played,
+            (perudo.wins || 0) + ' parties gagnées', [
+                ['Parties', perudo.played], ['Victoires', perudo.wins || 0],
+                ['Points de rang', perudo.rankPoints || 0],
+                ['Série en cours', perudo.currentStreak || 0], ['Record de série', perudo.bestStreak || 0],
+            ]);
+    }
+
+    const total = jeux.reduce((s, j) => s + j.parties, 0);
+    const favori = jeux.slice().sort((a, b) => b.parties - a.parties)[0] || null;
+    return { jeux, total, favori: favori ? favori.nom : null };
+}
+
+// Place au classement du Salon, sans recalculer tout le tableau deux fois.
+function placeAuClassement(pseudo) {
+    const pseudos = Object.keys(registeredUsers);
+    const series = {};
+    for (const p of pseudos) {
+        series[p] = Math.max(
+            serieDepuisJours(mfGet(kMotusDays(p))),
+            serieDepuisJours(mfGet(`mf:days:${p}`)),
+            serieDepuisJours(mfGet(kMjDays(p))),
+        );
+    }
+    const lignes = calculerClassement(mfCache, pseudos, series);
+    const i = lignes.findIndex(l => l.pseudo === pseudo);
+    return i < 0 ? null : { place: i + 1, points: lignes[i].points, total: lignes.length };
+}
+
+// Calendrier d'activité : un carré par jour, façon grille de contributions.
+// Les données existent déjà telles quelles dans les clés *:days:* — il n'y a
+// rien à calculer, seulement à les rapprocher.
+function calendrierActivite(pseudo, nbJours) {
+    const sources = [
+        ['motus', mfGet(kMotusDays(pseudo)) || []],
+        ['mf', mfGet(`mf:days:${pseudo}`) || []],
+        ['mj', mfGet(kMjDays(pseudo)) || []],
+    ];
+    const parJour = new Map();
+    for (const [jeu, jours] of sources) {
+        for (const d of jours) {
+            if (!parJour.has(d)) parJour.set(d, []);
+            parJour.get(d).push(jeu);
+        }
+    }
+    const out = [];
+    for (let i = nbJours - 1; i >= 0; i--) {
+        const d = mfShiftDay(mfTodayId(), -i);
+        out.push({ d, jeux: parJour.get(d) || [] });
+    }
+    return out;
+}
+
 // Série en cours d'un joueur pour un jeu du jour, à partir de sa liste de jours joués.
 function serieDepuisJours(jours) {
     const set = new Set(jours || []);
@@ -1695,6 +1855,7 @@ app.get('/api/salon/profile', requireAuthApi, (req, res) => {
     // stats motus / le mot juste (même forme de données par utilisateur)
     const motus = dailyGameStats('motus:prog', pseudo, u => kMotusDays(u), u => motusStreak(u));
     const motjuste = dailyGameStats('mj:prog', pseudo, u => kMjDays(u), u => mjStreak(u));
+    const portrait = portraitJoueur(pseudo);
     // stats yams
     let yams = null;
     try { yams = yamsApi.statsFor(pseudo); } catch (e) {}
@@ -1707,6 +1868,12 @@ app.get('/api/salon/profile', requireAuthApi, (req, res) => {
         mf: { solved, best, streak: mfStreak, days: mfDays.size },
         perudo, motus, motjuste, yams, motusparty,
         avatars: SALON_AVATARS,
+        // Même portrait que la bulle publique, pour que les deux interfaces
+        // racontent exactement la même chose.
+        jeux: portrait.jeux,
+        totalParties: portrait.total,
+        rang: placeAuClassement(pseudo),
+        calendrier: calendrierActivite(pseudo, 119),   // 17 semaines
     });
 });
 
@@ -1781,35 +1948,45 @@ app.get('/api/public-profile', requireAuthApi, (req, res) => {
     const pseudo = String(req.query.pseudo || '');
     const u = registeredUsers[pseudo];
     if (!u) return res.status(404).json({ error: 'Compte introuvable.' });
-    const totals = [];
-    try { const p = perudoApi.users()[pseudo]; if (p && p.played) totals.push(['Perudo', p.played]); } catch (e) {}
-    const mfDays = mfGet(`mf:days:${pseudo}`) || [];
-    if (mfDays.length) totals.push(['Mots Fléchés', mfDays.length]);
-    const motusDays = mfGet(kMotusDays(pseudo)) || [];
-    if (motusDays.length) totals.push(['Motus', motusDays.length]);
-    const mjDays = mfGet(kMjDays(pseudo)) || [];
-    if (mjDays.length) totals.push(['Le Mot Juste', mjDays.length]);
-    let yams = null, motusparty = null;
-    try { const y = yamsApi.statsFor(pseudo); if (y && y.gamesPlayed) { yams = y; totals.push(['Yams', y.gamesPlayed]); } } catch (e) {}
-    try { const m = motusPartyApi.statsFor(pseudo); if (m && m.matchesPlayed) { motusparty = m; totals.push(['Motus Party', m.matchesPlayed]); } } catch (e) {}
-    totals.sort((a, b) => b[1] - a[1]);
+    const moi = currentUser(req);
+    const portrait = portraitJoueur(pseudo);
+
+    // Face-à-face avec celui qui regarde : c'est ce qu'on veut vraiment savoir
+    // en ouvrant le profil de quelqu'un. Les stats Yams tiennent le compte des
+    // duels ; le classement du Salon donne l'écart général.
+    let faceAface = null;
+    if (moi && moi !== pseudo) {
+        let duels = null;
+        try {
+            const y = yamsApi.statsFor(pseudo);
+            const vs = y && y.vsOpponent && y.vsOpponent[moi];
+            if (vs && (vs.wins || vs.losses)) duels = { sesVictoires: vs.wins || 0, mesVictoires: vs.losses || 0 };
+        } catch (e) {}
+        const monRang = placeAuClassement(moi), sonRang = placeAuClassement(pseudo);
+        faceAface = {
+            duels,
+            monRang: monRang ? monRang.place : null,
+            sonRang: sonRang ? sonRang.place : null,
+        };
+    }
+
     res.json({
         pseudo: u.pseudo,
         avatar: u.avatar || '', avatarPhoto: u.avatarPhoto || '',
         created: u.created || 0,
         online: !!(u.lastSeen && Date.now() - u.lastSeen < 90 * 1000),
-        favoriteGame: totals.length ? totals[0][0] : null,
-        yams: yams ? { gamesWon: yams.gamesWon, gamesPlayed: yams.gamesPlayed, bestScore: yams.bestScore } : null,
-        motusparty: motusparty ? { matchesWon: motusparty.matchesWon, matchesPlayed: motusparty.matchesPlayed } : null,
+        lastSeen: u.lastSeen || 0,
+        favori: portrait.favori,
+        totalParties: portrait.total,
+        rang: placeAuClassement(pseudo),
+        jeux: portrait.jeux,
+        faceAface,
     });
 });
 
-// Changer de pseudo : déplace le compte vers la nouvelle clé et réémet une
-// session à jour. Honnêteté nécessaire : les statistiques déjà accumulées
-// dans les différents jeux (Motus, Yams, Petit Bac...) restent rangées sous
-// l'ancien nom, comme un nouveau départ pour ces compteurs-là — les migrer
-// toutes sans risque demanderait de toucher trop de systèmes différents
-// pour le faire correctement dans l'immédiat.
+// Changer de pseudo : déplace le compte vers la nouvelle clé, réémet une
+// session à jour, et migre toutes les données associées — progressions,
+// classements, séries, stats par jeu. Voir comptes/renommage.js.
 app.post('/api/account/rename', requireAuthApi, (req, res) => {
     const oldPseudo = currentUser(req);
     const user = registeredUsers[oldPseudo];

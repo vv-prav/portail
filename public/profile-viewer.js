@@ -44,6 +44,25 @@
 .pv-stat-row b { color:#ecca82; text-align:right; }
 .pv-empty { color:#a08f74; font-size:.8rem; text-align:center; margin:6px 0 0; }
 .pv-bubble-btn { all:unset; cursor:pointer; display:inline-flex; }
+.pv-card { max-height:86vh; overflow-y:auto; }
+.pv-rang { display:inline-flex; align-items:center; gap:6px; margin:0 0 14px; padding:4px 12px; border-radius:999px;
+    background:rgba(217,169,78,.14); border:1px solid rgba(217,169,78,.3); font-size:.74rem; color:#ecca82; }
+.pv-h2h { margin:0 0 16px; padding:12px; border-radius:12px; text-align:left;
+    background:rgba(217,169,78,.08); border:1px solid rgba(217,169,78,.22); font-size:.78rem; color:#efe4cf; }
+.pv-h2h b { color:#ecca82; }
+.pv-jeu { margin-bottom:10px; border-radius:12px; overflow:hidden;
+    background:rgba(255,255,255,.03); border:1px solid rgba(217,169,78,.18); }
+.pv-jeu-tete { display:flex; align-items:center; gap:8px; width:100%; padding:10px 12px; border:none; cursor:pointer;
+    background:transparent; color:#efe4cf; font-family:inherit; font-size:.84rem; text-align:left; }
+.pv-jeu-nom { flex:1; font-weight:700; }
+.pv-jeu-resume { font-size:.72rem; color:#a08f74; }
+.pv-jeu-chev { color:#a08f74; transition:transform .18s ease; }
+.pv-jeu-tete[aria-expanded="true"] .pv-jeu-chev { transform:rotate(90deg); }
+.pv-jeu-corps { padding:0 12px 10px; display:flex; flex-direction:column; gap:4px; }
+.pv-jeu-corps[hidden] { display:none; }
+.pv-ligne { display:flex; justify-content:space-between; gap:10px; font-size:.78rem; color:#c9b99c; }
+.pv-ligne b { color:#ecca82; font-variant-numeric:tabular-nums; }
+.pv-note { margin:6px 0 0; font-size:.68rem; color:#8d8271; line-height:1.4; }
 @media (prefers-reduced-motion:reduce) { .pv-card, .pv-overlay { transition-duration:.001ms !important; } }
 `;
         document.head.appendChild(style);
@@ -60,6 +79,8 @@
                 <div class="pv-avatar" id="pv-avatar-el">✦</div>
                 <h2 class="pv-name" id="pv-name-el">—</h2>
                 <p class="pv-meta" id="pv-meta-el">—</p>
+                <p class="pv-rang" id="pv-rang-el" hidden></p>
+                <div class="pv-h2h" id="pv-h2h-el" hidden></div>
                 <div class="pv-stats" id="pv-stats-el"></div>
             </div>`;
         document.body.appendChild(overlayEl);
@@ -71,6 +92,40 @@
 
     function close() { if (overlayEl) overlayEl.classList.remove('on'); }
 
+    // Une ligne de statistique, repliée par jeu : la fiche montrait seulement
+    // Yams et Motus Party, en ignorant les jeux du jour qui font l'essentiel de
+    // l'activité du salon. Elle montre désormais tout, jeu par jeu.
+    function blocJeu(j, ouvert) {
+        const lignes = j.lignes.map(([l, v]) => `<div class="pv-ligne"><span>${esc(l)}</span><b>${esc(v)}</b></div>`).join('');
+        const note = j.note ? `<p class="pv-note">${esc(j.note)}</p>` : '';
+        return `<div class="pv-jeu">
+            <button class="pv-jeu-tete" type="button" aria-expanded="${ouvert ? 'true' : 'false'}">
+                <span>${esc(j.emoji)}</span>
+                <span class="pv-jeu-nom">${esc(j.nom)}</span>
+                <span class="pv-jeu-resume">${esc(j.resume)}</span>
+                <span class="pv-jeu-chev" aria-hidden="true">›</span>
+            </button>
+            <div class="pv-jeu-corps"${ouvert ? '' : ' hidden'}>${lignes}${note}</div>
+        </div>`;
+    }
+
+    function texteFaceAface(f, pseudo) {
+        if (!f) return '';
+        const bouts = [];
+        if (f.duels) {
+            const total = f.duels.sesVictoires + f.duels.mesVictoires;
+            bouts.push(`Au Yams, <b>${f.duels.mesVictoires}</b> victoire${f.duels.mesVictoires > 1 ? 's' : ''} pour toi contre <b>${f.duels.sesVictoires}</b> sur ${total} duel${total > 1 ? 's' : ''}.`);
+        }
+        if (f.monRang && f.sonRang) {
+            bouts.push(f.monRang < f.sonRang
+                ? `Tu es <b>${f.monRang}<sup>e</sup></b> au classement du Salon, ${esc(pseudo)} <b>${f.sonRang}<sup>e</sup></b>.`
+                : (f.monRang > f.sonRang
+                    ? `${esc(pseudo)} est <b>${f.sonRang}<sup>e</sup></b> au classement du Salon, toi <b>${f.monRang}<sup>e</sup></b>.`
+                    : ''));
+        }
+        return bouts.filter(Boolean).join(' ');
+    }
+
     async function open(pseudo) {
         if (!pseudo) return;
         injectStyles();
@@ -79,22 +134,43 @@
         el.querySelector('#pv-avatar-el').textContent = '✦';
         el.querySelector('#pv-name-el').textContent = pseudo;
         el.querySelector('#pv-meta-el').textContent = 'Chargement…';
+        el.querySelector('#pv-rang-el').hidden = true;
+        el.querySelector('#pv-h2h-el').hidden = true;
         el.querySelector('#pv-stats-el').innerHTML = '';
         try {
             const res = await fetch('/api/public-profile?pseudo=' + encodeURIComponent(pseudo));
             const data = await res.json();
             if (!res.ok) { el.querySelector('#pv-meta-el').textContent = data.error || 'Profil introuvable.'; return; }
+
             el.querySelector('#pv-avatar-el').innerHTML = data.avatarPhoto ? `<img src="${data.avatarPhoto}" alt="">` : esc(data.avatar || '✦');
             el.querySelector('#pv-name-el').textContent = data.pseudo;
-            const created = data.created ? new Date(data.created).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
-            el.querySelector('#pv-meta-el').textContent = (data.online ? '🟢 en ligne · ' : '') + 'membre depuis le ' + created;
-            const stats = [];
-            if (data.favoriteGame) stats.push(['Jeu préféré', data.favoriteGame]);
-            if (data.yams) stats.push(['Yams', `${data.yams.gamesWon} victoires / ${data.yams.gamesPlayed} parties`]);
-            if (data.motusparty) stats.push(['Motus Party', `${data.motusparty.matchesWon} courses gagnées / ${data.motusparty.matchesPlayed} jouées`]);
-            el.querySelector('#pv-stats-el').innerHTML = stats.length
-                ? stats.map(([l, v]) => `<div class="pv-stat-row"><span>${esc(l)}</span><b>${esc(v)}</b></div>`).join('')
+            const depuis = data.created ? new Date(data.created).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+            const bouts = [];
+            if (data.online) bouts.push('🟢 en ligne');
+            bouts.push('membre depuis le ' + depuis);
+            if (data.favori) bouts.push('joue surtout à ' + data.favori);
+            el.querySelector('#pv-meta-el').textContent = bouts.join(' · ');
+
+            const rang = el.querySelector('#pv-rang-el');
+            if (data.rang) {
+                rang.innerHTML = `🏅 <b>${data.rang.place}<sup>e</sup></b> du Salon sur ${data.rang.total} · ${data.rang.points} pts`;
+                rang.hidden = false;
+            }
+
+            const h2h = el.querySelector('#pv-h2h-el');
+            const texte = texteFaceAface(data.faceAface, data.pseudo);
+            if (texte) { h2h.innerHTML = texte; h2h.hidden = false; }
+
+            const hote = el.querySelector('#pv-stats-el');
+            hote.innerHTML = (data.jeux && data.jeux.length)
+                ? data.jeux.map((j, i) => blocJeu(j, i === 0)).join('')
                 : '<p class="pv-empty">Pas encore de statistiques à montrer.</p>';
+            hote.querySelectorAll('.pv-jeu-tete').forEach(b => b.addEventListener('click', () => {
+                const corps = b.nextElementSibling;
+                const ouvert = !corps.hidden;
+                corps.hidden = ouvert;
+                b.setAttribute('aria-expanded', String(!ouvert));
+            }));
         } catch (e) {
             el.querySelector('#pv-meta-el').textContent = 'Connexion impossible.';
         }
