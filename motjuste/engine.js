@@ -69,6 +69,16 @@ function nearest(secretInput, n) {
 }
 
 function allWords() { return [...INDEX.values()].map(e => e.m); }
+
+// Mots pouvant être TIRÉS comme mot du jour : uniquement des mots simples.
+// Le vocabulaire hérité contient des entrées à plusieurs mots (« SEL DE MER »,
+// « MILLE PATTES ») qui font de mauvais mots du jour — on ne devine pas une
+// expression à l'intuition. Elles restent dans l'index, donc acceptées si un
+// joueur les propose et jouables en archive : deux d'entre elles ont déjà été
+// tirées en production, les retirer casserait ces journées.
+function motsTirables() {
+    return [...INDEX.values()].map(e => e.m).filter(m => !m.includes(' '));
+}
 function count() { return INDEX.size; }
 function isCustom(input) { const e = INDEX.get(norm(input)); return !!(e && e.custom); }
 
@@ -84,4 +94,4 @@ function vectorLike(existingInput) {
     return base.raw.map(x => Math.round((x + jitter()) * 10000) / 10000);
 }
 
-module.exports = { norm, findWord, hasWord, score, nearest, allWords, count, vectorLike, addCustomWord, removeCustomWord, isCustom, WORDS, MEAN };
+module.exports = { norm, findWord, hasWord, score, nearest, allWords, motsTirables, count, vectorLike, addCustomWord, removeCustomWord, isCustom, WORDS, MEAN };

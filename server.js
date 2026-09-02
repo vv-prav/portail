@@ -1009,7 +1009,7 @@ const kMjCmt = (d) => `mj:cmt:${d}`;
 const kMjDays = (u) => `mj:days:${u}`;
 
 function mjPickWord(date, forcePersist) {
-    const all = mjEngine.allWords();
+    const all = mjEngine.motsTirables();   // jamais d'expression comme mot du jour
     const recent = new Set();
     for (let i = 1; i <= MJ_KEEP_WORD_DAYS; i++) {
         const w = mfGet(kMjWord(mfShiftDay(date, -i)));
