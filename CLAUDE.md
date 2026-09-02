@@ -124,7 +124,7 @@ Chaque mini-app suit le même schéma : `public/<app>/index.html` + `app.js` + `
 | **Petit Bac** | `pbac/game.js` | `pbac_*` | Vote séquentiel ou parallèle, packs de catégories personnalisés, catégorie surprise, podium animé par paliers. |
 | **Infiltré** | `undercover/game.js` | `uc_*` | Mr Blanc, sous-groupes, mode à distance et mode local (un seul téléphone qui tourne). |
 | **Yams** | `yams/game.js` | `yams_*` | Skins de dés (47, catalogue repris de Perudo), bête noire, spectateurs, classement/historique/face-à-face. |
-| **Motus Party** | `motusparty/game.js` | `motusparty_*` | Course en temps réel : tout le monde devine le même mot, classé par ordre d'arrivée. Barème : 1er=10pts, 2e=7, 3e=5, 4e=3, 5e et + =1 si trouvé, 0 sinon. Réutilise le dictionnaire Motus (`motusPool`/`motusKnown` injectés depuis `server.js`). |
+| **Motus Party** | `motusparty/game.js` | `motusparty_*` | Course en temps réel : tout le monde devine le même mot, classé par ordre d'arrivée. Barème : 1er=10pts, 2e=7, 3e=5, 4e=3, 5e et + =1 si trouvé, 0 sinon. Saisie **directe dans la grille au clavier natif** (input invisible `#mp-shadow` qui suit la case active), **première lettre offerte** comme au Motus du jour — le serveur l'envoie via `firstLetter` dans `stateFor`. Bandeau de score du match pendant la course, repli de l'entête et des adversaires quand le clavier s'ouvre (`body.clavier-ouvert`). Réutilise le dictionnaire Motus (`motusPool`/`motusKnown` injectés depuis `server.js`). |
 
 ### Jeux du jour (un mot/une grille par jour, pas de temps réel)
 

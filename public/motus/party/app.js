@@ -39,6 +39,7 @@ function connect() {
     socket.on('motusparty_stats_result', renderStats);
     socket.on('motusparty_error', (msg) => {
         toast(msg || 'Erreur.');
+        if (/inconnu/i.test(msg || '')) { try { secouerLigneActive(); } catch (e) {} }
         if (/existe plus/i.test(msg || '')) { localStorage.removeItem(LS_KEY); showView('v-lobby'); socket.emit('motusparty_list'); }
     });
     socket.on('motusparty_closed', () => { toast('La course a été fermée.'); localStorage.removeItem(LS_KEY); location.href = '/motus/'; });
@@ -46,6 +47,7 @@ function connect() {
 }
 
 function showView(id) {
+    if (id !== 'v-race') document.body.classList.remove('clavier-ouvert');
     ['v-lobby', 'v-waiting', 'v-race', 'v-round-end', 'v-ended'].forEach(v => { $(v).hidden = (v !== id); });
     Vues.suivre(id);
 }
@@ -112,28 +114,169 @@ $('btn-start').addEventListener('click', () => socket.emit('motusparty_start'));
 $('btn-leave-lobby').addEventListener('click', () => { socket.emit('motusparty_leave'); localStorage.removeItem(LS_KEY); showView('v-lobby'); socket.emit('motusparty_list'); });
 $('btn-back-lobby').addEventListener('click', () => { socket.emit('motusparty_leave'); localStorage.removeItem(LS_KEY); showView('v-lobby'); socket.emit('motusparty_list'); });
 
-// ---------- Course en cours ----------
+// =====================================================================
+//  COURSE EN COURS
+//  On tape directement dans la grille, au clavier natif du téléphone, via
+//  un input invisible posé sur la case active — le motif du Motus du jour
+//  et des Mots Fléchés. Pas de champ à part, pas de bouton « Valider » :
+//  les deux jeux du même mot se jouent enfin de la même façon.
+// =====================================================================
 function tileClass(mark) { return mark === 'correct' ? 'correct' : mark === 'present' ? 'present' : 'absent'; }
+
+const grid = $('myGrid');
+const shadow = $('mp-shadow');
+let draft = [];            // la ligne en cours de saisie
+let curCol = 1;            // la première case est offerte, on démarre à la deuxième
+let tileEls = [];          // [ligne][colonne] → l'élément, pour poser l'input invisible
+let vuGuesses = -1;        // nombre d'essais déjà affichés, pour n'animer que le nouveau
+let vuRound = -1;
+
+function raceActive() {
+    if (!state || state.status !== 'playing' || isSpectator) return false;
+    const me = state.players.find(p => p.pseudo === myPseudo);
+    return !!me && !me.solved && !me.gaveUp;
+}
+function resetDraft() {
+    const len = (state && state.wordLen) || 0;
+    draft = Array(len).fill('');
+    if (state && state.firstLetter) draft[0] = state.firstLetter;
+    curCol = 1;
+}
+
 function renderMyGrid(s) {
     const me = s.players.find(p => p.pseudo === myPseudo);
-    const rows = [];
     const guesses = (me && me.guesses) || [];
+    const ligneActive = raceActive() ? guesses.length : -1;
+    const rows = [];
     for (let i = 0; i < s.maxTries; i++) {
         const g = guesses[i];
         if (g) {
-            rows.push(`<div class="mp-row">${g.marks.map((m, j) => `<span class="mp-tile ${tileClass(m)}">${esc(g.word[j])}</span>`).join('')}</div>`);
+            rows.push(`<div class="mp-row">${g.marks.map((m, j) =>
+                `<span class="mp-tile ${tileClass(m)}">${esc(g.word[j])}</span>`).join('')}</div>`);
+        } else if (i === ligneActive) {
+            rows.push(`<div class="mp-row">${Array.from({ length: s.wordLen }, (_, j) => {
+                const c = draft[j] || '';
+                const cls = [c ? 'filled' : '', j === 0 ? 'given' : '', j === curCol ? 'cursor' : ''].filter(Boolean).join(' ');
+                return `<span class="mp-tile ${cls}" data-c="${j}">${esc(c)}</span>`;
+            }).join('')}</div>`);
         } else {
-            rows.push(`<div class="mp-row">${Array.from({ length: s.wordLen }, () => `<span class="mp-tile"></span>`).join('')}</div>`);
+            rows.push(`<div class="mp-row">${Array.from({ length: s.wordLen },
+                () => `<span class="mp-tile"></span>`).join('')}</div>`);
         }
     }
-    $('myGrid').innerHTML = rows.join('');
+    // On ne remplace que les lignes : l'input invisible reste le même nœud,
+    // donc il ne perd pas le focus et le clavier ne se referme pas.
+    grid.querySelectorAll('.mp-row').forEach(r => r.remove());
+    grid.insertAdjacentHTML('afterbegin', rows.join(''));
+    tileEls = [...grid.querySelectorAll('.mp-row')].map(r => [...r.querySelectorAll('.mp-tile')]);
+
+    // Tape sur une case pour y déplacer le curseur (la première est offerte).
+    if (ligneActive >= 0) {
+        (tileEls[ligneActive] || []).forEach((el, j) => {
+            if (j === 0) return;
+            el.addEventListener('click', () => { curCol = j; renderMyGrid(state); placerShadow(); });
+        });
+    }
+    ajusterGrille();
+    placerShadow();
 }
+
+// La taille des cases se calcule sur la place réellement disponible : de 4 à 7
+// lettres de large, 6 lignes de haut, sur des écrans de 320 à 520 px, clavier
+// ouvert ou fermé. Sans ça la grille déborde ou devient minuscule.
+function ajusterGrille() {
+    if (!state || !state.wordLen) return;
+    const gap = 6, zone = $('gridZone');
+    const dispoL = Math.max(160, zone.clientWidth || window.innerWidth - 28);
+    const hVue = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+    const reserve = document.body.classList.contains('clavier-ouvert') ? 92 : 250;
+    const dispoH = Math.max(120, hVue - reserve);
+    const parL = Math.floor((dispoL - gap * (state.wordLen - 1)) / state.wordLen);
+    const parH = Math.floor((dispoH - gap * (state.maxTries - 1)) / state.maxTries);
+    const t = Math.max(26, Math.min(48, parL, parH));
+    grid.style.setProperty('--mp-tile', t + 'px');
+    grid.style.setProperty('--mp-gap', gap + 'px');
+}
+
+function placerShadow() {
+    if (!raceActive()) { shadow.blur(); return; }
+    const el = tileEls[(state.players.find(p => p.pseudo === myPseudo).guesses || []).length];
+    const cible = el && el[curCol];
+    if (!cible) return;
+    shadow.style.width = cible.offsetWidth + 'px';
+    shadow.style.height = cible.offsetHeight + 'px';
+    shadow.style.left = cible.offsetLeft + 'px';
+    shadow.style.top = cible.offsetTop + 'px';
+    if (document.activeElement !== shadow) shadow.focus({ preventScroll: true });
+}
+
+shadow.addEventListener('input', () => {
+    const brut = shadow.value.replace(/[^a-zA-Z]/g, '');
+    shadow.value = '';
+    if (!brut || !raceActive()) return;
+    draft[curCol] = brut.slice(-1).toUpperCase();
+    if (curCol < state.wordLen - 1) curCol++;
+    renderMyGrid(state);
+});
+shadow.addEventListener('keydown', (e) => {
+    if (!raceActive()) return;
+    if (e.key === 'Enter') { e.preventDefault(); proposer(); }
+    else if (e.key === 'Backspace' && !shadow.value) {
+        e.preventDefault();
+        if (draft[curCol]) draft[curCol] = '';
+        else if (curCol > 1) { curCol--; draft[curCol] = ''; }
+        renderMyGrid(state);
+    } else if (e.key === 'ArrowLeft') { e.preventDefault(); if (curCol > 1) { curCol--; renderMyGrid(state); } }
+    else if (e.key === 'ArrowRight') { e.preventDefault(); if (curCol < state.wordLen - 1) { curCol++; renderMyGrid(state); } }
+});
+// Taper n'importe où dans la zone de grille ramène le clavier.
+$('gridZone').addEventListener('click', () => placerShadow());
+
+function secouerLigneActive() {
+    const me = state.players.find(p => p.pseudo === myPseudo);
+    const r = grid.querySelectorAll('.mp-row')[(me && me.guesses || []).length];
+    if (!r) return;
+    r.classList.remove('shake'); void r.offsetWidth; r.classList.add('shake');
+    if (navigator.vibrate) { try { navigator.vibrate(40); } catch (e) {} }
+}
+function proposer() {
+    if (!raceActive()) return;
+    const mot = draft.join('');
+    if (mot.length !== state.wordLen || draft.some(c => !c)) { secouerLigneActive(); return; }
+    socket.emit('motusparty_guess', { word: mot });
+}
+
+// Le clavier natif fait rétrécir la fenêtre visible : on replie l'entête et la
+// liste des adversaires pour garder la grille entièrement lisible au-dessus.
+if (window.visualViewport) {
+    const surClavier = () => {
+        const ouvert = (window.innerHeight - window.visualViewport.height) > 150;
+        document.body.classList.toggle('clavier-ouvert', ouvert && !$('v-race').hidden);
+        ajusterGrille(); placerShadow();
+    };
+    window.visualViewport.addEventListener('resize', surClavier);
+}
+window.addEventListener('orientationchange', () => setTimeout(ajusterGrille, 250));
+
+// Le score du match, trié — savoir qui mène est ce qui fait courir.
+function renderScores(s) {
+    const tri = [...s.players].sort((a, b) => b.score - a.score);
+    const tete = tri.length ? tri[0].score : 0;
+    $('raceScores').innerHTML = tri.map(p => `
+        <span class="mp-score-chip${p.pseudo === myPseudo ? ' me' : ''}${p.score === tete && tete > 0 ? ' lead' : ''}">
+            <b>${esc(p.pseudo === myPseudo ? 'Toi' : p.pseudo)}</b><i>${p.score}</i>
+        </span>`).join('');
+}
+
+// Les adversaires : ceux qui ont trouvé remontent, dans leur ordre d'arrivée.
 function renderOpponents(s) {
-    const others = s.players.filter(p => p.pseudo !== myPseudo);
+    const others = s.players.filter(p => p.pseudo !== myPseudo)
+        .sort((a, b) => (a.solved ? a.rank : (a.gaveUp ? 90 : 50)) - (b.solved ? b.rank : (b.gaveUp ? 90 : 50)));
     $('opponents').innerHTML = others.map(p => {
-        const dots = Array.from({ length: s.maxTries }, (_, i) => `<span class="mp-opp-dot${i < p.triesCount ? ' filled' : ''}"></span>`).join('');
+        const dots = Array.from({ length: s.maxTries }, (_, i) =>
+            `<span class="mp-opp-dot${i < p.triesCount ? ' filled' : ''}"></span>`).join('');
         let status = '';
-        if (p.solved) status = `<span class="mp-opp-status solved">${rankLabel(p.rank)} +${p.score > 0 ? '' : ''}</span>`;
+        if (p.solved) status = `<span class="mp-opp-status solved">${rankLabel(p.rank)}</span>`;
         else if (p.gaveUp) status = `<span class="mp-opp-status gaveup">✗</span>`;
         return `
             <button type="button" class="mp-opp-row${p.solved ? ' solved' : ''}${p.gaveUp ? ' gaveup' : ''}" data-view="${esc(p.pseudo)}">
@@ -148,14 +291,6 @@ function renderOpponents(s) {
         $('opponents').querySelectorAll('.ds-avatar').forEach(el => { el.innerHTML = PortailProfile.bubbleHTML(a[el.dataset.p]); });
     });
 }
-const guessForm = $('guessForm');
-guessForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const val = $('guessInput').value.trim().toUpperCase();
-    if (!val) return;
-    socket.emit('motusparty_guess', { word: val });
-    $('guessInput').value = '';
-});
 
 // ---------- Bannière de fin quand quelqu'un trouve le mot ----------
 function onPlayerFinish({ pseudo, rank, points }) {
@@ -243,13 +378,22 @@ function onState(s) {
         $('mpSpectatorBanner').hidden = !isSpectator;
         $('raceRound').textContent = s.round;
         $('raceMaxRounds').textContent = s.maxRounds;
-        $('guessInput').maxLength = s.wordLen;
         const me = s.players.find(p => p.pseudo === myPseudo);
         const finished = !me || me.solved || me.gaveUp;
-        $('guessForm').hidden = isSpectator || finished;
-        $('guessHint').textContent = isSpectator ? 'Tu regardes la course.' : (finished ? (me.solved ? 'Tu as trouvé, en attente des autres…' : 'Essais épuisés, en attente des autres…') : `Mot de ${s.wordLen} lettres`);
+        const essais = (me && me.guesses || []).length;
+        // Nouvelle manche, ou essai accepté par le serveur : on repart d'une
+        // ligne vierge. Le brouillon n'est gardé que si le mot a été refusé.
+        if (s.round !== vuRound || essais !== vuGuesses) {
+            vuRound = s.round; vuGuesses = essais;
+            resetDraft();
+        }
+        $('guessHint').textContent = isSpectator ? 'Tu regardes la course.'
+            : (finished ? (me.solved ? 'Tu as trouvé, en attente des autres…' : 'Essais épuisés, en attente des autres…')
+                        : `${s.wordLen} lettres · ${s.maxTries - essais} essai${s.maxTries - essais > 1 ? 's' : ''} restant${s.maxTries - essais > 1 ? 's' : ''}`);
+        renderScores(s);
         renderMyGrid(s);
         renderOpponents(s);
+        if (finished || isSpectator) document.body.classList.remove('clavier-ouvert');
     } else if (s.status === 'round_end') { showView('v-round-end'); renderRoundEnd(s); }
     else if (s.status === 'ended') { showView('v-ended'); renderEnded(s); }
 }

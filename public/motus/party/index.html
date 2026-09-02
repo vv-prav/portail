@@ -13,7 +13,7 @@
 <body>
     <div class="mp">
         <header class="mp-head">
-            <a class="ds-back" href="/jouer/" aria-label="Retour au Motus">←</a>
+            <a class="ds-icon-btn" href="/jouer/" aria-label="Retour au Motus">←</a>
             <div class="mp-titles">
                 <h1 class="mp-title">Motus Party</h1>
                 <span class="mp-sub" id="mp-sub">Salon des courses</span>
@@ -48,17 +48,26 @@
 
         <!-- COURSE EN COURS -->
         <section class="mp-view" id="v-race" hidden>
+            <!-- Le bandeau de course : la manche, et surtout le score du match.
+                 Une course se joue en plusieurs manches — savoir qui mène est
+                 la seule information qui donne envie de se dépêcher. -->
             <div class="mp-race-head">
                 <span class="mp-round-tag">Manche <b id="raceRound">1</b> / <span id="raceMaxRounds">5</span></span>
+                <div class="mp-score-strip" id="raceScores"></div>
                 <p class="mp-spectator-banner" id="mpSpectatorBanner" hidden>👀 Tu regardes cette course</p>
             </div>
 
-            <div class="mp-my-grid" id="myGrid"></div>
+            <!-- La grille se tape directement, au clavier natif du téléphone,
+                 comme au Motus du jour. L'input est invisible et suit la case
+                 active : aucun clavier à l'écran, aucune boîte de saisie à part. -->
+            <div class="mp-grid-zone" id="gridZone">
+                <div class="mp-my-grid" id="myGrid">
+                    <input class="mp-shadow-input" id="mp-shadow" type="text" inputmode="text"
+                           autocomplete="off" autocorrect="off" autocapitalize="characters"
+                           spellcheck="false" aria-label="Taper une lettre">
+                </div>
+            </div>
 
-            <form class="mp-guess-form" id="guessForm" autocomplete="off">
-                <input type="text" id="guessInput" class="ds-input" maxlength="7" placeholder="Ton mot" autocapitalize="characters" aria-label="Proposer un mot">
-                <button type="submit" class="ds-btn" id="guessSubmit">Valider</button>
-            </form>
             <p class="mp-guess-hint" id="guessHint">—</p>
 
             <div class="mp-opponents" id="opponents"></div>

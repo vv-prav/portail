@@ -105,6 +105,10 @@ function stateFor(g, pseudo) {
         id: g.id, host: g.host, status: g.status,
         round: g.round, maxRounds: g.maxRounds,
         wordLen: g.word ? g.word.length : null,
+        // La première lettre est offerte, exactement comme au Motus du jour :
+        // sans elle, un mot de 7 lettres en 6 essais n'est pas devinable, et
+        // les deux jeux du même mot ne se joueraient pas de la même façon.
+        firstLetter: g.word ? g.word[0] : null,
         players: playerView(g, pseudo),
         spectators: (g.spectators || []).map(x => x.pseudo),
         maxTries: MAX_TRIES,

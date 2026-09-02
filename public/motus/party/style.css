@@ -10,13 +10,13 @@
 }
 html,body { margin:0; padding:0; }
 body {
-    min-height:100dvh; overflow-x:hidden;
+    min-height:100svh; overflow-x:hidden;
     font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; color:var(--parchment);
     background:radial-gradient(130% 70% at 50% -8%, #2b2013 0%, transparent 55%), var(--ink);
     background-attachment:fixed; -webkit-font-smoothing:antialiased;
 }
 
-.mp { position:relative; display:flex; flex-direction:column; min-height:100dvh; max-width:520px; margin:0 auto;
+.mp { position:relative; display:flex; flex-direction:column; min-height:100svh; max-width:520px; margin:0 auto;
       padding:max(10px,env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom)); gap:14px; }
 
 .mp-head { display:flex; align-items:center; gap:10px; }
@@ -36,7 +36,11 @@ body {
 .mp-list-label[hidden] { display:none; }
 .mp-tables { display:flex; flex-direction:column; gap:10px; margin-top:6px; }
 
-/* Course en cours */
+/* =====================================================================
+   COURSE EN COURS
+   Saisie directe dans la grille au clavier natif (input invisible qui suit
+   la case active) — même motif que Motus du jour et les Mots Fléchés.
+   ===================================================================== */
 .mp-race-head { display:flex; flex-direction:column; align-items:center; gap:8px; text-align:center; }
 .mp-round-tag { font-size:.78rem; color:var(--muted); }
 .mp-round-tag b { color:var(--brass-soft); font-size:.95rem; }
@@ -44,20 +48,46 @@ body {
     border:1px solid var(--line); border-radius:10px; padding:8px 12px; margin:0; }
 .mp-spectator-banner[hidden] { display:none; }
 
-.mp-my-grid { display:flex; flex-direction:column; gap:6px; align-items:center; }
-.mp-row { display:flex; gap:6px; }
-.mp-tile { width:44px; height:44px; border-radius:8px; background:rgba(255,255,255,.03); border:2px solid var(--line);
-    display:grid; place-items:center; font-weight:800; font-size:1.15rem; text-transform:uppercase; color:var(--parchment); }
+/* Le score du match, en une ligne de jetons triés — qui mène, et de combien. */
+.mp-score-strip { display:flex; flex-wrap:wrap; justify-content:center; gap:6px; }
+.mp-score-chip { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:999px;
+    background:rgba(255,255,255,.03); border:1px solid var(--line); font-size:.72rem; color:var(--muted);
+    max-width:150px; }
+.mp-score-chip b { color:var(--parchment); font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mp-score-chip i { font-style:normal; color:var(--brass-soft); font-weight:800; }
+.mp-score-chip.me { border-color:rgba(217,169,78,.5); background:rgba(217,169,78,.10); }
+.mp-score-chip.lead b { color:var(--brass-soft); }
+
+/* La grille. --mp-tile est posée en JS d'après la place réellement disponible :
+   4 à 7 lettres de large, 6 lignes de haut, sur des écrans de 320 à 520 px. */
+.mp-grid-zone { display:flex; justify-content:center; }
+.mp-my-grid { position:relative; display:flex; flex-direction:column; gap:var(--mp-gap,6px); align-items:center; }
+.mp-row { display:flex; gap:var(--mp-gap,6px); }
+.mp-tile { width:var(--mp-tile,44px); height:var(--mp-tile,44px); border-radius:8px;
+    background:rgba(255,255,255,.03); border:2px solid var(--line);
+    display:grid; place-items:center; font-weight:800; text-transform:uppercase; color:var(--parchment);
+    font-size:calc(var(--mp-tile,44px) * .5); transition:border-color .15s, background .15s; }
+.mp-tile.filled { border-color:rgba(217,169,78,.45); background:rgba(217,169,78,.06); }
+.mp-tile.given { color:var(--brass-soft); }          /* la première lettre, offerte */
+.mp-tile.cursor { border-color:var(--brass); box-shadow:0 0 0 2px rgba(217,169,78,.18); }
 .mp-tile.correct { background:var(--correct); border-color:var(--correct); color:#0f2018; }
 .mp-tile.present { background:var(--present); border-color:var(--present); color:#2a1c07; }
 .mp-tile.absent { background:var(--absent); border-color:var(--absent); color:var(--muted); }
 
-.mp-guess-form { display:flex; gap:8px; }
-.mp-guess-form[hidden] { display:none; }
-.mp-guess-form .ds-input { flex:1; width:auto; }
-.mp-guess-form .ds-btn { width:auto; padding:13px 18px; }
+/* Révélation en cascade de la ligne qu'on vient de valider. */
+.mp-tile.reveal { animation:mpFlip .45s ease both; }
+@keyframes mpFlip { 0% { transform:rotateX(0); } 50% { transform:rotateX(90deg); } 100% { transform:rotateX(0); } }
+.mp-row.shake .mp-tile { animation:mpShake .4s; }
+@keyframes mpShake { 0%,100% { transform:translateX(0); } 20% { transform:translateX(-7px); } 40% { transform:translateX(7px); } 60% { transform:translateX(-4px); } 80% { transform:translateX(4px); } }
+
+/* L'input qui reçoit vraiment la frappe : invisible, posé sur la case active. */
+.mp-shadow-input { position:absolute; z-index:2; opacity:0; border:0; padding:0; margin:0;
+    background:transparent; color:transparent; caret-color:transparent; font-size:16px; }
+.mp-shadow-input:focus { outline:none; }
+
 .mp-guess-hint { text-align:center; font-size:.76rem; color:var(--muted); margin:0; }
 
+/* Les adversaires, triés : ceux qui ont trouvé remontent. */
 .mp-opponents { display:flex; flex-direction:column; gap:6px; margin-top:6px; }
 .mp-opp-row { display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px;
     background:rgba(255,255,255,.02); border:1px solid var(--line); width:100%; font-family:inherit;
@@ -65,12 +95,19 @@ body {
 .mp-opp-row:active { transform:scale(.99); }
 .mp-opp-row.solved { border-color:rgba(90,168,122,.4); background:rgba(90,168,122,.08); }
 .mp-opp-row.gaveup { opacity:.55; }
-.mp-opp-name { flex:0 0 auto; width:88px; font-size:.78rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.mp-opp-dots { flex:1; display:flex; gap:4px; }
-.mp-opp-dot { width:10px; height:10px; border-radius:50%; background:rgba(255,255,255,.06); border:1px solid var(--line); }
+.mp-opp-name { flex:1; min-width:0; font-size:.78rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mp-opp-dots { flex:0 0 auto; display:flex; gap:4px; }
+.mp-opp-dot { width:9px; height:9px; border-radius:50%; background:rgba(255,255,255,.06); border:1px solid var(--line); }
 .mp-opp-dot.filled { background:var(--brass); border-color:var(--brass); }
-.mp-opp-status { flex:0 0 auto; font-size:.85rem; font-weight:800; }
+.mp-opp-status { flex:0 0 auto; font-size:.9rem; font-weight:800; min-width:26px; text-align:right; }
 .mp-opp-status.gaveup { color:var(--bad); }
+
+/* Clavier natif ouvert : tout ce qui n'est pas la grille s'efface, sinon
+   elle finit sous le clavier sur les petits écrans (iPhone 11 et en dessous). */
+body.clavier-ouvert .mp-head,
+body.clavier-ouvert .mp-score-strip,
+body.clavier-ouvert .mp-opponents { display:none; }
+body.clavier-ouvert .mp { gap:8px; padding-top:8px; }
 
 /* Bannière "quelqu'un vient de trouver" */
 .mp-finish-banner { position:fixed; top:max(14px,env(safe-area-inset-top)); left:50%; transform:translate(-50%,-140%);
