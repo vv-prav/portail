@@ -159,6 +159,14 @@
 }
 .ds-card-close:active { transform: scale(.9); }
 
+/* ---------- RÉINITIALISATION DES LIENS ----------
+   Aucun lien souligné dans le salon : le soulignement n'apporte rien ici, tout
+   ce qui est cliquable se distingue déjà par sa couleur, sa carte ou son
+   chevron. La règle vit ici pour que les apps cessent de la recopier chacune.
+   Les barrés (line-through) restent intacts : ils portent du sens — joueur
+   éliminé, ingrédient coché, compte suspendu. */
+a { text-decoration: none; }
+
 /* ---------- Cibles tactiles ----------
    Sur un iPhone 11 (375 px de large), viser un bouton de 30 px est pénible :
    la recommandation d'Apple comme de Google est 44 px. Plutôt que d'agrandir

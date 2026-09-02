@@ -1030,4 +1030,61 @@ module.exports = function attachAdmin(app, ctx) {
         });
     });
 
+
+    // =================================================================
+    //  TITRES
+    //  La plupart se calculent tout seuls et changent en jouant : ici on
+    //  les OBSERVE (qui a quoi, qui détient les uniques), et on peut en
+    //  poser ou en retirer un à la main quand un titre se mérite hors
+    //  des chiffres — une soirée, un fou rire, un service rendu.
+    // =================================================================
+    const TITRES_MANUELS_KEY = 'titres:manuels';
+
+    G('/titres', (req, res) => {
+        const parJoueur = ctx.titres();                    // Map pseudo → [titre]
+        const manuels = mf.get(TITRES_MANUELS_KEY) || {};
+        const catalogue = ctx.catalogueTitres().map(t => {
+            const porteurs = [];
+            for (const [pseudo, liste] of parJoueur) {
+                const trouve = liste.find(x => x.id === t.id);
+                if (trouve) porteurs.push({ pseudo, valeur: trouve.valeur ?? null, manuel: !!trouve.manuel });
+            }
+            porteurs.sort((a, b) => a.pseudo.localeCompare(b.pseudo, 'fr'));
+            return { id: t.id, nom: t.nom, emoji: t.emoji, rarete: t.rarete, desc: t.desc, porteurs };
+        });
+        res.json({
+            catalogue,
+            comptes: Object.keys(users()).sort((a, b) => a.localeCompare(b, 'fr')),
+            manuels,
+        });
+    });
+
+    A('/titres/attribuer', (req, res) => {
+        const pseudo = String(req.body.pseudo || '').trim();
+        const id = String(req.body.id || '').trim();
+        if (!users()[pseudo]) return res.status(404).json({ error: 'Ce compte n’existe pas.' });
+        if (!ctx.catalogueTitres().some(t => t.id === id)) return res.status(400).json({ error: 'Titre inconnu.' });
+        const manuels = { ...(mf.get(TITRES_MANUELS_KEY) || {}) };
+        const liste = new Set(manuels[pseudo] || []);
+        liste.add(id);
+        manuels[pseudo] = [...liste];
+        mf.set(TITRES_MANUELS_KEY, manuels);
+        ctx.titres(true);                                  // recalcule tout de suite
+        log(currentUser(req), 'titre attribué', pseudo, id);
+        res.json({ ok: true });
+    });
+
+    A('/titres/retirer', (req, res) => {
+        const pseudo = String(req.body.pseudo || '').trim();
+        const id = String(req.body.id || '').trim();
+        const manuels = { ...(mf.get(TITRES_MANUELS_KEY) || {}) };
+        const liste = (manuels[pseudo] || []).filter(x => x !== id);
+        if (liste.length) manuels[pseudo] = liste; else delete manuels[pseudo];
+        mf.set(TITRES_MANUELS_KEY, manuels);
+        ctx.titres(true);
+        log(currentUser(req), 'titre retiré', pseudo, id);
+        // Un titre calculé ne se retire pas à la main : il se reperd en jouant.
+        res.json({ ok: true, note: 'Seuls les titres posés à la main peuvent être retirés.' });
+    });
+
 };

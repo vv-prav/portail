@@ -185,7 +185,7 @@ body.is-hub   .hub   { display: block; }
 
 /* ===== Récupération de compte ===== */
 .link-btn { background:none; border:none; color:var(--muted); font-size:.82rem; font-family:inherit;
-            text-decoration:underline; cursor:pointer; margin-top:12px; padding:6px; }
+            cursor:pointer; margin-top:12px; padding:6px; }
 .link-btn:hover { color:var(--brass-soft); }
 .ov-emoji { font-size:2.6rem; }
 .ov-title { font-family:'Fraunces',Georgia,serif; font-weight:900; color:var(--brass-soft); margin:8px 0 10px; font-size:1.5rem; }

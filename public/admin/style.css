@@ -146,3 +146,6 @@ body {
 .ad-tile:active { transform: scale(.96); }
 #ask-input { text-align: center; font-weight: 700; letter-spacing: .5px; border-color: rgba(224,122,95,.5); }
 #ask-input[hidden] { display: none; }
+/* Formulaire d'attribution d'un titre. */
+.ti-form { display: flex; flex-direction: column; gap: 8px; }
+.ti-label { font-size: .72rem; color: var(--muted); }

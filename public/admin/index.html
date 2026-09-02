@@ -32,6 +32,7 @@
             <button class="ad-tile" data-tab="motus" type="button"><span class="ad-tile-emoji">🟨</span><span>Motus</span></button>
             <button class="ad-tile" data-tab="motjuste" type="button"><span class="ad-tile-emoji">🧊</span><span>Le Mot Juste</span></button>
             <button class="ad-tile" data-tab="dict" type="button"><span class="ad-tile-emoji">📖</span><span>Dictionnaire</span></button>
+            <button class="ad-tile" data-tab="titres" type="button"><span class="ad-tile-emoji">🏅</span><span>Titres</span></button>
             <button class="ad-tile" data-tab="sante" type="button"><span class="ad-tile-emoji">💓</span><span>Santé</span></button>
             <button class="ad-tile" data-tab="system" type="button"><span class="ad-tile-emoji">⚙️</span><span>Système</span></button>
         </nav>
@@ -246,6 +247,27 @@
             <div class="card">
                 <h2 class="card-title">Joueurs connectés</h2>
                 <div class="list" id="parties-online"></div>
+            </div>
+        </section>
+
+        <section class="pane" id="pane-titres" hidden>
+            <div class="card">
+                <h2 class="card-title">Attribuer un titre à la main</h2>
+                <p class="card-sub">La plupart des titres se gagnent en jouant et changent tout seuls. Celui-ci se pose quand un titre se mérite hors des chiffres.</p>
+                <div class="ti-form">
+                    <label class="ti-label" for="ti-pseudo">Joueur</label>
+                    <select id="ti-pseudo" class="ds-input"></select>
+                    <label class="ti-label" for="ti-titre">Titre</label>
+                    <select id="ti-titre" class="ds-input"></select>
+                    <button class="ds-btn" id="ti-donner" type="button">Attribuer</button>
+                </div>
+                <div class="list" id="ti-manuels" style="margin-top:12px"></div>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Le catalogue</h2>
+                <p class="card-sub">Qui porte quoi, en ce moment. Les titres uniques changent de mains dès que quelqu'un fait mieux.</p>
+                <button class="ds-btn ghost" id="ti-refresh" type="button">Actualiser</button>
+                <div class="list" id="ti-catalogue" style="margin-top:10px"></div>
             </div>
         </section>
 

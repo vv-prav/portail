@@ -90,7 +90,7 @@ body.is-boot .rc, body.is-boot .rc-fab { display:none; }
            color:var(--muted); font-size:.9rem; font-family:inherit; }
 .f-photo img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
 .f-photo-del { display:block; margin:8px auto 0; background:none; border:none; color:var(--danger);
-               font-size:.78rem; font-family:inherit; cursor:pointer; text-decoration:underline; }
+               font-size:.78rem; font-family:inherit; cursor:pointer; }
 .f-ing { display:grid; grid-template-columns:1fr 64px 92px 40px; gap:6px; margin-bottom:7px; align-items:center; }
 .f-ing .f-in { padding:11px 10px; }
 .f-step { display:flex; gap:6px; margin-bottom:7px; align-items:flex-start; }

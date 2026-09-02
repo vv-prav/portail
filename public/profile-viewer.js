@@ -63,6 +63,12 @@
 .pv-ligne { display:flex; justify-content:space-between; gap:10px; font-size:.78rem; color:#c9b99c; }
 .pv-ligne b { color:#ecca82; font-variant-numeric:tabular-nums; }
 .pv-note { margin:6px 0 0; font-size:.68rem; color:#8d8271; line-height:1.4; }
+.pv-titres { display:flex; flex-wrap:wrap; gap:5px; justify-content:center; margin:0 0 14px; }
+.pv-titre { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:999px;
+    font-size:.7rem; border:1px solid; }
+.pv-titre.unique { color:#ecca82; border-color:#d9a94e; background:rgba(217,169,78,.16); }
+.pv-titre.rare { color:#c9b99c; border-color:rgba(217,169,78,.35); background:rgba(217,169,78,.07); }
+.pv-titre.commun { color:#a08f74; border-color:rgba(217,169,78,.18); }
 @media (prefers-reduced-motion:reduce) { .pv-card, .pv-overlay { transition-duration:.001ms !important; } }
 `;
         document.head.appendChild(style);
@@ -80,6 +86,7 @@
                 <h2 class="pv-name" id="pv-name-el">—</h2>
                 <p class="pv-meta" id="pv-meta-el">—</p>
                 <p class="pv-rang" id="pv-rang-el" hidden></p>
+                <div class="pv-titres" id="pv-titres-el"></div>
                 <div class="pv-h2h" id="pv-h2h-el" hidden></div>
                 <div class="pv-stats" id="pv-stats-el"></div>
             </div>`;
@@ -135,6 +142,7 @@
         el.querySelector('#pv-name-el').textContent = pseudo;
         el.querySelector('#pv-meta-el').textContent = 'Chargement…';
         el.querySelector('#pv-rang-el').hidden = true;
+        el.querySelector('#pv-titres-el').innerHTML = '';
         el.querySelector('#pv-h2h-el').hidden = true;
         el.querySelector('#pv-stats-el').innerHTML = '';
         try {
@@ -156,6 +164,11 @@
                 rang.innerHTML = `🏅 <b>${data.rang.place}<sup>e</sup></b> du Salon sur ${data.rang.total} · ${data.rang.points} pts`;
                 rang.hidden = false;
             }
+
+            // Les titres, les plus rares d'abord : un titre unique se dispute,
+            // c'est la première chose qu'on veut voir sur un profil.
+            el.querySelector('#pv-titres-el').innerHTML = (data.titres || []).map(t =>
+                `<span class="pv-titre ${esc(t.rarete)}" title="${esc(t.desc)}">${esc(t.emoji)} ${esc(t.nom)}</span>`).join('');
 
             const h2h = el.querySelector('#pv-h2h-el');
             const texte = texteFaceAface(data.faceAface, data.pseudo);

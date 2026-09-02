@@ -335,6 +335,7 @@ app.get('/api/me', (req, res) => {
 const MF = require('./motsfleches/generator');
 const { planifierRenommage, appliquerPlan } = require('./comptes/renommage');
 const { calculerClassement, BAREME, bornesSaison } = require('./comptes/classement');
+const { TITRES, attribuerTitres } = require('./comptes/titres');
 const MF_LEVELS = ['moyen', 'difficile', 'expert'];
 const MF_MIN_TIME = { moyen: 25, difficile: 40, expert: 60 };   // seuils anti-triche (secondes)
 
@@ -1895,6 +1896,39 @@ app.get('/api/salon/resultats-du-jour', requireAuthApi, (req, res) => {
     res.json({ date, moi: user, jeux, tousFaits: jeux.every(j => j.joue) });
 });
 
+
+// ---------------------------------------------------------------------
+//  LES TITRES
+//  Recalculés à la demande comme le classement, avec un cache très court :
+//  attribuer les titres parcourt tout le cache une fois, ce qui est bon
+//  marché à 320 clés mais inutile à refaire à chaque ouverture de profil.
+//  Les titres uniques changent de mains en jouant — une minute de latence
+//  est sans conséquence.
+// ---------------------------------------------------------------------
+const TITRES_MANUELS_KEY = 'titres:manuels';
+let _titresCache = null, _titresAt = 0;
+
+function tousLesTitres(forcer) {
+    if (!forcer && _titresCache && Date.now() - _titresAt < 60000) return _titresCache;
+    const pseudos = Object.keys(registeredUsers);
+    const series = {};
+    for (const p of pseudos) {
+        series[p] = Math.max(
+            serieDepuisJours(mfGet(kMotusDays(p))),
+            serieDepuisJours(mfGet(`mf:days:${p}`)),
+            serieDepuisJours(mfGet(kMjDays(p))),
+        );
+    }
+    const points = {};
+    for (const l of calculerClassement(mfCache, pseudos, series)) points[l.pseudo] = l.points;
+    let perudo = {};
+    try { perudo = perudoApi.users() || {}; } catch (e) {}
+    _titresCache = attribuerTitres(mfCache, pseudos, series, points, perudo, mfGet(TITRES_MANUELS_KEY) || {});
+    _titresAt = Date.now();
+    return _titresCache;
+}
+const titresDe = (pseudo) => tousLesTitres().get(pseudo) || [];
+
 // Le classement du Salon : un score transversal, recalculé à la demande depuis
 // les clés déjà en base. Rien n'est stocké, donc rien à migrer si le barème change.
 app.get('/api/salon/classement', requireAuthApi, (req, res) => {
@@ -1996,6 +2030,7 @@ app.get('/api/salon/profile', requireAuthApi, (req, res) => {
         jeux: portrait.jeux,
         totalParties: portrait.total,
         rang: placeAuClassement(pseudo),
+        titres: titresDe(pseudo),
         calendrier: calendrierActivite(pseudo, 119),   // 17 semaines
     });
 });
@@ -2102,6 +2137,7 @@ app.get('/api/public-profile', requireAuthApi, (req, res) => {
         favori: portrait.favori,
         totalParties: portrait.total,
         rang: placeAuClassement(pseudo),
+        titres: titresDe(pseudo),
         jeux: portrait.jeux,
         faceAface,
     });
@@ -2168,6 +2204,9 @@ require('./admin/routes')(app, {
     mf: { get: mfGet, set: mfSet, del: mfDel, cache: () => mfCache, purge: mfPurge, levels: MF_LEVELS, today: mfTodayId, shift: mfShiftDay },
     redis: () => redis,
     perudo: () => perudoApi,
+    // Les titres : `titres(true)` force le recalcul après une attribution.
+    titres: (forcer) => tousLesTitres(forcer),
+    catalogueTitres: () => TITRES,
     motus: {
         word: motusWord, wordPreview: motusWordPreview, def: motusDefFor,
         lenForDate: motusLenForDate, lengths: MOTUS_LENGTHS, tries: MOTUS_TRIES,

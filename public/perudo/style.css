@@ -4241,7 +4241,7 @@ body.reduced-motion .reaction-float { animation-duration: 1.4s; }
 .oc-ava { flex: 0 0 auto; display: inline-flex; align-items: center; }
 
 
-.oc-name { font-weight: 800; font-size: 1.05rem; cursor: pointer; text-decoration: underline dotted rgba(255,255,255,0.25); text-underline-offset: 3px; }
+.oc-name { font-weight: 800; font-size: 1.05rem; cursor: pointer;  }
 
 
 .oc-name:active { filter: brightness(1.2); }

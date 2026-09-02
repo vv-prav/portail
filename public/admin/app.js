@@ -37,7 +37,7 @@ function fmtDur(sec) {
 
 // ---------- Onglets ----------
 function switchTab(tab) {
-    ['home', 'accounts', 'parties', 'perudo', 'grids', 'motus', 'motjuste', 'dict', 'sante', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== tab); });
+    ['home', 'accounts', 'parties', 'perudo', 'grids', 'motus', 'motjuste', 'dict', 'titres', 'sante', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== tab); });
     document.querySelectorAll('.ad-tile').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
     if (tab === 'home') loadOverview();
     if (tab === 'accounts') loadAccounts();
@@ -47,6 +47,7 @@ function switchTab(tab) {
     if (tab === 'motus') loadMotus();
     if (tab === 'motjuste') loadMotJuste();
     if (tab === 'dict') { loadDictStats(); loadDict(); }
+    if (tab === 'titres') loadTitres();
     if (tab === 'sante') loadSante();
     if (tab === 'system') { loadOverview(); loadAdmins(); }
     window.scrollTo(0, 0);
@@ -837,6 +838,59 @@ async function loadSante() {
             </span>
         </div>`).join('') || '<p class="empty">Aucune action récente.</p>';
 }
+
+
+// ---------- Titres ----------
+// La plupart se calculent tout seuls : cette vue sert à OBSERVER qui porte
+// quoi — et notamment qui détient les titres uniques, qui changent de mains
+// en jouant — puis à en poser un à la main quand il se mérite hors des chiffres.
+const RARETES = { unique: 'unique', rare: 'rare', commun: 'commun' };
+async function loadTitres() {
+    const { data } = await api('/api/admin/titres');
+    if (!data) { $('ti-catalogue').innerHTML = '<p class="empty">Indisponible.</p>'; return; }
+
+    $('ti-pseudo').innerHTML = data.comptes.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+    $('ti-titre').innerHTML = data.catalogue
+        .map(t => `<option value="${esc(t.id)}">${t.emoji} ${esc(t.nom)} — ${esc(t.rarete)}</option>`).join('');
+
+    $('ti-catalogue').innerHTML = data.catalogue.map(t => {
+        const porteurs = t.porteurs.length
+            ? t.porteurs.map(p => esc(p.pseudo) + (p.valeur !== null && p.valeur !== undefined ? ` (${esc(p.valeur)})` : '') + (p.manuel ? ' ✋' : '')).join(', ')
+            : 'personne pour l’instant';
+        return `<div class="ds-row static">
+            <span class="ds-row-main">
+                <span class="ds-row-name">${t.emoji} ${esc(t.nom)} <i class="badge adm">${esc(RARETES[t.rarete] || t.rarete)}</i></span>
+                <span class="ds-row-sub">${esc(t.desc)}</span>
+                <span class="ds-row-sub">${porteurs}</span>
+            </span>
+            <b>${t.porteurs.length}</b>
+        </div>`;
+    }).join('');
+
+    const manuels = Object.entries(data.manuels || {});
+    $('ti-manuels').innerHTML = manuels.length ? manuels.flatMap(([pseudo, ids]) =>
+        ids.map(id => {
+            const t = data.catalogue.find(x => x.id === id) || { emoji: '🏅', nom: id };
+            return `<div class="ds-row static">
+                <span class="ds-row-main">
+                    <span class="ds-row-name">${t.emoji} ${esc(t.nom)}</span>
+                    <span class="ds-row-sub">posé à la main sur ${esc(pseudo)}</span>
+                </span>
+                <button class="mini danger" data-p="${esc(pseudo)}" data-t="${esc(id)}" type="button">Retirer</button>
+            </div>`;
+        })).join('') : '<p class="empty">Aucun titre posé à la main.</p>';
+
+    $('ti-manuels').querySelectorAll('[data-t]').forEach(b => b.addEventListener('click', async () => {
+        await api('/api/admin/titres/retirer', { pseudo: b.dataset.p, id: b.dataset.t });
+        toast('Titre retiré.'); loadTitres();
+    }));
+}
+$('ti-refresh').addEventListener('click', loadTitres);
+$('ti-donner').addEventListener('click', async () => {
+    const { ok, data } = await api('/api/admin/titres/attribuer', { pseudo: $('ti-pseudo').value, id: $('ti-titre').value });
+    if (!ok) { toast((data && data.error) || 'Erreur.'); return; }
+    toast('Titre attribué.'); loadTitres();
+});
 
 // ---------- Système ----------
 $('sys-purge').addEventListener('click', () => ask('🧹', 'Lancer le ménage ?', 'Les données trop anciennes seront supprimées définitivement.', [

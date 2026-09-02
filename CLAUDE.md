@@ -71,6 +71,7 @@ portail/
 ├── scripts/verifie-demarrage.js ← garde-fou : `npm run verifie`
 ├── comptes/renommage.js       ← migration des données au changement de pseudo
 ├── comptes/classement.js      ← le classement transversal du Salon
+├── comptes/titres.js          ← les titres et badges des joueurs
 ├── admin/routes.js            ← toutes les routes /api/admin/*
 ├── motjuste/{engine,words}.js
 ├── motsfleches/{dict,generator,words,words-extra}.js
@@ -233,9 +234,24 @@ Depuis, trois regroupements de plus :
 
 Piège à connaître si tu ajoutes un jeu au calcul : Yams et Petit Bac indexent leurs stats par pseudo **normalisé** (`yams:stats:ALIX`), Motus Party par pseudo brut. Le module tient une table `norm(pseudo) → pseudo` pour ça.
 
+## Les titres
+
+`comptes/titres.js` attribue des titres aux joueurs, en trois raretés :
+
+- **commun** — une étape à la portée de tout le monde ;
+- **rare** — il faut le chercher ;
+- **unique** — **un seul détenteur à la fois** : le meilleur temps, la meilleure moyenne, le plus de victoires. Il change de mains dès que quelqu'un fait mieux, ce qui est tout l'intérêt.
+
+Comme le classement, **le module ne stocke rien** : tout est recalculé depuis les clés existantes, avec un cache d'une minute côté serveur (`tousLesTitres()`). Seules les attributions faites à la main depuis l'admin sont persistées, dans `titres:manuels`.
+
+⚠️ **Calibrer les seuils sur les données réelles, pas au jugé.** « Série de 7 jours » concernait 8 joueurs sur 32 — pas rare. « Motus trouvé en 2 essais » en concernait 12 : la première lettre étant offerte, l'exploit n'en est pas un. Les seuils actuels ont été mesurés sur l'export Redis ; à revérifier après toute vague de nouveaux joueurs.
+
+L'admin a un onglet **Titres** : le catalogue avec ses porteurs, et l'attribution à la main. Un titre calculé ne se retire pas — il se reperd en jouant.
+
 ## Conventions générales du projet
 
 - **Tout le code et tous les commentaires sont en français.**
+- **Aucun lien souligné** : la règle `a { text-decoration: none }` vit dans `design-system.css`, les apps n'ont plus à la recopier. Les `line-through` restent, eux : ils portent du sens (joueur éliminé, ingrédient coché, compte suspendu).
 - Chaque app garde son propre `style.css` pour ce qui lui est spécifique (grille de Motus, dés de Yams, dossiers Perudo/Voyages en entier) ; le design system ne couvre que ce qui doit se ressembler d'une app à l'autre.
 - Motif de salle d'attente identique dans tous les jeux migrés : liste de joueurs avec bulle d'avatar, indicateur hôte, estompage (`.off`) pour les déconnectés plutôt qu'un point de couleur séparé.
 - Motif de bulle de profil cliquable : quasiment partout où un pseudo est affiché dans un jeu, il est accompagné d'une bulle (`PortailProfile.bubbleHTML`) et cliquable (`PortailProfile.open`). Exception notable : **Perudo a son propre système**, plus riche (cosmétiques, bête noire), ne pas le dupliquer avec le système générique.

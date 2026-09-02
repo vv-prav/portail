@@ -135,6 +135,12 @@ async function loadProfile() {
     const created = profile.created ? new Date(profile.created).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
     const prev = profile.prevLogin ? new Date(profile.prevLogin).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : null;
     $('pr-meta').textContent = 'Membre depuis le ' + created + (prev ? ' · vu la dernière fois le ' + prev : '');
+    // Les titres, juste sous l'identité : c'est ce qu'on montre.
+    const titres = profile.titres || [];
+    $('pr-titres').innerHTML = titres.map(t =>
+        `<span class="pr-titre ${esc(t.rarete)}" title="${esc(t.desc)}">${esc(t.emoji)} ${esc(t.nom)}</span>`).join('');
+    $('pr-titres').hidden = !titres.length;
+
     const aRang = renderRang(profile);
     const aCal = renderCalendrier(profile.calendrier);
     $('pr-rank-section').hidden = !(aRang || aCal);
