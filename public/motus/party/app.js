@@ -47,7 +47,13 @@ function connect() {
 
 function showView(id) {
     ['v-lobby', 'v-waiting', 'v-race', 'v-round-end', 'v-ended'].forEach(v => { $(v).hidden = (v !== id); });
+    Vues.suivre(id);
 }
+
+// Le geste retour du téléphone remonte d'une vue au lieu de quitter le site.
+// Quitter une table est une action à part, qui passe par le bouton dédié.
+Vues.surRetour((precedente) => { if (precedente) showView(precedente); });
+
 
 // ---------- Lobby ----------
 document.querySelectorAll('#roundsPicker button').forEach(b => b.addEventListener('click', () => {

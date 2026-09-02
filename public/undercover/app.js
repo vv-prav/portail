@@ -25,7 +25,13 @@ const ALL_VIEWS = [
 ];
 function showView(id) {
     ALL_VIEWS.forEach(v => { $(v).hidden = (v !== id); });
+    Vues.suivre(id);
 }
+
+// Le geste retour du téléphone remonte d'une vue au lieu de quitter le site.
+// Quitter une table est une action à part, qui passe par le bouton dédié.
+Vues.surRetour((precedente) => { if (precedente) showView(precedente); });
+
 function suggestUcCount(n) {
     if (n >= 9) return 3;
     if (n >= 7) return 2;

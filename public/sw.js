@@ -1,8 +1,8 @@
 // Incrémente cette version à CHAQUE changement de fichier statique.
-const CACHE_VERSION = 'salon-v97';
+const CACHE_VERSION = 'salon-v98';
 const CORE = [
     '/', '/index.html', '/app.js', '/style.css', '/manifest.json',
-    '/design-system.css', '/design-system.js', '/profile-viewer.js', '/invitation.js', '/enchainement.js',
+    '/design-system.css', '/design-system.js', '/profile-viewer.js', '/invitation.js', '/enchainement.js', '/vues.js',
     '/icon-192.png', '/icon-512.png', '/logo-bretagne.svg',
     // Les apps aussi : le portail entier reste consultable hors-ligne
     '/perudo/', '/perudo/app.js', '/perudo/style.css', '/perudo/glyphs.js',

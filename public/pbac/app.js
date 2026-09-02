@@ -39,7 +39,13 @@ function showView(id) {
     ['v-lobby', 'v-join-pending', 'v-waiting', 'v-spectator', 'v-choose-letter', 'v-countdown', 'v-writing', 'v-voting', 'v-parallel', 'v-cat-summary', 'v-round-end', 'v-ended']
         .forEach(v => { $(v).hidden = (v !== id); });
     currentView = id;
+    Vues.suivre(id);
 }
+
+// Le geste retour du téléphone remonte d'une vue au lieu de quitter le site.
+// Quitter une table est une action à part, qui passe par le bouton dédié.
+Vues.surRetour((precedente) => { if (precedente) showView(precedente); });
+
 
 // ---------- Connexion ----------
 let lastGameId = localStorage.getItem('pbac_last_game') || null;

@@ -129,7 +129,10 @@ const GAME_APPS = [
 const OTHER_APPS = [
     { id: 'chance',   name: 'Chance',       dKey: 'app_ch_d',       emoji: '🎲', href: '/chance',      accent: '#c9a24a', status: 'open' },
     { id: 'recettes', name: 'Recettes',     dKey: 'app_recettes_d', emoji: '🍽️', href: '/recettes',    accent: '#e07a4e', status: 'open' },
-    { id: 'voyages',  name: 'Voyages',      dKey: 'app_voyages_d',  emoji: '🥾', href: '/voyages',     accent: '#8b6ba8', status: 'open' },
+    // Le hub Voyages ne liste qu'un seul voyage : une page d'accueil pour un
+    // unique élément est une page de trop. La tuile mène directement aux Monts
+    // d'Arrée. Le hub reste en place, il redeviendra utile au deuxième voyage.
+    { id: 'voyages',  name: 'Voyages',      dKey: 'app_voyages_d',  emoji: '🥾', href: '/voyages/monts-arree/', accent: '#8b6ba8', status: 'open' },
 ];
 const ADMIN_APP = { id: 'admin', name: 'Administration', dKey: 'app_admin_d', emoji: '🛡️', href: '/admin', accent: '#c96f6f', status: 'open' };
 let isAdminUser = false;
