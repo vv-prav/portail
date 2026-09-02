@@ -1177,6 +1177,8 @@ app.use('/perudo', requireAuth, express.static(__dirname + '/public/perudo'));
 //  PETIT BAC — jeu temps réel multijoueur, intégré sous /pbac.
 // ---------------------------------------------------------------------
 const pbacApi = require('./pbac/game')(app, io, { get: mfGet, set: mfSet });
+// L'espace multijoueurs commun : le seul point d'entrée vers les tables.
+app.use('/jouer', requireAuth, express.static(__dirname + '/public/jouer'));
 app.use('/pbac', requireAuth, express.static(__dirname + '/public/pbac'));
 const yamsApi = require('./yams/game')(app, io, { get: mfGet, set: mfSet });
 app.use('/yams', requireAuth, express.static(__dirname + '/public/yams'));
@@ -1779,6 +1781,56 @@ function serieDepuisJours(jours) {
     while (set.has(d)) { n++; d = mfShiftDay(d, -1); }
     return n;
 }
+
+// ---------------------------------------------------------------------
+//  LES TABLES OUVERTES, TOUS JEUX CONFONDUS
+//  Il fallait jusqu'ici ouvrir les quatre jeux l'un après l'autre pour savoir
+//  si quelqu'un attendait quelque part. Personne ne le faisait — c'est
+//  probablement ce qui a maintenu Yams à 4 joueurs et Motus Party à 2, bien
+//  plus que les pannes qu'on a corrigées.
+// ---------------------------------------------------------------------
+// Quatre modules partagent exactement la même forme ({id, host, status,
+// players}) ; Perudo a la sienne, plus riche, et reste traité à part.
+const JEUX_MULTI = [
+    { id: 'pbac', nom: 'Petit Bac', emoji: '✏️', accent: '#c2513a', href: '/pbac', api: () => pbacApi },
+    { id: 'undercover', nom: 'Infiltré', emoji: '🕵️', accent: '#6f7bb0', href: '/undercover', api: () => undercoverApi },
+    { id: 'yams', nom: 'Yams', emoji: '🎯', accent: '#ecca82', href: '/yams', api: () => yamsApi },
+    { id: 'motusparty', nom: 'Motus Party', emoji: '🏁', accent: '#d9a94e', href: '/motus/party', api: () => motusPartyApi },
+];
+
+app.get('/api/salon/tables', requireAuthApi, (req, res) => {
+    const tables = [];
+    for (const j of JEUX_MULTI) {
+        let liste = [];
+        try { liste = j.api().games() || []; } catch (e) { continue; }
+        for (const g of liste) {
+            if (g.status === 'ended') continue;
+            tables.push({
+                jeu: j.id, nom: j.nom, emoji: j.emoji, accent: j.accent,
+                id: g.id, hote: g.host, joueurs: g.players || [],
+                statut: g.status === 'lobby' ? 'attente' : 'encours',
+                href: `${j.href}/?table=${encodeURIComponent(g.id)}`,
+            });
+        }
+    }
+    // Perudo : on ignore les parties contre l'ordinateur, qui ne se rejoignent pas.
+    try {
+        for (const g of (perudoApi.games() || [])) {
+            if (g.vsBot) continue;
+            tables.push({
+                jeu: 'perudo', nom: 'Perudo', emoji: '🎲', accent: '#d9a94e',
+                id: g.id, hote: (g.players[0] || {}).pseudo || '—',
+                joueurs: g.players.filter(p => !p.isBot).map(p => p.pseudo),
+                statut: g.started ? 'encours' : 'attente',
+                href: '/perudo',           // Perudo garde son propre hall et son identité
+            });
+        }
+    } catch (e) {}
+
+    // Les tables en attente d'abord : ce sont les seules qu'on peut rejoindre.
+    tables.sort((a, b) => (a.statut === b.statut ? 0 : a.statut === 'attente' ? -1 : 1));
+    res.json({ tables, moi: currentUser(req) });
+});
 
 // Le classement du Salon : un score transversal, recalculé à la demande depuis
 // les clés déjà en base. Rien n'est stocké, donc rien à migrer si le barème change.

@@ -1,6 +1,19 @@
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// Arrivée depuis le catalogue de /jouer/ : on ouvre directement l'écran de
+// création du jeu, sans réimplémenter ses réglages ailleurs. Le paramètre est
+// retiré de l'URL pour qu'un rechargement ne recrée pas une table.
+function creationDemandee() {
+    try { return new URLSearchParams(location.search).get('creer') === '1'; } catch (e) { return false; }
+}
+function ouvrirCreationSiDemandee() {
+    if (!creationDemandee()) return;
+    try { history.replaceState(null, '', location.pathname); } catch (e) {}
+    const b = document.getElementById('btn-create');
+    if (b) b.click();
+}
+
 function toast(msg) { DS.toast(msg); }
 const RANK_EMOJI = ['🥇', '🥈', '🥉'];
 function rankLabel(rank) { return RANK_EMOJI[rank - 1] || `${rank}e`; }
@@ -17,7 +30,7 @@ function connect() {
             // Un lien d'invitation prime sur la dernière course mémorisée.
             const saved = Invitation.tableDuLien() || localStorage.getItem(LS_KEY);
             if (saved) socket.emit('motusparty_join', { id: saved });
-            else socket.emit('motusparty_list');
+            else { socket.emit('motusparty_list'); ouvrirCreationSiDemandee(); }
         });
     });
     socket.on('motusparty_games', renderLobby);

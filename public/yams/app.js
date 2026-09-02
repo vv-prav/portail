@@ -1,6 +1,19 @@
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// Arrivée depuis le catalogue de /jouer/ : on ouvre directement l'écran de
+// création du jeu, sans réimplémenter ses réglages ailleurs. Le paramètre est
+// retiré de l'URL pour qu'un rechargement ne recrée pas une table.
+function creationDemandee() {
+    try { return new URLSearchParams(location.search).get('creer') === '1'; } catch (e) { return false; }
+}
+function ouvrirCreationSiDemandee() {
+    if (!creationDemandee()) return;
+    try { history.replaceState(null, '', location.pathname); } catch (e) {}
+    const b = document.getElementById('btn-create');
+    if (b) b.click();
+}
+
 function toast(msg) { DS.toast(msg); }
 
 // Une couleur par joueur, pour se repérer d'un coup d'œil entre le score en
@@ -195,7 +208,7 @@ function connect() {
             const invite = Invitation.tableDuLien();
             const saved = invite || localStorage.getItem(LS_KEY);
             if (saved) { lastGameId = saved; socket.emit('yams_join', { id: saved }); }
-            else socket.emit('yams_list');
+            else { socket.emit('yams_list'); ouvrirCreationSiDemandee(); }
         });
     });
     socket.on('yams_games', renderLobby);

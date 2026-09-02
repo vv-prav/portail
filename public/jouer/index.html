@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, interactive-widget=resizes-content">
+    <meta name="theme-color" content="#14100b">
+    <title>Jouer ensemble</title>
+    <link rel="icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="stylesheet" href="/design-system.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <a class="ds-back" href="/" aria-label="Retour au salon">←</a>
+
+    <div class="jo-wrap">
+        <header class="jo-head">
+            <h1 class="jo-title">Jouer ensemble</h1>
+            <p class="jo-sub" id="jo-sub">Un instant…</p>
+        </header>
+
+        <button type="button" class="ds-btn jo-creer" id="jo-creer">＋ Créer une partie</button>
+
+        <!-- TABLES OUVERTES -->
+        <section class="jo-section">
+            <h2 class="jo-section-title" id="jo-tables-titre">Tables ouvertes</h2>
+            <div class="jo-tables" id="jo-tables"></div>
+        </section>
+
+        <!-- QUI EST LÀ -->
+        <section class="jo-section" id="jo-online-section" hidden>
+            <h2 class="jo-section-title">En ce moment dans le salon</h2>
+            <div class="jo-online" id="jo-online"></div>
+        </section>
+    </div>
+
+    <!-- CATALOGUE -->
+    <div class="ds-overlay" id="jo-catalogue" hidden>
+        <div class="ds-card jo-card">
+            <button type="button" class="ds-card-close" id="jo-cat-close" aria-label="Fermer">✕</button>
+            <h2 class="ds-card-title">Quel jeu ?</h2>
+            <p class="ds-card-text">Choisis un jeu, tu régleras la partie juste après.</p>
+            <div class="jo-cat-liste" id="jo-cat-liste"></div>
+        </div>
+    </div>
+
+    <script src="/design-system.js"></script>
+    <script src="/profile-viewer.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

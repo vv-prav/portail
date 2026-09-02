@@ -1,0 +1,78 @@
+/* =====================================================================
+   JOUER ENSEMBLE — l'espace multijoueurs commun.
+   Volontairement sobre : la page n'a rien à raconter d'elle-même, elle
+   sert à repérer une table en un coup d'œil et à en lancer une.
+   ===================================================================== */
+
+/* Le design system fournit les variables et les composants, pas le fond de
+   page : chaque app pose le sien, comme Yams ou Petit Bac. */
+body {
+    min-height: 100dvh; overflow-x: hidden;
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color: var(--parchment);
+    background: radial-gradient(130% 70% at 50% -8%, #2a2113 0%, transparent 55%), var(--ink);
+    background-attachment: fixed; -webkit-font-smoothing: antialiased;
+}
+
+.jo-wrap { max-width: 640px; margin: 0 auto;
+    padding: max(18px, env(safe-area-inset-top)) 18px calc(28px + env(safe-area-inset-bottom)); }
+
+.jo-head { padding-top: 6px; margin-bottom: 18px; text-align: center; }
+.jo-title { font-size: 1.6rem; margin: 0 0 4px; color: var(--brass-soft); }
+.jo-sub { margin: 0; font-size: .8rem; color: var(--muted); }
+
+.jo-creer { width: 100%; margin-bottom: 22px; }
+
+.jo-section { margin-bottom: 24px; }
+.jo-section-title { font-size: .72rem; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--muted); font-weight: 700; margin: 0 0 10px; }
+
+/* ---------- Tables ---------- */
+.jo-tables { display: flex; flex-direction: column; gap: 7px; }
+.jo-table { display: flex; align-items: center; gap: 10px; padding: 12px 13px; border-radius: 12px;
+    text-decoration: none; color: inherit;
+    background: linear-gradient(165deg, rgba(255,255,255,.04), rgba(0,0,0,.18));
+    border: 1px solid var(--line); border-left: 3px solid var(--acc, var(--brass)); }
+.jo-table:active { transform: scale(.995); }
+.jo-table:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+/* Une partie déjà lancée ne se rejoint pas : elle s'efface pour laisser
+   les tables en attente au premier plan. */
+.jo-table.encours { opacity: .55; }
+.jo-table-emoji { font-size: 1.15rem; flex: 0 0 auto; }
+.jo-table-corps { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.jo-table-corps b { font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jo-table-corps em { font-style: normal; font-size: .72rem; color: var(--muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jo-table-bulles { display: flex; flex: 0 0 auto; }
+.jo-table-bulles .ds-avatar { margin-left: -6px; border: 1px solid var(--ink); }
+.jo-table-bulles .ds-avatar:first-child { margin-left: 0; }
+.jo-table-etat { flex: 0 0 auto; font-size: .72rem; font-weight: 700; color: var(--brass-soft); white-space: nowrap; }
+.jo-table.encours .jo-table-etat { color: var(--muted); font-weight: 400; }
+
+.jo-vide { font-size: .8rem; color: var(--muted); line-height: 1.5; text-align: center;
+    margin: 0; padding: 18px 14px; border-radius: 12px;
+    background: rgba(255,255,255,.02); border: 1px dashed var(--line); }
+
+/* ---------- Qui est là ---------- */
+.jo-online { display: flex; flex-wrap: wrap; gap: 6px; }
+.jo-qui { display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px 5px 6px;
+    border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,.03);
+    color: inherit; font-family: inherit; font-size: .76rem; cursor: pointer; }
+.jo-qui:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+
+/* ---------- Catalogue ---------- */
+.jo-card { max-width: 460px; }
+.jo-cat-liste { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.jo-cat { display: flex; align-items: flex-start; gap: 11px; padding: 13px; border-radius: 12px;
+    text-decoration: none; color: inherit; text-align: left;
+    background: rgba(255,255,255,.03); border: 1px solid var(--line);
+    border-left: 3px solid var(--acc, var(--brass)); }
+.jo-cat:active { transform: scale(.995); }
+.jo-cat:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+.jo-cat-emoji { font-size: 1.3rem; flex: 0 0 auto; line-height: 1.2; }
+.jo-cat-corps { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.jo-cat-corps b { font-size: .88rem; }
+.jo-cat-corps em { font-style: normal; font-size: .75rem; color: var(--muted); line-height: 1.45; }
+.jo-cat-meta { font-size: .68rem; color: var(--brass-soft); letter-spacing: .3px; }
+.jo-cat-note { font-size: .68rem; color: var(--muted); font-style: italic; }
+.jo-cat-go { flex: 0 0 auto; color: var(--muted); align-self: center; }

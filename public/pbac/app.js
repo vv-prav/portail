@@ -4,6 +4,19 @@
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// Arrivée depuis le catalogue de /jouer/ : on ouvre directement l'écran de
+// création du jeu, sans réimplémenter ses réglages ailleurs. Le paramètre est
+// retiré de l'URL pour qu'un rechargement ne recrée pas une table.
+function creationDemandee() {
+    try { return new URLSearchParams(location.search).get('creer') === '1'; } catch (e) { return false; }
+}
+function ouvrirCreationSiDemandee() {
+    if (!creationDemandee()) return;
+    try { history.replaceState(null, '', location.pathname); } catch (e) {}
+    const b = document.getElementById('btn-create');
+    if (b) b.click();
+}
+
 const RING_C = 175.9;
 const CATEGORY_PRESETS = [
     'Prénom', 'Animal', 'Pays ou ville', 'Fruit ou légume', 'Métier', 'Objet', 'Couleur', 'Sport',
@@ -51,6 +64,7 @@ function connect() {
             } else {
                 socket.emit('pbac_list');
                 socket.emit('pbac_packs_list');
+                ouvrirCreationSiDemandee();
             }
         });
     });
