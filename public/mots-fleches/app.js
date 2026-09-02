@@ -665,7 +665,15 @@ async function load() {
     solved = false; gaveUp = false; started = false;
     startedAt = null; penalty = 0; seconds = 0;
     $('mf-timer').textContent = '0:00';
-    ['mf-end', 'mf-ask', 'mf-comments', 'mf-archive', 'mf-defzoom'].forEach(id => { $(id).hidden = true; });
+    // #mf-ask a disparu du HTML lors de la migration vers le design system : il
+    // traînait encore ici, et $(id).hidden sur un élément absent levait une
+    // TypeError au tout début de load() — la grille n'était donc jamais chargée.
+    // C'est la deuxième fois que cet overlay casse l'app ; on ferme désormais ce
+    // qui existe, sans supposer que tout est là.
+    ['mf-end', 'mf-comments', 'mf-archive', 'mf-defzoom'].forEach(id => {
+        const el = $(id);
+        if (el) el.hidden = true;
+    });
     $('mf-inline-board').hidden = true;
 
     const today = await api('/api/mf/today?level=' + level + dq());
