@@ -409,6 +409,10 @@ async function finish() {
     renderBoard((data && data.board) || [], $('mf-board'));
     showInlineBoard((data && data.board) || []);
     $('mf-end').hidden = false;
+    // Les trois jeux du jour forment une séquence : on propose le suivant
+    // plutôt que de s'arrêter à « Retour au salon ».
+    if (!isArchive) Enchainement.proposer('mf', $('mf-end').querySelector('.ds-card'));
+
     refreshStates();
 }
 function renderBoard(board, box) {
@@ -526,6 +530,10 @@ async function doGiveUp() {
     renderBoard((b.data && b.data.board) || [], $('mf-board'));
     showInlineBoard((b.data && b.data.board) || []);
     $('mf-end').hidden = false;
+    // Les trois jeux du jour forment une séquence : on propose le suivant
+    // plutôt que de s'arrêter à « Retour au salon ».
+    if (!isArchive) Enchainement.proposer('mf', $('mf-end').querySelector('.ds-card'));
+
     refreshStates();
 }
 $('mf-end-close').addEventListener('click', () => { $('mf-end').hidden = true; });

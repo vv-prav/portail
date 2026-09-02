@@ -368,6 +368,10 @@ async function showEnd(kind, data) {
     renderBoard((b.data && b.data.board) || []);
     showInlineBoard((b.data && b.data.board) || []);
     $('mt-end').hidden = false;
+    // Les trois jeux du jour forment une séquence : on propose le suivant
+    // plutôt que de s'arrêter à « Retour au salon ».
+    if (!isArchive) Enchainement.proposer('motus', $('mt-end').querySelector('.ds-card'));
+
     refreshLiveChip();
 }
 $('mt-end-close').addEventListener('click', () => { $('mt-end').hidden = true; });

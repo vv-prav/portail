@@ -303,6 +303,10 @@ async function showEnd(kind, data) {
     renderBoard(board);
     showInlineBoard(board);
     $('mj-end').hidden = false;
+    // Les trois jeux du jour forment une séquence : on propose le suivant
+    // plutôt que de s'arrêter à « Retour au salon ».
+    if (!isArchive) Enchainement.proposer('motjuste', $('mj-end').querySelector('.ds-card'));
+
     refreshLive();
 }
 $('mj-end-close').addEventListener('click', () => { $('mj-end').hidden = true; });
