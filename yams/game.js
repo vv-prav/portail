@@ -39,6 +39,14 @@ function salonPseudoFromCookie(cookieHeader) {
 // =====================================================================
 const CATEGORIES = ['uns', 'deux', 'trois', 'quatre', 'cinq', 'six', 'brelan', 'carre', 'full', 'petiteSuite', 'grandeSuite', 'yams', 'chance'];
 const UPPER_CATEGORIES = ['uns', 'deux', 'trois', 'quatre', 'cinq', 'six'];
+// Un tour a une durée maximale. Sans elle, un joueur qui pose son téléphone
+// fige une table de cinq personnes pour de bon : au tour par tour, l'attente
+// n'a aucune limite naturelle. Passé le délai, le tour saute ; au deuxième
+// saut d'affilée, le joueur est considéré comme parti et cesse de bloquer la
+// fin de partie (sa feuille est conservée telle quelle, il peut revenir).
+const TOUR_MAX_MS = 90000;
+const SAUTS_AVANT_ABANDON = 2;
+
 const BONUS_THRESHOLD = 63;
 const BONUS_POINTS = 35;
 
@@ -192,6 +200,7 @@ function broadcastLobby() { io.emit('yams_games', publicGames()); }
 function playerView(g) {
     return g.players.map(p => ({
         pseudo: p.pseudo, connected: p.connected, scores: p.scores, yamsBonus: p.yamsBonus || 0, total: grandTotal(p),
+        parti: !!p.parti,
     }));
 }
 function stateForClient(g) {
@@ -201,6 +210,11 @@ function stateForClient(g) {
         players: playerView(g),
         spectators: (g.spectators || []).map(x => x.pseudo),
         turnIndex: g.turnIndex, turnPseudo: current ? current.pseudo : null,
+        tour: numeroDeTour(g), toursTotal: CATEGORIES.length,
+        tourFinAt: g.status === 'playing' ? (g.tourFinAt || null) : null,
+        // Les derniers coups joués : quand ce n'est pas son tour, on n'avait
+        // rien à regarder pendant que les autres jouaient.
+        journal: (g.journal || []).slice(-4),
         dice: g.dice, held: g.held, rollsLeft: g.rollsLeft, hasRolled: g.hasRolled,
         possible: g.hasRolled ? Object.fromEntries(CATEGORIES.map(c => [c, computePossibleScore(c, g.dice)])) : null,
         winner: g.status === 'ended' ? winnerOf(g) : null,
@@ -221,26 +235,59 @@ function startTurn(g) {
     g.held = [false, false, false, false, false];
     g.rollsLeft = MAX_ROLLS;
     g.hasRolled = false;
+    armerMinuteur(g);
+}
+function armerMinuteur(g) {
+    if (g.timer) clearTimeout(g.timer);
+    g.tourFinAt = Date.now() + TOUR_MAX_MS;
+    g.timer = setTimeout(() => tourExpire(g), TOUR_MAX_MS);
+}
+function desarmerMinuteur(g) {
+    if (g.timer) { clearTimeout(g.timer); g.timer = null; }
+    g.tourFinAt = null;
+}
+function tourExpire(g) {
+    if (!g || g.status !== 'playing') return;
+    const p = g.players[g.turnIndex];
+    if (!p) return;
+    p.sauts = (p.sauts || 0) + 1;
+    if (p.sauts >= SAUTS_AVANT_ABANDON) p.parti = true;
+    io.to(roomOf(g)).emit('yams_tour_saute', { pseudo: p.pseudo, parti: !!p.parti });
+    advanceTurn(g);
+}
+
+// Un joueur ne compte dans le déroulement que s'il est là. Déconnecté ou parti,
+// sa feuille est gardée intacte, mais il ne fait plus attendre les autres.
+function joueurPresent(p) { return p.connected && !p.parti; }
+function numeroDeTour(g) {
+    const p = g.players[g.turnIndex];
+    if (!p) return 1;
+    return Math.min(CATEGORIES.length, CATEGORIES.filter(c => p.scores[c] !== null).length + 1);
 }
 
 function allCategoriesFilled(p) {
     return CATEGORIES.every(c => p.scores[c] !== null);
 }
+function terminerPartie(g) {
+    desarmerMinuteur(g);
+    g.status = 'ended';
+    const nemesisDefeats = finalizeYamsStats(g);
+    nemesisDefeats.forEach(d => io.to(roomOf(g)).emit('yams_nemesis_defeated', d));
+    broadcastState(g);
+    broadcastLobby();
+}
 function advanceTurn(g) {
-    // Le tour passe au joueur suivant qui n'a pas encore toutes ses cases remplies.
-    // Si tout le monde a fini, la partie se termine.
-    if (g.players.every(allCategoriesFilled)) {
-        g.status = 'ended';
-        const nemesisDefeats = finalizeYamsStats(g);
-        nemesisDefeats.forEach(d => io.to(roomOf(g)).emit('yams_nemesis_defeated', d));
-        broadcastState(g);
-        broadcastLobby();
-        return;
-    }
+    // Le tour passe au joueur présent suivant qui n'a pas encore toutes ses
+    // cases remplies. La partie s'arrête quand plus personne n'est présent, ou
+    // quand tous les présents ont rempli leur feuille — un joueur déconnecté
+    // ne fige plus la table indéfiniment, ce qui était le cas avant.
+    const presents = g.players.filter(joueurPresent);
+    if (!presents.length || presents.every(allCategoriesFilled)) { terminerPartie(g); return; }
     let next = g.turnIndex;
     for (let i = 0; i < g.players.length; i++) {
         next = (next + 1) % g.players.length;
-        if (!allCategoriesFilled(g.players[next])) { g.turnIndex = next; break; }
+        const p = g.players[next];
+        if (joueurPresent(p) && !allCategoriesFilled(p)) { g.turnIndex = next; break; }
     }
     startTurn(g);
     broadcastState(g);
@@ -254,10 +301,17 @@ function leaveCurrent(socket) {
     if (!g) return;
     const p = g.players.find(x => x.sid === socket.id);
     if (p) p.connected = false;
+    if (p) p.parti = true;
     if (g.spectators) g.spectators = g.spectators.filter(x => x.sid !== socket.id);
+    if (g.status === 'playing' && g.players[g.turnIndex] === p) {
+        socket.leave(roomOf(g));
+        advanceTurn(g);
+        broadcastLobby();
+        return;
+    }
     if (g.status === 'lobby') {
         g.players = g.players.filter(x => x.sid !== socket.id);
-        if (!g.players.length) { delete games[gid]; broadcastLobby(); return; }
+        if (!g.players.length) { desarmerMinuteur(g); delete games[gid]; broadcastLobby(); return; }
         if (g.host === (p && p.pseudo)) g.host = g.players[0].pseudo;
     }
     socket.leave(roomOf(g));
@@ -299,7 +353,7 @@ io.on('connection', (socket) => {
         if (!pseudo) return socket.emit('yams_error', 'Session expir\u00e9e, reviens au salon.');
         if (!g) return socket.emit('yams_error', 'Cette partie n\u2019existe plus.');
         let p = g.players.find(x => x.pseudo === pseudo);
-        if (p) { p.sid = socket.id; p.connected = true; }
+        if (p) { p.sid = socket.id; p.connected = true; p.parti = false; p.sauts = 0; }
         else if (g.status !== 'lobby') {
             // La partie est d\u00e9j\u00e0 lanc\u00e9e : on rejoint en simple spectateur plut\u00f4t que de refuser.
             g.spectators = (g.spectators || []).filter(x => x.pseudo !== pseudo);
@@ -332,6 +386,8 @@ io.on('connection', (socket) => {
         const current = g.players[g.turnIndex];
         if (!current || current.pseudo !== pseudo) return;
         if (g.rollsLeft <= 0) return;
+        current.sauts = 0;
+        armerMinuteur(g);            // le joueur est bien là : son tour repart pour un délai plein
         g.dice = g.dice.map((v, i) => g.held[i] ? v : (1 + Math.floor(Math.random() * 6)));
         g.rollsLeft--;
         g.hasRolled = true;
@@ -368,6 +424,8 @@ io.on('connection', (socket) => {
         if (extraYamsBonus) current.yamsBonus = (current.yamsBonus || 0) + 50;
 
         current.scores[category] = computePossibleScore(category, g.dice);
+        current.sauts = 0;
+        g.journal = (g.journal || []).concat([{ pseudo, category, points: current.scores[category] }]).slice(-8);
 
         if (isYamsRoll) {
             current.yamsThisGame = (current.yamsThisGame || 0) + 1;
@@ -432,7 +490,8 @@ io.on('connection', (socket) => {
         const g = games[socketGame[socket.id]];
         if (!g || g.host !== socket.data.yamsPseudo || g.status !== 'ended') return;
         g.status = 'lobby';
-        g.players.forEach(p => { p.scores = freshScores(); p.yamsBonus = 0; });
+        g.players.forEach(p => { p.scores = freshScores(); p.yamsBonus = 0; p.parti = false; p.sauts = 0; p.yamsThisGame = 0; });
+        g.journal = [];
         g.turnIndex = 0;
         broadcastState(g);
         broadcastLobby();
@@ -446,6 +505,9 @@ io.on('connection', (socket) => {
         const p = g.players.find(x => x.sid === socket.id);
         if (p) p.connected = false;
         if (g.spectators) g.spectators = g.spectators.filter(x => x.sid !== socket.id);
+        // Si le partant avait la main, la table repart tout de suite au lieu
+        // d'attendre les 90 secondes du minuteur pour rien.
+        if (p && g.status === 'playing' && g.players[g.turnIndex] === p) { advanceTurn(g); return; }
         broadcastState(g);
         broadcastLobby();
     });
@@ -466,6 +528,7 @@ return {
     endGame: (id) => {
         const g = games[id];
         if (!g) return false;
+        desarmerMinuteur(g);
         try { io.to(roomOf(g)).emit('yams_closed'); } catch (e) {}
         delete games[id];
         broadcastLobby();

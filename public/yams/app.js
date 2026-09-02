@@ -219,6 +219,10 @@ function connect() {
     socket.on('yams_h2h_result', renderH2h);
     socket.on('yams_celebration', ({ pseudo, bonus }) => playCelebration(pseudo, bonus));
     socket.on('yams_nemesis_defeated', ({ winner, nemesis }) => playNemesisDefeated(winner, nemesis));
+    socket.on('yams_tour_saute', ({ pseudo, parti }) => {
+        if (pseudo === myPseudo) toast(parti ? 'Tu as été mis de côté, reviens quand tu veux.' : 'Tour passé, tu as mis trop de temps.');
+        else toast(parti ? `${pseudo} ne bloque plus la partie.` : `Tour de ${pseudo} passé.`);
+    });
     socket.on('yams_error', (msg) => {
         toast(msg || 'Erreur.');
         if (/existe plus|déjà commencé/i.test(msg || '')) {
@@ -405,7 +409,7 @@ function renderScoresStrip(s) {
     $('scoresStrip').innerHTML = s.players.map((p, i) => `
         <div class="ym-score-band${p.pseudo === s.turnPseudo ? ' current' : ''}${i === focusedPlayerIndex ? ' focused' : ''}" data-i="${i}" style="--pcolor:${playerColor(i)}">
             <button type="button" class="ds-avatar sm ym-score-band-bubble" data-view="${esc(p.pseudo)}">${PortailProfile.bubbleHTML(scoreAvatars[p.pseudo])}</button>
-            <span class="ym-score-band-name">${p.connected ? '' : '⚪ '}${esc(p.pseudo)}</span>
+            <span class="ym-score-band-name">${p.parti ? '🚪 ' : (p.connected ? '' : '⚪ ')}${esc(p.pseudo)}</span>
             <b class="ym-score-band-total">${p.total}</b>
         </div>
     `).join('');
@@ -503,6 +507,9 @@ function renderDice(s) {
         });
     }
     $('turnLabel').textContent = isMyTurn ? 'À toi de jouer' : `Au tour de ${s.turnPseudo}`;
+    const tag = $('ym-turn-tag');
+    tag.hidden = false;
+    tag.textContent = `Tour ${s.tour} / ${s.toursTotal}`;
     $('btn-roll').disabled = !isMyTurn || s.rollsLeft <= 0;
     $('btn-roll').textContent = s.rollsLeft === 3 ? 'Lancer les dés' : 'Relancer';
     $('rollsLeft').textContent = s.hasRolled ? `${s.rollsLeft} lancer${s.rollsLeft > 1 ? 's' : ''} restant${s.rollsLeft > 1 ? 's' : ''}` : '3 lancers disponibles';
@@ -586,7 +593,7 @@ function renderSheet(s) {
     $('bonusRow').innerHTML = `
         <div class="ym-sheet-row bonus">
             <span class="ym-sheet-row-label text">Bonus <em>(63 pts et +)</em></span>
-            <span class="ym-sheet-row-cells">${upperSums.map(u => `<span class="ym-score-cell ${u >= 63 ? 'filled bonus-on' : 'empty'}">${u >= 63 ? '+35' : '—'}</span>`).join('')}</span>
+            <span class="ym-sheet-row-cells">${upperSums.map(u => `<span class="ym-score-cell ${u >= 63 ? 'filled bonus-on' : 'empty'}">${u >= 63 ? '+35' : '\u2212' + (63 - u)}</span>`).join('')}</span>
         </div>
         <div class="ym-sheet-row subtotal">
             <span class="ym-sheet-row-label text">Sous-total</span>
@@ -606,6 +613,47 @@ function renderSheet(s) {
     if (pendingCategory && pendingDiceKey !== s.dice.join(',')) clearPending();
 }
 $('btn-roll').addEventListener('click', () => { clearPending(); socket.emit('yams_roll'); });
+
+// ---------- Le chronomètre du tour ----------
+// Un tour a 90 secondes. On ne montre le décompte que dans les 30 dernières :
+// avant, une horloge qui tourne ne fait que mettre la pression pour rien.
+let chronoTimer = null;
+function majChrono() {
+    const el = $('ymChrono');
+    if (!state || state.status !== 'playing' || !state.tourFinAt) { el.hidden = true; return; }
+    const reste = Math.max(0, Math.round((state.tourFinAt - Date.now()) / 1000));
+    if (reste > 30) { el.hidden = true; return; }
+    el.hidden = false;
+    el.classList.toggle('urgent', reste <= 10);
+    el.textContent = state.turnPseudo === myPseudo
+        ? `${reste} s pour jouer`
+        : `${reste} s — ${state.turnPseudo} va être passé${reste === 0 ? '' : ''}`;
+}
+function lancerChrono() {
+    if (chronoTimer) clearInterval(chronoTimer);
+    chronoTimer = setInterval(majChrono, 500);
+    majChrono();
+}
+
+// ---------- Le journal des derniers coups ----------
+const NOMS_CAT = { uns:'les 1', deux:'les 2', trois:'les 3', quatre:'les 4', cinq:'les 5', six:'les 6',
+    brelan:'Brelan', carre:'Carré', full:'Full', petiteSuite:'Petite suite', grandeSuite:'Grande suite',
+    yams:'Yams', chance:'Chance' };
+function renderJournal(s) {
+    const j = s.journal || [];
+    const el = $('ymJournal');
+    el.hidden = !j.length;
+    el.innerHTML = [...j].reverse().map(e => {
+        const moi = e.pseudo === myPseudo;
+        const cat = esc(NOMS_CAT[e.category] || e.category);
+        const verbe = e.points === 0
+            ? `${moi ? 'barres' : 'barre'} ${cat}`
+            : `${moi ? 'poses' : 'pose'} <i>${e.points}</i> sur ${cat}`;
+        return `<p class="ym-journal-line${e.points === 0 ? ' zero' : ''}">
+            <b>${moi ? 'Tu' : esc(e.pseudo)}</b> ${verbe}
+        </p>`;
+    }).join('');
+}
 
 
 // ---------- Fin de partie ----------
@@ -651,14 +699,21 @@ function onState(s) {
     $('ym-sub').textContent = s.status === 'playing' ? 'Partie en cours' : (s.status === 'ended' ? 'Partie terminée' : `Table de ${s.host}`);
     // Le bouton d'invitation n'a de sens que dans la salle d'attente.
     if (s.status === 'lobby') Invitation.definirTable(s.id); else Invitation.effacer();
-    if (s.status === 'lobby') { showView('v-waiting'); renderWaiting(s); }
+    if (s.status === 'lobby') { showView('v-waiting'); renderWaiting(s); $('ym-turn-tag').hidden = true; }
     else if (s.status === 'playing') {
         showView('v-game');
         $('spectatorBanner').hidden = !isSpectator;
         renderScoresStrip(s);
         renderDice(s);
         renderSheet(s);
-    } else if (s.status === 'ended') { showView('v-ended'); renderEnded(s); }
+        renderJournal(s);
+        lancerChrono();
+    } else if (s.status === 'ended') {
+        showView('v-ended'); renderEnded(s);
+        $('ym-turn-tag').hidden = true;
+        if (chronoTimer) { clearInterval(chronoTimer); chronoTimer = null; }
+        $('ymChrono').hidden = true;
+    }
 }
 
 connect();

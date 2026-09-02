@@ -13,7 +13,7 @@
 <body>
     <div class="ym">
         <header class="ym-head">
-            <a class="ds-back" href="/jouer/" aria-label="Retour à l'espace multijoueurs">←</a>
+            <a class="ds-icon-btn" href="/jouer/" aria-label="Retour à l'espace multijoueurs">←</a>
             <div class="ym-titles">
                 <h1 class="ym-title">Yams</h1>
                 <span class="ym-sub" id="ym-sub">Salon des parties</span>
@@ -99,10 +99,15 @@
 
             <div class="ym-dice-zone">
                 <p class="ym-turn-label" id="turnLabel">—</p>
+                <p class="ym-chrono" id="ymChrono" hidden>—</p>
                 <div class="ym-dice" id="diceRow"></div>
                 <p class="ym-rolls-left" id="rollsLeft"></p>
                 <button class="ds-btn" id="btn-roll">Lancer les dés</button>
             </div>
+
+            <!-- Les derniers coups joués : de quoi suivre la partie quand ce
+                 n'est pas son tour, ce qui est le cas 4 tours sur 5. -->
+            <div class="ym-journal" id="ymJournal" hidden></div>
         </section>
 
         <!-- Barre de confirmation avant de noter une catégorie -->
