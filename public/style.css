@@ -283,3 +283,6 @@ body.is-hub   .hub   { display: block; }
                    color: var(--muted); font-size: 0.72rem; font-weight: 700; letter-spacing: 1px;
                    font-family: inherit; cursor: pointer; }
 .lang-row button.on { color: #2a1c07; background: linear-gradient(180deg, var(--brass-soft), var(--brass)); border-color: transparent; }
+/* Sélecteur de période du classement : la saison par défaut, le cumul en second. */
+.rank-periode { margin-bottom: 8px; }
+.rank-liste { display: flex; flex-direction: column; gap: 4px; }

@@ -32,6 +32,7 @@ const I18N = {
         b_grid_done: "Grille du jour ✓", b_grid_part: "faites aujourd'hui",
         app_ch_d: "Dé, carte ou pièce : tranchez au hasard.",
         b_rec_new: "cette semaine", b_rec_count: "recettes",
+        rank_saison: "Ce mois-ci", rank_toujours: "Depuis toujours",
         rank_title: "Classement du Salon", rank_loading: "Un instant…", rank_empty: "Personne n'a encore marqué de points.", rank_error: "Classement indisponible.",
         today_title: "Aujourd'hui", today_done: "Fait ✓", today_over: "Terminé", today_todo: "À faire", today_streak: "jours d'affilée",
         b_motus_done: "Trouvé ✓", b_motus_over: "Terminé", b_motus_solvers: "ont trouvé",
@@ -62,6 +63,7 @@ const I18N = {
         b_grid_done: "Today's grid ✓", b_grid_part: "done today",
         app_ch_d: "Dice, card or coin: let chance decide.",
         b_rec_new: "this week", b_rec_count: "recipes",
+        rank_saison: "This month", rank_toujours: "All time",
         rank_title: "Lounge leaderboard", rank_loading: "One moment…", rank_empty: "Nobody has scored yet.", rank_error: "Leaderboard unavailable.",
         today_title: "Today", today_done: "Done ✓", today_over: "Finished", today_todo: "To play", today_streak: "day streak",
         b_motus_done: "Found ✓", b_motus_over: "Finished", b_motus_solvers: "found it",
@@ -92,6 +94,7 @@ const I18N = {
         b_grid_done: "Cuadrícula de hoy ✓", b_grid_part: "hechas hoy",
         app_ch_d: "Dado, carta o moneda: que decida el azar.",
         b_rec_new: "esta semana", b_rec_count: "recetas",
+        rank_saison: "Este mes", rank_toujours: "Desde siempre",
         rank_title: "Clasificación del Salón", rank_loading: "Un momento…", rank_empty: "Nadie ha puntuado todavía.", rank_error: "Clasificación no disponible.",
         today_title: "Hoy", today_done: "Hecho ✓", today_over: "Terminado", today_todo: "Por jugar", today_streak: "días seguidos",
         b_motus_done: "Encontrada ✓", b_motus_over: "Terminado", b_motus_solvers: "lo encontraron",
@@ -338,15 +341,16 @@ function renderToday(p) {
 // transversal : il donne au salon une raison d'être en tant que lieu, et non
 // comme un couloir vers onze jeux séparés. Replié par défaut, chargé au premier
 // dépli seulement — inutile de peser sur l'arrivée pour une curiosité.
-let classement = null;      // réponse du serveur, récupérée une seule fois
+let classement = null;      // réponse du serveur pour la période affichée
 let classementRendu = false;
+let periode = 'saison';     // par défaut la saison en cours, pas le cumul de toujours
 async function chargerClassement() {
-    const { ok, data } = await api('/api/salon/classement');
+    const { ok, data } = await api('/api/salon/classement?periode=' + periode);
     classement = ok ? data : null;
     majMaPlace(classement);
 }
 async function rendreClassement() {
-    const corps = $('rank-body');
+    const corps = $('rank-liste');
     const data = classement;
     if (!data || !Array.isArray(data.classement)) {
         corps.innerHTML = `<p class="rank-empty">${esc(t('rank_error'))}</p>`;
@@ -373,6 +377,17 @@ function majMaPlace(data) {
     if (!el || !data || !data.maPlace) { if (el) el.textContent = ''; return; }
     el.textContent = `${data.maPlace}${data.maPlace === 1 ? 'ᵉʳ' : 'ᵉ'} / ${data.total}`;
 }
+// Changer de période recharge et réaffiche : le classement d'un mois et celui
+// de toujours n'ont pas les mêmes gagnants, c'est tout l'intérêt.
+$('rank-periode').querySelectorAll('button').forEach(b => b.addEventListener('click', async () => {
+    if (b.dataset.p === periode) return;
+    periode = b.dataset.p;
+    $('rank-periode').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    $('rank-liste').innerHTML = `<p class="rank-empty">${esc(t('rank_loading'))}</p>`;
+    await chargerClassement();
+    await rendreClassement();
+}));
+
 $('rank-toggle').addEventListener('click', async () => {
     const corps = $('rank-body'), bouton = $('rank-toggle');
     const ouvert = !corps.hidden;
@@ -380,7 +395,7 @@ $('rank-toggle').addEventListener('click', async () => {
     bouton.setAttribute('aria-expanded', String(!ouvert));
     if (!ouvert && !classementRendu) {
         classementRendu = true;
-        corps.innerHTML = `<p class="rank-empty">${esc(t('rank_loading'))}</p>`;
+        $('rank-liste').innerHTML = `<p class="rank-empty">${esc(t('rank_loading'))}</p>`;
         await rendreClassement();
     }
 });

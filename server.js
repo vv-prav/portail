@@ -334,7 +334,7 @@ app.get('/api/me', (req, res) => {
 // ---------------------------------------------------------------------
 const MF = require('./motsfleches/generator');
 const { planifierRenommage, appliquerPlan } = require('./comptes/renommage');
-const { calculerClassement, BAREME } = require('./comptes/classement');
+const { calculerClassement, BAREME, bornesSaison } = require('./comptes/classement');
 const MF_LEVELS = ['moyen', 'difficile', 'expert'];
 const MF_MIN_TIME = { moyen: 25, difficile: 40, expert: 60 };   // seuils anti-triche (secondes)
 
@@ -1849,13 +1849,21 @@ app.get('/api/salon/classement', requireAuthApi, (req, res) => {
             serieDepuisJours(mfGet(kMjDays(p))),
         );
     }
-    const lignes = calculerClassement(mfCache, pseudos, series);
+    // Par défaut la saison en cours : un classement cumulatif depuis toujours
+    // finit par se figer, et on ne rattrape plus le premier. « Depuis toujours »
+    // reste consultable.
+    const depuisToujours = String(req.query.periode || '') === 'toujours';
+    const aujourdhui = mfTodayId();
+    const lignes = calculerClassement(mfCache, pseudos, series,
+        depuisToujours ? null : bornesSaison(aujourdhui));
     const moi = currentUser(req);
     res.json({
         classement: lignes.slice(0, 20),
         moi,
         maPlace: lignes.findIndex(l => l.pseudo === moi) + 1 || null,
         total: lignes.length,
+        periode: depuisToujours ? 'toujours' : 'saison',
+        saison: aujourdhui.slice(0, 7),
         bareme: BAREME,
     });
 });

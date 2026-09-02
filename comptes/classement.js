@@ -31,15 +31,25 @@ function norm(s) {
     return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
 }
 
+// Une saison couvre un mois calendaire. Le classement cumulatif depuis toujours
+// finit par se figer — le premier avait 74 points quand le douzième en avait 7,
+// un écart qu'on ne rattrape plus — et un classement qu'on ne peut plus
+// rattraper cesse d'être une raison de jouer.
+function bornesSaison(aaaammjj) {
+    const [a, m] = String(aaaammjj).split('-');
+    return { prefixe: `${a}-${m}`, debut: Date.parse(`${a}-${m}-01T00:00:00Z`) };
+}
+
 /**
- * Calcule le classement complet.
+ * Calcule le classement.
  *
  * @param {object} cache   l'objet clé → valeur (mfCache)
  * @param {string[]} pseudos les comptes à classer
  * @param {object} series  { [pseudo]: nombre } séries en cours, tous jeux du jour
+ * @param {object} [saison] { prefixe: 'AAAA-MM', debut: timestamp } — omis = depuis toujours
  * @returns {Array} lignes triées par points décroissants
  */
-function calculerClassement(cache, pseudos, series) {
+function calculerClassement(cache, pseudos, series, saison) {
     const parPseudo = new Map();
     for (const p of pseudos) {
         parPseudo.set(p, {
@@ -59,14 +69,33 @@ function calculerClassement(cache, pseudos, series) {
         const seg = cle.split(':');
         if (seg[1] !== 'prog') continue;
         if (!['motus', 'mf', 'mj'].includes(seg[0])) continue;
+        // La date est en 4ᵉ segment : mf:prog:<pseudo>:<date>:<niveau>.
+        if (saison && !(seg[3] || '').startsWith(saison.prefixe)) continue;
         const ligne = parPseudo.get(seg[2]);
         if (!ligne) continue;                       // compte supprimé depuis
         if (val.solved) { ligne.jourTrouves++; ligne.points += BAREME.jourTrouve; }
         else { ligne.jourJoues++; ligne.points += BAREME.jourJoue; }
     }
 
-    // --- Multijoueur : des totaux cumulés, pas des clés datées ---
-    const MULTI = [
+    // --- Multijoueur ---
+    // En saison, les totaux cumulés (yams:stats, pbac:stats) ne servent à rien :
+    // ils n'ont pas de date. On se rabat sur admin:gameHistory, qui horodate
+    // chaque partie terminée. Limite assumée : cette source n'enregistre pas le
+    // vainqueur, donc une partie compte comme participation, jamais comme
+    // victoire. Les jeux du jour font 90 % des points, l'écart reste marginal.
+    if (saison) {
+        const histo = Array.isArray(cache['admin:gameHistory']) ? cache['admin:gameHistory'] : [];
+        for (const g of histo) {
+            if (!g || !g.endedAt || g.endedAt < saison.debut) continue;
+            for (const p of (g.players || [])) {
+                const ligne = parPseudo.get(p);
+                if (!ligne) continue;
+                ligne.matchsJoues++;
+                ligne.points += BAREME.matchJoue;
+            }
+        }
+    } else
+    { const MULTI = [
         { prefixe: 'pbac:stats', normalise: true,  joues: 'gamesPlayed',   gagnes: 'gamesWon' },
         { prefixe: 'yams:stats', normalise: true,  joues: 'gamesPlayed',   gagnes: 'gamesWon' },
         { prefixe: 'motusparty:stats', normalise: false, joues: 'matchesPlayed', gagnes: 'matchesWon' },
@@ -87,7 +116,7 @@ function calculerClassement(cache, pseudos, series) {
         // Une victoire ne compte pas deux fois : elle vaut matchGagne, pas
         // matchGagne + matchJoue.
         ligne.points += gagnes * BAREME.matchGagne + Math.max(0, joues - gagnes) * BAREME.matchJoue;
-    }
+    } }
 
     // --- Régularité ---
     for (const ligne of parPseudo.values()) {
@@ -99,4 +128,4 @@ function calculerClassement(cache, pseudos, series) {
         .sort((a, b) => b.points - a.points || a.pseudo.localeCompare(b.pseudo));
 }
 
-module.exports = { calculerClassement, BAREME };
+module.exports = { calculerClassement, BAREME, bornesSaison };
