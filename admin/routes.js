@@ -545,109 +545,20 @@ module.exports = function attachAdmin(app, ctx) {
     // =================================================================
     const PB = () => ctx.pbac();
 
-    G('/pbac/overview', (req, res) => {
-        const api = PB();
-        if (!api) return res.json({ available: false });
-        res.json({
-            available: true,
-            tables: api.games(),
-            online: api.online(),
-        });
-    });
-
-    A('/pbac/close', (req, res) => {
-        const api = PB(); if (!api) return res.status(400).json({ error: 'Petit Bac indisponible.' });
-        const ok = api.endGame(String(req.body.id || ''));
-        if (ok) log(currentUser(req), 'table Petit Bac fermée', String(req.body.id || ''));
-        res.json({ ok });
-    });
-
     // =================================================================
     //  INFILTRÉ
     // =================================================================
     const UC = () => ctx.undercover();
-
-    G('/undercover/overview', (req, res) => {
-        const api = UC();
-        if (!api) return res.json({ available: false });
-        res.json({
-            available: true,
-            games: api.games().filter(g => g.status !== 'lobby' && g.status !== 'ended'),
-            online: api.online(),
-        });
-    });
-    A('/undercover/close', (req, res) => {
-        const api = UC(); if (!api) return res.status(400).json({ error: 'Infiltré indisponible.' });
-        const ok = api.endGame(String(req.body.id || ''));
-        if (ok) log(currentUser(req), 'partie Infiltré fermée', String(req.body.id || ''));
-        res.json({ ok });
-    });
 
     // =================================================================
     //  YAMS
     // =================================================================
     const YM = () => ctx.yams();
 
-    G('/yams/overview', (req, res) => {
-        const api = YM();
-        if (!api) return res.json({ available: false });
-        const cache = mf.cache();
-        const leaderboard = [];
-        for (const k of Object.keys(cache)) {
-            if (!k.startsWith('yams:stats:')) continue;
-            const s = cache[k]; if (!s || !s.gamesPlayed) continue;
-            leaderboard.push({
-                pseudo: k.slice('yams:stats:'.length),
-                gamesPlayed: s.gamesPlayed, gamesWon: s.gamesWon, totalYams: s.totalYams, bestScore: s.bestScore,
-            });
-        }
-        leaderboard.sort((a, b) => b.gamesWon - a.gamesWon || b.gamesPlayed - a.gamesPlayed);
-        res.json({
-            available: true,
-            games: api.games().filter(g => g.status !== 'lobby' && g.status !== 'ended'),
-            online: api.online(),
-            leaderboard: leaderboard.slice(0, 20),
-        });
-    });
-    A('/yams/close', (req, res) => {
-        const api = YM(); if (!api) return res.status(400).json({ error: 'Yams indisponible.' });
-        const ok = api.endGame(String(req.body.id || ''));
-        if (ok) log(currentUser(req), 'partie Yams fermée', String(req.body.id || ''));
-        res.json({ ok });
-    });
-
     // =================================================================
     //  MOTUS PARTY
     // =================================================================
     const MP = () => ctx.motusparty();
-
-    G('/motusparty/overview', (req, res) => {
-        const api = MP();
-        if (!api) return res.json({ available: false });
-        const cache = mf.cache();
-        const leaderboard = [];
-        for (const k of Object.keys(cache)) {
-            if (!k.startsWith('motusparty:stats:')) continue;
-            const s = cache[k]; if (!s || !s.matchesPlayed) continue;
-            leaderboard.push({
-                pseudo: k.slice('motusparty:stats:'.length),
-                matchesPlayed: s.matchesPlayed, matchesWon: s.matchesWon, wordsFound: s.wordsFound, bestRank: s.bestRank,
-            });
-        }
-        leaderboard.sort((a, b) => b.matchesWon - a.matchesWon || b.matchesPlayed - a.matchesPlayed);
-        res.json({
-            available: true,
-            games: api.games().filter(g => g.status !== 'lobby' && g.status !== 'ended'),
-            online: api.online(),
-            leaderboard: leaderboard.slice(0, 20),
-        });
-    });
-    A('/motusparty/close', (req, res) => {
-        const api = MP(); if (!api) return res.status(400).json({ error: 'Motus Party indisponible.' });
-        const ok = api.endGame(String(req.body.id || ''));
-        if (ok) log(currentUser(req), 'course Motus Party fermée', String(req.body.id || ''));
-        res.json({ ok });
-    });
 
     // =================================================================
     //  GRILLES (mots fléchés)
@@ -1032,4 +943,91 @@ module.exports = function attachAdmin(app, ctx) {
 
     // Annonce lisible par tout le monde (affichée dans le salon)
     app.get('/api/announce', (req, res) => res.json({ announce: mf.get('mf:announce') || '' }));
+
+    // =================================================================
+    //  PARTIES — une seule vue pour tous les jeux
+    //  Quatre onglets faisaient exactement la même chose : lister les
+    //  parties en cours, les joueurs connectés, et fermer une table.
+    //  C'est le même problème que les quatre halls fusionnés côté joueur.
+    // =================================================================
+    const MODULES_JEUX = [
+        { id: 'perudo', nom: 'Perudo', emoji: '🎲', api: () => ctx.perudo && ctx.perudo() },
+        { id: 'pbac', nom: 'Petit Bac', emoji: '✏️', api: () => PB() },
+        { id: 'undercover', nom: 'Infiltré', emoji: '🕵️', api: () => UC() },
+        { id: 'yams', nom: 'Yams', emoji: '🎯', api: () => YM() },
+        { id: 'motusparty', nom: 'Motus Party', emoji: '🏁', api: () => MP() },
+    ];
+
+    G('/parties', (req, res) => {
+        const tables = [], enLigne = [];
+        for (const m of MODULES_JEUX) {
+            let api = null;
+            try { api = m.api(); } catch (e) { api = null; }
+            if (!api) continue;
+            try {
+                for (const g of (api.games() || [])) {
+                    if (g.status === 'ended' || g.vsBot) continue;
+                    // Perudo n'a pas de `status` : il expose `started`.
+                    const statut = g.status ? (g.status === 'lobby' ? 'attente' : 'encours')
+                                            : (g.started ? 'encours' : 'attente');
+                    const joueurs = (g.players || []).map(p => (typeof p === 'string' ? p : p.pseudo)).filter(Boolean);
+                    tables.push({ jeu: m.id, nom: m.nom, emoji: m.emoji, id: g.id,
+                                  hote: g.host || joueurs[0] || '—', joueurs, statut });
+                }
+            } catch (e) {}
+            try {
+                for (const p of (api.online() || [])) {
+                    const pseudo = typeof p === 'string' ? p : p.pseudo;
+                    if (pseudo) enLigne.push({ jeu: m.nom, pseudo });
+                }
+            } catch (e) {}
+        }
+        tables.sort((a, b) => (a.statut === b.statut ? 0 : a.statut === 'attente' ? -1 : 1));
+        res.json({ tables, enLigne });
+    });
+
+    A('/parties/close', (req, res) => {
+        const jeu = String(req.body.jeu || ''), id = String(req.body.id || '');
+        const m = MODULES_JEUX.find(x => x.id === jeu);
+        if (!m) return res.status(400).json({ error: 'Jeu inconnu.' });
+        let api = null;
+        try { api = m.api(); } catch (e) {}
+        if (!api || !api.endGame) return res.status(400).json({ error: m.nom + ' indisponible.' });
+        const ok = api.endGame(id);
+        if (ok) log(currentUser(req), 'partie fermée', m.nom + ' #' + id);
+        res.json({ ok });
+    });
+
+    // =================================================================
+    //  SANTÉ DU SALON
+    //  Rien de tout ceci n'était visible : c'est pourquoi une production
+    //  figée pendant quatre semaines a pu passer inaperçue.
+    // =================================================================
+    G('/sante', (req, res) => {
+        const cache = mf.cache();
+        const cles = Object.keys(cache);
+        const familles = {};
+        for (const k of cles) {
+            const f = k.split(':').slice(0, 2).join(':');
+            familles[f] = (familles[f] || 0) + 1;
+        }
+        const top = Object.entries(familles).sort((a, b) => b[1] - a[1]).slice(0, 12)
+            .map(([f, n]) => ({ famille: f, cles: n }));
+        const comptes = Object.keys(users()).length;
+        let poidsComptes = 0;
+        try { poidsComptes = JSON.stringify(users()).length; } catch (e) {}
+        res.json({
+            // `redis` est passé comme fonction depuis server.js : le tester
+            // directement renverrait toujours vrai.
+            redis: !!(typeof redis === 'function' ? redis() : redis),
+            demarreDepuis: Math.round(process.uptime()),
+            node: process.version,
+            memoire: Math.round(process.memoryUsage().rss / 1048576),
+            comptes, poidsComptes,
+            clesTotal: cles.length,
+            familles: top,
+            journal: (mf.get(LOG_KEY) || []).slice(-12).reverse(),
+        });
+    });
+
 };

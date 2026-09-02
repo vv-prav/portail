@@ -37,19 +37,17 @@ function fmtDur(sec) {
 
 // ---------- Onglets ----------
 function switchTab(tab) {
-    ['home', 'accounts', 'perudo', 'grids', 'motus', 'motjuste', 'pbac', 'undercover', 'yams', 'motusparty', 'dict', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== tab); });
+    ['home', 'accounts', 'parties', 'perudo', 'grids', 'motus', 'motjuste', 'dict', 'sante', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== tab); });
     document.querySelectorAll('.ad-tile').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
     if (tab === 'home') loadOverview();
     if (tab === 'accounts') loadAccounts();
+    if (tab === 'parties') loadParties();
     if (tab === 'perudo') loadPerudo();
     if (tab === 'grids') loadGrids();
     if (tab === 'motus') loadMotus();
     if (tab === 'motjuste') loadMotJuste();
-    if (tab === 'pbac') loadPbac();
-    if (tab === 'undercover') loadUndercover();
-    if (tab === 'yams') loadYams();
-    if (tab === 'motusparty') loadMotusParty();
     if (tab === 'dict') { loadDictStats(); loadDict(); }
+    if (tab === 'sante') loadSante();
     if (tab === 'system') { loadOverview(); loadAdmins(); }
     window.scrollTo(0, 0);
 }
@@ -741,126 +739,8 @@ $('mj-vocab-add').addEventListener('click', async () => {
 });
 
 // ---------- Petit Bac ----------
-async function loadPbac() {
-    const { data } = await api('/api/admin/pbac/overview');
-    if (!data || !data.available) {
-        $('pbac-live').innerHTML = '<div class="kv-row"><span>Statut</span><b>indisponible</b></div>';
-        $('pbac-tables').innerHTML = '';
-        return;
-    }
-    $('pbac-live').innerHTML = `<div class="kv-row"><span>Joueurs connectés</span><b>${data.online.length}</b></div>
-        <div class="kv-row"><span>Tables actives</span><b>${data.tables.length}</b></div>`;
-    $('pbac-tables').innerHTML = data.tables.length ? data.tables.map(t => `
-        <div class="ds-row static">
-            <span class="ds-row-main">
-                <span class="ds-row-name">Table de ${esc(t.host)} <i class="badge adm">${esc(t.status)}</i></span>
-                <span class="ds-row-sub">${t.players.map(esc).join(', ') || 'aucun joueur'}</span>
-            </span>
-            <button class="mini danger" data-close="${esc(t.id)}" type="button">Fermer</button>
-        </div>`).join('') : '<p class="empty">Aucune table active.</p>';
-    $('pbac-tables').querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => {
-        ask('🛑', 'Fermer cette table ?', 'Les joueurs seront renvoyés au salon des parties.', [
-            { label: 'Confirmer', danger: true, run: async () => {
-                await api('/api/admin/pbac/close', { id: b.dataset.close });
-                toast('Table fermée.'); loadPbac();
-            } }]);
-    }));
-}
-$('pbac-refresh').addEventListener('click', loadPbac);
 
-// ---------- Infiltré ----------
-async function loadUndercover() {
-    const { data } = await api('/api/admin/undercover/overview');
-    if (!data || !data.available) { $('uc-games').innerHTML = '<p class="empty">Infiltré indisponible.</p>'; $('uc-online').innerHTML = ''; return; }
-    const g = data.games || [];
-    $('uc-games').innerHTML = g.length ? g.map(x => `
-        <div class="ds-row static">
-            <span class="ds-row-main">
-                <span class="ds-row-name">Partie de ${esc(x.host)} <i class="badge adm">${esc(x.status)}</i></span>
-                <span class="ds-row-sub">${x.players.map(esc).join(', ') || 'aucun joueur'}</span>
-            </span>
-            <button class="mini danger" data-close="${esc(x.id)}" type="button">Fermer</button>
-        </div>`).join('') : '<p class="empty">Aucune partie en cours.</p>';
-    $('uc-games').querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => {
-        ask('🛑', 'Fermer cette partie ?', 'Les joueurs seront renvoyés au salon des parties.', [
-            { label: 'Confirmer', danger: true, run: async () => {
-                await api('/api/admin/undercover/close', { id: b.dataset.close });
-                toast('Partie fermée.'); loadUndercover();
-            } }]);
-    }));
-    const on = data.online || [];
-    $('uc-online').innerHTML = on.length ? on.map(p => `
-        <div class="ds-row static"><span class="ds-row-main"><span class="ds-row-name">${esc(p)}</span></span></div>`).join('')
-        : '<p class="empty">Personne en ligne.</p>';
-}
 
-// ---------- Yams ----------
-async function loadYams() {
-    const { data } = await api('/api/admin/yams/overview');
-    if (!data || !data.available) { $('ym-games').innerHTML = '<p class="empty">Yams indisponible.</p>'; $('ym-online').innerHTML = ''; $('ym-top').innerHTML = ''; return; }
-    const g = data.games || [];
-    $('ym-games').innerHTML = g.length ? g.map(x => `
-        <div class="ds-row static">
-            <span class="ds-row-main">
-                <span class="ds-row-name">Table de ${esc(x.host)} <i class="badge adm">${esc(x.status)}</i></span>
-                <span class="ds-row-sub">${x.players.map(esc).join(', ') || 'aucun joueur'}</span>
-            </span>
-            <button class="mini danger" data-close="${esc(x.id)}" type="button">Fermer</button>
-        </div>`).join('') : '<p class="empty">Aucune partie en cours.</p>';
-    $('ym-games').querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => {
-        ask('🛑', 'Fermer cette table ?', 'Les joueurs seront renvoyés au salon des parties.', [
-            { label: 'Confirmer', danger: true, run: async () => {
-                await api('/api/admin/yams/close', { id: b.dataset.close });
-                toast('Table fermée.'); loadYams();
-            } }]);
-    }));
-    const on = data.online || [];
-    $('ym-online').innerHTML = on.length ? on.map(p => `
-        <div class="ds-row static"><span class="ds-row-main"><span class="ds-row-name">${esc(p)}</span></span></div>`).join('')
-        : '<p class="empty">Personne en ligne.</p>';
-    const top = data.leaderboard || [];
-    $('ym-top').innerHTML = top.length ? top.map((u, i) => `
-        <div class="ds-row static">
-            <span class="ds-row-main">
-                <span class="ds-row-name">${i + 1}. ${esc(u.pseudo)}</span>
-                <span class="ds-row-sub">${u.gamesWon} victoires / ${u.gamesPlayed} parties · ${u.totalYams} Yams · record ${u.bestScore}</span>
-            </span>
-        </div>`).join('') : '<p class="empty">Personne n\u2019a encore terminé de partie.</p>';
-}
-
-// ---------- Motus Party ----------
-async function loadMotusParty() {
-    const { data } = await api('/api/admin/motusparty/overview');
-    if (!data || !data.available) { $('mp-games').innerHTML = '<p class="empty">Motus Party indisponible.</p>'; $('mp-online').innerHTML = ''; $('mp-top').innerHTML = ''; return; }
-    const g = data.games || [];
-    $('mp-games').innerHTML = g.length ? g.map(x => `
-        <div class="ds-row static">
-            <span class="ds-row-main">
-                <span class="ds-row-name">Course de ${esc(x.host)} <i class="badge adm">${esc(x.status)}</i></span>
-                <span class="ds-row-sub">${x.players.map(esc).join(', ') || 'aucun joueur'}</span>
-            </span>
-            <button class="mini danger" data-close="${esc(x.id)}" type="button">Fermer</button>
-        </div>`).join('') : '<p class="empty">Aucune course en cours.</p>';
-    $('mp-games').querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => {
-        ask('🛑', 'Fermer cette course ?', 'Les joueurs seront renvoyés au salon des parties.', [
-            { label: 'Confirmer', danger: true, run: async () => {
-                await api('/api/admin/motusparty/close', { id: b.dataset.close });
-                toast('Course fermée.'); loadMotusParty();
-            } }]);
-    }));
-    const on = data.online || [];
-    $('mp-online').innerHTML = on.length ? on.map(p => `
-        <div class="ds-row static"><span class="ds-row-main"><span class="ds-row-name">${esc(p)}</span></span></div>`).join('')
-        : '<p class="empty">Personne en ligne.</p>';
-    const top = data.leaderboard || [];
-    $('mp-top').innerHTML = top.length ? top.map((u, i) => `
-        <div class="ds-row static">
-            <span class="ds-row-main">
-                <span class="ds-row-name">${i + 1}. ${esc(u.pseudo)}</span>
-                <span class="ds-row-sub">${u.matchesWon} courses gagnées / ${u.matchesPlayed} jouées · ${u.wordsFound} mots trouvés</span>
-            </span>
-        </div>`).join('') : '<p class="empty">Personne n\u2019a encore terminé de course.</p>';
-}
 
 // ---------- Administrateurs ----------
 async function loadAdmins() {
@@ -888,6 +768,75 @@ $('adm-add').addEventListener('click', async () => {
     if (!ok) return toast(data.error || 'Erreur');
     $('adm-new').value = ''; toast('Administrateur ajouté.'); loadAdmins();
 });
+
+
+// ---------- Parties (tous jeux) ----------
+// Quatre onglets listaient chacun ses propres parties, avec le même écran et le
+// même bouton de fermeture. C'est le même doublon que les quatre halls côté
+// joueur, réglé de la même façon : une seule vue, alimentée par un endpoint qui
+// agrège les cinq modules.
+async function loadParties() {
+    const { data } = await api('/api/admin/parties');
+    const tables = (data && data.tables) || [];
+    $('parties-list').innerHTML = tables.length ? tables.map(t => `
+        <div class="ds-row static">
+            <span class="ds-row-main">
+                <span class="ds-row-name">${t.emoji} ${esc(t.nom)} · ${esc(t.hote)}
+                    <i class="badge adm">${t.statut === 'attente' ? 'en attente' : 'en cours'}</i></span>
+                <span class="ds-row-sub">${t.joueurs.map(esc).join(', ') || 'aucun joueur'}</span>
+            </span>
+            <button class="mini danger" data-jeu="${esc(t.jeu)}" data-id="${esc(t.id)}" type="button">Fermer</button>
+        </div>`).join('') : '<p class="empty">Aucune table ouverte, tous jeux confondus.</p>';
+    $('parties-list').querySelectorAll('[data-id]').forEach(b => b.addEventListener('click', () => {
+        ask('🛑', 'Fermer cette table ?', 'Les joueurs seront renvoyés à l\'espace multijoueurs.', [
+            { label: 'Confirmer', danger: true, run: async () => {
+                await api('/api/admin/parties/close', { jeu: b.dataset.jeu, id: b.dataset.id });
+                toast('Table fermée.'); loadParties();
+            } }]);
+    }));
+    const gens = (data && data.enLigne) || [];
+    $('parties-online').innerHTML = gens.length ? gens.map(p => `
+        <div class="ds-row static">
+            <span class="ds-row-main"><span class="ds-row-name">${esc(p.pseudo)}</span>
+            <span class="ds-row-sub">${esc(p.jeu)}</span></span>
+        </div>`).join('') : '<p class="empty">Personne dans un jeu en ce moment.</p>';
+}
+$('parties-refresh').addEventListener('click', loadParties);
+
+// ---------- Santé du salon ----------
+// Rien de tout ceci n'était visible : c'est pourquoi une production figée
+// pendant quatre semaines a pu passer inaperçue.
+function duree(s) {
+    if (s < 60) return s + ' s';
+    if (s < 3600) return Math.round(s / 60) + ' min';
+    if (s < 86400) return Math.round(s / 3600) + ' h';
+    return Math.round(s / 86400) + ' j';
+}
+async function loadSante() {
+    const { data } = await api('/api/admin/sante');
+    if (!data) { $('sante-kv').innerHTML = '<div class="kv-row"><span>État</span><b>indisponible</b></div>'; return; }
+    const ligne = (l, v) => `<div class="kv-row"><span>${esc(l)}</span><b>${esc(String(v))}</b></div>`;
+    $('sante-kv').innerHTML =
+        ligne('Persistance', data.redis ? 'Redis actif' : '⚠️ repli JSON local')
+        + ligne('En ligne depuis', duree(data.demarreDepuis))
+        + ligne('Node', data.node)
+        + ligne('Mémoire', data.memoire + ' Mo')
+        + ligne('Comptes', data.comptes)
+        + ligne('Poids de la clé des comptes', Math.round(data.poidsComptes / 1024) + ' Ko')
+        + ligne('Clés en base', data.clesTotal);
+    $('sante-familles').innerHTML = (data.familles || []).map(f => `
+        <div class="ds-row static">
+            <span class="ds-row-main"><span class="ds-row-name">${esc(f.famille)}</span></span>
+            <b>${f.cles}</b>
+        </div>`).join('') || '<p class="empty">Aucune donnée.</p>';
+    $('sante-journal').innerHTML = (data.journal || []).map(j => `
+        <div class="ds-row static">
+            <span class="ds-row-main">
+                <span class="ds-row-name">${esc(j.who)} — ${esc(j.action)}</span>
+                <span class="ds-row-sub">${esc(j.target || '')} · ${new Date(j.ts).toLocaleString('fr-FR')}</span>
+            </span>
+        </div>`).join('') || '<p class="empty">Aucune action récente.</p>';
+}
 
 // ---------- Système ----------
 $('sys-purge').addEventListener('click', () => ask('🧹', 'Lancer le ménage ?', 'Les données trop anciennes seront supprimées définitivement.', [
