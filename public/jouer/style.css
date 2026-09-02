@@ -81,3 +81,7 @@ body {
 .jo-cat-famille { font-size: .68rem; letter-spacing: 1px; text-transform: uppercase;
     color: var(--muted); font-weight: 700; margin: 14px 0 2px; }
 .jo-cat-famille:first-child { margin-top: 4px; }
+
+/* Une partie qu'on peut regarder n'est pas une partie morte : son action reste
+   lisible, dans une teinte plus discrète que « Rejoindre ». */
+.jo-table-etat.regarder { color: var(--muted); font-weight: 600; }

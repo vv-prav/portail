@@ -86,21 +86,40 @@ $('jo-cat-close').addEventListener('click', () => { $('jo-catalogue').hidden = t
 $('jo-catalogue').addEventListener('click', (e) => { if (e.target === $('jo-catalogue')) $('jo-catalogue').hidden = true; });
 
 // ---------- Tables ouvertes ----------
+// Ce qu'on peut faire d'une partie déjà lancée dépend du jeu, et il ne faut
+// rien promettre qui n'existe pas :
+//   • Yams, Motus Party et Perudo acceptent un spectateur — rejoindre une partie
+//     en cours vous y met automatiquement ;
+//   • Petit Bac laisse entrer, mais l'hôte doit donner son accord ;
+//   • Infiltré refuse : son jeu repose sur des mots secrets, un spectateur y
+//     demanderait une vraie réflexion de conception.
+const REGARDABLES = new Set(['yams', 'motusparty', 'perudo']);
+const SUR_DEMANDE = new Set(['pbac']);
+
+function actionTable(t) {
+    if (t.statut === 'attente') return { texte: 'Rejoindre ›', classe: '' };
+    if (REGARDABLES.has(t.jeu)) return { texte: '👁 Regarder', classe: ' regarder' };
+    if (SUR_DEMANDE.has(t.jeu)) return { texte: 'Demander à entrer', classe: ' regarder' };
+    return { texte: 'en cours', classe: '' };
+}
+
 function ligneTable(t, avatars) {
     const rejoignable = t.statut === 'attente';
+    const action = actionTable(t);
     const noms = t.joueurs.length
         ? t.joueurs.slice(0, 4).map(p => esc(p)).join(', ') + (t.joueurs.length > 4 ? ` +${t.joueurs.length - 4}` : '')
         : 'personne encore';
     const bulles = t.joueurs.slice(0, 4).map(p =>
         `<span class="ds-avatar xs">${PortailProfile.bubbleHTML(avatars[p])}</span>`).join('');
-    return `<a class="jo-table${rejoignable ? '' : ' encours'}" href="${t.href}" style="--acc:${t.accent}">
+    const attenue = !rejoignable && !REGARDABLES.has(t.jeu) && !SUR_DEMANDE.has(t.jeu);
+    return `<a class="jo-table${attenue ? ' encours' : ''}" href="${t.href}" style="--acc:${t.accent}">
         <span class="jo-table-emoji">${t.emoji}</span>
         <span class="jo-table-corps">
             <b>${esc(t.nom)} · chez ${esc(t.hote)}</b>
             <em>${noms}</em>
         </span>
         <span class="jo-table-bulles">${bulles}</span>
-        <span class="jo-table-etat">${rejoignable ? 'Rejoindre ›' : 'en cours'}</span>
+        <span class="jo-table-etat${action.classe}">${action.texte}</span>
     </a>`;
 }
 
