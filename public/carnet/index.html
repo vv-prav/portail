@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, interactive-widget=resizes-content">
+    <meta name="theme-color" content="#14100b">
+    <title>Le carnet</title>
+    <link rel="icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="stylesheet" href="/design-system.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <a class="ds-back" href="/" aria-label="Retour au salon">←</a>
+
+    <div class="ca-wrap">
+        <header class="ca-head">
+            <h1 class="ca-title">Le carnet</h1>
+            <p class="ca-sub">Ce qu'on a fait, ce qu'on a mangé.</p>
+        </header>
+
+        <!-- LES SORTIES -->
+        <section class="ca-section">
+            <h2 class="ca-section-title">Les sorties</h2>
+            <div class="ca-liste" id="ca-sorties"></div>
+        </section>
+
+        <!-- LES RECETTES -->
+        <section class="ca-section">
+            <div class="ca-section-head">
+                <h2 class="ca-section-title">Les recettes</h2>
+                <a class="ca-ajouter" href="/recettes">＋ Ajouter</a>
+            </div>
+            <div class="ca-liste" id="ca-recettes"></div>
+        </section>
+    </div>
+
+    <script src="/design-system.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

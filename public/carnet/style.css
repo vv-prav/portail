@@ -1,0 +1,42 @@
+/* =====================================================================
+   LE CARNET — les sorties et les recettes, sur une seule page.
+   Volontairement calme : c'est un carnet, pas un tableau de bord.
+   ===================================================================== */
+body {
+    min-height: 100dvh; overflow-x: hidden;
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color: var(--parchment);
+    background: radial-gradient(130% 70% at 50% -8%, #2a2113 0%, transparent 55%), var(--ink);
+    background-attachment: fixed; -webkit-font-smoothing: antialiased;
+}
+
+.ca-wrap { max-width: 640px; margin: 0 auto;
+    padding: max(18px, env(safe-area-inset-top)) 18px calc(28px + env(safe-area-inset-bottom)); }
+
+.ca-head { padding-top: 6px; margin-bottom: 22px; text-align: center; }
+.ca-title { font-size: 1.6rem; margin: 0 0 4px; color: var(--brass-soft); }
+.ca-sub { margin: 0; font-size: .8rem; color: var(--muted); }
+
+.ca-section { margin-bottom: 26px; }
+.ca-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.ca-section-title { font-size: .72rem; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--muted); font-weight: 700; margin: 0 0 10px; }
+.ca-ajouter { font-size: .74rem; color: var(--brass-soft); text-decoration: none; }
+
+.ca-liste { display: flex; flex-direction: column; gap: 7px; }
+.ca-carte { display: flex; align-items: center; gap: 11px; padding: 13px; border-radius: 12px;
+    text-decoration: none; color: inherit;
+    background: linear-gradient(165deg, rgba(255,255,255,.04), rgba(0,0,0,.18));
+    border: 1px solid var(--line); }
+.ca-carte:active { transform: scale(.995); }
+.ca-carte:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+.ca-carte-emoji { font-size: 1.25rem; flex: 0 0 auto; }
+.ca-carte-corps { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.ca-carte-corps b { font-size: .88rem; }
+.ca-carte-corps em { font-style: normal; font-size: .74rem; color: var(--muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ca-carte-go { flex: 0 0 auto; color: var(--muted); }
+
+.ca-vide { font-size: .8rem; color: var(--muted); line-height: 1.5; text-align: center; margin: 0;
+    padding: 18px 14px; border-radius: 12px;
+    background: rgba(255,255,255,.02); border: 1px dashed var(--line); }

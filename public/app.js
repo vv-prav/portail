@@ -26,6 +26,7 @@ const I18N = {
         forgot_send: "Réinitialiser", cancel: "Annuler",
         app_perudo_d: "Le jeu de dés des pirates, en ligne.", app_motus_d: "Un mot à deviner en 6 essais.", app_pbac_d: "Une lettre, huit catégories, à plusieurs.", app_uc_d: "Démasque l'infiltré parmi vous.", app_juste_d: "Devine le mot secret à l'intuition.", app_mf_d: "Une nouvelle grille chaque jour.",
         app_jouer_d: "Créer une table ou rejoindre les autres.",
+        app_carnet_d: "Nos sorties et nos recettes.",
         app_recettes_d: "Garde et partage tes recettes.", app_voyages_d: "La rando dans les Monts d'Arrée.", app_admin_d: "Comptes, données et réglages.",
         b_open: "Ouvert", b_soon: "Bientôt", b_online: "en ligne", b_nobody_online: "Personne pour l'instant", b_new_grid: "Nouvelle grille !",
         reorder_start: "Réorganiser", reorder_done: "Terminé", reorder_hint: "Tapez une tuile, puis une deuxième pour échanger leur place.",
@@ -58,6 +59,7 @@ const I18N = {
         forgot_send: "Reset", cancel: "Cancel",
         app_perudo_d: "The pirates' dice game, online.", app_motus_d: "Guess the word in 6 tries.", app_pbac_d: "A letter, eight categories, with friends.", app_uc_d: "Unmask the impostor among you.", app_juste_d: "Guess the secret word by feel.", app_mf_d: "A fresh grid every day.",
         app_jouer_d: "Start a table or join the others.",
+        app_carnet_d: "Our outings and our recipes.",
         app_recettes_d: "Keep and share your recipes.", app_voyages_d: "The Monts d'Arrée hiking trip.", app_admin_d: "Accounts, data and settings.",
         b_open: "Open", b_soon: "Soon", b_online: "online", b_nobody_online: "Nobody right now", b_new_grid: "New grid!",
         reorder_start: "Reorder", reorder_done: "Done", reorder_hint: "Tap a tile, then a second one to swap places.",
@@ -90,6 +92,7 @@ const I18N = {
         forgot_send: "Restablecer", cancel: "Cancelar",
         app_perudo_d: "El juego de dados pirata, en línea.", app_motus_d: "Adivina la palabra en 6 intentos.", app_pbac_d: "Una letra, ocho categorías, en grupo.", app_uc_d: "Descubre al infiltrado entre vosotros.", app_juste_d: "Adivina la palabra secreta por intuición.", app_mf_d: "Una cuadrícula nueva cada día.",
         app_jouer_d: "Crea una mesa o únete a los demás.",
+        app_carnet_d: "Nuestras salidas y recetas.",
         app_recettes_d: "Guarda y comparte tus recetas.", app_voyages_d: "La ruta por los Monts d'Arrée.", app_admin_d: "Cuentas, datos y ajustes.",
         b_open: "Abierto", b_soon: "Pronto", b_online: "en línea", b_nobody_online: "Nadie por ahora", b_new_grid: "¡Nueva cuadrícula!",
         reorder_start: "Reordenar", reorder_done: "Hecho", reorder_hint: "Toca una casilla, luego otra para intercambiarlas.",
@@ -136,11 +139,7 @@ const GAME_APPS = [
 // téléphone » : un dé qu'on se passe autour d'une table n'est pas une app à
 // part, c'est un jeu de société. Il n'a donc plus de tuile ici.
 const OTHER_APPS = [
-    { id: 'recettes', name: 'Recettes',     dKey: 'app_recettes_d', emoji: '🍽️', href: '/recettes',    accent: '#e07a4e', status: 'open' },
-    // Le hub Voyages ne liste qu'un seul voyage : une page d'accueil pour un
-    // unique élément est une page de trop. La tuile mène directement aux Monts
-    // d'Arrée. Le hub reste en place, il redeviendra utile au deuxième voyage.
-    { id: 'voyages',  name: 'Voyages',      dKey: 'app_voyages_d',  emoji: '🥾', href: '/voyages/monts-arree/', accent: '#8b6ba8', status: 'open' },
+    { id: 'carnet', name: 'Le carnet', dKey: 'app_carnet_d', emoji: '📔', href: '/carnet', accent: '#8b6ba8', status: 'open' },
 ];
 const ADMIN_APP = { id: 'admin', name: 'Administration', dKey: 'app_admin_d', emoji: '🛡️', href: '/admin', accent: '#c96f6f', status: 'open' };
 let isAdminUser = false;
@@ -201,7 +200,7 @@ const TILE_ORDER_KEY = 'erquy_tile_order';
 // Ordre de préférence par défaut, utilisé tant que personne n'a encore réorganisé les
 // tuiles à la main. Voyages et Recettes restent toujours tout en bas, même après.
 const DEFAULT_PRIORITY = ['jouer'];
-const ALWAYS_LAST = ['voyages', 'recettes'];
+const ALWAYS_LAST = ['carnet'];
 function loadTileOrder(allIds) {
     let saved = [];
     try { saved = JSON.parse(localStorage.getItem(TILE_ORDER_KEY) || '[]'); } catch (e) {}

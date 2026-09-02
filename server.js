@@ -1184,6 +1184,10 @@ app.use('/perudo', requireAuth, express.static(__dirname + '/public/perudo'));
 const pbacApi = require('./pbac/game')(app, io, { get: mfGet, set: mfSet });
 // L'espace multijoueurs commun : le seul point d'entrée vers les tables.
 app.use('/jouer', requireAuth, express.static(__dirname + '/public/jouer'));
+// Le carnet réunit les sorties et les recettes : deux apps qui ne sont pas des
+// jeux mais des notes sur la vie réelle du cercle, et trop maigres chacune pour
+// justifier sa propre tuile.
+app.use('/carnet', requireAuth, express.static(__dirname + '/public/carnet'));
 app.use('/pbac', requireAuth, express.static(__dirname + '/public/pbac'));
 const yamsApi = require('./yams/game')(app, io, { get: mfGet, set: mfSet });
 app.use('/yams', requireAuth, express.static(__dirname + '/public/yams'));

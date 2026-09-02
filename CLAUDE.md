@@ -88,6 +88,7 @@ portail/
     ├── enchainement.js                      ← propose le jeu du jour suivant
     ├── vues.js                              ← le geste retour remonte d'une vue
     ├── jouer/                               ← l'espace multijoueurs commun
+    ├── carnet/                              ← les sorties et les recettes réunies
     ├── sw.js                                ← service worker (cache hors-ligne)
     ├── admin/
     ├── chance/
@@ -211,7 +212,7 @@ Le design system porte désormais la **réinitialisation de base** (`box-sizing`
 
 ## Les parcours
 
-L'accueil ne porte plus que **4 tuiles** (Jouer ensemble, Chance, Voyages, Recettes, plus Admin), contre 13 auparavant :
+L'accueil ne porte plus que **2 tuiles** (Jouer ensemble, Le carnet, plus Admin), contre 13 auparavant. Historique de la réduction — l'ancien état à **4 tuiles** était :
 
 - **Les trois jeux du jour n'ont plus de tuile.** Le panneau « Aujourd'hui » est leur seule porte, et le geste quotidien coûte une touche au lieu de trois. `/motus/` (l'ancien hub à deux liens) redirige vers `/motus/quotidien/` — on ne supprime pas, des liens et des favoris pointent dessus.
 - **Les cinq jeux multijoueurs partagent `/jouer/`.** Un bouton crée une partie via un catalogue, qui mène au jeu choisi avec `?creer=1` ; le jeu ouvre alors son propre écran de réglages. En dessous, `GET /api/salon/tables` agrège toutes les tables ouvertes, tous jeux confondus — avant, il fallait ouvrir les quatre jeux l'un après l'autre pour savoir si quelqu'un attendait.
@@ -220,9 +221,15 @@ L'accueil ne porte plus que **4 tuiles** (Jouer ensemble, Chance, Voyages, Recet
 
 ⚠️ Piège rencontré : `loadTileOrder()` écartait Voyages et Recettes de `rest` puis ne les réajoutait que s'ils étaient déjà dans `order` — ils disparaissaient donc de la grille pour qui n'avait jamais réorganisé ses tuiles. Le bug était masqué par les ordres sauvegardés dans les navigateurs.
 
+Depuis, trois regroupements de plus :
+
+- **Chance a rejoint le catalogue de `/jouer/`**, dans une famille « à un seul téléphone » qui ouvre aussi directement le mode local d'Infiltré (`?local=1`) — un jeu complet jusqu'ici enterré dans un hall conçu pour le distanciel.
+- **Le carnet** (`/carnet/`) réunit les sorties et les recettes : deux apps qui ne sont pas des jeux mais des notes sur la vie du cercle, trop maigres chacune pour justifier sa tuile. Les photos de recettes restent à faire — elles demandent un stockage externe, pas Redis.
+- **L'admin** perd ses quatre onglets par jeu identiques au profit de deux vues : *Parties* (toutes les tables, via `/api/admin/parties`) et *Santé* (Redis, mémoire, clés par famille, journal).
+
 ## Le classement du Salon
 
-`comptes/classement.js` calcule un score transversal à tous les jeux, exposé par `GET /api/salon/classement` et affiché replié en bas de l'accueil. **Il ne stocke rien** : tout est recalculé à la demande depuis les clés existantes, donc changer le barème ne demande aucune migration. Le barème est isolé en haut du fichier — c'est un choix de jeu, pas une contrainte technique.
+`comptes/classement.js` calcule un score transversal à tous les jeux, exposé par `GET /api/salon/classement` et affiché replié en bas de l'accueil. **Il ne stocke rien** : tout est recalculé à la demande depuis les clés existantes, donc changer le barème ne demande aucune migration. La **saison en cours** (mois calendaire) est la vue par défaut ; « depuis toujours » reste consultable. En saison, les jeux du jour se filtrent sur la date de leur clé, et le multijoueur se fonde sur `admin:gameHistory` — qui horodate chaque partie mais **n'enregistre pas le vainqueur**, donc une partie y compte comme participation seulement. Le barème est isolé en haut du fichier — c'est un choix de jeu, pas une contrainte technique.
 
 Piège à connaître si tu ajoutes un jeu au calcul : Yams et Petit Bac indexent leurs stats par pseudo **normalisé** (`yams:stats:ALIX`), Motus Party par pseudo brut. Le module tient une table `norm(pseudo) → pseudo` pour ça.
 
