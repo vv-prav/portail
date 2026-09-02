@@ -21,7 +21,7 @@
         style.id = 'pv-styles';
         style.textContent = `
 .pv-overlay { position:fixed; inset:0; z-index:900; display:flex; align-items:center; justify-content:center;
-    background:rgba(10,8,5,.78); padding:20px; opacity:0; visibility:hidden; transition:opacity .2s, visibility .2s; }
+    background:rgba(10,8,5,.78); padding:20px; opacity:0; visibility:hidden; transition:opacity .2s; }
 .pv-overlay.on { opacity:1; visibility:visible; }
 .pv-card { position:relative; width:100%; max-width:360px; padding:28px 22px 22px; border-radius:20px; text-align:center;
     background:linear-gradient(165deg,#1d1710,#14100b); border:1px solid rgba(217,169,78,.2);

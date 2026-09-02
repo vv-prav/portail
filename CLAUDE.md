@@ -170,6 +170,12 @@ Deux fichiers à la racine de `public/`, servis à n'importe quelle app via un c
 
 Variables de couleur (`--ink`, `--brass`, `--parchment`...), typographie, échelle d'espacements, et des classes de composants réutilisables : `.ds-back` (bouton retour), `.ds-btn` (+ `.ghost`/`.danger`/`.small`), `.ds-overlay`/`.ds-card`/`.ds-card-close` (popups avec fermeture **toujours** en haut à droite, jamais en bas), `.ds-stat-card`/`.ds-stat-grid`/`.ds-stat-box`, `.ds-row` (+ `.static`) pour les listes cliquables, `.ds-waiting-list`/`.ds-waiting-chip` pour les salles d'attente, `.ds-lb-row` pour les classements, `.ds-input`/`.ds-field-error`, `.ds-segmented` pour les sélecteurs à onglets, `.ds-toast`, `.ds-badge`, `.ds-chip`, `.ds-avatar` (5 tailles : xs/sm/md/lg/xl).
 
+⚠️ **Le piège des overlays** : la règle `.ds-overlay:not([hidden])` rend visible *tout* overlay qui ne porte pas l'attribut `hidden`. Un overlay créé en JS sans `hidden` est donc affiché en permanence — un voile plein écran qui intercepte tous les clics de la page, sans que rien ne le signale. C'est ce qui rendait chaque popup de `DS.confirm` impossible à fermer : `closeConfirm()` ne retirait que la classe `.on`. Tout overlay créé en JS doit naître `hidden` ; `design-system.js` verrouille en plus au chargement ceux qui n'ont ni `hidden` ni `.on`.
+
+⚠️ **Ne jamais transitionner `visibility`** sur un overlay ni sur quoi que ce soit qui couvre l'écran. Transitionnée, elle reste à `visible` pendant toute la durée de l'animation — et si celle-ci ne tourne pas (onglet en arrière-plan, animation interrompue), l'élément reste peint. Seule l'opacité est animée ; `visibility` bascule immédiatement, ce qui garantit la disparition tout en gardant le fondu à l'ouverture.
+
+⚠️ **Tout élément qui couvre l'écran sans être interactif prend `pointer-events:none`** : la célébration du Yams ne l'avait pas (contrairement à celle de Motus Party) et avalait les clics pendant ses 3 secondes ; le toast, à z-index 1200 en bas au centre, se posait pile sur le bouton « Lancer les dés ».
+
 ### `public/design-system.js`
 
 S'auto-injecte dans la page (crée son propre DOM, pas besoin d'ajouter le moindre HTML). Expose `window.DS` :

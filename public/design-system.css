@@ -137,7 +137,7 @@
 .ds-overlay {
     position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center;
     background: rgba(10, 8, 5, .78); padding: 20px;
-    opacity: 0; visibility: hidden; transition: opacity .2s, visibility .2s;
+    opacity: 0; visibility: hidden; transition: opacity .2s;
 }
 .ds-overlay.on, .ds-overlay:not([hidden]) { opacity: 1; visibility: visible; }
 .ds-overlay[hidden] { display: flex; opacity: 0; visibility: hidden; pointer-events: none; }
@@ -279,7 +279,8 @@ a { text-decoration: none; }
     position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(0);
     background: var(--ink-3); border: 1px solid var(--brass); color: var(--parchment); font-size: var(--ds-fs-sm);
     padding: 12px 18px; border-radius: var(--ds-radius-full); z-index: 1200; box-shadow: var(--ds-shadow);
-    max-width: 90vw; text-align: center; opacity: 0; visibility: hidden; transition: opacity .25s, visibility .25s, transform .25s;
+    max-width: 90vw; text-align: center; pointer-events: none;
+    opacity: 0; visibility: hidden; transition: opacity .25s, transform .25s;
 }
 .ds-toast.on { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(-6px); }
 

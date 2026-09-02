@@ -37,6 +37,11 @@
         if (confirmEl) return confirmEl;
         confirmEl = document.createElement('div');
         confirmEl.className = 'ds-overlay';
+        // ⚠️ Indispensable. La règle `.ds-overlay:not([hidden])` du CSS rend
+        // visible tout overlay qui ne porte pas l'attribut `hidden` : sans
+        // cette ligne, la popup restait affichée pour de bon une fois fermée
+        // — un voile plein écran qui interceptait tous les clics de la page.
+        confirmEl.hidden = true;
         confirmEl.innerHTML = `
             <div class="ds-card">
                 <button type="button" class="ds-card-close" aria-label="Fermer">✕</button>
@@ -53,7 +58,11 @@
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeConfirm(); });
         return confirmEl;
     }
-    function closeConfirm() { if (confirmEl) confirmEl.classList.remove('on'); }
+    function closeConfirm() {
+        if (!confirmEl) return;
+        confirmEl.classList.remove('on');
+        confirmEl.hidden = true;   // retirer la classe ne suffit pas, voir ci-dessus
+    }
 
     function confirm(opts) {
         const o = opts || {};
@@ -97,6 +106,7 @@
             cancelBtn.addEventListener('click', closeConfirm);
             box.appendChild(cancelBtn);
         }
+        el.hidden = false;
         el.classList.add('on');
     }
 
@@ -108,6 +118,18 @@
         const inner = a.photo ? `<img src="${a.photo}" alt="">` : esc(a.emoji || '✦');
         return `<span class="ds-avatar ${size || 'sm'}">${inner}</span>`;
     }
+
+    // ---------- Garde-fou ----------
+    // Un `.ds-overlay` qui n'a ni `hidden` ni `.on` est affiché par le CSS et
+    // capte tous les clics de la page, sans que rien ne le signale. On rattrape
+    // le cas au chargement plutôt que de laisser une page entière se bloquer.
+    function verrouillerOverlaysOublies() {
+        document.querySelectorAll('.ds-overlay').forEach(el => {
+            if (!el.hasAttribute('hidden') && !el.classList.contains('on')) el.hidden = true;
+        });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', verrouillerOverlaysOublies);
+    else verrouillerOverlaysOublies();
 
     window.DS = { toast, confirm, closeConfirm, avatarHTML, esc };
 })();

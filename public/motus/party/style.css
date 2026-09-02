@@ -132,7 +132,7 @@ body.clavier-ouvert .mp { gap:8px; padding-top:8px; }
 /* Grande célébration */
 .mp-celebration { position:fixed; inset:0; z-index:500; display:flex; align-items:center; justify-content:center;
     background:radial-gradient(120% 90% at 50% 40%, rgba(217,169,78,.35), rgba(20,16,11,.94));
-    opacity:0; visibility:hidden; transition:opacity .3s, visibility .3s; overflow:hidden; pointer-events:none; }
+    opacity:0; visibility:hidden; transition:opacity .3s; overflow:hidden; pointer-events:none; }
 .mp-celebration.on { opacity:1; visibility:visible; }
 .mp-celebration-inner { position:relative; z-index:2; text-align:center; padding:0 20px; }
 .mp-celebration-word { margin:0; font-size:clamp(3.4rem,18vw,6.5rem); transform:scale(.4) rotate(-8deg); opacity:0; }

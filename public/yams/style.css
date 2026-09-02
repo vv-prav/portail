@@ -181,7 +181,7 @@ body {
 /* Grande célébration plein écran quand quelqu'un fait un Yams */
 .ym-celebration { position:fixed; inset:0; z-index:500; display:flex; align-items:center; justify-content:center;
     background:radial-gradient(120% 90% at 50% 40%, rgba(217,169,78,.35), rgba(20,16,11,.94));
-    opacity:0; visibility:hidden; transition:opacity .3s, visibility .3s; overflow:hidden; }
+    opacity:0; visibility:hidden; transition:opacity .3s; overflow:hidden; pointer-events:none; }
 .ym-celebration.on { opacity:1; visibility:visible; }
 .ym-celebration.mega { background:radial-gradient(120% 90% at 50% 40%, rgba(210,98,74,.45), rgba(20,16,11,.96)); }
 .ym-celebration.on.mega { animation:ymScreenShake .5s ease-in-out .55s 2; }
