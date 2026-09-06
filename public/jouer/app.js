@@ -24,13 +24,13 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '
 // pour le distanciel.
 const CATALOGUE = [
     { id: 'perudo', nom: 'Perudo', emoji: '🎲', accent: '#d9a94e', href: '/perudo',
-      joueurs: '2 à 6 joueurs', duree: 'environ 20 min', direct: true },   // Perudo a son propre hall et son identité : on l'ouvre tel quel
+      joueurs: '2 à 12 joueurs', duree: 'environ 20 min', direct: true },   // Perudo a son propre hall et son identité : on l'ouvre tel quel
     { id: 'pbac', nom: 'Petit Bac', emoji: '✏️', accent: '#c2513a', href: '/pbac',
-      joueurs: '2 à 8 joueurs', duree: 'environ 10 min' },
+      joueurs: '2 à 12 joueurs', duree: 'environ 10 min' },
     { id: 'undercover', nom: 'Infiltré', emoji: '🕵️', accent: '#6f7bb0', href: '/undercover',
       joueurs: '3 à 12 joueurs', duree: 'environ 10 min' },
     { id: 'yams', nom: 'Yams', emoji: '🎯', accent: '#ecca82', href: '/yams',
-      joueurs: '1 à 6 joueurs', duree: 'environ 15 min' },
+      joueurs: '2 à 4 joueurs', duree: 'environ 15 min' },
     { id: 'motusparty', nom: 'Motus Party', emoji: '🏁', accent: '#d9a94e', href: '/motus/party',
       joueurs: '2 à 8 joueurs', duree: 'environ 5 min' },
 ];

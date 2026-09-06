@@ -124,9 +124,13 @@ body {
 .ym-sheet-rows { display:flex; flex-direction:column; gap:5px; }
 .ym-sheet-row { display:flex; align-items:center; gap:6px; padding:7px 8px; border-radius:9px;
     background:rgba(255,255,255,.025); border:1px solid var(--line); transition:background .15s, border-color .15s; }
-.ym-sheet-row.eligible { cursor:pointer; border-color:rgba(217,169,78,.4); background:rgba(217,169,78,.05); }
+/* Une case jouable s'annonce discrètement ; seule la meilleure est vraiment
+   signalée, et la case choisie prend le laiton plein. Trois niveaux, trois
+   intensités — pas trois couleurs différentes. */
+.ym-sheet-row.eligible { cursor:pointer; border-color:rgba(217,169,78,.28); background:rgba(217,169,78,.035); }
 .ym-sheet-row.eligible:active { background:rgba(217,169,78,.12); }
-.ym-sheet-row.pending { border-color:var(--brass); background:rgba(217,169,78,.16); }
+.ym-sheet-row.meilleure { border-color:var(--brass); background:rgba(217,169,78,.10); }
+.ym-sheet-row.pending { border-color:var(--brass); background:rgba(217,169,78,.2); box-shadow:0 0 0 1px var(--brass) inset; }
 .ym-sheet-row-label { flex:0 0 auto; width:26px; height:26px; display:grid; place-items:center; }
 .ym-sheet-row-label.text { width:auto; font-size:.66rem; color:var(--parchment); line-height:1.15; text-align:left; flex:1; }
 .ym-sheet-row-label.text em { display:block; font-style:normal; color:var(--muted); font-size:.6rem; }
@@ -134,19 +138,31 @@ body {
 .ym-sheet-row-icon { flex:0 0 auto; width:22px; height:22px; }
 .ym-cat-icon { width:100%; height:100%; fill:var(--brass-soft); opacity:.85; }
 .ym-sheet-row-text { font-size:.72rem; color:var(--parchment); text-align:left; }
-.ym-sheet-row.glowing { animation:ymRowGlow 1.3s ease-in-out infinite; }
-@keyframes ymRowGlow {
-    0%,100% { box-shadow:0 0 0 0 rgba(217,169,78,0); border-color:rgba(217,169,78,.4); }
-    50% { box-shadow:0 0 14px 2px rgba(217,169,78,.35); border-color:var(--brass); }
-}
 .ym-sheet-row-cells { display:flex; gap:4px; flex:1; justify-content:flex-end; flex-wrap:wrap; }
 .ym-score-cell { min-width:28px; height:28px; padding:0 6px; border-radius:7px; display:grid; place-items:center;
     font-size:.76rem; font-weight:800; border:1.5px solid transparent; }
 .ym-score-cell.filled { background:linear-gradient(180deg,color-mix(in srgb, var(--pcolor,var(--brass-soft)) 100%, white 20%),var(--pcolor,var(--brass))); color:#fff;
     text-shadow:0 1px 2px rgba(0,0,0,.35); box-shadow:0 2px 6px color-mix(in srgb, var(--pcolor,var(--brass)) 40%, transparent); }
+.ym-score-cell.filled.total { background:rgba(255,255,255,.06); color:var(--parchment);
+    border-color:var(--line); box-shadow:none; text-shadow:none; }
 .ym-score-cell.filled.bonus-on { background:linear-gradient(180deg,#7ecb9a,var(--good)); color:#0e2016;
     text-shadow:none; box-shadow:0 2px 6px rgba(90,168,122,.35); }
 .ym-score-cell.empty { color:var(--muted); opacity:.35; background:rgba(255,255,255,.02); border-color:var(--line); font-weight:500; }
+
+/* ---------- Les aperçus ----------
+   Ce qu'on marquerait, pas ce qu'on a marqué : jamais de fond plein, un
+   contour pointillé, un chiffre en laiton. La distinction se lit sans avoir
+   à comparer deux couleurs — c'est la forme qui change, pas la teinte.
+     · normal  : ça rapporte
+     · .top    : le meilleur coup possible ce tour-ci
+     · .zero   : la case serait barrée, on n'y gagne rien */
+.ym-score-cell.apercu { color:var(--brass-soft); background:rgba(217,169,78,.05);
+    border:1.5px dashed rgba(217,169,78,.45); font-weight:700; opacity:.85; }
+.ym-score-cell.apercu.top { color:var(--ink); background:linear-gradient(180deg,var(--brass-soft),var(--brass));
+    border-style:solid; border-color:var(--brass); font-weight:800; opacity:1;
+    box-shadow:0 2px 8px rgba(217,169,78,.30); }
+.ym-score-cell.apercu.zero { color:var(--muted); background:transparent;
+    border-color:rgba(160,143,116,.30); font-weight:600; opacity:.5; }
 .ym-score-cell.focus { transform:scale(1.15); }
 .ym-score-cell.unfocus { opacity:.4; filter:saturate(.5); transform:scale(.92); }
 .ym-score-cell { transition:transform .18s ease, opacity .18s ease; }

@@ -83,7 +83,7 @@ function ownsDiceSkin(id) {
 const SKIN_KEY = 'yams_dice_skin';
 let currentSkin = localStorage.getItem(SKIN_KEY) || 'classic';
 
-const PLAYER_COLORS = ['#9b6fc7', '#5aa8d9', '#5aa87a', '#d98a4a'];
+const PLAYER_COLORS = ['#9b6fc7', '#5aa8d9', '#3fb6ae', '#d9689b'];
 function playerColor(index) { return PLAYER_COLORS[index % PLAYER_COLORS.length]; }
 
 const UPPER_CATS = [
@@ -527,7 +527,9 @@ function selectPending(cat, label, points) {
     pendingCategory = cat; pendingLabel = label; pendingPoints = points;
     pendingDiceKey = state ? state.dice.join(',') : null;
     document.querySelectorAll('.ym-sheet-row').forEach(r => r.classList.toggle('pending', r.dataset.cat === cat));
-    $('confirmText').innerHTML = `${esc(label)} : <b>${points}</b> point${points > 1 ? 's' : ''}`;
+    $('confirmText').innerHTML = points === 0
+        ? `Barrer <b>${esc(label)}</b> — 0 point`
+        : `${esc(label)} : <b>${points}</b> point${points > 1 ? 's' : ''}`;
     if (state) $('confirmDice').innerHTML = state.dice.map(v => diceFaceSvg(v, 'mini', true)).join('');
     $('confirmBar').hidden = false;
 }
@@ -562,11 +564,39 @@ $('confirmOk').addEventListener('click', () => {
 });
 
 let focusedPlayerIndex = 0;
+// Ce que le joueur qui a la main marquerait dans chaque case encore libre.
+// Le serveur envoie déjà `possible` pour toutes les catégories dès qu'un lancer
+// a eu lieu : l'information existait, il fallait juste la montrer. Avant, il
+// fallait taper une case pour découvrir sa valeur dans la barre de
+// confirmation — donc tâtonner sur treize cases pour comparer.
+function apercuDisponible(s) {
+    return s.status === 'playing' && s.hasRolled && !!s.possible && !!s.turnPseudo;
+}
+// Le meilleur coup encore jouable, pour le signaler d'un coup d'œil.
+function meilleurCoup(s) {
+    if (!apercuDisponible(s)) return -1;
+    const p = s.players.find(x => x.pseudo === s.turnPseudo);
+    if (!p) return -1;
+    let best = -1;
+    for (const [cat, pts] of Object.entries(s.possible)) {
+        if (p.scores[cat] === null && pts > best) best = pts;
+    }
+    return best;
+}
 function scoreCellsFor(cat, s) {
+    const apercu = apercuDisponible(s);
+    const best = apercu ? meilleurCoup(s) : -1;
     return s.players.map((p, i) => {
         const val = p.scores[cat];
         const focus = i === focusedPlayerIndex ? ' focus' : (s.players.length > 1 ? ' unfocus' : '');
         if (val !== null) return `<span class="ym-score-cell filled${focus}" style="--pcolor:${playerColor(i)}">${val}</span>`;
+        if (apercu && p.pseudo === s.turnPseudo) {
+            const pts = s.possible[cat] || 0;
+            // L'aperçu ne subit pas l'estompage du joueur non mis en avant :
+            // c'est l'information la plus utile de l'écran, elle reste nette.
+            const ton = pts === 0 ? ' zero' : (pts === best && best > 0 ? ' top' : '');
+            return `<span class="ym-score-cell apercu${ton}">${pts}</span>`;
+        }
         return `<span class="ym-score-cell empty${focus}">—</span>`;
     }).join('');
 }
@@ -574,12 +604,15 @@ function sheetRow(cat, label, iconHtml, withText) {
     const isMyTurn = state && state.turnPseudo === myPseudo;
     const me = state && state.players.find(p => p.pseudo === myPseudo);
     const eligible = isMyTurn && state && state.hasRolled && me && me.scores[cat] === null;
-    const glowing = eligible && state.possible && state.possible[cat] > 0;
+    // Une seule rangée signalée — la meilleure. Avant, toutes celles qui
+    // rapportaient un point clignotaient en même temps : jusqu'à treize
+    // animations en boucle, qui ne désignaient plus rien.
+    const meilleure = eligible && state.possible && state.possible[cat] === meilleurCoup(state) && state.possible[cat] > 0;
     const labelInner = withText
         ? `<span class="ym-sheet-row-icon">${iconHtml}</span><span class="ym-sheet-row-text">${label}</span>`
         : (iconHtml || label);
     return `
-        <div class="ym-sheet-row${eligible ? ' eligible' : ''}${glowing ? ' glowing' : ''}" data-cat="${cat}">
+        <div class="ym-sheet-row${eligible ? ' eligible' : ''}${meilleure ? ' meilleure' : ''}" data-cat="${cat}">
             <span class="ym-sheet-row-label${withText ? ' combo' : (iconHtml ? '' : ' text')}">${labelInner}</span>
             <span class="ym-sheet-row-cells">${scoreCellsFor(cat, state)}</span>
         </div>`;
@@ -597,12 +630,12 @@ function renderSheet(s) {
         </div>
         <div class="ym-sheet-row subtotal">
             <span class="ym-sheet-row-label text">Sous-total</span>
-            <span class="ym-sheet-row-cells">${upperSums.map(u => `<span class="ym-score-cell filled">${u}</span>`).join('')}</span>
+            <span class="ym-sheet-row-cells">${upperSums.map(u => `<span class="ym-score-cell filled total">${u}</span>`).join('')}</span>
         </div>`;
     $('lowerSubtotalRow').innerHTML = `
         <div class="ym-sheet-row subtotal">
             <span class="ym-sheet-row-label text">Sous-total${s.players.some(p => p.yamsBonus) ? ' (bonus Yams inclus)' : ''}</span>
-            <span class="ym-sheet-row-cells">${lowerSums.map(u => `<span class="ym-score-cell filled">${u}</span>`).join('')}</span>
+            <span class="ym-sheet-row-cells">${lowerSums.map(u => `<span class="ym-score-cell filled total">${u}</span>`).join('')}</span>
         </div>`;
     document.querySelectorAll('.ym-sheet-row.eligible').forEach(row => row.addEventListener('click', () => {
         const cat = row.dataset.cat;
