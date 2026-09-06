@@ -721,11 +721,24 @@ module.exports = function attachAdmin(app, ctx) {
 
     A('/motus/regen', (req, res) => {
         const date = /^\d{4}-\d{2}-\d{2}$/.test(req.body.date || '') ? req.body.date : mf.today();
-        mf.del(`motus:word:${date}`);
+        const ancien = motus.word(date);
+        // Le tirage étant déterministe sur la date, supprimer la clé ne suffit
+        // pas : il faut faire avancer la variante, sinon on retombe sur le même
+        // mot. On insiste tant que le mot n'a pas réellement changé, au cas où
+        // une variante retomberait par hasard sur le même tirage.
+        let nouveau = ancien;
+        for (let i = 0; i < 25 && nouveau === ancien; i++) {
+            motus.varianteSuivante(date);
+            mf.del(motus.kWord(date));
+            nouveau = motus.word(date);
+        }
+        if (nouveau === ancien) return res.status(409).json({ error: 'Impossible de tirer un mot différent.' });
+        // Le mot a changé : les parties de la journée portaient sur l'ancien,
+        // elles n'ont plus de sens. Le classement du jour non plus.
         for (const k of Object.keys(mf.cache())) if (k.startsWith('motus:prog:') && k.endsWith(`:${date}`)) mf.del(k);
         mf.del(motus.kBoard(date));
-        log(currentUser(req), 'mot Motus régénéré', date);
-        res.json({ ok: true, word: motus.word(date) });
+        log(currentUser(req), 'mot Motus régénéré', `${date} : ${ancien} → ${nouveau}`);
+        res.json({ ok: true, ancien, word: nouveau });
     });
 
     A('/motus/board/remove', (req, res) => {

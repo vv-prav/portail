@@ -425,7 +425,7 @@ function mfPurge() {
         const parts = k.split(':');
         let date = null, limit = limitLong;
         if (parts[0] === 'motus') {
-            if (parts[1] === 'word') { date = parts[2]; limit = limitMotusWord; }
+            if (parts[1] === 'word' || parts[1] === 'variante') { date = parts[2]; limit = limitMotusWord; }
             else if (parts[1] === 'board' || parts[1] === 'cmt') { date = parts[2]; limit = limitMotusShort; }
             else if (parts[1] === 'prog') { date = parts[3]; limit = limitMotusShort; }
         } else if (parts[0] === 'mj') {
@@ -762,6 +762,22 @@ function motusRand(seed) {
     };
 }
 const kMotusWord = (d) => `motus:word:${d}`;
+// Le mot du jour est tiré d'une graine calculée sur la date : deux appels pour
+// la même date rendent donc toujours le même mot. C'est ce qu'on veut pour que
+// la journée soit stable — mais ça rendait « Régénérer ce mot » inopérant en
+// admin : la clé était bien supprimée, et le tirage retombait sur le même mot.
+// Ce compteur, incrémenté à chaque régénération, décale la graine. À zéro, la
+// graine est exactement celle d'avant : aucune date passée ne change de mot.
+const kMotusVariante = (d) => `motus:variante:${d}`;
+function motusGraine(date) {
+    const n = Number(mfGet(kMotusVariante(date))) || 0;
+    return 'motus|' + date + (n ? '|' + n : '');
+}
+function motusVarianteSuivante(date) {
+    const n = (Number(mfGet(kMotusVariante(date))) || 0) + 1;
+    mfSet(kMotusVariante(date), n);
+    return n;
+}
 const kMotusProg = (u, d) => `motus:prog:${u}:${d}`;
 const kMotusBoard = (d) => `motus:board:${d}`;
 const kMotusCmt = (d) => `motus:cmt:${d}`;
@@ -780,7 +796,7 @@ function motusWord(date) {
     }
     let candidates = pool.filter(m => !recent.has(m));
     if (!candidates.length) candidates = pool;
-    const rnd = motusRand(motusHashSeed('motus|' + date));
+    const rnd = motusRand(motusHashSeed(motusGraine(date)));
     const pick = candidates[Math.floor(rnd() * candidates.length)] || pool[0];
     mfSet(kMotusWord(date), pick);
     return pick;
@@ -813,7 +829,7 @@ function motusWordPreview(date) {
     }
     let candidates = pool.filter(m => !recent.has(m));
     if (!candidates.length) candidates = pool;
-    const rnd = motusRand(motusHashSeed('motus|' + date));
+    const rnd = motusRand(motusHashSeed(motusGraine(date)));
     const pick = candidates[Math.floor(rnd() * candidates.length)] || pool[0];
     return pick;
 }
@@ -2211,6 +2227,7 @@ require('./admin/routes')(app, {
         word: motusWord, wordPreview: motusWordPreview, def: motusDefFor,
         lenForDate: motusLenForDate, lengths: MOTUS_LENGTHS, tries: MOTUS_TRIES,
         kProg: kMotusProg, kBoard: kMotusBoard, kCmt: kMotusCmt,
+        kWord: kMotusWord, varianteSuivante: motusVarianteSuivante,
     },
     motjuste: {
         word: mjWord, wordPreview: mjWordPreview,

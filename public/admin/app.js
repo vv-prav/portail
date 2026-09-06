@@ -624,10 +624,15 @@ async function loadMotusComments(date) {
 
 $('mt-regen').addEventListener('click', () => {
     const date = $('mt-date').value;
-    ask('♻️', 'Régénérer le mot ?', 'Un nouveau mot sera tiré. Les parties en cours ce jour-là et le classement seront effacés.', [
-        { label: 'Confirmer', danger: true, run: async () => {
-            await api('/api/admin/motus/regen', { date });
-            toast('Mot régénéré.'); loadMotusDay();
+    const aujourdhui = date === new Date().toISOString().slice(0, 10);
+    ask('♻️', 'Tirer un nouveau mot ?',
+        `Un mot différent sera tiré pour le ${date}. Les parties de ce jour-là et le classement seront effacés.`
+        + (aujourdhui ? "\n\nC'est la date du jour : ceux qui ont la grille ouverte devront la recharger." : ''), [
+        { label: 'Tirer un nouveau mot', danger: true, run: async () => {
+            const { ok, data } = await api('/api/admin/motus/regen', { date });
+            if (!ok) return toast((data && data.error) || 'Le tirage a échoué.');
+            toast(`Nouveau mot : ${data.word} (avant : ${data.ancien}).`);
+            loadMotusDay();
         } }]);
 });
 
