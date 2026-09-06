@@ -217,7 +217,7 @@ function connect() {
     socket.on('yams_leaderboard_result', renderLeaderboard);
     socket.on('yams_history_result', renderHistory);
     socket.on('yams_h2h_result', renderH2h);
-    socket.on('yams_celebration', ({ pseudo, bonus }) => playCelebration(pseudo, bonus));
+    socket.on('yams_celebration', ({ pseudo, bonus }) => { sonYams(); playCelebration(pseudo, bonus); });
     socket.on('yams_nemesis_defeated', ({ winner, nemesis }) => playNemesisDefeated(winner, nemesis));
     socket.on('yams_tour_saute', ({ pseudo, parti }) => {
         if (pseudo === myPseudo) toast(parti ? 'Tu as été mis de côté, reviens quand tu veux.' : 'Tour passé, tu as mis trop de temps.');
@@ -246,28 +246,73 @@ Vues.surRetour((precedente) => { if (precedente) showView(precedente); });
 
 
 // ---------- Lobby ----------
+// =====================================================================
+//  MES STATISTIQUES — la fiche complète d'un joueur
+//  Le serveur tient désormais une ligne par case (combien de fois remplie,
+//  la moyenne, le record, combien de fois barrée) et la moyenne du salon
+//  pour chacune : c'est ce qui permet de dire à quelqu'un où il est bon,
+//  et pas seulement combien de parties il a gagnées.
+// =====================================================================
+let maFiche = null, moyennesSalon = [];
+function bloc3(paires) {
+    return `<div class="ds-stat-grid ym-stat-bloc">` + paires.filter(x => x[1] !== null && x[1] !== undefined)
+        .map(([l, v]) => `<div class="ds-stat-box"><b>${v}</b><em>${l}</em></div>`).join('') + `</div>`;
+}
 function renderStats(data) {
     if (!data) return;
+    maFiche = data;
     myYamsWins = data.gamesWon || 0;
     myYamsCount = data.totalYams || 0;
     myOpponents = data.opponents || [];
     if (!$('v-skins').hidden) renderSkinsGrid();
     if (!$('v-leaderboard').hidden) renderH2hSelect();
-    $('statsGrid').innerHTML = [
-        ['Victoires', data.gamesWon],
-        ['Parties jouées', data.gamesPlayed],
-        ['Taux de réussite', data.winRate === null ? '—' : data.winRate + '%'],
+
+    const bilan = data.gamesPlayed
+        ? `<p class="ym-stats-bilan"><b>${data.gamesWon}</b> victoire${data.gamesWon > 1 ? 's' : ''}, <b>${data.gamesLost}</b> défaite${data.gamesLost > 1 ? 's' : ''}${data.gamesTied ? `, <b>${data.gamesTied}</b> nul${data.gamesTied > 1 ? 's' : ''}` : ''} — ${data.winRate}% de réussite</p>`
+        : `<p class="ym-stats-bilan">Pas encore de partie à plusieurs.</p>`;
+
+    const chiffres = bloc3([
+        ['Parties', data.gamesPlayed],
+        ['Score moyen', data.moyenne || '—'],
+        ['Meilleur score', data.bestScore || '—'],
         ['Yams réalisés', data.totalYams],
         ['dont bonus', data.bonusYams],
-        ['Meilleur score', data.bestScore],
-    ].map(([label, val]) => `<div class="ds-stat-box"><b>${val}</b><em>${label}</em></div>`).join('');
-    const nem = $('statsNemesis');
-    if (data.nemesis) {
-        nem.innerHTML = `😈 Ta bête noire : <b>${esc(data.nemesis.pseudo)}</b> t’a battu ${data.nemesis.losses} fois`;
-        nem.hidden = false;
-    } else {
-        nem.hidden = true;
-    }
+        ['Bonus des 63', data.tauxBonus63 === null ? '—' : data.tauxBonus63 + '%'],
+    ]);
+    const series = (data.meilleureSerie > 1 || data.soloPlayed) ? bloc3([
+        data.meilleureSerie > 1 ? ['Meilleure série', data.meilleureSerie + ' 🏆'] : null,
+        data.serieVictoires > 1 ? ['Série en cours', data.serieVictoires] : null,
+        data.soloPlayed ? ['Parties solo', data.soloPlayed] : null,
+        data.soloBest ? ['Record solo', data.soloBest] : null,
+    ].filter(Boolean)) : '';
+
+    // Ce qui se dit d'un joueur en une phrase, comparé au reste du salon.
+    const f = data.forces || {};
+    const portraits = [];
+    if (f.force && f.force.ecart > 0) portraits.push(`💪 Ta case forte : <b>${esc(nomDeCat(f.force.cat))}</b> — ${f.force.moyenne} de moyenne, ${f.force.ecart > 0 ? '+' : ''}${f.force.ecart} par rapport au salon`);
+    if (f.faiblesse && f.faiblesse.ecart < 0) portraits.push(`📉 Ta case faible : <b>${esc(nomDeCat(f.faiblesse.cat))}</b> — ${f.faiblesse.moyenne} contre ${f.faiblesse.salon} dans le salon`);
+    if (f.barree) portraits.push(`✂️ Tu barres surtout <b>${esc(nomDeCat(f.barree.cat))}</b> : ${f.barree.zeros} fois sur ${f.barree.fois}`);
+    if (data.nemesis) portraits.push(`😈 Ta bête noire : <b>${esc(data.nemesis.pseudo)}</b> t'a battu ${data.nemesis.losses} fois`);
+    if (data.souffreDouleur) portraits.push(`🎯 Ton client préféré : <b>${esc(data.souffreDouleur.pseudo)}</b>, battu ${data.souffreDouleur.wins} fois`);
+
+    // Le détail case par case, avec la moyenne du salon comme point de repère.
+    const parCat = new Map(moyennesSalon.map(c => [c.cat, c]));
+    const lignes = (data.categories || []).filter(c => c.fois).map(c => {
+        const ref = parCat.get(c.cat);
+        const ecart = ref ? c.moyenne - ref.moyenne : null;
+        return `<div class="ym-cat-ligne">
+            <span class="ym-cat-nom">${esc(nomDeCat(c.cat))}</span>
+            <span class="ym-cat-moy">${c.moyenne}</span>
+            ${ecart === null ? '<span class="ym-cat-ecart"></span>'
+                : `<span class="ym-cat-ecart ${ecart > 0 ? 'plus' : (ecart < 0 ? 'moins' : '')}">${ecart > 0 ? '+' : ''}${ecart}</span>`}
+            <span class="ym-cat-detail">record ${c.meilleur}${c.zeros ? ` · barrée ${c.zeros}×` : ''}</span>
+        </div>`;
+    }).join('');
+
+    $('statsGrid').innerHTML = bilan + chiffres + series
+        + (portraits.length ? `<div class="ym-stats-portrait">${portraits.map(x => `<p>${x}</p>`).join('')}</div>` : '')
+        + (lignes ? `<p class="ym-stats-titre">Case par case <em>(ta moyenne, l'écart avec le salon)</em></p><div class="ym-cat-table">${lignes}</div>` : '');
+    $('statsNemesis').hidden = true;   // repris dans le portrait ci-dessus
 }
 function renderLobby(games) {
     $('lobby-empty-label').hidden = !!games.length;
@@ -316,26 +361,53 @@ $('btn-skins').addEventListener('click', () => { socket.emit('yams_stats'); rend
 
 // ---------- Classement, historique, face à face ----------
 let myOpponents = [];
-function renderLeaderboard(rows) {
-    $('paneLb').innerHTML = rows.length ? rows.map((r, i) => `
+function renderLeaderboard(d) {
+    const rows = (d && d.joueurs) || [];
+    moyennesSalon = (d && d.categories) || [];
+    const record = d && d.record;
+    const tete = record ? `<p class="ym-stats-bilan">🏅 Record du salon : <b>${record.score}</b> par ${esc(record.pseudo)}</p>` : '';
+    // Le classement compare maintenant ce qui se compare vraiment : la moyenne
+    // et le taux de bonus disent bien plus qu'un simple total de victoires.
+    const liste = rows.length ? rows.map((r, i) => `
         <button type="button" class="ds-lb-row${r.pseudo === myPseudo ? ' me' : ''}" data-view="${esc(r.pseudo)}">
             <span class="ds-lb-rank">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1)}</span>
-            <span class="ds-lb-name">${esc(r.pseudo)}</span>
-            <span class="ds-lb-value">${r.gamesWon} victoires</span>
+            <span class="ds-lb-name">${esc(r.pseudo)}
+                <em class="ym-lb-detail">moy. ${r.moyenne || '—'} · record ${r.bestScore} · bonus ${r.tauxBonus63}%${r.totalYams ? ` · ${r.totalYams} yams` : ''}</em></span>
+            <span class="ds-lb-value">${r.gamesWon}V${r.gamesTied ? ' ' + r.gamesTied + 'N' : ''}</span>
             <span class="ym-lb-winrate">${r.winRate}%</span>
         </button>
     `).join('') : `<p class="ym-list-label">Personne n'a encore terminé de partie.</p>`;
+    // La moyenne du salon pour chaque case : le point de repère qui manquait.
+    const cases = moyennesSalon.filter(c => c.fois).map(c => `
+        <div class="ym-cat-ligne">
+            <span class="ym-cat-nom">${esc(nomDeCat(c.cat))}</span>
+            <span class="ym-cat-moy">${c.moyenne}</span>
+            <span class="ym-cat-ecart">${c.tauxZero}% barrée</span>
+            <span class="ym-cat-detail">record ${c.meilleur}${c.porteur ? ' · ' + esc(c.porteur) : ''}</span>
+        </div>`).join('');
+    $('paneLb').innerHTML = tete + liste
+        + (cases ? `<p class="ym-stats-titre">Les cases du salon <em>(moyenne, part de cases barrées)</em></p><div class="ym-cat-table">${cases}</div>` : '');
     $('paneLb').querySelectorAll('.ds-lb-row').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
+    if (maFiche) renderStats(maFiche);   // les écarts dépendent des moyennes qu'on vient de recevoir
 }
 function renderHistory(list) {
     $('paneHist').innerHTML = list.length ? list.map(g => {
         const sorted = [...g.players].sort((a, b) => b.total - a.total);
         const when = new Date(g.endedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        const gagnants = g.gagnants || (g.winner ? [g.winner] : []);
+        const nul = gagnants.length > 1;
+        const marque = (p) => gagnants.includes(p.pseudo) ? (nul ? '🤝 ' : '🏆 ') : '';
+        const extras = [];
+        if (g.solo) extras.push('en solo');
+        const yams = g.players.reduce((t, p) => t + (p.yams || 0), 0);
+        if (yams) extras.push(`${yams} yams`);
+        const bonus = g.players.filter(p => p.bonus).length;
+        if (bonus) extras.push(`${bonus} bonus 63`);
         return `
             <div class="ds-row static">
                 <span class="ds-row-main">
-                    <span class="ds-row-name">${sorted.map((p, i) => `${i === 0 ? '🏆 ' : ''}${esc(p.pseudo)} (${p.total})`).join(' · ')}</span>
-                    <span class="ds-row-sub">${when}</span>
+                    <span class="ds-row-name">${sorted.map(p => `${marque(p)}${esc(p.pseudo)} (${p.total})`).join(' · ')}</span>
+                    <span class="ds-row-sub">${when}${extras.length ? ' · ' + extras.join(' · ') : ''}</span>
                 </span>
             </div>`;
     }).join('') : `<p class="ym-list-label">Aucune partie terminée pour l'instant.</p>`;
@@ -350,14 +422,30 @@ function renderH2hSelect() {
 function renderH2h(d) {
     if (!d) return;
     const total = d.totalGames;
-    $('h2hResult').innerHTML = total ? `
+    if (!total) {
+        $('h2hResult').innerHTML = `<p class="ym-list-label">Tu n'as pas encore joué contre ${esc(d.opponent)}.</p>`;
+        return;
+    }
+    const recentes = (d.recentes || []).map(r => {
+        const issue = r.gagnant === myPseudo ? 'gagne' : (r.gagnant ? 'perd' : 'nul');
+        return `<div class="ym-h2h-partie ${issue}">
+            <span>${new Date(r.endedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</span>
+            <b>${r.moi}</b><span class="ym-h2h-tiret">–</span><b>${r.lui}</b>
+        </div>`;
+    }).join('');
+    $('h2hResult').innerHTML = `
         <div class="ym-h2h-score">
             <div><b>${d.myWins}</b><span>victoires</span></div>
-            <div class="ym-h2h-vs">vs</div>
+            ${d.draws ? `<div><b>${d.draws}</b><span>nuls</span></div>` : '<div class="ym-h2h-vs">vs</div>'}
             <div><b>${d.myLosses}</b><span>défaites</span></div>
         </div>
-        <p class="ym-h2h-note">Sur ${total} partie${total > 1 ? 's' : ''} l'un contre l'autre. Meilleur score : toi ${d.myBest} · ${esc(d.opponent)} ${d.theirBest}.</p>
-    ` : `<p class="ym-list-label">Tu n’as pas encore joué contre ${esc(d.opponent)}.</p>`;
+        <div class="ym-h2h-compare">
+            <div><span>Meilleur score</span><b>${d.myBest}</b><em>${esc(d.opponent)} ${d.theirBest}</em></div>
+            <div><span>Score moyen</span><b>${d.myMoyenne || '—'}</b><em>${esc(d.opponent)} ${d.theirMoyenne || '—'}</em></div>
+            <div><span>Yams réalisés</span><b>${d.myYams}</b><em>${esc(d.opponent)} ${d.theirYams}</em></div>
+        </div>
+        <p class="ym-h2h-note">Sur ${total} partie${total > 1 ? 's' : ''} l'un contre l'autre.</p>
+        ${recentes ? `<p class="ym-stats-titre">Les dernières</p><div class="ym-h2h-liste">${recentes}</div>` : ''}`;
 }
 $('h2hSelect').addEventListener('change', (e) => socket.emit('yams_h2h', { opponent: e.target.value }));
 document.querySelectorAll('.ds-segmented button').forEach(tab => tab.addEventListener('click', () => {
@@ -365,10 +453,10 @@ document.querySelectorAll('.ds-segmented button').forEach(tab => tab.addEventLis
     ['lb', 'hist', 'h2h'].forEach(k => { $('pane' + k[0].toUpperCase() + k.slice(1)).hidden = tab.dataset.tab !== k; });
 }));
 $('btn-leaderboard').addEventListener('click', () => {
+    $('v-leaderboard').hidden = false;
     socket.emit('yams_leaderboard');
     socket.emit('yams_history');
     socket.emit('yams_stats');
-    $('v-leaderboard').hidden = false;
 });
 $('leaderboard-close').addEventListener('click', () => { $('v-leaderboard').hidden = true; });
 $('skins-close').addEventListener('click', () => { $('v-skins').hidden = true; });
@@ -393,8 +481,11 @@ function renderWaiting(s) {
     const isHost = myPseudo === s.host;
     $('btn-start').hidden = !isHost;
     $('wait-hint').hidden = isHost;
-    if (isHost && s.players.length < 2) { $('btn-start').disabled = true; $('btn-start').textContent = 'Il faut au moins 2 joueurs'; }
-    else if (isHost) { $('btn-start').disabled = false; $('btn-start').textContent = 'Lancer la partie'; }
+    if (isHost) {
+        $('btn-start').disabled = false;
+        $('btn-start').textContent = s.players.length < 2 ? 'Jouer seul' : 'Lancer la partie';
+    }
+    $('wait-solo').hidden = s.players.length > 1 || !isHost;
 }
 $('btn-start').addEventListener('click', () => socket.emit('yams_start'));
 $('btn-leave-lobby').addEventListener('click', () => { socket.emit('yams_leave'); localStorage.removeItem(LS_KEY); showView('v-lobby'); socket.emit('yams_list'); });
@@ -402,51 +493,83 @@ $('btn-back-lobby').addEventListener('click', () => { socket.emit('yams_leave');
 
 // ---------- Partie ----------
 let lastTurnPseudo = null, scoreAvatars = {};
-function renderScoresStrip(s) {
-    const turnChanged = lastTurnPseudo !== null && lastTurnPseudo !== s.turnPseudo;
-    lastTurnPseudo = s.turnPseudo;
-    if (focusedPlayerIndex >= s.players.length) focusedPlayerIndex = 0;
-    $('scoresStrip').innerHTML = s.players.map((p, i) => `
-        <div class="ym-score-band${p.pseudo === s.turnPseudo ? ' current' : ''}${i === focusedPlayerIndex ? ' focused' : ''}" data-i="${i}" style="--pcolor:${playerColor(i)}">
-            <button type="button" class="ds-avatar sm ym-score-band-bubble" data-view="${esc(p.pseudo)}">${PortailProfile.bubbleHTML(scoreAvatars[p.pseudo])}</button>
-            <span class="ym-score-band-name">${p.parti ? '🚪 ' : (p.connected ? '' : '⚪ ')}${esc(p.pseudo)}</span>
-            <b class="ym-score-band-total">${p.total}</b>
-        </div>
-    `).join('');
-    document.querySelectorAll('.ym-score-band').forEach(b => b.addEventListener('click', () => {
-        focusedPlayerIndex = Number(b.dataset.i);
-        renderScoresStrip(state); renderSheet(state);
-    }));
-    document.querySelectorAll('.ym-score-band-bubble').forEach(b => b.addEventListener('click', (e) => {
-        e.stopPropagation();
-        PortailProfile.open(b.dataset.view);
-    }));
-    PortailProfile.fetchAvatars(s.players.map(p => p.pseudo)).then(a => {
-        scoreAvatars = a;
-        document.querySelectorAll('.ym-score-band-bubble').forEach(b => { b.innerHTML = PortailProfile.bubbleHTML(a[b.dataset.view]); });
-    });
-    if (turnChanged) {
-        const band = document.querySelector('.ym-score-band.current');
-        if (band) { band.classList.add('handoff'); setTimeout(() => band.classList.remove('handoff'), 700); }
-    }
+
+// =====================================================================
+//  LE SON
+//  Le Yams est le jeu où le son porte le plaisir — le roulement des dés, le
+//  claquement d'un dé qu'on garde, la fanfare du Yams. Il n'y avait que trois
+//  vibrations. Tout est synthétisé à la volée : aucun fichier à charger, rien
+//  à mettre en cache, et ça marche hors-ligne comme le reste du salon.
+//  Le contexte audio ne peut naître que d'un geste de l'utilisateur (iOS),
+//  d'où la création paresseuse au premier clic.
+// =====================================================================
+const SON_CLE = 'yams_son';
+let sonActif = localStorage.getItem(SON_CLE) !== '0';
+let ctx = null;
+function audio() {
+    if (!sonActif) return null;
+    try {
+        if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+        if (ctx.state === 'suspended') ctx.resume();
+        return ctx;
+    } catch (e) { return null; }
 }
-// Glisser le doigt sur le bandeau de scores pour changer le joueur mis en avant
-// dans la feuille en dessous, sans jamais toucher au tour de jeu réel.
-(function wireScoreSwipe() {
-    const strip = $('scoresStrip');
-    let startX = null;
-    strip.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; }, { passive: true });
-    strip.addEventListener('touchend', (e) => {
-        if (startX === null || !state) return;
-        const dx = e.changedTouches[0].clientX - startX;
-        startX = null;
-        if (Math.abs(dx) < 40) return;
-        const n = state.players.length;
-        focusedPlayerIndex = ((focusedPlayerIndex + (dx < 0 ? 1 : -1)) % n + n) % n;
-        renderScoresStrip(state); renderSheet(state);
-    }, { passive: true });
-})();
+// Une note simple : forme d'onde, hauteur, durée, volume.
+function note(freq, duree, type, volume, retard) {
+    const c = audio(); if (!c) return;
+    const t = c.currentTime + (retard || 0);
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(volume === undefined ? .12 : volume, t + .012);
+    g.gain.exponentialRampToValueAtTime(.0001, t + duree);
+    o.connect(g).connect(c.destination);
+    o.start(t); o.stop(t + duree + .02);
+}
+// Un bruit court et sec : c'est ce qui fait le son d'un dé, pas une note.
+function choc(duree, filtre, volume, retard) {
+    const c = audio(); if (!c) return;
+    const t = c.currentTime + (retard || 0);
+    const n = Math.floor(c.sampleRate * duree);
+    const buf = c.createBuffer(1, n, c.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    const src = c.createBufferSource(); src.buffer = buf;
+    const bp = c.createBiquadFilter(); bp.type = 'bandpass';
+    bp.frequency.value = filtre || 1800; bp.Q.value = 1.2;
+    const g = c.createGain(); g.gain.value = volume === undefined ? .3 : volume;
+    src.connect(bp).connect(g).connect(c.destination);
+    src.start(t);
+}
+// Les dés qui roulent : une poignée de chocs de plus en plus espacés.
+function sonLancer() {
+    let t = 0;
+    for (let i = 0; i < 9; i++) { choc(.05, 1200 + Math.random() * 1600, .22 - i * .015, t); t += .045 + i * .015; }
+}
+function sonDe() { choc(.04, 2400, .18); }
+function sonPose() { note(660, .09, 'triangle', .1); note(990, .12, 'triangle', .08, .07); }
+function sonBarre() { note(300, .16, 'sawtooth', .06); }
+function sonTour() { note(523, .12, 'sine', .1); note(784, .18, 'sine', .09, .1); }
+function sonBonus() { [523, 659, 784].forEach((f, i) => note(f, .22, 'triangle', .09, i * .09)); }
+function sonYams() { [523, 659, 784, 1047, 1319].forEach((f, i) => note(f, .35, 'triangle', .1, i * .1)); }
+function sonVictoire() { [523, 659, 784, 1047].forEach((f, i) => note(f, .4, 'sine', .1, i * .13)); }
+
 let lastDiceKey = null;
+
+// ---------- Le moment où les aperçus apparaissent ----------
+// Les valeurs possibles arrivent avec l'état, donc avant que les dés aient fini
+// de rouler : elles annonçaient le résultat pendant que l'animation faisait
+// encore semblant de le chercher. On les retient jusqu'à la fin du roulement.
+let apercusVisibles = true, apercuTimer = null;
+function masquerApercus(dureeMs) {
+    apercusVisibles = false;
+    clearTimeout(apercuTimer);
+    apercuTimer = setTimeout(() => {
+        apercusVisibles = true;
+        if (state) renderSheet(state);
+    }, dureeMs);
+}
 function spawnDiceParticle(btn) {
     const host = $('diceRow');
     if (!host) return;
@@ -461,6 +584,8 @@ function spawnDiceParticle(btn) {
     host.appendChild(p);
     setTimeout(() => p.remove(), 500);
 }
+const ROLL_STEPS = [60, 60, 70, 80, 90, 110, 140, 180];
+const ROLL_DUREE = ROLL_STEPS.reduce((a, b) => a + b, 0);
 function runRollAnimation(btn, finalValue, delayMs) {
     // Cycle réellement à travers des valeurs aléatoires, de plus en plus lentement,
     // avant de se stabiliser sur le vrai résultat : ça donne l'impression d'un dé
@@ -468,7 +593,7 @@ function runRollAnimation(btn, finalValue, delayMs) {
     setTimeout(() => {
         btn.classList.add('rolling-spin');
         const face = btn.querySelector('.ym-die-face-wrap');
-        const steps = [60, 60, 70, 80, 90, 110, 140, 180];
+        const steps = ROLL_STEPS;
         let i = 0;
         const particleTimer = setInterval(() => spawnDiceParticle(btn), 55);
         function tick() {
@@ -500,11 +625,13 @@ function renderDice(s) {
                 <span class="ym-die-face-wrap">${diceFaceSvg(v, '', true)}</span>
             </button>
         `).join('');
+        let dernierDepart = 0;
         $('diceRow').querySelectorAll('.ym-die').forEach((b, i) => {
-            b.addEventListener('click', () => socket.emit('yams_hold', { index: Number(b.dataset.i) }));
+            b.addEventListener('click', () => { sonDe(); socket.emit('yams_hold', { index: Number(b.dataset.i) }); });
             // On ne fait rouler que les dés qui viennent vraiment d'être relancés (pas ceux gardés).
-            if (justRolled && !s.held[i]) runRollAnimation(b, s.dice[i], i * 70);
+            if (justRolled && !s.held[i]) { runRollAnimation(b, s.dice[i], i * 70); dernierDepart = i * 70; }
         });
+        if (justRolled) { sonLancer(); masquerApercus(dernierDepart + ROLL_DUREE + 60); }
     }
     $('turnLabel').textContent = isMyTurn ? 'À toi de jouer' : `Au tour de ${s.turnPseudo}`;
     const tag = $('ym-turn-tag');
@@ -521,12 +648,12 @@ let pendingCategory = null, pendingLabel = '', pendingDiceKey = null, pendingPoi
 function clearPending() {
     pendingCategory = null;
     $('confirmBar').hidden = true;
-    document.querySelectorAll('.ym-sheet-row.pending').forEach(r => r.classList.remove('pending'));
+    document.querySelectorAll('.ym-ligne.pending').forEach(r => r.classList.remove('pending'));
 }
 function selectPending(cat, label, points) {
     pendingCategory = cat; pendingLabel = label; pendingPoints = points;
     pendingDiceKey = state ? state.dice.join(',') : null;
-    document.querySelectorAll('.ym-sheet-row').forEach(r => r.classList.toggle('pending', r.dataset.cat === cat));
+    document.querySelectorAll('.ym-ligne').forEach(r => r.classList.toggle('pending', r.dataset.cat === cat));
     $('confirmText').innerHTML = points === 0
         ? `Barrer <b>${esc(label)}</b> — 0 point`
         : `${esc(label)} : <b>${points}</b> point${points > 1 ? 's' : ''}`;
@@ -536,7 +663,7 @@ function selectPending(cat, label, points) {
 // Le chiffre s'envole visuellement des dés vers sa case ; si le score est nul (case
 // sacrifiée), un petit effet comique de dé qui s'écroule joue à la place.
 function flyScoreToCell(cat, points) {
-    const row = document.querySelector(`.ym-sheet-row[data-cat="${cat}"]`);
+    const row = document.querySelector(`.ym-ligne[data-cat="${cat}"]`);
     const dice = $('diceRow');
     if (!row || !dice) return;
     const rowRect = row.getBoundingClientRect();
@@ -558,21 +685,24 @@ function flyScoreToCell(cat, points) {
 $('confirmCancel').addEventListener('click', clearPending);
 $('confirmOk').addEventListener('click', () => {
     if (!pendingCategory) return;
+    if (pendingPoints > 0) sonPose(); else sonBarre();
     flyScoreToCell(pendingCategory, pendingPoints);
     socket.emit('yams_score', { category: pendingCategory });
     clearPending();
 });
 
-let focusedPlayerIndex = 0;
-// Ce que le joueur qui a la main marquerait dans chaque case encore libre.
-// Le serveur envoie déjà `possible` pour toutes les catégories dès qu'un lancer
-// a eu lieu : l'information existait, il fallait juste la montrer. Avant, il
-// fallait taper une case pour découvrir sa valeur dans la barre de
-// confirmation — donc tâtonner sur treize cases pour comparer.
+// =====================================================================
+//  LA FEUILLE — un vrai bloc de Yams : une ligne par case, une colonne par
+//  joueur. Les deux colonnes côte à côte d'avant ne laissaient que 160 px
+//  aux cellules, qui passaient à la ligne dès trois joueurs : chaque rangée
+//  faisait alors 76 px au lieu de 30, et les treize cases un mur de 1000 px.
+// =====================================================================
+// Le serveur envoie `possible` pour toutes les catégories dès qu'un lancer a
+// eu lieu ; l'aperçu n'est montré qu'une fois les dés vraiment posés.
 function apercuDisponible(s) {
     return s.status === 'playing' && s.hasRolled && !!s.possible && !!s.turnPseudo;
 }
-// Le meilleur coup encore jouable, pour le signaler d'un coup d'œil.
+// Le meilleur coup encore jouable, pour le signaler d'un coup d'oeil.
 function meilleurCoup(s) {
     if (!apercuDisponible(s)) return -1;
     const p = s.players.find(x => x.pseudo === s.turnPseudo);
@@ -583,68 +713,96 @@ function meilleurCoup(s) {
     }
     return best;
 }
-function scoreCellsFor(cat, s) {
-    const apercu = apercuDisponible(s);
-    const best = apercu ? meilleurCoup(s) : -1;
-    return s.players.map((p, i) => {
-        const val = p.scores[cat];
-        const focus = i === focusedPlayerIndex ? ' focus' : (s.players.length > 1 ? ' unfocus' : '');
-        if (val !== null) return `<span class="ym-score-cell filled${focus}" style="--pcolor:${playerColor(i)}">${val}</span>`;
-        if (apercu && p.pseudo === s.turnPseudo) {
-            const pts = s.possible[cat] || 0;
-            // L'aperçu ne subit pas l'estompage du joueur non mis en avant :
-            // c'est l'information la plus utile de l'écran, elle reste nette.
-            const ton = pts === 0 ? ' zero' : (pts === best && best > 0 ? ' top' : '');
-            return `<span class="ym-score-cell apercu${ton}">${pts}</span>`;
-        }
-        return `<span class="ym-score-cell empty${focus}">—</span>`;
-    }).join('');
+
+const TOUTES_CATS = [...UPPER_CATS, ...LOWER_CATS];
+const LOWER_KEYS = LOWER_CATS.map(c => c.key);
+const nomDeCat = (cat) => (TOUTES_CATS.find(c => c.key === cat) || {}).label || cat;
+
+function celluleDe(cat, p, i, s, apercu, best) {
+    const val = p.scores[cat];
+    if (val !== null) return `<span class="ym-cell filled" style="--pcolor:${playerColor(i)}">${val}</span>`;
+    if (apercu && p.pseudo === s.turnPseudo) {
+        const pts = s.possible[cat] || 0;
+        const ton = pts === 0 ? ' zero' : (pts === best && best > 0 ? ' top' : '');
+        return `<span class="ym-cell apercu${ton}">${pts}</span>`;
+    }
+    return `<span class="ym-cell empty">—</span>`;
 }
-function sheetRow(cat, label, iconHtml, withText) {
-    const isMyTurn = state && state.turnPseudo === myPseudo;
-    const me = state && state.players.find(p => p.pseudo === myPseudo);
-    const eligible = isMyTurn && state && state.hasRolled && me && me.scores[cat] === null;
+function ligneDe(cat, label, iconHtml, s, apercu, best) {
+    const isMyTurn = s.turnPseudo === myPseudo;
+    const me = s.players.find(p => p.pseudo === myPseudo);
+    const jouable = isMyTurn && s.hasRolled && me && me.scores[cat] === null;
     // Une seule rangée signalée — la meilleure. Avant, toutes celles qui
-    // rapportaient un point clignotaient en même temps : jusqu'à treize
-    // animations en boucle, qui ne désignaient plus rien.
-    const meilleure = eligible && state.possible && state.possible[cat] === meilleurCoup(state) && state.possible[cat] > 0;
-    const labelInner = withText
-        ? `<span class="ym-sheet-row-icon">${iconHtml}</span><span class="ym-sheet-row-text">${label}</span>`
-        : (iconHtml || label);
-    return `
-        <div class="ym-sheet-row${eligible ? ' eligible' : ''}${meilleure ? ' meilleure' : ''}" data-cat="${cat}">
-            <span class="ym-sheet-row-label${withText ? ' combo' : (iconHtml ? '' : ' text')}">${labelInner}</span>
-            <span class="ym-sheet-row-cells">${scoreCellsFor(cat, state)}</span>
-        </div>`;
+    // rapportaient un point clignotaient ensemble : jusqu'à treize animations
+    // en boucle, qui ne désignaient plus rien.
+    const meilleure = jouable && s.possible && s.possible[cat] === best && best > 0;
+    return `<div class="ym-ligne${jouable ? ' jouable' : ''}${meilleure ? ' meilleure' : ''}" data-cat="${cat}" role="row">
+        <span class="ym-ligne-nom"><span class="ym-ligne-icone">${iconHtml}</span>${esc(label)}</span>
+        ${s.players.map((p, i) => celluleDe(cat, p, i, s, apercu, best)).join('')}
+    </div>`;
+}
+function ligneCalcul(nom, valeurs, classe) {
+    return `<div class="ym-ligne ${classe}" role="row">
+        <span class="ym-ligne-nom">${nom}</span>
+        ${valeurs.join('')}
+    </div>`;
 }
 function renderSheet(s) {
-    $('upperRows').innerHTML = UPPER_CATS.map(c => sheetRow(c.key, c.label, diceFaceSvg(c.face, 'small'), false)).join('');
-    $('lowerRows').innerHTML = LOWER_CATS.map(c => sheetRow(c.key, c.label, catIconSvg(c.key), true)).join('');
-    const upperSums = s.players.map(p => UPPER_KEYS.reduce((sum, k) => sum + (p.scores[k] || 0), 0));
-    const lowerKeys = LOWER_CATS.map(c => c.key);
-    const lowerSums = s.players.map(p => lowerKeys.reduce((sum, k) => sum + (p.scores[k] || 0), 0) + (p.yamsBonus || 0));
-    $('bonusRow').innerHTML = `
-        <div class="ym-sheet-row bonus">
-            <span class="ym-sheet-row-label text">Bonus <em>(63 pts et +)</em></span>
-            <span class="ym-sheet-row-cells">${upperSums.map(u => `<span class="ym-score-cell ${u >= 63 ? 'filled bonus-on' : 'empty'}">${u >= 63 ? '+35' : '\u2212' + (63 - u)}</span>`).join('')}</span>
-        </div>
-        <div class="ym-sheet-row subtotal">
-            <span class="ym-sheet-row-label text">Sous-total</span>
-            <span class="ym-sheet-row-cells">${upperSums.map(u => `<span class="ym-score-cell filled total">${u}</span>`).join('')}</span>
-        </div>`;
-    $('lowerSubtotalRow').innerHTML = `
-        <div class="ym-sheet-row subtotal">
-            <span class="ym-sheet-row-label text">Sous-total${s.players.some(p => p.yamsBonus) ? ' (bonus Yams inclus)' : ''}</span>
-            <span class="ym-sheet-row-cells">${lowerSums.map(u => `<span class="ym-score-cell filled total">${u}</span>`).join('')}</span>
-        </div>`;
-    document.querySelectorAll('.ym-sheet-row.eligible').forEach(row => row.addEventListener('click', () => {
+    const apercu = apercuDisponible(s) && apercusVisibles;
+    const best = apercu ? meilleurCoup(s) : -1;
+    const hauts = s.players.map(p => UPPER_KEYS.reduce((sum, k) => sum + (p.scores[k] || 0), 0));
+    const bas = s.players.map(p => LOWER_KEYS.reduce((sum, k) => sum + (p.scores[k] || 0), 0) + (p.yamsBonus || 0));
+
+    const entete = `<div class="ym-ligne entete" role="row">
+        <span class="ym-ligne-nom">${s.serie ? `<span class="ym-manche">Manche ${s.manche}</span>` : ''}</span>
+        ${s.players.map((p, i) => `<button type="button" class="ym-col-tete${p.pseudo === s.turnPseudo ? ' actif' : ''}${p.parti ? ' parti' : (p.connected ? '' : ' absent')}"
+            style="--pcolor:${playerColor(i)}" data-view="${esc(p.pseudo)}">
+            <span class="ds-avatar xs ym-col-bulle" data-p="${esc(p.pseudo)}">${PortailProfile.bubbleHTML(scoreAvatars[p.pseudo])}</span>
+            <span class="ym-col-nom">${p.pseudo === myPseudo ? 'Toi' : esc(p.pseudo)}</span>
+            <b class="ym-col-total">${p.total}</b>
+            ${s.serie ? `<span class="ym-col-serie">${(s.serie[p.pseudo] || 0) + p.total}</span>` : ''}
+        </button>`).join('')}
+    </div>`;
+
+    $('feuille').style.setProperty('--joueurs', s.players.length);
+    $('feuille').innerHTML = entete
+        + `<p class="ym-section">Chiffres</p>`
+        + UPPER_CATS.map(c => ligneDe(c.key, c.label, diceFaceSvg(c.face, 'small'), s, apercu, best)).join('')
+        + ligneCalcul('Bonus <em>63 et +</em>',
+            hauts.map(u => `<span class="ym-cell ${u >= 63 ? 'bonus-ok' : 'calcul'}">${u >= 63 ? '+35' : '−' + (63 - u)}</span>`), 'bonus')
+        + ligneCalcul('Sous-total', hauts.map(u => `<span class="ym-cell calcul">${u}</span>`), 'soustotal')
+        + `<p class="ym-section">Combinaisons</p>`
+        + LOWER_CATS.map(c => ligneDe(c.key, c.label, catIconSvg(c.key), s, apercu, best)).join('')
+        + ligneCalcul('Sous-total' + (s.players.some(p => p.yamsBonus) ? ' <em>bonus Yams compris</em>' : ''),
+            bas.map(u => `<span class="ym-cell calcul">${u}</span>`), 'soustotal')
+        + ligneCalcul('Total', s.players.map((p, i) => `<span class="ym-cell total" style="--pcolor:${playerColor(i)}">${p.total}</span>`), 'grandtotal');
+
+    $('feuille').querySelectorAll('.ym-ligne.jouable').forEach(row => row.addEventListener('click', () => {
         const cat = row.dataset.cat;
-        const label = [...UPPER_CATS, ...LOWER_CATS].find(c => c.key === cat).label;
-        selectPending(cat, label, s.possible[cat]);
+        selectPending(cat, nomDeCat(cat), s.possible[cat]);
     }));
+    $('feuille').querySelectorAll('.ym-col-tete').forEach(b =>
+        b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
+    PortailProfile.fetchAvatars(s.players.map(p => p.pseudo)).then(a => {
+        scoreAvatars = a;
+        $('feuille').querySelectorAll('.ym-col-bulle').forEach(el => { el.innerHTML = PortailProfile.bubbleHTML(a[el.dataset.p]); });
+    });
     // Si les dés ont changé depuis la sélection (nouveau lancer), la case en attente n'a plus de sens.
     if (pendingCategory && pendingDiceKey !== s.dice.join(',')) clearPending();
 }
+// Le son se coupe d'un geste, et le choix se retient.
+function majBoutonSon() {
+    $('ym-son').textContent = sonActif ? '🔊' : '🔇';
+    $('ym-son').setAttribute('aria-label', sonActif ? 'Couper le son' : 'Remettre le son');
+}
+$('ym-son').addEventListener('click', () => {
+    sonActif = !sonActif;
+    localStorage.setItem(SON_CLE, sonActif ? '1' : '0');
+    majBoutonSon();
+    if (sonActif) sonDe();
+});
+majBoutonSon();
+
 $('btn-roll').addEventListener('click', () => { clearPending(); socket.emit('yams_roll'); });
 
 // ---------- Le chronomètre du tour ----------
@@ -672,6 +830,27 @@ function lancerChrono() {
 const NOMS_CAT = { uns:'les 1', deux:'les 2', trois:'les 3', quatre:'les 4', cinq:'les 5', six:'les 6',
     brelan:'Brelan', carre:'Carré', full:'Full', petiteSuite:'Petite suite', grandeSuite:'Grande suite',
     yams:'Yams', chance:'Chance' };
+// Le record du salon : un adversaire même quand on mène largement, et le seul
+// enjeu qui reste quand on joue seul. Il n'existait que dans un onglet de stats.
+function renderRecord(s) {
+    const el = $('ymRecord');
+    if (!s.record || !s.record.score) { el.hidden = true; return; }
+    const me = s.players.find(p => p.pseudo === myPseudo);
+    const moi = me ? me.total : 0;
+    const aMoi = s.record.pseudo === myPseudo;
+    el.hidden = false;
+    if (moi > s.record.score) {
+        el.className = 'ym-record bat';
+        el.textContent = `🏅 Tu dépasses le record du salon (${s.record.score})`;
+    } else {
+        el.className = 'ym-record';
+        const reste = s.record.score - moi;
+        el.textContent = aMoi
+            ? `🏅 Ton record : ${s.record.score} — il te manque ${reste}`
+            : `🏅 Record du salon : ${s.record.score} par ${s.record.pseudo} — il te manque ${reste}`;
+    }
+}
+
 function renderJournal(s) {
     const j = s.journal || [];
     const el = $('ymJournal');
@@ -690,16 +869,53 @@ function renderJournal(s) {
 
 
 // ---------- Fin de partie ----------
+// Les faits marquants d'une partie : ce qui s'est vraiment passé, au-delà du
+// total. Sans ça on ne voyait pas où on avait perdu.
+function faitsMarquants(s) {
+    const faits = [];
+    const bonus = s.players.filter(p => UPPER_KEYS.reduce((t, k) => t + (p.scores[k] || 0), 0) >= 63);
+    if (bonus.length) faits.push(`🎯 Bonus des 63 : ${bonus.map(p => p.pseudo === myPseudo ? 'toi' : p.pseudo).join(', ')}`);
+    const avecYams = s.players.filter(p => p.scores.yams === 50);
+    if (avecYams.length) faits.push(`🎲 Yams réussi : ${avecYams.map(p => p.pseudo === myPseudo ? 'toi' : p.pseudo).join(', ')}`);
+    // La plus grosse case de la partie, tous joueurs confondus.
+    let top = null;
+    for (const p of s.players) for (const c of TOUTES_CATS) {
+        const v = p.scores[c.key];
+        if (v !== null && (!top || v > top.v)) top = { v, cat: c.label, pseudo: p.pseudo };
+    }
+    if (top && top.v > 0) faits.push(`💥 Plus grosse case : ${top.v} sur ${top.cat} (${top.pseudo === myPseudo ? 'toi' : top.pseudo})`);
+    const barrees = s.players.map(p => ({ pseudo: p.pseudo, n: TOUTES_CATS.filter(c => p.scores[c.key] === 0).length }))
+        .sort((a, b) => b.n - a.n)[0];
+    if (barrees && barrees.n > 0) faits.push(`✂️ Le plus de cases barrées : ${barrees.pseudo === myPseudo ? 'toi' : barrees.pseudo} (${barrees.n})`);
+    return faits;
+}
 function renderEnded(s) {
     const sorted = [...s.players].sort((a, b) => b.total - a.total);
-    $('endTitle').textContent = s.winner === myPseudo ? 'Tu as gagné !' : `${s.winner} a gagné !`;
-    $('endScores').innerHTML = sorted.map((p, i) => `
-        <button type="button" class="ds-lb-row${i === 0 ? ' win' : ''}" data-view="${esc(p.pseudo)}">
-            <span class="ds-lb-name">${i === 0 ? '🏆 ' : ''}${esc(p.pseudo)}</span><span class="ds-lb-value">${p.total}</span>
-        </button>
-    `).join('');
+    const gagnants = s.gagnants || (s.winner ? [s.winner] : []);
+    const nul = gagnants.length > 1;
+    // À totaux égaux, personne ne gagne — et ça se dit.
+    $('endTitle').textContent = s.solo
+        ? `Partie terminée — ${sorted[0] ? sorted[0].total : 0} points`
+        : (nul ? `Égalité à ${sorted[0].total} entre ${gagnants.join(' et ')}`
+               : (s.winner === myPseudo ? 'Tu as gagné !' : `${s.winner} a gagné !`));
+    $('endScores').innerHTML = sorted.map((p) => {
+        const gagne = gagnants.includes(p.pseudo);
+        const cumul = s.serie ? (s.serie[p.pseudo] || 0) + p.total : null;
+        return `<button type="button" class="ds-lb-row${gagne && !nul ? ' win' : ''}" data-view="${esc(p.pseudo)}">
+            <span class="ds-lb-name">${gagne ? (nul ? '🤝 ' : '🏆 ') : ''}${esc(p.pseudo)}</span>
+            ${cumul !== null ? `<span class="ym-end-cumul">série ${cumul}</span>` : ''}
+            <span class="ds-lb-value">${p.total}</span>
+        </button>`;
+    }).join('');
     $('endScores').querySelectorAll('.ds-lb-row').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
+    // Les faits marquants, puis la feuille complète : on veut voir où ça s'est joué.
+    const faits = faitsMarquants(s);
+    $('endFaits').innerHTML = faits.map(f => `<p class="ym-fait">${esc(f)}</p>`).join('');
+    $('endFaits').hidden = !faits.length;
+    $('endSheet').innerHTML = feuilleFinale(s);
     $('btn-rematch').hidden = myPseudo !== s.host;
+    $('btn-rematch').textContent = s.serie ? `Manche ${(s.manche || 1) + 1}` : 'Rejouer';
+    if (gagnants.includes(myPseudo) && !nul && !s.solo) sonVictoire();
     // Les confettis de fin de partie : plus l'écart avec le deuxième est large, plus ça fête fort.
     const margin = sorted.length > 1 ? Math.max(0, sorted[0].total - sorted[1].total) : 40;
     const count = Math.round(40 + Math.min(margin, 100) * 1.1);
@@ -720,10 +936,72 @@ function renderEnded(s) {
         setTimeout(() => { field.innerHTML = ''; }, 3200);
     }
 }
+// La feuille complète en fin de partie : les totaux seuls ne disent pas où on
+// a perdu. Même grille que pendant la partie, en lecture seule.
+function feuilleFinale(s) {
+    const hauts = s.players.map(p => UPPER_KEYS.reduce((t, k) => t + (p.scores[k] || 0), 0));
+    const ligne = (nom, cellules, classe) =>
+        `<div class="ym-ligne ${classe || ''}"><span class="ym-ligne-nom">${nom}</span>${cellules.join('')}</div>`;
+    const cases = (cat) => s.players.map((p, i) => {
+        const v = p.scores[cat];
+        return `<span class="ym-cell ${v === null ? 'empty' : (v === 0 ? 'barree' : 'filled')}" style="--pcolor:${playerColor(i)}">${v === null ? '—' : v}</span>`;
+    });
+    return `<div class="ym-feuille finale" style="--joueurs:${s.players.length}">`
+        + ligne('', s.players.map((p, i) => `<span class="ym-col-tete" style="--pcolor:${playerColor(i)}"><span class="ym-col-nom">${p.pseudo === myPseudo ? 'Toi' : esc(p.pseudo)}</span></span>`), 'entete')
+        + UPPER_CATS.map(c => ligne(esc(c.label), cases(c.key))).join('')
+        + ligne('Bonus', hauts.map(u => `<span class="ym-cell ${u >= 63 ? 'bonus-ok' : 'calcul'}">${u >= 63 ? '+35' : '—'}</span>`), 'bonus')
+        + LOWER_CATS.map(c => ligne(esc(c.label), cases(c.key))).join('')
+        + ligne('Total', s.players.map((p, i) => `<span class="ym-cell total" style="--pcolor:${playerColor(i)}">${p.total}</span>`), 'grandtotal')
+        + `</div>`;
+}
 $('btn-rematch').addEventListener('click', () => socket.emit('yams_rematch'));
 
 // ---------- Routage général selon l'état reçu ----------
 let isSpectator = false;
+// =====================================================================
+//  LE RAPPEL DE TOUR
+//  À quatre joueurs sur une quinzaine de minutes, on attend onze minutes.
+//  Rien ne prévenait quand le tour revenait : ni titre d'onglet, ni son, ni
+//  vibration. C'est ce qui fait qu'on repose son téléphone et qu'on oublie
+//  la partie en cours.
+// =====================================================================
+const TITRE = document.title;
+let clignoteTimer = null;
+function arreterClignotement() {
+    clearInterval(clignoteTimer); clignoteTimer = null;
+    document.title = TITRE;
+}
+function signalerMonTour() {
+    sonTour();
+    if (navigator.vibrate) { try { navigator.vibrate([60, 90, 60]); } catch (e) {} }
+    const el = $('turnLabel');
+    if (el) { el.classList.remove('arrive'); void el.offsetWidth; el.classList.add('arrive'); }
+    // L'onglet en arrière-plan n'a que son titre pour se faire remarquer.
+    if (document.hidden && !clignoteTimer) {
+        let on = false;
+        clignoteTimer = setInterval(() => { on = !on; document.title = on ? '🎲 À toi de jouer !' : TITRE; }, 900);
+    }
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) arreterClignotement(); });
+
+// Le bonus des 63 court sur toute la partie et tombait sans que rien ne se
+// passe. Il se fête une seule fois, au moment où il bascule.
+let bonusFete = false;
+function verifierBonus63(s) {
+    const me = s.players.find(p => p.pseudo === myPseudo);
+    if (!me) return;
+    const haut = UPPER_KEYS.reduce((sum, k) => sum + (me.scores[k] || 0), 0);
+    if (haut >= 63 && !bonusFete) {
+        bonusFete = true;
+        sonBonus();
+        toast('Bonus des 63 ! +35 points');
+        const l = $('feuille').querySelector('.ym-ligne.bonus');
+        if (l) { l.classList.add('decroche'); setTimeout(() => l.classList.remove('decroche'), 1600); }
+    }
+    if (haut < 63) bonusFete = false;   // nouvelle manche
+}
+
+let dernierTourSignale = null;
 function onState(s) {
     state = s;
     lastGameId = s.id;
@@ -736,11 +1014,16 @@ function onState(s) {
     else if (s.status === 'playing') {
         showView('v-game');
         $('spectatorBanner').hidden = !isSpectator;
-        renderScoresStrip(s);
         renderDice(s);
         renderSheet(s);
         renderJournal(s);
+        renderRecord(s);
         lancerChrono();
+        verifierBonus63(s);
+        // Le tour vient de me revenir : on le fait savoir, franchement.
+        if (s.turnPseudo === myPseudo && dernierTourSignale !== s.turnPseudo + '|' + s.tour) signalerMonTour();
+        if (s.turnPseudo !== myPseudo) arreterClignotement();
+        dernierTourSignale = s.turnPseudo === myPseudo ? s.turnPseudo + '|' + s.tour : null;
     } else if (s.status === 'ended') {
         showView('v-ended'); renderEnded(s);
         $('ym-turn-tag').hidden = true;

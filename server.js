@@ -1741,12 +1741,18 @@ function portraitJoueur(pseudo) {
 
     let yams = null;
     try { yams = yamsApi.statsFor(pseudo); } catch (e) {}
-    if (yams && yams.gamesPlayed) {
-        ajoute('yams', 'Yams', '🎯', yams.gamesPlayed,
+    if (yams && (yams.gamesPlayed || yams.soloPlayed)) {
+        ajoute('yams', 'Yams', '🎯', yams.gamesPlayed + yams.soloPlayed,
             yams.gamesWon + ' parties gagnées', [
                 ['Parties', yams.gamesPlayed], ['Victoires', yams.gamesWon],
-                ['Meilleur score', yams.bestScore], ['Yams réalisés', yams.totalYams],
+                ['Nuls', yams.gamesTied || null],
+                ['Meilleur score', yams.bestScore], ['Score moyen', yams.moyenne || null],
+                ['Yams réalisés', yams.totalYams],
+                ['Bonus des 63', yams.tauxBonus63 === null ? null : yams.tauxBonus63 + ' % des parties'],
+                ['Meilleure série', yams.meilleureSerie > 1 ? yams.meilleureSerie + ' victoires' : null],
+                ['En solo', yams.soloPlayed ? `${yams.soloPlayed} partie${yams.soloPlayed > 1 ? 's' : ''} · record ${yams.soloBest}` : null],
                 ['Bête noire', yams.nemesis ? yams.nemesis.pseudo : null],
+                ['Client préféré', yams.souffreDouleur ? yams.souffreDouleur.pseudo : null],
             ]);
     }
 

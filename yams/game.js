@@ -11,7 +11,7 @@ const mfGet = store && store.get ? store.get : () => undefined;
 const mfSet = store && store.set ? store.set : () => {};
 
 const MAX_PLAYERS = 4;
-const MIN_PLAYERS = 2;
+const MIN_PLAYERS = 1;
 const PSEUDO_MAX = 20;
 const MAX_ROLLS = 3;
 
@@ -83,6 +83,27 @@ const SCORERS = {
     chance: d => diceSum(d),
 };
 
+// RÈGLE DU JOKER — un deuxième Yams dans la même partie, la case Yams déjà
+// remplie : les cinq dés identiques valent alors la valeur pleine de la case
+// choisie, même si la figure n'y est pas. Sans ça, un Yams ne pouvait pas
+// servir de full (5 dés identiques y valaient 0), ce qui n'est la règle nulle
+// part et punissait précisément le meilleur coup du jeu.
+const JOKER_FIXE = { full: 25, petiteSuite: 30, grandeSuite: 40, yams: 50 };
+function jokerApplicable(cat, dice, scores) {
+    if (!scores || scores.yams === null) return false;      // la case Yams doit être remplie
+    if (diceCounts(dice).every(c => c !== 5)) return false;  // et les dés former un Yams
+    return scores[cat] === null;
+}
+function scoreAvecJoker(cat, dice) {
+    if (JOKER_FIXE[cat] !== undefined) return JOKER_FIXE[cat];
+    return computePossibleScore(cat, dice);   // chiffres, brelan, carré et chance sont déjà justes
+}
+// Ce que rapporterait chaque case à CE joueur-là, joker compris. C'est aussi ce
+// que le client affiche en aperçu : les deux doivent dire la même chose.
+function scoresPossibles(dice, scores) {
+    return Object.fromEntries(CATEGORIES.map(c => [c,
+        jokerApplicable(c, dice, scores) ? scoreAvecJoker(c, dice) : computePossibleScore(c, dice)]));
+}
 function computePossibleScore(cat, dice) {
     const fn = SCORERS[cat];
     return fn ? fn(dice) : 0;
@@ -108,11 +129,29 @@ const kYamsStats = (pseudo) => `yams:stats:${norm(pseudo)}`;
 const STATS_INDEX_KEY = 'yams:statsIndex';
 function norm(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim(); }
 function defaultYamsStats() {
-    return { gamesPlayed: 0, gamesWon: 0, totalYams: 0, bonusYams: 0, bestScore: 0, vsOpponent: {} };
+    return {
+        gamesPlayed: 0, gamesWon: 0, gamesTied: 0, totalYams: 0, bonusYams: 0,
+        bestScore: 0, worstScore: 0, totalPoints: 0,      // totalPoints donne la moyenne
+        bonus63: 0,                                        // parties où le bonus des 63 est tombé
+        serieVictoires: 0, meilleureSerie: 0,
+        soloPlayed: 0, soloBest: 0,
+        dernierePartie: 0,
+        // Une ligne par case : combien de fois remplie, le cumul, le meilleur,
+        // et combien de fois barrée à zéro. C'est ce qui permet de dire à
+        // quelqu'un quelle case lui rapporte et laquelle il sacrifie toujours.
+        parCategorie: {},
+        vsOpponent: {},
+    };
+}
+function ligneCategorie(stats, cat) {
+    if (!stats.parCategorie[cat]) stats.parCategorie[cat] = { fois: 0, total: 0, meilleur: 0, zeros: 0 };
+    return stats.parCategorie[cat];
 }
 function loadYamsStats(pseudo) {
     const s = mfGet(kYamsStats(pseudo));
-    return s && typeof s === 'object' ? { ...defaultYamsStats(), ...s, vsOpponent: { ...(s.vsOpponent || {}) } } : defaultYamsStats();
+    return s && typeof s === 'object'
+        ? { ...defaultYamsStats(), ...s, vsOpponent: { ...(s.vsOpponent || {}) }, parCategorie: { ...(s.parCategorie || {}) } }
+        : defaultYamsStats();
 }
 function saveYamsStats(pseudo, stats) {
     mfSet(kYamsStats(pseudo), stats);
@@ -121,19 +160,36 @@ function saveYamsStats(pseudo, stats) {
 }
 // La "bête noire" : parmi les adversaires rencontrés au moins 2 fois, celui qui a
 // gagné le plus souvent contre ce joueur (à égalité, le plus de parties jouées ensemble).
+const rencontres = (v) => (v.wins || 0) + (v.losses || 0) + (v.draws || 0);
 function nemesisOf(stats) {
     const entries = Object.entries(stats.vsOpponent).filter(([, v]) => (v.losses || 0) >= 2);
     if (!entries.length) return null;
-    entries.sort((a, b) => (b[1].losses - a[1].losses) || ((b[1].wins + b[1].losses) - (a[1].wins + a[1].losses)));
+    entries.sort((a, b) => (b[1].losses - a[1].losses) || (rencontres(b[1]) - rencontres(a[1])));
     return { pseudo: entries[0][0], losses: entries[0][1].losses };
 }
 // Enregistre la fin d'une vraie partie (pas juste une manche) : une partie jouée pour
 // chacun, une victoire pour le gagnant, une défaite face à lui pour tous les autres.
 function finalizeYamsStats(g) {
-    const winner = winnerOf(g);
+    const winner = winnerOf(g);          // null si égalité
+    const gagnants = gagnantsDe(g);
+    const nul = gagnants.length > 1;
     const nemesisDefeats = [];
     for (const p of g.players) {
         const stats = loadYamsStats(p.pseudo);
+        const myTotal = grandTotal(p);
+
+        // Une partie lancée seul ne se gagne contre personne : elle nourrit le
+        // record et le compteur solo, jamais le palmarès ni le face-à-face.
+        if (g.solo) {
+            stats.soloPlayed++;
+            if (myTotal > stats.soloBest) stats.soloBest = myTotal;
+            if (myTotal > stats.bestScore) stats.bestScore = myTotal;
+            stats.dernierePartie = Date.now();
+            for (const cat of CATEGORIES) noterCategorie(stats, cat, p.scores[cat]);
+            saveYamsStats(p.pseudo, stats);
+            continue;
+        }
+
         // Avant de toucher aux stats de ce tour-ci : est-ce que l'adversaire qui vient
         // de perdre était justement la bête noire du gagnant ?
         if (p.pseudo === winner) {
@@ -142,27 +198,195 @@ function finalizeYamsStats(g) {
             if (beatenNemesis) nemesisDefeats.push({ winner, nemesis: beatenNemesis.pseudo });
         }
         stats.gamesPlayed++;
-        const myTotal = grandTotal(p);
+        stats.totalPoints += myTotal;
+        stats.dernierePartie = Date.now();
         if (myTotal > stats.bestScore) stats.bestScore = myTotal;
-        if (p.pseudo === winner) stats.gamesWon++;
+        if (!stats.worstScore || myTotal < stats.worstScore) stats.worstScore = myTotal;
+        if (upperTotal(p.scores) >= BONUS_THRESHOLD) stats.bonus63++;
+        for (const cat of CATEGORIES) noterCategorie(stats, cat, p.scores[cat]);
+
+        if (nul) stats.gamesTied++;
+        else if (p.pseudo === winner) {
+            stats.gamesWon++;
+            stats.serieVictoires++;
+            if (stats.serieVictoires > stats.meilleureSerie) stats.meilleureSerie = stats.serieVictoires;
+        } else stats.serieVictoires = 0;
+
         for (const other of g.players) {
             if (other.pseudo === p.pseudo) continue;
-            if (!stats.vsOpponent[other.pseudo]) stats.vsOpponent[other.pseudo] = { wins: 0, losses: 0 };
-            if (p.pseudo === winner) stats.vsOpponent[other.pseudo].wins++;
-            else if (other.pseudo === winner) stats.vsOpponent[other.pseudo].losses++;
+            if (!stats.vsOpponent[other.pseudo]) stats.vsOpponent[other.pseudo] = { wins: 0, losses: 0, draws: 0 };
+            const duel = stats.vsOpponent[other.pseudo];
+            if (duel.draws === undefined) duel.draws = 0;
+            if (nul) duel.draws++;
+            else if (p.pseudo === winner) duel.wins++;
+            else if (other.pseudo === winner) duel.losses++;
         }
         saveYamsStats(p.pseudo, stats);
     }
-    recordYamsHistory(g, winner);
+    recordYamsHistory(g, winner, gagnants);
     return nemesisDefeats;
 }
+// Une case remplie nourrit sa ligne : combien de fois, le cumul, le record, et
+// combien de fois barrée. Une case laissée vide (joueur parti) ne compte pas.
+function noterCategorie(stats, cat, valeur) {
+    if (valeur === null || valeur === undefined) return;
+    const l = ligneCategorie(stats, cat);
+    l.fois++;
+    l.total += valeur;
+    if (valeur > l.meilleur) l.meilleur = valeur;
+    if (valeur === 0) l.zeros++;
+}
+// =====================================================================
+//  LES STATISTIQUES SERVIES AU CLIENT
+//  Tout est recalculé depuis les fiches : rien de nouveau à stocker, et un
+//  barème ou un classement peut changer sans migration.
+// =====================================================================
+const moyenne = (total, n) => (n ? Math.round(total / n) : 0);
+
+// La fiche d'un joueur, telle qu'il la voit dans « Mes statistiques ».
+function ficheComplete(pseudo) {
+    const s = loadYamsStats(pseudo);
+    const joues = s.gamesPlayed;
+    return {
+        pseudo,
+        gamesPlayed: joues, gamesWon: s.gamesWon, gamesTied: s.gamesTied,
+        gamesLost: Math.max(0, joues - s.gamesWon - s.gamesTied),
+        winRate: joues ? Math.round((s.gamesWon / joues) * 100) : null,
+        totalYams: s.totalYams, bonusYams: s.bonusYams,
+        bestScore: s.bestScore, worstScore: s.worstScore,
+        moyenne: moyenne(s.totalPoints, joues),
+        bonus63: s.bonus63,
+        tauxBonus63: joues ? Math.round((s.bonus63 / joues) * 100) : null,
+        serieVictoires: s.serieVictoires, meilleureSerie: s.meilleureSerie,
+        soloPlayed: s.soloPlayed, soloBest: s.soloBest,
+        dernierePartie: s.dernierePartie || 0,
+        nemesis: nemesisOf(s),
+        // Le miroir de la bête noire : celui qu'on bat le plus souvent.
+        souffreDouleur: souffreDouleurDe(s),
+        categories: detailCategories(s),
+        forces: forcesEtFaiblesses(s),
+        opponents: Object.keys(s.vsOpponent),
+        duels: Object.entries(s.vsOpponent).map(([adv, v]) => ({
+            pseudo: adv, wins: v.wins || 0, losses: v.losses || 0, draws: v.draws || 0,
+        })).sort((a, b) => rencontres(b) - rencontres(a)),
+    };
+}
+// Celui qu'on bat le plus souvent — le pendant de la bête noire, qui manquait.
+function souffreDouleurDe(stats) {
+    const entries = Object.entries(stats.vsOpponent).filter(([, v]) => (v.wins || 0) >= 2);
+    if (!entries.length) return null;
+    entries.sort((a, b) => (b[1].wins - a[1].wins) || (rencontres(b[1]) - rencontres(a[1])));
+    return { pseudo: entries[0][0], wins: entries[0][1].wins };
+}
+// Une ligne par case : moyenne, record, et combien de fois barrée.
+function detailCategories(stats) {
+    return CATEGORIES.map(cat => {
+        const l = stats.parCategorie[cat] || { fois: 0, total: 0, meilleur: 0, zeros: 0 };
+        return {
+            cat, fois: l.fois, moyenne: moyenne(l.total, l.fois), meilleur: l.meilleur, zeros: l.zeros,
+            tauxZero: l.fois ? Math.round((l.zeros / l.fois) * 100) : null,
+        };
+    });
+}
+// Ce qui se dit d'un joueur en une phrase : sa meilleure case comparée à la
+// moyenne du salon, et celle qu'il sacrifie le plus souvent.
+function forcesEtFaiblesses(stats) {
+    const salon = moyennesDuSalon();
+    const parCat = new Map(salon.map(c => [c.cat, c.moyenne]));
+    let force = null, faiblesse = null;
+    for (const cat of CATEGORIES) {
+        const l = stats.parCategorie[cat];
+        if (!l || l.fois < 3) continue;         // pas d'avis sur trois parties
+        const moy = moyenne(l.total, l.fois);
+        const ref = parCat.get(cat) || 0;
+        const ecart = moy - ref;
+        if (!force || ecart > force.ecart) force = { cat, moyenne: moy, salon: ref, ecart };
+        if (!faiblesse || ecart < faiblesse.ecart) faiblesse = { cat, moyenne: moy, salon: ref, ecart };
+    }
+    // La case la plus souvent barrée, indépendamment de la moyenne.
+    let barree = null;
+    for (const cat of CATEGORIES) {
+        const l = stats.parCategorie[cat];
+        if (!l || l.fois < 3 || !l.zeros) continue;
+        const taux = l.zeros / l.fois;
+        if (!barree || taux > barree.taux) barree = { cat, taux: Math.round(taux * 100), zeros: l.zeros, fois: l.fois };
+    }
+    return { force, faiblesse, barree };
+}
+// Le classement du salon, enrichi de tout ce qui se compare.
+function classementComplet() {
+    return (mfGet(STATS_INDEX_KEY) || []).map(pseudo => {
+        const s = loadYamsStats(pseudo);
+        return {
+            pseudo, gamesPlayed: s.gamesPlayed, gamesWon: s.gamesWon, gamesTied: s.gamesTied,
+            bestScore: s.bestScore, totalYams: s.totalYams,
+            moyenne: moyenne(s.totalPoints, s.gamesPlayed),
+            tauxBonus63: s.gamesPlayed ? Math.round((s.bonus63 / s.gamesPlayed) * 100) : 0,
+            meilleureSerie: s.meilleureSerie,
+            winRate: s.gamesPlayed ? Math.round((s.gamesWon / s.gamesPlayed) * 100) : 0,
+        };
+    }).filter(r => r.gamesPlayed > 0 || r.bestScore > 0)
+      .sort((a, b) => b.gamesWon - a.gamesWon || b.winRate - a.winRate || b.gamesPlayed - a.gamesPlayed);
+}
+// La moyenne du salon pour chaque case : le point de comparaison qui manquait
+// pour dire à quelqu'un s'il est bon quelque part.
+let salonCache = null, salonCacheAt = 0;
+function moyennesDuSalon() {
+    if (salonCache && Date.now() - salonCacheAt < 30000) return salonCache;
+    const cumul = {};
+    for (const cat of CATEGORIES) cumul[cat] = { total: 0, fois: 0, meilleur: 0, porteur: null, zeros: 0 };
+    for (const pseudo of (mfGet(STATS_INDEX_KEY) || [])) {
+        const st = loadYamsStats(pseudo);
+        for (const cat of CATEGORIES) {
+            const l = st.parCategorie[cat];
+            if (!l || !l.fois) continue;
+            cumul[cat].total += l.total; cumul[cat].fois += l.fois; cumul[cat].zeros += l.zeros;
+            if (l.meilleur > cumul[cat].meilleur) { cumul[cat].meilleur = l.meilleur; cumul[cat].porteur = pseudo; }
+        }
+    }
+    salonCache = CATEGORIES.map(cat => ({
+        cat, moyenne: moyenne(cumul[cat].total, cumul[cat].fois), fois: cumul[cat].fois,
+        meilleur: cumul[cat].meilleur, porteur: cumul[cat].porteur,
+        tauxZero: cumul[cat].fois ? Math.round((cumul[cat].zeros / cumul[cat].fois) * 100) : 0,
+    }));
+    salonCacheAt = Date.now();
+    return salonCache;
+}
+// Le face-à-face, avec les parties réellement jouées ensemble.
+function faceAFace(pseudo, adversaire) {
+    const mine = loadYamsStats(pseudo), theirs = loadYamsStats(adversaire);
+    const v = mine.vsOpponent[adversaire] || { wins: 0, losses: 0, draws: 0 };
+    const histo = (mfGet(HISTORY_KEY) || []).filter(g =>
+        !g.solo && (g.players || []).some(p => p.pseudo === pseudo) && (g.players || []).some(p => p.pseudo === adversaire));
+    return {
+        opponent: adversaire,
+        myWins: v.wins || 0, myLosses: v.losses || 0, draws: v.draws || 0,
+        totalGames: (v.wins || 0) + (v.losses || 0) + (v.draws || 0),
+        myBest: mine.bestScore, theirBest: theirs.bestScore,
+        myMoyenne: moyenne(mine.totalPoints, mine.gamesPlayed),
+        theirMoyenne: moyenne(theirs.totalPoints, theirs.gamesPlayed),
+        myYams: mine.totalYams, theirYams: theirs.totalYams,
+        // Les dernières confrontations, pour voir la tendance.
+        recentes: histo.slice(0, 8).map(g => ({
+            endedAt: g.endedAt,
+            moi: (g.players.find(p => p.pseudo === pseudo) || {}).total || 0,
+            lui: (g.players.find(p => p.pseudo === adversaire) || {}).total || 0,
+            gagnant: g.winner,
+        })),
+    };
+}
+
 const HISTORY_KEY = 'yams:history';
 const HISTORY_MAX = 150;
-function recordYamsHistory(g, winner) {
+function recordYamsHistory(g, winner, gagnants) {
     const list = mfGet(HISTORY_KEY) || [];
     list.unshift({
-        id: g.id, endedAt: Date.now(), winner,
-        players: g.players.map(p => ({ pseudo: p.pseudo, total: grandTotal(p), yams: p.yamsThisGame || 0 })),
+        id: g.id, endedAt: Date.now(), winner, gagnants: gagnants || [], solo: !!g.solo,
+        players: g.players.map(p => ({
+            pseudo: p.pseudo, total: grandTotal(p), yams: p.yamsThisGame || 0,
+            bonus: upperTotal(p.scores) >= BONUS_THRESHOLD,
+            scores: { ...p.scores },       // la feuille complète, pour la revoir plus tard
+        })),
     });
     if (list.length > HISTORY_MAX) list.length = HISTORY_MAX;
     mfSet(HISTORY_KEY, list);
@@ -203,6 +427,20 @@ function playerView(g) {
         parti: !!p.parti,
     }));
 }
+// Le meilleur score jamais réalisé dans le salon, tous joueurs confondus.
+// Recalculé depuis les fiches existantes, avec un cache court : c'est lu à
+// chaque diffusion d'état, soit plusieurs fois par tour.
+let recordCache = null, recordCacheAt = 0;
+function recordDuSalon() {
+    if (recordCache && Date.now() - recordCacheAt < 30000) return recordCache;
+    let best = null;
+    for (const pseudo of (mfGet(STATS_INDEX_KEY) || [])) {
+        const st = loadYamsStats(pseudo);
+        if (st.bestScore > 0 && (!best || st.bestScore > best.score)) best = { pseudo, score: st.bestScore };
+    }
+    recordCache = best; recordCacheAt = Date.now();
+    return best;
+}
 function stateForClient(g) {
     const current = g.players[g.turnIndex];
     return {
@@ -216,17 +454,30 @@ function stateForClient(g) {
         // rien à regarder pendant que les autres jouaient.
         journal: (g.journal || []).slice(-4),
         dice: g.dice, held: g.held, rollsLeft: g.rollsLeft, hasRolled: g.hasRolled,
-        possible: g.hasRolled ? Object.fromEntries(CATEGORIES.map(c => [c, computePossibleScore(c, g.dice)])) : null,
+        // Les aperçus sont ceux du joueur qui a la main — le joker dépend de sa
+        // feuille, donc un calcul global mentirait dès qu'il s'applique.
+        possible: g.hasRolled && current ? scoresPossibles(g.dice, current.scores) : null,
         winner: g.status === 'ended' ? winnerOf(g) : null,
+        gagnants: g.status === 'ended' ? gagnantsDe(g) : null,
+        solo: !!g.solo,
+        // La série de revanches : le cumul des manches déjà jouées sur cette table.
+        manche: g.manche || 1,
+        serie: g.serie && Object.keys(g.serie).length ? g.serie : null,
+        // Le record du salon, pour avoir un adversaire même quand on mène.
+        record: recordDuSalon(),
     };
 }
+// À totaux égaux il n'y a pas de vainqueur. L'ancienne version prenait le
+// premier joueur inscrit — et cette fausse victoire était écrite dans les
+// statistiques, le face-à-face et l'historique, sans que rien ne l'indique.
+function gagnantsDe(g) {
+    if (!g.players.length) return [];
+    const best = Math.max(...g.players.map(grandTotal));
+    return g.players.filter(p => grandTotal(p) === best).map(p => p.pseudo);
+}
 function winnerOf(g) {
-    let best = null, bestScore = -1;
-    for (const p of g.players) {
-        const t = grandTotal(p);
-        if (t > bestScore) { bestScore = t; best = p.pseudo; }
-    }
-    return best;
+    const gagnants = gagnantsDe(g);
+    return gagnants.length === 1 ? gagnants[0] : null;
 }
 function broadcastState(g) { io.to(roomOf(g)).emit('yams_state', stateForClient(g)); }
 
@@ -371,7 +622,10 @@ io.on('connection', (socket) => {
     socket.on('yams_start', () => {
         const g = games[socketGame[socket.id]];
         if (!g || g.host !== socket.data.yamsPseudo || g.status !== 'lobby') return;
-        if (g.players.length < MIN_PLAYERS) return socket.emit('yams_error', `Il faut au moins ${MIN_PLAYERS} joueurs.`);
+        if (g.players.length < MIN_PLAYERS) return socket.emit('yams_error', 'Il faut au moins un joueur.');
+        // Une partie lancée seul ne compte ni victoire ni face-à-face : on ne
+        // gagne pas contre personne. Seul le score, lui, compte vraiment.
+        g.solo = g.players.length === 1;
         g.status = 'playing';
         g.turnIndex = 0;
         startTurn(g);
@@ -423,7 +677,9 @@ io.on('connection', (socket) => {
         const extraYamsBonus = isYamsRoll && current.scores.yams === 50;
         if (extraYamsBonus) current.yamsBonus = (current.yamsBonus || 0) + 50;
 
-        current.scores[category] = computePossibleScore(category, g.dice);
+        // Même calcul que l'aperçu montré au joueur, joker compris : il ne doit
+        // jamais marquer autre chose que ce que sa case annonçait.
+        current.scores[category] = scoresPossibles(g.dice, current.scores)[category];
         current.sauts = 0;
         g.journal = (g.journal || []).concat([{ pseudo, category, points: current.scores[category] }]).slice(-8);
 
@@ -443,28 +699,15 @@ io.on('connection', (socket) => {
     socket.on('yams_stats', () => {
         const pseudo = socket.data.yamsPseudo;
         if (!pseudo) return;
-        const stats = loadYamsStats(pseudo);
-        socket.emit('yams_stats_result', {
-            gamesPlayed: stats.gamesPlayed, gamesWon: stats.gamesWon,
-            totalYams: stats.totalYams, bonusYams: stats.bonusYams, bestScore: stats.bestScore,
-            winRate: stats.gamesPlayed ? Math.round((stats.gamesWon / stats.gamesPlayed) * 100) : null,
-            nemesis: nemesisOf(stats),
-            opponents: Object.keys(stats.vsOpponent),
-        });
+        socket.emit('yams_stats_result', ficheComplete(pseudo));
     });
 
     socket.on('yams_leaderboard', () => {
-        const index = mfGet(STATS_INDEX_KEY) || [];
-        const rows = index.map(pseudo => {
-            const s = loadYamsStats(pseudo);
-            return {
-                pseudo, gamesPlayed: s.gamesPlayed, gamesWon: s.gamesWon, bestScore: s.bestScore,
-                totalYams: s.totalYams,
-                winRate: s.gamesPlayed ? Math.round((s.gamesWon / s.gamesPlayed) * 100) : 0,
-            };
-        }).filter(r => r.gamesPlayed > 0);
-        rows.sort((a, b) => b.gamesWon - a.gamesWon || b.winRate - a.winRate || b.gamesPlayed - a.gamesPlayed);
-        socket.emit('yams_leaderboard_result', rows);
+        socket.emit('yams_leaderboard_result', {
+            joueurs: classementComplet(),
+            categories: moyennesDuSalon(),
+            record: recordDuSalon(),
+        });
     });
 
     socket.on('yams_history', () => {
@@ -475,21 +718,18 @@ io.on('connection', (socket) => {
     socket.on('yams_h2h', ({ opponent }) => {
         const pseudo = socket.data.yamsPseudo;
         if (!pseudo || !opponent) return;
-        const mine = loadYamsStats(pseudo);
-        const theirs = loadYamsStats(opponent);
-        const mineVs = mine.vsOpponent[opponent] || { wins: 0, losses: 0 };
-        socket.emit('yams_h2h_result', {
-            opponent,
-            myWins: mineVs.wins, myLosses: mineVs.losses,
-            totalGames: mineVs.wins + mineVs.losses,
-            myBest: mine.bestScore, theirBest: theirs.bestScore,
-        });
+        socket.emit('yams_h2h_result', faceAFace(pseudo, opponent));
     });
 
     socket.on('yams_rematch', () => {
         const g = games[socketGame[socket.id]];
         if (!g || g.host !== socket.data.yamsPseudo || g.status !== 'ended') return;
         g.status = 'lobby';
+        // Le cumul de la série se garde d'une manche à l'autre : « Rejouer »
+        // repartait de zéro à chaque fois, sans rien qui relie les parties.
+        g.serie = g.serie || {};
+        g.players.forEach(p => { g.serie[p.pseudo] = (g.serie[p.pseudo] || 0) + grandTotal(p); });
+        g.manche = (g.manche || 1) + 1;
         g.players.forEach(p => { p.scores = freshScores(); p.yamsBonus = 0; p.parti = false; p.sauts = 0; p.yamsThisGame = 0; });
         g.journal = [];
         g.turnIndex = 0;
@@ -516,15 +756,7 @@ io.on('connection', (socket) => {
 return {
     online: () => [...new Set(Object.values(games).flatMap(g => g.players.filter(p => p.connected).map(p => p.pseudo)))],
     games: () => Object.values(games).map(g => ({ id: g.id, host: g.host, status: g.status, players: g.players.map(p => p.pseudo) })),
-    statsFor: (pseudo) => {
-        const stats = loadYamsStats(pseudo);
-        return {
-            gamesPlayed: stats.gamesPlayed, gamesWon: stats.gamesWon,
-            totalYams: stats.totalYams, bonusYams: stats.bonusYams, bestScore: stats.bestScore,
-            winRate: stats.gamesPlayed ? Math.round((stats.gamesWon / stats.gamesPlayed) * 100) : null,
-            nemesis: nemesisOf(stats),
-        };
-    },
+    statsFor: (pseudo) => ficheComplete(pseudo),
     endGame: (id) => {
         const g = games[id];
         if (!g) return false;

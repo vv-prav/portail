@@ -46,37 +46,27 @@ body {
 
 /* Salle d'attente */
 
-/* Scores en direct pendant la partie */
-.ym-scores-strip { position:sticky; top:0; z-index:200; display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:8px;
-    padding:8px 0 10px; margin:-8px 0 0; background:linear-gradient(180deg,var(--ink) 75%,transparent); }
-.ym-score-band { width:100%; padding:14px 16px; border-radius:14px;
-    background:linear-gradient(135deg,var(--ink-3),var(--ink-2)); border:1.5px solid color-mix(in srgb, var(--pcolor,var(--line)) 45%, var(--line));
-    display:flex; flex-direction:column; align-items:center; gap:2px; text-align:center;
-    transition:border-color .2s, background .2s, box-shadow .2s; }
-.ym-score-band.current { border-color:var(--pcolor,var(--brass)); background:linear-gradient(135deg,color-mix(in srgb, var(--pcolor,var(--brass)) 20%, var(--ink-3)),var(--ink-2));
-    box-shadow:0 0 0 1px color-mix(in srgb, var(--pcolor,var(--brass)) 35%, transparent), 0 8px 20px color-mix(in srgb, var(--pcolor,var(--brass)) 20%, transparent); }
-.ym-score-band.handoff { animation:ymHandoff .7s cubic-bezier(.2,.9,.3,1); }
-.ym-score-band-bubble { border:none; padding:0; margin:0 0 2px; background:rgba(0,0,0,.3); cursor:pointer; }
-@keyframes ymHandoff {
-    0% { transform:scale(1) translateY(0); }
-    30% { transform:scale(1.08) translateY(-4px); }
-    100% { transform:scale(1) translateY(0); }
-}
-.ym-score-band-name { font-size:.74rem; letter-spacing:.5px; text-transform:uppercase; color:var(--pcolor,var(--muted));
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; opacity:.85; }
-.ym-score-band.current .ym-score-band-name { opacity:1; }
-.ym-score-band-total { font-size:1.7rem; font-weight:800; line-height:1.1; color:var(--pcolor,var(--parchment)); }
-
 /* Dés */
 .ym-dice-zone { position:fixed; left:0; right:0; bottom:0; z-index:250; text-align:center;
     padding:14px 16px calc(14px + env(safe-area-inset-bottom)); background:linear-gradient(180deg,transparent,var(--ink) 22%);
     backdrop-filter:blur(6px); }
+/* Le fond derrière les dés : un tapis de feutrine, pas un plancher. Les dés
+   tombent sur une table de jeu — la veine de bois qu'il y avait avant tirait
+   l'oeil plus que les dés eux-mêmes, et rentrait en concurrence avec le laiton
+   de toute l'interface. Un liseré doré marque la limite avec la feuille. */
 .ym-dice-zone::before { content:''; position:absolute; inset:0; z-index:-1;
     background:
-        repeating-linear-gradient(95deg, rgba(0,0,0,.14) 0px, transparent 2px, transparent 7px, rgba(0,0,0,.1) 9px, transparent 14px),
-        repeating-linear-gradient(95deg, rgba(255,220,160,.05) 0px, transparent 3px, transparent 22px, rgba(255,220,160,.04) 25px),
-        linear-gradient(180deg, #241a10, #180f08);
-    opacity:.96; border-top:1px solid var(--line); }
+        radial-gradient(120% 140% at 50% 0%, rgba(255,255,255,.05), transparent 60%),
+        radial-gradient(80% 100% at 50% 120%, rgba(0,0,0,.45), transparent 70%),
+        linear-gradient(180deg, #1d3a2c, #142a20 55%, #0f1f18);
+    border-top:1px solid rgba(217,169,78,.35);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06); }
+/* Le grain de la feutrine, en pur CSS : deux trames fines et croisées. */
+.ym-dice-zone::after { content:''; position:absolute; inset:0; z-index:-1; pointer-events:none;
+    background:
+        repeating-linear-gradient(37deg, rgba(255,255,255,.022) 0 1px, transparent 1px 3px),
+        repeating-linear-gradient(-37deg, rgba(0,0,0,.05) 0 1px, transparent 1px 3px);
+    opacity:.9; }
 .ym-dice { position:relative; display:flex; justify-content:center; gap:8px; margin:12px 0 14px; perspective:400px; }
 .ym-dice-particle { position:absolute; width:5px; height:5px; border-radius:50%; background:var(--brass-soft);
     margin:-2.5px; pointer-events:none; z-index:5; animation:ymParticleDrift .5s ease-out forwards; }
@@ -115,63 +105,161 @@ body {
 .ym-die-face.small { width:26px; height:26px; filter:none; }
 .ym-die-face.mini { width:20px; height:20px; filter:none; }
 .ym-turn-label { font-weight:700; margin:0; }
+/* Le tour qui revient après plusieurs minutes d'attente doit se voir. */
+.ym-turn-label.arrive { animation:ymTourArrive .8s cubic-bezier(.2,.9,.3,1); color:var(--brass-soft); }
+@keyframes ymTourArrive {
+    0% { transform:scale(1); }
+    25% { transform:scale(1.18); text-shadow:0 0 18px rgba(217,169,78,.6); }
+    100% { transform:scale(1); }
+}
 .ym-rolls-left { font-size:.76rem; color:var(--muted); margin:8px 0 0; }
 
-/* Feuille de score : deux colonnes, chiffres à gauche, combinaisons à droite */
-.ym-sheet { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px; }
-.ym-sheet-col { background:rgba(255,255,255,.015); border:1px solid var(--line); border-radius:14px; padding:12px 8px; }
-.ym-sheet-col-title { font-size:.68rem; text-transform:uppercase; letter-spacing:.8px; color:var(--brass-soft); margin:0 0 10px; text-align:center; font-weight:700; }
-.ym-sheet-rows { display:flex; flex-direction:column; gap:5px; }
-.ym-sheet-row { display:flex; align-items:center; gap:6px; padding:7px 8px; border-radius:9px;
-    background:rgba(255,255,255,.025); border:1px solid var(--line); transition:background .15s, border-color .15s; }
-/* Une case jouable s'annonce discrètement ; seule la meilleure est vraiment
-   signalée, et la case choisie prend le laiton plein. Trois niveaux, trois
-   intensités — pas trois couleurs différentes. */
-.ym-sheet-row.eligible { cursor:pointer; border-color:rgba(217,169,78,.28); background:rgba(217,169,78,.035); }
-.ym-sheet-row.eligible:active { background:rgba(217,169,78,.12); }
-.ym-sheet-row.meilleure { border-color:var(--brass); background:rgba(217,169,78,.10); }
-.ym-sheet-row.pending { border-color:var(--brass); background:rgba(217,169,78,.2); box-shadow:0 0 0 1px var(--brass) inset; }
-.ym-sheet-row-label { flex:0 0 auto; width:26px; height:26px; display:grid; place-items:center; }
-.ym-sheet-row-label.text { width:auto; font-size:.66rem; color:var(--parchment); line-height:1.15; text-align:left; flex:1; }
-.ym-sheet-row-label.text em { display:block; font-style:normal; color:var(--muted); font-size:.6rem; }
-.ym-sheet-row-label.combo { width:auto; flex:1; display:flex; align-items:center; gap:7px; }
-.ym-sheet-row-icon { flex:0 0 auto; width:22px; height:22px; }
+/* =====================================================================
+   LA FEUILLE — un vrai bloc de Yams : une ligne par case, une colonne par
+   joueur, en grille CSS. Les deux colonnes côte à côte d'avant ne laissaient
+   que 160 px aux cellules, qui passaient à la ligne dès trois joueurs : la
+   rangée faisait 76 px au lieu de 30 et la feuille devenait un mur.
+   --joueurs est posée en JS d'après le nombre réel de joueurs.
+   ===================================================================== */
+.ym-feuille { display:flex; flex-direction:column; gap:3px; margin-top:6px;
+    background:rgba(255,255,255,.015); border:1px solid var(--line); border-radius:14px; padding:8px; }
+.ym-ligne { display:grid; grid-template-columns:minmax(0,1fr) repeat(var(--joueurs,2), minmax(30px, 46px));
+    align-items:center; gap:4px; padding:4px 6px; border-radius:8px;
+    border:1px solid transparent; transition:background .15s, border-color .15s; }
+.ym-ligne-nom { display:flex; align-items:center; gap:6px; min-width:0; font-size:.74rem;
+    color:var(--parchment); text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ym-ligne-nom em { font-style:normal; color:var(--muted); font-size:.62rem; }
+.ym-ligne-icone { flex:0 0 auto; width:18px; height:18px; display:grid; place-items:center; }
+.ym-ligne-icone svg { width:100%; height:100%; }
 .ym-cat-icon { width:100%; height:100%; fill:var(--brass-soft); opacity:.85; }
-.ym-sheet-row-text { font-size:.72rem; color:var(--parchment); text-align:left; }
-.ym-sheet-row-cells { display:flex; gap:4px; flex:1; justify-content:flex-end; flex-wrap:wrap; }
-.ym-score-cell { min-width:28px; height:28px; padding:0 6px; border-radius:7px; display:grid; place-items:center;
-    font-size:.76rem; font-weight:800; border:1.5px solid transparent; }
-.ym-score-cell.filled { background:linear-gradient(180deg,color-mix(in srgb, var(--pcolor,var(--brass-soft)) 100%, white 20%),var(--pcolor,var(--brass))); color:#fff;
-    text-shadow:0 1px 2px rgba(0,0,0,.35); box-shadow:0 2px 6px color-mix(in srgb, var(--pcolor,var(--brass)) 40%, transparent); }
-.ym-score-cell.filled.total { background:rgba(255,255,255,.06); color:var(--parchment);
-    border-color:var(--line); box-shadow:none; text-shadow:none; }
-.ym-score-cell.filled.bonus-on { background:linear-gradient(180deg,#7ecb9a,var(--good)); color:#0e2016;
-    text-shadow:none; box-shadow:0 2px 6px rgba(90,168,122,.35); }
-.ym-score-cell.empty { color:var(--muted); opacity:.35; background:rgba(255,255,255,.02); border-color:var(--line); font-weight:500; }
+.ym-section { margin:8px 0 2px; padding:0 6px; font-size:.62rem; text-transform:uppercase;
+    letter-spacing:.9px; color:var(--brass-soft); font-weight:700; }
 
-/* ---------- Les aperçus ----------
-   Ce qu'on marquerait, pas ce qu'on a marqué : jamais de fond plein, un
-   contour pointillé, un chiffre en laiton. La distinction se lit sans avoir
-   à comparer deux couleurs — c'est la forme qui change, pas la teinte.
-     · normal  : ça rapporte
-     · .top    : le meilleur coup possible ce tour-ci
-     · .zero   : la case serait barrée, on n'y gagne rien */
-.ym-score-cell.apercu { color:var(--brass-soft); background:rgba(217,169,78,.05);
-    border:1.5px dashed rgba(217,169,78,.45); font-weight:700; opacity:.85; }
-.ym-score-cell.apercu.top { color:var(--ink); background:linear-gradient(180deg,var(--brass-soft),var(--brass));
-    border-style:solid; border-color:var(--brass); font-weight:800; opacity:1;
-    box-shadow:0 2px 8px rgba(217,169,78,.30); }
-.ym-score-cell.apercu.zero { color:var(--muted); background:transparent;
+/* L'en-tête de colonne : avatar, nom, total. Il remplace le bandeau de scores
+   séparé, qui répétait exactement la même information au-dessus. */
+.ym-ligne.entete { align-items:end; padding-bottom:6px; border-bottom:1px solid var(--line); border-radius:0; }
+.ym-col-tete { display:flex; flex-direction:column; align-items:center; gap:2px; padding:4px 2px;
+    border:1px solid transparent; border-radius:8px; background:transparent; font-family:inherit;
+    color:var(--parchment); cursor:pointer; min-width:0; }
+.ym-col-tete.actif { border-color:var(--pcolor); background:color-mix(in srgb, var(--pcolor) 14%, transparent); }
+.ym-col-tete.absent { opacity:.45; }
+.ym-col-tete.parti { opacity:.35; }
+.ym-col-bulle { width:22px; height:22px; font-size:.7rem; }
+.ym-col-nom { font-size:.6rem; color:var(--muted); max-width:100%; overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap; }
+.ym-col-tete.actif .ym-col-nom { color:var(--pcolor); font-weight:700; }
+.ym-col-total { font-size:.86rem; font-variant-numeric:tabular-nums; }
+.ym-col-serie { font-size:.56rem; color:var(--muted); font-variant-numeric:tabular-nums; }
+.ym-manche { font-size:.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; }
+
+/* Trois niveaux d'attention sur une rangée, trois intensités du même laiton :
+   jouable, meilleure, choisie. Pas trois couleurs différentes. */
+.ym-ligne.jouable { cursor:pointer; border-color:rgba(217,169,78,.28); background:rgba(217,169,78,.035); }
+.ym-ligne.jouable:active { background:rgba(217,169,78,.12); }
+.ym-ligne.meilleure { border-color:var(--brass); background:rgba(217,169,78,.10); }
+.ym-ligne.pending { border-color:var(--brass); background:rgba(217,169,78,.2); box-shadow:0 0 0 1px var(--brass) inset; }
+.ym-ligne.bonus, .ym-ligne.soustotal { background:rgba(255,255,255,.03); }
+.ym-ligne.grandtotal { background:rgba(217,169,78,.08); border-color:rgba(217,169,78,.28); margin-top:4px; }
+.ym-ligne.grandtotal .ym-ligne-nom { font-weight:800; color:var(--brass-soft); }
+.ym-ligne.bonus.decroche { animation:ymBonusDecroche 1.4s ease; }
+@keyframes ymBonusDecroche {
+    0%,100% { background:rgba(255,255,255,.03); }
+    25% { background:rgba(90,168,122,.35); transform:scale(1.02); }
+    60% { background:rgba(90,168,122,.18); }
+}
+
+/* ---------- Les cellules ----------
+   · couleur du joueur = acquis          · laiton plein = le meilleur coup
+   · laiton pointillé  = un aperçu       · gris          = rien à gagner, et les totaux */
+.ym-cell { height:26px; border-radius:6px; display:grid; place-items:center; min-width:0;
+    font-size:.72rem; font-weight:800; border:1.5px solid transparent; font-variant-numeric:tabular-nums;
+    transition:transform .18s ease, background .18s ease; }
+.ym-cell.filled { background:linear-gradient(180deg,color-mix(in srgb, var(--pcolor,var(--brass-soft)) 100%, white 20%),var(--pcolor,var(--brass)));
+    color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.35); }
+.ym-cell.empty { color:var(--muted); opacity:.3; background:rgba(255,255,255,.02); border-color:var(--line); font-weight:500; }
+.ym-cell.calcul { background:rgba(255,255,255,.06); color:var(--parchment); font-weight:700; }
+.ym-cell.bonus-ok { background:linear-gradient(180deg,#7ecb9a,var(--good)); color:#0e2016; }
+.ym-cell.total { background:linear-gradient(180deg,color-mix(in srgb, var(--pcolor,var(--brass)) 100%, white 15%),var(--pcolor,var(--brass)));
+    color:#fff; font-size:.8rem; }
+.ym-cell.barree { background:rgba(255,255,255,.02); border-color:rgba(160,143,116,.3); color:var(--muted); }
+/* Un aperçu n'est pas un score : jamais de fond plein, un contour pointillé.
+   C'est la forme qui change, pas seulement la teinte. */
+.ym-cell.apercu { color:var(--brass-soft); background:rgba(217,169,78,.05);
+    border:1.5px dashed rgba(217,169,78,.45); font-weight:700; opacity:.9;
+    animation:ymApercu .25s ease both; }
+.ym-cell.apercu.top { color:var(--ink); background:linear-gradient(180deg,var(--brass-soft),var(--brass));
+    border-style:solid; border-color:var(--brass); opacity:1; box-shadow:0 2px 8px rgba(217,169,78,.30); }
+.ym-cell.apercu.zero { color:var(--muted); background:transparent;
     border-color:rgba(160,143,116,.30); font-weight:600; opacity:.5; }
-.ym-score-cell.focus { transform:scale(1.15); }
-.ym-score-cell.unfocus { opacity:.4; filter:saturate(.5); transform:scale(.92); }
-.ym-score-cell { transition:transform .18s ease, opacity .18s ease; }
-.ym-score-band { cursor:pointer; }
-.ym-score-band.focused { outline:2px dashed color-mix(in srgb, var(--pcolor,var(--brass)) 60%, transparent); outline-offset:3px; }
-.ym-bonus-row { margin-top:8px; }
-.ym-bonus-row .ym-sheet-row { background:rgba(90,168,122,.06); }
-.ym-sheet-row.subtotal { background:rgba(217,169,78,.08); border-color:rgba(217,169,78,.3); margin-bottom:5px; }
-.ym-sheet-row.subtotal .ym-sheet-row-label.text { font-weight:700; color:var(--brass-soft); }
+@keyframes ymApercu { from { opacity:0; transform:translateY(-3px); } }
+
+/* Le record du salon, discret au-dessus de la feuille. */
+.ym-record { margin:0; text-align:center; font-size:.72rem; color:var(--muted); }
+.ym-record.bat { color:var(--brass-soft); font-weight:700; }
+.ym-record[hidden] { display:none; }
+.ym-solo-hint { font-size:.74rem; color:var(--muted); text-align:center; margin:8px 0 0; line-height:1.45; }
+.ym-solo-hint[hidden] { display:none; }
+
+/* Le bouton de son, dans l'en-tête. */
+.ym-son { flex:0 0 auto; width:34px; height:34px; border-radius:50%; border:1px solid var(--line);
+    background:rgba(255,255,255,.04); color:var(--brass-soft); font-size:.9rem; cursor:pointer; }
+.ym-son:active { transform:scale(.92); }
+
+/* =====================================================================
+   LES STATISTIQUES — fiche personnelle, classement, face-à-face
+   ===================================================================== */
+.ym-stats-corps { display:flex; flex-direction:column; }
+.ym-stat-bloc + .ym-stat-bloc { margin-top:8px; }
+.ym-stats-bilan { margin:0 0 12px; font-size:.8rem; color:var(--muted); text-align:center; line-height:1.5; }
+.ym-stats-bilan b { color:var(--parchment); }
+.ym-stats-titre { margin:16px 0 6px; font-size:.64rem; text-transform:uppercase; letter-spacing:.9px;
+    color:var(--brass-soft); font-weight:700; text-align:left; }
+.ym-stats-titre em { font-style:normal; text-transform:none; letter-spacing:0; color:var(--muted); font-weight:400; }
+.ym-stats-portrait { display:flex; flex-direction:column; gap:6px; margin-top:12px; }
+.ym-stats-portrait p { margin:0; font-size:.76rem; color:var(--muted); text-align:left; line-height:1.5;
+    background:rgba(255,255,255,.03); border:1px solid var(--line); border-radius:10px; padding:8px 11px; }
+.ym-stats-portrait b { color:var(--parchment); }
+
+/* Le détail case par case, aligné en colonnes pour se lire d'un coup. */
+.ym-cat-table { display:flex; flex-direction:column; gap:2px; }
+.ym-cat-ligne { display:grid; grid-template-columns:1fr auto auto; grid-template-areas:"nom moy ecart" "detail detail detail";
+    gap:2px 8px; align-items:baseline; padding:6px 9px; border-radius:8px; background:rgba(255,255,255,.02); text-align:left; }
+.ym-cat-nom { grid-area:nom; font-size:.74rem; color:var(--parchment); }
+.ym-cat-moy { grid-area:moy; font-size:.82rem; font-weight:800; color:var(--brass-soft); font-variant-numeric:tabular-nums; }
+.ym-cat-ecart { grid-area:ecart; font-size:.66rem; color:var(--muted); font-variant-numeric:tabular-nums; min-width:34px; text-align:right; }
+.ym-cat-ecart.plus { color:var(--good); font-weight:700; }
+.ym-cat-ecart.moins { color:var(--bad); font-weight:700; }
+.ym-cat-detail { grid-area:detail; font-size:.62rem; color:var(--muted); opacity:.75; }
+.ym-lb-detail { display:block; font-style:normal; font-size:.62rem; color:var(--muted); margin-top:1px; }
+
+/* Le face-à-face : le bilan, la comparaison, puis les dernières rencontres. */
+.ym-h2h-compare { display:flex; flex-direction:column; gap:4px; margin:12px 0 8px; }
+.ym-h2h-compare > div { display:grid; grid-template-columns:1fr auto auto; gap:10px; align-items:baseline;
+    padding:7px 10px; border-radius:9px; background:rgba(255,255,255,.02); text-align:left; }
+.ym-h2h-compare span { font-size:.72rem; color:var(--muted); }
+.ym-h2h-compare b { font-size:.86rem; color:var(--brass-soft); font-variant-numeric:tabular-nums; }
+.ym-h2h-compare em { font-style:normal; font-size:.66rem; color:var(--muted); font-variant-numeric:tabular-nums; }
+.ym-h2h-liste { display:flex; flex-direction:column; gap:3px; }
+.ym-h2h-partie { display:grid; grid-template-columns:1fr auto auto auto; gap:6px; align-items:baseline;
+    padding:6px 10px; border-radius:8px; background:rgba(255,255,255,.02);
+    border-left:3px solid var(--muted); font-size:.74rem; text-align:left; }
+.ym-h2h-partie span:first-child { color:var(--muted); font-size:.68rem; }
+.ym-h2h-partie b { font-variant-numeric:tabular-nums; }
+.ym-h2h-partie.gagne { border-left-color:var(--good); }
+.ym-h2h-partie.perd { border-left-color:var(--bad); }
+.ym-h2h-partie.nul { border-left-color:var(--tie); }
+.ym-h2h-tiret { color:var(--muted); }
+
+/* Fin de partie : les faits marquants et la feuille complète. */
+.ym-end-faits { display:flex; flex-direction:column; gap:5px; margin:0 0 16px; }
+.ym-end-faits[hidden] { display:none; }
+.ym-fait { margin:0; font-size:.76rem; color:var(--parchment); background:rgba(255,255,255,.03);
+    border:1px solid var(--line); border-radius:10px; padding:8px 11px; text-align:left; }
+.ym-end-cumul { flex:0 0 auto; font-size:.66rem; color:var(--muted); }
+.ym-end-sheet { margin-bottom:20px; }
+.ym-feuille.finale .ym-ligne { padding:2px 6px; }
+.ym-feuille.finale .ym-cell { height:22px; font-size:.66rem; }
+.ym-feuille.finale .ym-ligne-nom { font-size:.68rem; }
 
 /* Fin de partie */
 .ym-end-emoji { text-align:center; font-size:2.6rem; margin:20px 0 6px; }

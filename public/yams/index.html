@@ -18,6 +18,7 @@
                 <h1 class="ym-title">Yams</h1>
                 <span class="ym-sub" id="ym-sub">Salon des parties</span>
             </div>
+            <button type="button" class="ym-son" id="ym-son" aria-label="Couper le son">🔊</button>
             <span class="ym-turn-tag" id="ym-turn-tag" hidden></span>
         </header>
 
@@ -36,7 +37,7 @@
             <div class="ds-card">
                 <button type="button" class="ds-card-close" id="stats-close" aria-label="Fermer">✕</button>
                 <h2 class="ds-card-title">Mes statistiques</h2>
-                <div class="ds-stat-grid cols2" id="statsGrid"></div>
+                <div class="ym-stats-corps" id="statsGrid"></div>
                 <p class="ym-stats-nemesis" id="statsNemesis" hidden></p>
             </div>
         </div>
@@ -72,9 +73,10 @@
 
         <!-- SALLE D'ATTENTE -->
         <section class="ym-view" id="v-waiting" hidden>
-            <p class="ym-field-label">En attente d'au moins deux joueurs</p>
+            <p class="ym-field-label">En attente des joueurs</p>
             <div class="ds-waiting-list" id="wait-players"></div>
             <button class="ds-btn" id="btn-start" hidden>Lancer la partie</button>
+            <p class="ym-solo-hint" id="wait-solo" hidden>Personne d'autre ? Joue seul : seul ton score compte, et il peut battre le record du salon.</p>
             <p class="ym-cat-hint" id="wait-hint">En attente de l'hôte…</p>
             <button class="ds-btn ghost" id="btn-leave-lobby">Quitter la table</button>
         </section>
@@ -82,20 +84,9 @@
         <!-- PARTIE EN COURS -->
         <section class="ym-view" id="v-game" hidden>
             <p class="ym-spectator-banner" id="spectatorBanner" hidden>👀 Tu regardes cette partie en spectateur</p>
-            <div class="ym-scores-strip" id="scoresStrip"></div>
+            <p class="ym-record" id="ymRecord" hidden></p>
 
-            <div class="ym-sheet">
-                <div class="ym-sheet-col">
-                    <p class="ym-sheet-col-title">Chiffres</p>
-                    <div class="ym-sheet-rows" id="upperRows"></div>
-                    <div class="ym-bonus-row" id="bonusRow"></div>
-                </div>
-                <div class="ym-sheet-col">
-                    <p class="ym-sheet-col-title">Combinaisons</p>
-                    <div class="ym-sheet-rows" id="lowerRows"></div>
-                    <div class="ym-bonus-row" id="lowerSubtotalRow"></div>
-                </div>
-            </div>
+            <div class="ym-feuille" id="feuille"></div>
 
             <div class="ym-dice-zone">
                 <p class="ym-turn-label" id="turnLabel">—</p>
@@ -124,6 +115,8 @@
             <p class="ym-end-emoji">🏆</p>
             <h2 class="ym-end-title" id="endTitle">—</h2>
             <div class="ym-end-scores" id="endScores"></div>
+            <div class="ym-end-faits" id="endFaits" hidden></div>
+            <div class="ym-end-sheet" id="endSheet"></div>
             <button class="ds-btn" id="btn-rematch" hidden>Rejouer</button>
             <button class="ds-btn ghost" id="btn-back-lobby">Retour au salon des parties</button>
         </section>
