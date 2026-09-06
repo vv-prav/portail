@@ -377,6 +377,16 @@ async function doGiveUp() {
 
 // ---------- Fin de manche ----------
 function tryLabel(n) { return n + ' ' + (n === 1 ? t('end_try_one') : t('end_try_many')); }
+// Un temps lisible d'un coup d'œil : « 48 s » en dessous d'une minute, « 2:07 »
+// au-delà. Les parties d'avant le chronométrage n'en ont pas : on n'affiche rien.
+function tempsLabel(ms) {
+    if (ms == null || !isFinite(ms)) return '';
+    const s = Math.round(ms / 1000);
+    if (s < 60) return s + ' s';
+    const m = Math.floor(s / 60);
+    if (m < 60) return m + ':' + String(s % 60).padStart(2, '0');
+    return Math.floor(m / 60) + ' h ' + String(m % 60).padStart(2, '0');
+}
 async function showEnd(kind, data) {
     $('mt-end-emoji').textContent = kind === 'win' ? '🎉' : (kind === 'giveup' ? '🏳️' : '💤');
     $('mt-end-title').textContent = t(kind === 'win' ? 'end_title_win' : (kind === 'giveup' ? 'end_title_giveup' : 'end_title_lost'));
@@ -447,7 +457,7 @@ function renderBoard(board) {
     const medal = ['🥇', '🥈', '🥉'];
     box.innerHTML = '<div class="mt-board-title">' + t('board_title') + '</div>' +
         board.slice(0, 15).map((e, i) => `<button type="button" class="mt-board-row${i < 3 ? ' top' + (i + 1) : ''}" data-view="${esc(e.u)}">
-            <span class="bpos">${medal[i] || (i + 1)}</span><span class="ds-avatar xs" data-p="${esc(e.u)}"></span><span class="bname">${esc(e.u)}</span><span class="btime">${tryLabel(e.tries)}</span></button>`).join('');
+            <span class="bpos">${medal[i] || (i + 1)}</span><span class="ds-avatar xs" data-p="${esc(e.u)}"></span><span class="bname">${esc(e.u)}</span><span class="bms">${tempsLabel(e.ms)}</span><span class="btime">${tryLabel(e.tries)}</span></button>`).join('');
     bindProfiles(box, board.map(e => e.u));
 }
 // Rend cliquable tout pseudo affiché dans `box` et y pose les bulles d'avatar.
@@ -558,6 +568,10 @@ function startTicker() { if (!timerId) timerId = setInterval(tick, 1000); tick()
 $('mt-start-btn').addEventListener('click', () => {
     started = true;
     document.body.classList.remove('not-started');
+    // Le chronomètre part d'ici : c'est le moment où le joueur découvre la
+    // grille. Il départage ensuite les ex æquo au nombre d'essais. Sans
+    // attendre la réponse — le jeu ne doit pas marquer une pause pour ça.
+    if (!isArchive) api('/api/motus/start', { date: P && P.date });
     renderAll(); positionShadow();
 });
 

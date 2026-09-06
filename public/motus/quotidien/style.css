@@ -40,10 +40,6 @@ body.is-ready .mt { display:flex; }
 
 /* Bandeau */
 .mt-strip { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
-.mt-party-link { display:block; text-align:center; padding:11px 14px; border-radius:12px; margin:12px 0 0;
-    background:linear-gradient(135deg,rgba(217,169,78,.16),rgba(217,169,78,.05)); border:1px solid var(--brass);
-    color:var(--brass-soft); text-decoration:none; font-weight:700; font-size:.85rem; }
-.mt-party-link:active { transform:scale(.98); }
 .chip { font-size:.74rem; color:var(--muted); background:rgba(0,0,0,.28); border:1px solid var(--line);
         padding:5px 10px; border-radius:999px; }
 .chip b { color:var(--brass-soft); }
@@ -170,6 +166,8 @@ body.not-started .mt-tools { opacity:.35; pointer-events:none; }
 .bpos { flex:0 0 auto; width:24px; text-align:center; }
 .bname { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:left; }
 .btime { flex:0 0 auto; color:var(--brass-soft); font-variant-numeric:tabular-nums; font-weight:700; }
+.bms { flex:0 0 auto; color:var(--muted); font-variant-numeric:tabular-nums; font-size:.78rem; margin-right:8px; }
+.bms:empty { display:none; }
 .mt-board-empty { color:var(--muted); font-size:.82rem; text-align:center; margin:0; }
 
 /* Discussion */
@@ -220,7 +218,6 @@ body.not-started .mt-tools { opacity:.35; pointer-events:none; }
    Sur un iPhone 11 il recouvrait la grille : on replie donc le décor qui n'est
    pas indispensable le temps de taper, et la grille se recalcule pour tenir
    au-dessus du clavier. La classe est posée par surveillerClavier(). */
-body.clavier-ouvert .mt-party-link,
 body.clavier-ouvert .mt-panels,
 body.clavier-ouvert .mt-inline-board { display: none; }
 body.clavier-ouvert .mt-clue { margin: 4px 0; font-size: .74rem; }
@@ -229,6 +226,5 @@ body.clavier-ouvert .mt-strip { margin-bottom: 2px; }
 
 /* Très petits écrans : on récupère de la place verticale sans rien masquer. */
 @media (max-height: 700px) {
-    .mt-party-link { display: none; }
     .mt-clue { margin: 4px 0; }
 }

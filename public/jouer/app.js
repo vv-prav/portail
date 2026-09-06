@@ -24,32 +24,22 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '
 // pour le distanciel.
 const CATALOGUE = [
     { id: 'perudo', nom: 'Perudo', emoji: '🎲', accent: '#d9a94e', href: '/perudo',
-      joueurs: '2 à 6 joueurs', duree: 'environ 20 min',
-      desc: 'Le jeu de dés des pirates : bluff, enchères et dés cachés. Tournois et mode campagne compris.',
-      direct: true },   // Perudo a son propre hall et son identité : on l'ouvre tel quel
+      joueurs: '2 à 6 joueurs', duree: 'environ 20 min', direct: true },   // Perudo a son propre hall et son identité : on l'ouvre tel quel
     { id: 'pbac', nom: 'Petit Bac', emoji: '✏️', accent: '#c2513a', href: '/pbac',
-      joueurs: '2 à 8 joueurs', duree: 'environ 10 min',
-      desc: 'Une lettre, huit catégories, tout le monde écrit en même temps. Les réponses se votent ensuite.' },
+      joueurs: '2 à 8 joueurs', duree: 'environ 10 min' },
     { id: 'undercover', nom: 'Infiltré', emoji: '🕵️', accent: '#6f7bb0', href: '/undercover',
-      joueurs: '3 à 12 joueurs', duree: 'environ 10 min',
-      desc: 'Un mot pour tous sauf un. Démasquez l’intrus avant qu’il ne vous démasque.' },
+      joueurs: '3 à 12 joueurs', duree: 'environ 10 min' },
     { id: 'yams', nom: 'Yams', emoji: '🎯', accent: '#ecca82', href: '/yams',
-      joueurs: '1 à 6 joueurs', duree: 'environ 15 min',
-      desc: 'Le yams classique, avec ses skins de dés, sa bête noire et son classement.' },
+      joueurs: '1 à 6 joueurs', duree: 'environ 15 min' },
     { id: 'motusparty', nom: 'Motus Party', emoji: '🏁', accent: '#d9a94e', href: '/motus/party',
-      joueurs: '2 à 8 joueurs', duree: 'environ 5 min',
-      desc: 'Tout le monde cherche le même mot en même temps. Le plus rapide marque le plus de points.' },
+      joueurs: '2 à 8 joueurs', duree: 'environ 5 min' },
 ];
 
 const CATALOGUE_LOCAL = [
     { id: 'uc-local', nom: 'Infiltré', emoji: '🕵️', accent: '#6f7bb0', href: '/undercover/?local=1',
-      joueurs: '3 à 12 joueurs', duree: 'environ 10 min',
-      desc: 'Un mot pour tous sauf un. Le téléphone tourne, chacun lit son mot en secret.',
-      direct: true },
+      joueurs: '3 à 12 joueurs', duree: 'environ 10 min', direct: true },
     { id: 'chance', nom: 'Chance', emoji: '🎲', accent: '#c9a24a', href: '/chance',
-      joueurs: 'à volonté', duree: 'quelques secondes',
-      desc: 'Un dé, une carte, une pièce. Pour trancher quand personne ne veut décider.',
-      direct: true },
+      joueurs: 'à volonté', duree: 'quelques secondes', direct: true },
 ];
 
 async function api(path) {
@@ -60,15 +50,16 @@ async function api(path) {
 }
 
 // ---------- Catalogue ----------
+// La carte dit le strict nécessaire pour choisir : le nom, le logo, combien on
+// est et combien de temps ça prend. La description expliquait la règle, ce qui
+// n'est pas ce qu'on cherche au moment de lancer une partie.
 function carteJeu(j) {
     return `
         <a class="jo-cat" href="${j.direct ? j.href : j.href + '/?creer=1'}" style="--acc:${j.accent}">
             <span class="jo-cat-emoji">${j.emoji}</span>
             <span class="jo-cat-corps">
                 <b>${esc(j.nom)}</b>
-                <em>${esc(j.desc)}</em>
                 <span class="jo-cat-meta">${esc(j.joueurs)} · ${esc(j.duree)}</span>
-                ${j.note ? `<span class="jo-cat-note">${esc(j.note)}</span>` : ''}
             </span>
             <span class="jo-cat-go" aria-hidden="true">›</span>
         </a>`;

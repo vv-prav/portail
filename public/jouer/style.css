@@ -63,18 +63,16 @@ body {
 /* ---------- Catalogue ---------- */
 .jo-card { max-width: 460px; }
 .jo-cat-liste { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
-.jo-cat { display: flex; align-items: flex-start; gap: 11px; padding: 13px; border-radius: 12px;
+.jo-cat { display: flex; align-items: center; gap: 11px; padding: 12px 13px; border-radius: 12px;
     text-decoration: none; color: inherit; text-align: left;
     background: rgba(255,255,255,.03); border: 1px solid var(--line);
     border-left: 3px solid var(--acc, var(--brass)); }
 .jo-cat:active { transform: scale(.995); }
 .jo-cat:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
-.jo-cat-emoji { font-size: 1.3rem; flex: 0 0 auto; line-height: 1.2; }
-.jo-cat-corps { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.jo-cat-corps b { font-size: .88rem; }
-.jo-cat-corps em { font-style: normal; font-size: .75rem; color: var(--muted); line-height: 1.45; }
+.jo-cat-emoji { font-size: 1.45rem; flex: 0 0 auto; line-height: 1.2; }
+.jo-cat-corps { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.jo-cat-corps b { font-size: .92rem; }
 .jo-cat-meta { font-size: .68rem; color: var(--brass-soft); letter-spacing: .3px; }
-.jo-cat-note { font-size: .68rem; color: var(--muted); font-style: italic; }
 .jo-cat-go { flex: 0 0 auto; color: var(--muted); align-self: center; }
 
 /* Deux familles dans le catalogue : en réseau, et autour d'une table. */

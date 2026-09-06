@@ -130,7 +130,7 @@ Chaque mini-app suit le même schéma : `public/<app>/index.html` + `app.js` + `
 
 | App | Notes |
 |---|---|
-| **Motus** | Restructuré en hub à 2 entrées (`/motus/` → « Motus du jour » et « Motus Party »). Le clavier à l'écran a été **retiré** : saisie exclusivement via le clavier natif du téléphone (input invisible qui suit la case active). Discussion du jour, archives, style des tuiles personnalisable (4 thèmes de couleur). |
+| **Motus** | Restructuré en hub à 2 entrées (`/motus/` → « Motus du jour » et « Motus Party »). Le clavier à l'écran a été **retiré** : saisie exclusivement via le clavier natif du téléphone (input invisible qui suit la case active). Discussion du jour, archives, style des tuiles personnalisable (4 thèmes de couleur). | Le **chronomètre part au clic sur « Commencer »** (`POST /api/motus/start`, une seule fois — recharger ne le relance pas, les archives ne sont pas chronométrées) : à nombre d'essais égal, le classement du jour départage au temps. Les entrées d'avant le chronométrage n'ont pas de `ms` et se rangent après celles qui en ont, sans jamais être perdues.
 | **Mots Fléchés** | Le plus ancien des jeux du jour, sert de référence pour le motif « saisie native ». Grilles générées (`motsfleches/generator.js`), dictionnaire avec niveaux de rareté. |
 | **Le Mot Juste** | Jeu façon Contexto/Cémantix (proximité sémantique, thermomètre). |
 

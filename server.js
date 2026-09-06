@@ -843,7 +843,10 @@ function motusStreak(user) {
     return { current: cur, total: days.size, best };
 }
 function motusBoard(date) {
-    return (mfGet(kMotusBoard(date)) || []).filter(e => !e.susp).slice().sort((a, b) => a.tries - b.tries || a.ts - b.ts);
+    return (mfGet(kMotusBoard(date)) || []).filter(e => !e.susp).slice()
+        .sort((a, b) => a.tries - b.tries
+            || (a.ms == null ? Infinity : a.ms) - (b.ms == null ? Infinity : b.ms)
+            || a.ts - b.ts);
 }
 function motusDefFor(word) {
     const found = motusDict.find(word);
@@ -879,6 +882,19 @@ app.get('/api/motus/today', requireAuth, (req, res) => {
     });
 });
 
+// Le chronomètre part quand le joueur découvre la grille, pas à son premier
+// essai : c'est ce temps-là qui départage les ex æquo au nombre d'essais.
+app.post('/api/motus/start', requireAuth, (req, res) => {
+    const user = currentUser(req), today = mfTodayId();
+    const date = /^\d{4}-\d{2}-\d{2}$/.test((req.body || {}).date || '') ? req.body.date : today;
+    if (date !== today) return res.json({ ok: true });   // les archives ne sont pas chronométrées
+    const key = kMotusProg(user, date);
+    const prog = mfGet(key) || { guesses: [], solved: false, gaveUp: false };
+    // Une seule fois : recharger la page ne remet pas le compteur à zéro.
+    if (!prog.startedAt) { prog.startedAt = Date.now(); mfSet(key, prog); }
+    res.json({ ok: true, startedAt: prog.startedAt });
+});
+
 app.post('/api/motus/guess', requireAuth, (req, res) => {
     const b = req.body || {};
     const user = currentUser(req), today = mfTodayId();
@@ -909,7 +925,8 @@ app.post('/api/motus/guess', requireAuth, (req, res) => {
     if (solved && date === today) {
         const list = (mfGet(kMotusBoard(date)) || []).slice();
         if (!list.some(e => e.u === user)) {
-            list.push({ u: user, tries: prog.guesses.length, ts: Date.now() });
+            const ms = prog.startedAt ? Math.max(0, Date.now() - prog.startedAt) : null;
+            list.push({ u: user, tries: prog.guesses.length, ts: Date.now(), ms });
             mfSet(kMotusBoard(date), list);
         }
         const days = (mfGet(kMotusDays(user)) || []).slice();
@@ -951,7 +968,7 @@ app.get('/api/motus/board', requireAuth, (req, res) => {
     const user = currentUser(req);
     const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mfTodayId();
     const board = motusBoard(date);
-    res.json({ board: board.map(e => ({ u: e.u, tries: e.tries })), me: board.findIndex(e => e.u === user) + 1 });
+    res.json({ board: board.map(e => ({ u: e.u, tries: e.tries, ms: e.ms })), me: board.findIndex(e => e.u === user) + 1 });
 });
 app.get('/api/motus/state', requireAuth, (req, res) => {
     const user = currentUser(req);
