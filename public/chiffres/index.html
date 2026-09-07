@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, interactive-widget=resizes-content">
+    <meta name="theme-color" content="#14100b">
+    <title>Le compte est bon</title>
+    <link rel="icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="stylesheet" href="/design-system.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="is-boot">
+    <div class="ch">
+        <header class="ch-head">
+            <a class="ds-icon-btn" href="/" aria-label="Retour au salon">←</a>
+            <div class="ch-titles">
+                <h1 class="ch-title">Le compte est bon</h1>
+                <span class="ch-date" id="ch-date"></span>
+            </div>
+            <span class="ch-chrono" id="ch-chrono" hidden>0:00</span>
+        </header>
+
+        <div class="ch-strip">
+            <span class="chip" id="ch-serie" hidden>🔥 <b>0</b></span>
+            <span class="chip" id="ch-next">🕛 —</span>
+            <span class="chip" id="ch-archive-chip" hidden>📅 Archive</span>
+        </div>
+
+        <!-- L'ÉCRAN D'ENTRÉE -->
+        <div class="ch-start" id="ch-start">
+            <div class="ch-start-box">
+                <div class="ch-start-emoji">🔢</div>
+                <p class="ch-start-txt">Six nombres, une cible. Chaque nombre ne sert qu'une fois, et jamais de négatif ni de virgule.</p>
+                <button class="ds-btn" id="ch-start-btn" type="button">Commencer</button>
+            </div>
+        </div>
+
+        <!-- LA MANCHE -->
+        <section class="ch-jeu" id="ch-jeu" hidden>
+            <p class="ch-cible-label">La cible</p>
+            <p class="ch-cible" id="ch-cible">—</p>
+            <p class="ch-ecart" id="ch-ecart" hidden></p>
+
+            <div class="ch-plaques" id="ch-plaques"></div>
+
+            <p class="ch-consigne" id="ch-consigne">Choisis un premier nombre.</p>
+
+            <div class="ch-ops" id="ch-ops">
+                <button type="button" class="ch-op" data-op="+">+</button>
+                <button type="button" class="ch-op" data-op="−">−</button>
+                <button type="button" class="ch-op" data-op="×">×</button>
+                <button type="button" class="ch-op" data-op="÷">÷</button>
+            </div>
+
+            <div class="ch-etapes" id="ch-etapes"></div>
+
+            <div class="ch-actions">
+                <button class="ds-btn ghost" id="ch-annuler" type="button" disabled>Annuler</button>
+                <button class="ds-btn" id="ch-valider" type="button" disabled>Valider</button>
+            </div>
+        </section>
+    </div>
+
+    <!-- FIN DE MANCHE -->
+    <div class="ds-overlay" id="ch-fin" hidden>
+        <div class="ds-card tall">
+            <button type="button" class="ds-card-close" id="ch-fin-close" aria-label="Fermer">✕</button>
+            <p class="ch-fin-emoji" id="ch-fin-emoji">🎯</p>
+            <h2 class="ds-card-title" id="ch-fin-titre">—</h2>
+            <p class="ds-card-text" id="ch-fin-texte"></p>
+            <div class="ch-solution" id="ch-solution"></div>
+            <button class="ds-btn ghost" id="ch-partage" type="button">Partager mon résultat</button>
+            <div class="ch-board" id="ch-board"></div>
+        </div>
+    </div>
+
+    <script src="/profile-viewer.js"></script>
+    <script src="/design-system.js"></script>
+    <script src="/enchainement.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 // =====================================================================
 //  ENCHAÎNEMENT DES JEUX DU JOUR — composant partagé
 //
-//  Les trois jeux du jour forment une séquence : on les fait l'un après
+//  Les jeux du jour forment une séquence : on les fait l'un après
 //  l'autre, tous les matins. Mais chaque écran de fin s'arrêtait à
 //  « Retour au salon » — une sortie, pas une suite. Ce fichier propose
 //  le jeu suivant non fait, directement depuis l'écran de fin.
@@ -18,14 +18,16 @@
         { id: 'motus', nom: 'Motus', emoji: '🟨', href: '/motus/quotidien/' },
         { id: 'mf', nom: 'les Mots Fléchés', emoji: '🧩', href: '/mots-fleches' },
         { id: 'motjuste', nom: 'Le Mot Juste', emoji: '🧊', href: '/motjuste' },
+        { id: 'chiffres', nom: 'Le compte est bon', emoji: '🔢', href: '/chiffres' },
+        { id: 'geo', nom: 'la Géographie', emoji: '🌍', href: '/geo' },
     ];
 
     // Un jeu est « fait » quand la manche du jour est terminée, gagnée ou non :
     // proposer de refaire une grille déjà rendue n'aurait pas de sens.
     function estFait(id, pouls) {
         if (!pouls) return false;
-        if (id === 'mf') {
-            const m = pouls.mf || {};
+        if (id === 'mf' || id === 'geo') {
+            const m = pouls[id] || {};
             return !!(m.total && m.done >= m.total);
         }
         const g = pouls[id === 'motjuste' ? 'motjuste' : id] || {};

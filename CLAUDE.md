@@ -133,6 +133,22 @@ Chaque mini-app suit le même schéma : `public/<app>/index.html` + `app.js` + `
 | **Motus** | Restructuré en hub à 2 entrées (`/motus/` → « Motus du jour » et « Motus Party »). Le clavier à l'écran a été **retiré** : saisie exclusivement via le clavier natif du téléphone (input invisible qui suit la case active). Discussion du jour, archives, style des tuiles personnalisable (4 thèmes de couleur). | Le **chronomètre part au clic sur « Commencer »** (`POST /api/motus/start`, une seule fois — recharger ne le relance pas, les archives ne sont pas chronométrées) : à nombre d'essais égal, le classement du jour départage au temps. Les entrées d'avant le chronométrage n'ont pas de `ms` et se rangent après celles qui en ont, sans jamais être perdues.
 | **Mots Fléchés** | Le plus ancien des jeux du jour, sert de référence pour le motif « saisie native ». Grilles générées (`motsfleches/generator.js`), dictionnaire avec niveaux de rareté. |
 | **Le Mot Juste** | Jeu façon Contexto/Cémantix (proximité sémantique, thermomètre). |
+| **Le compte est bon** (`/chiffres`) | Six nombres, une cible, les quatre opérations — ni négatif ni fraction. **Aucun contenu à écrire** : la donne est tirée de la date, et un solveur exhaustif (`chiffres/jeu.js`) garantit que la cible est atteignable avant de la proposer. La solution affichée à la fin est la **plus courte**, obtenue par approfondissement progressif : sans ça la mémoïsation laissait passer un chemin qui repassait par 23 850 pour retomber sur 952, juste mais illisible. Le serveur rejoue les étapes au lieu de croire le total annoncé. Le chronomètre part au clic sur « Commencer ». |
+| **Géographie** (`/geo`) | Deux modes dans un seul jeu du jour : **Le pays** (silhouette) et **Le drapeau**. Même mécanique dans les deux — six essais, et chaque proposition donne distance, direction et proximité, ce qui rend un pays méconnu trouvable par triangulation plutôt qu'au hasard, et rend surtout le mode Drapeau jouable. Les drapeaux sont des **emoji** : aucun fichier à servir, aucun droit à vérifier, et un rendu net sur téléphone. Voir la section dédiée pour la base de pays. |
+
+### La base des pays (`geo/pays.js`) — comment elle a été faite
+
+211 entrées générées **une fois** depuis Natural Earth 1:50m (paquet `world-atlas`), croisées avec les codes ISO 3166-1, la souveraineté et les frontières de `world-countries`, et les noms français d'`Intl.DisplayNames`. Le fichier est autonome : aucune dépendance ne subsiste à l'exécution, et **il ne quitte jamais le serveur** — le navigateur ne reçoit que la silhouette du jour et la liste des 211 noms.
+
+Les silhouettes sont projetées en **azimutale équivalente centrée sur chaque pays**, la seule projection qui donne une forme fidèle : en Mercator le Groenland ferait la taille de l'Afrique.
+
+⚠️ **Deux filtres, tous deux indispensables, tous deux trouvés en regardant les résultats — pas en raisonnant.** Un pays n'est pas toujours d'un seul tenant, et ses bouts lointains ruinent soit son centre, soit son cadrage :
+1. les morceaux de moins de 1 % ne peuvent pas relier deux ensembles, et seul l'ensemble le plus étendu est gardé. Sans ça, la Guyane emmenait le centre de la France dans l'Atlantique (46,5 / 2,6 est le bon, ‑6,7 était l'ancien) et l'Alaska écrasait les États-Unis ;
+2. ce qui reste petit devant le morceau principal **et** nettement à l'écart s'en va. Les Açores et Madère réduisaient le Portugal à une écharde dans un coin du cadre ; les Galápagos faisaient pareil à l'Équateur alors qu'elles pèsent 3 %, donc le seul critère de surface ne suffisait pas. La Sicile et Hokkaidō, proches ou gros, restent.
+
+21 membres de l'ONU sont trop petits pour une silhouette lisible (Singapour, Malte, Monaco…) : ils sont gardés **sans tracé**, ne sortent qu'au mode Drapeau, et restent proposables comme réponse dans les deux modes. Les entités sans code ISO (Somaliland, Kosovo, Chypre du Nord) sont absentes — un jeu du jour n'a pas à trancher des différends de souveraineté.
+
+**Pour régénérer**, reprendre la méthode : `npm i world-atlas topojson-client topojson-simplify d3-geo i18n-iso-countries world-countries` dans un dossier jetable, et vérifier le résultat **à l'œil sur une planche de silhouettes** avant de le committer. C'est le seul test qui compte ici, et c'est lui qui a révélé les deux filtres ci-dessus.
 
 ### Vocabulaire Motus — attention en cas d'ajout futur
 
@@ -286,7 +302,7 @@ Utile pour arbitrer les priorités — les intuitions se trompent souvent ici.
 ## Ce qu'il reste à faire
 
 1. **Le pseudo sert d'identifiant** partout (stats, classements, progressions) — c'est la dette structurelle qui bloque le renommage propre, la fusion de comptes et tout classement transversal. Introduire un identifiant interne stable avec le pseudo comme simple libellé d'affichage.
-2. **Les trois jeux du jour sont trois implémentations du même modèle** (contenu par date, progression, classement, discussion, archives) : `/api/mf` 11 routes, `/api/motus` 8, `/api/juste` 6. Un moteur `quotidien/engine.js` paramétré les ramènerait à 6-8 routes génériques.
+2. **Les trois anciens jeux du jour sont trois implémentations du même modèle** (contenu par date, progression, classement, discussion, archives) : `/api/mf` 11 routes, `/api/motus` 8, `/api/juste` 6. Un moteur les ramènerait à 6-8 routes génériques. **`quotidien/moteur.js` existe désormais** — graine du jour, progression, classement au score puis au temps, série, archives — et sert Le compte est bon et la Géographie. Il n'a volontairement pas été branché sur les trois anciens : les réécrire pendant qu'ils portent 90 % de l'activité serait un risque pris pour rien. Il montre à quoi ressemblera leur version commune le jour où on s'y mettra.
 3. **L'internationalisation est à moitié faite** : 6 apps portent chacune leur propre table `I18N` en fr/en/es, sans fichier partagé, et 8 pages n'ont aucune traduction. Soit un `/i18n.js` commun et on complète, soit on assume le français et on retire le sélecteur de langue.
 4. Migrer **Recettes** — mais seulement si l'app trouve une raison d'être (voir usage réel ci-dessus).
 5. Décider si **Chance** mérite la migration (petite app statique, faible priorité).

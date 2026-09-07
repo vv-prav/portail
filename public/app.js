@@ -297,9 +297,17 @@ const JEUX_DU_JOUR = [
     { id: 'motus',    nom: 'Motus',        emoji: '🟨', href: '/motus/quotidien/', accent: '#c9a24a' },
     { id: 'mf',       nom: 'Mots Fléchés', emoji: '🧩', href: '/mots-fleches',     accent: '#5aa87a' },
     { id: 'motjuste', nom: 'Le Mot Juste', emoji: '🧊', href: '/motjuste',         accent: '#6fb8d9' },
+    { id: 'chiffres', nom: 'Le compte est bon', emoji: '🔢', href: '/chiffres',    accent: '#c2513a' },
+    { id: 'geo',      nom: 'Géographie',   emoji: '🌍', href: '/geo',              accent: '#6f7bb0' },
 ];
 // Ramène chaque jeu à un seul état, quelle que soit la forme de ses données.
 function etatDuJour(id, p) {
+    if (id === 'geo') {
+        const g = p.geo || {}, d = g.done || 0, total = g.total || 2;
+        if (d >= total) return { cle: 'fait', texte: t('today_done') };
+        if (d > 0)      return { cle: 'encours', texte: `${d}/${total}` };
+        return { cle: 'afaire', texte: t('today_todo') };
+    }
     if (id === 'mf') {
         const d = (p.mf && p.mf.done) || 0, total = (p.mf && p.mf.total) || 0;
         if (total && d >= total) return { cle: 'fait',   texte: t('today_done') };
@@ -330,6 +338,8 @@ function renderToday(p) {
         (p.motus && p.motus.streak) || 0,
         (p.mf && p.mf.streak) || 0,
         (p.motjuste && p.motjuste.streak) || 0,
+        (p.chiffres && p.chiffres.streak) || 0,
+        (p.geo && p.geo.streak) || 0,
     ];
     const meilleure = Math.max(...series);
     const el = $('today-streak');

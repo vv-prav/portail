@@ -432,6 +432,14 @@ function mfPurge() {
             if (parts[1] === 'word') { date = parts[2]; limit = limitMjWord; }
             else if (parts[1] === 'board' || parts[1] === 'cmt') { date = parts[2]; limit = limitMjShort; }
             else if (parts[1] === 'prog') { date = parts[3]; limit = limitMjShort; }
+        } else if (parts[0] === 'chiffres' && parts[1] === 'donne') {
+            date = parts[2]; limit = limitMotusWord;
+        } else if (parts[0] === 'geo' && parts[1] === 'pays') {
+            date = parts[3]; limit = limitMotusWord;      // geo:pays:<mode>:<date>
+        } else if (parts[0] === 'geo' && parts[1] === 'board') {
+            date = parts[2]; limit = limitShort;          // geo:board:<date>:<mode>
+        } else if (parts[0] === 'geo' && parts[1] === 'prog') {
+            date = parts[3]; limit = limitLong;           // geo:prog:<pseudo>:<date>:<mode>
         } else {
             if (parts[1] === 'board' || parts[1] === 'cmt') { date = parts[2]; limit = limitShort; }
             else if (parts[1] === 'grid' || parts[1] === 'hist') date = parts[2];
@@ -1082,6 +1090,216 @@ function mjStreak(user) {
     return { current: cur, total: days.size };
 }
 
+
+// =====================================================================
+//  LE COMPTE EST BON  (/chiffres)  et  GÉOGRAPHIE  (/geo)
+//
+//  Les deux nouveaux jeux du jour s'appuient sur `quotidien/moteur.js`
+//  plutôt que de recopier une quatrième et une cinquième fois la même
+//  mécanique (contenu daté, progression, classement, série, archives).
+//  Motus, Mots Fléchés et Le Mot Juste, eux, ne sont pas touchés : les
+//  migrer pendant qu'ils portent 90 % de l'activité serait un risque pris
+//  pour rien. Le moteur montre à quoi ressemblera leur version commune.
+// =====================================================================
+const creerMoteur = require('./quotidien/moteur');
+const chiffresJeu = require('./chiffres/jeu');
+const geoJeu = require('./geo/jeu');
+const deuxMoteurs = { get: mfGet, set: mfSet, today: mfTodayId, shift: mfShiftDay };
+const mChiffres = creerMoteur('chiffres', deuxMoteurs);
+const mGeo = creerMoteur('geo', deuxMoteurs);
+
+// ---------- La donne du jour ----------
+// Calculée une fois puis mise en cache, comme le mot du Motus : la journée ne
+// doit jamais changer de contenu sous les pieds de ceux qui jouent.
+const kChiffresDonne = (date) => `chiffres:donne:${date}`;
+function chiffresDonne(date) {
+    const cache = mfGet(kChiffresDonne(date));
+    if (cache) return cache;
+    const donne = chiffresJeu.tirage(mChiffres.tirageDuJour(date));
+    mfSet(kChiffresDonne(date), donne);
+    return donne;
+}
+
+app.use('/chiffres', requireAuth, express.static(__dirname + '/public/chiffres'));
+
+app.get('/api/chiffres/today', requireAuthApi, (req, res) => {
+    const user = currentUser(req), today = mfTodayId();
+    let date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : today;
+    if (date > today) date = today;
+    const donne = chiffresDonne(date);
+    const prog = mChiffres.progression(user, date);
+    const fini = !!(prog && prog.fini);
+    res.json({
+        date, today, archive: date !== today, nextIn: mfSecondsToMidnight(),
+        nombres: donne.nombres, cible: donne.cible,
+        progression: prog,
+        // La solution n'est révélée qu'une fois la manche jouée : la donner
+        // avant reviendrait à publier la réponse dans la page.
+        solution: fini ? donne.solution : undefined,
+        serie: mChiffres.serie(user),
+    });
+});
+
+app.post('/api/chiffres/start', requireAuthApi, (req, res) => {
+    const user = currentUser(req), today = mfTodayId();
+    const date = /^\d{4}-\d{2}-\d{2}$/.test((req.body || {}).date || '') ? req.body.date : today;
+    if (date !== today) return res.json({ ok: true });
+    res.json({ ok: true, debutA: mChiffres.demarrer(user, date).debutA });
+});
+
+// Le serveur ne fait jamais confiance au total annoncé : il rejoue les étapes
+// une à une avec les règles du jeu (ni négatif, ni fraction, chaque nombre une
+// seule fois) et recalcule lui-même le résultat atteint.
+app.post('/api/chiffres/valider', requireAuthApi, (req, res) => {
+    const user = currentUser(req), today = mfTodayId();
+    const b = req.body || {};
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : today;
+    if (date > today) return res.status(400).json({ error: 'Journée à venir.' });
+    const donne = chiffresDonne(date);
+    const prog = mChiffres.progression(user, date) || mChiffres.demarrer(user, date);
+    if (prog.fini) return res.status(400).json({ error: 'Manche déjà jouée.' });
+
+    const etapes = Array.isArray(b.etapes) ? b.etapes.slice(0, 5) : [];
+    const rejeu = chiffresJeu.rejouer(donne.nombres, etapes);
+    if (rejeu.erreur) return res.status(400).json({ error: rejeu.erreur });
+    const atteint = rejeu.dernier;
+    if (atteint === null) return res.status(400).json({ error: 'Aucun résultat.' });
+
+    const ecart = Math.abs(atteint - donne.cible);
+    const ms = date === today ? mChiffres.tempsEcoule(prog) : null;
+    prog.etapes = etapes;
+    prog.atteint = atteint;
+    prog.ecart = ecart;
+    prog.score = chiffresJeu.score(ecart);
+    prog.fini = true;
+    prog.ms = ms;
+    mChiffres.enregistrer(user, date, prog);
+    if (date === today) {
+        mChiffres.noterJourJoue(user, date);
+        mChiffres.inscrireAuClassement(user, date, prog.score, ms, { ecart, atteint });
+    }
+    res.json({
+        ok: true, atteint, ecart, score: prog.score, ms,
+        solution: donne.solution,
+        place: date === today ? mChiffres.placeDe(user, date) : null,
+        classement: mChiffres.classement(date).slice(0, 15),
+        serie: mChiffres.serie(user),
+    });
+});
+
+app.get('/api/chiffres/classement', requireAuthApi, (req, res) => {
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mfTodayId();
+    res.json({ classement: mChiffres.classement(date).slice(0, 30) });
+});
+
+// =====================================================================
+//  GÉOGRAPHIE — deux modes dans un seul jeu du jour
+// =====================================================================
+const GEO_MODES = ['silhouette', 'drapeau'];
+const kGeoPays = (mode, date) => `geo:pays:${mode}:${date}`;
+function geoDuJour(mode, date) {
+    const cache = mfGet(kGeoPays(mode, date));
+    if (cache && geoJeu.parCode.get(cache)) return geoJeu.parCode.get(cache);
+    // On évite les pays sortis récemment dans le même mode.
+    const recents = [];
+    for (let i = 1; i <= 30; i++) {
+        const c = mfGet(kGeoPays(mode, mfShiftDay(date, -i)));
+        if (c) recents.push(c);
+    }
+    const p = geoJeu.tirerSansRepeter(mode, mGeo.tirageDuJour(date, mode), recents);
+    mfSet(kGeoPays(mode, date), p.code);
+    return p;
+}
+const kGeoProg = (user, mode, date) => `geo:prog:${user}:${date}:${mode}`;
+
+app.use('/geo', requireAuth, express.static(__dirname + '/public/geo'));
+
+// La liste des pays proposables, servie une fois et mise en cache par le
+// navigateur : 211 noms, quelques kilo-octets. Les silhouettes, elles, ne
+// quittent jamais le serveur — les envoyer donnerait la réponse du jour.
+app.get('/api/geo/pays', requireAuthApi, (req, res) => {
+    res.set('Cache-Control', 'private, max-age=86400');
+    res.json({ pays: geoJeu.listeDesNoms() });
+});
+
+app.get('/api/geo/today', requireAuthApi, (req, res) => {
+    const user = currentUser(req), today = mfTodayId();
+    const mode = GEO_MODES.includes(req.query.mode) ? req.query.mode : 'silhouette';
+    let date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : today;
+    if (date > today) date = today;
+    const cible = geoDuJour(mode, date);
+    const prog = mfGet(kGeoProg(user, mode, date));
+    const fini = !!(prog && prog.fini);
+    res.json({
+        date, today, mode, archive: date !== today, nextIn: mfSecondsToMidnight(),
+        maxEssais: geoJeu.MAX_ESSAIS,
+        // L'indice du jour selon le mode : le contour, ou le drapeau.
+        silhouette: mode === 'silhouette' ? cible.chemin : null,
+        drapeau: mode === 'drapeau' ? geoJeu.drapeau(cible.code) : null,
+        progression: prog || null,
+        // La réponse n'est donnée qu'une fois la partie terminée.
+        reponse: fini ? { code: cible.code, nom: cible.nom, drapeau: geoJeu.drapeau(cible.code), region: cible.region, chemin: cible.chemin } : undefined,
+        serie: mGeo.serie(user),
+    });
+});
+
+app.post('/api/geo/start', requireAuthApi, (req, res) => {
+    const user = currentUser(req), today = mfTodayId();
+    const b = req.body || {};
+    const mode = GEO_MODES.includes(b.mode) ? b.mode : 'silhouette';
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : today;
+    if (date !== today) return res.json({ ok: true });
+    const cle = kGeoProg(user, mode, date);
+    const prog = mfGet(cle) || { debutA: 0, essais: [], fini: false, trouve: false };
+    if (!prog.debutA) { prog.debutA = Date.now(); mfSet(cle, prog); }
+    res.json({ ok: true, debutA: prog.debutA });
+});
+
+app.post('/api/geo/proposer', requireAuthApi, (req, res) => {
+    const user = currentUser(req), today = mfTodayId();
+    const b = req.body || {};
+    const mode = GEO_MODES.includes(b.mode) ? b.mode : 'silhouette';
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : today;
+    if (date > today) return res.status(400).json({ error: 'Journée à venir.' });
+    const cible = geoDuJour(mode, date);
+    const cle = kGeoProg(user, mode, date);
+    const prog = mfGet(cle) || { debutA: Date.now(), essais: [], fini: false, trouve: false };
+    if (prog.fini) return res.status(400).json({ error: 'Partie déjà terminée.' });
+    if (prog.essais.length >= geoJeu.MAX_ESSAIS) return res.status(400).json({ error: 'Plus d’essai disponible.' });
+
+    const propose = geoJeu.trouverPays(b.pays);
+    // Une faute de frappe ne doit pas coûter un essai : on refuse le coup au
+    // lieu de le compter.
+    if (!propose) return res.status(400).json({ error: 'Pays inconnu.' });
+    if (prog.essais.some(e => e.code === propose.code)) return res.status(400).json({ error: 'Déjà proposé.' });
+
+    const eval_ = geoJeu.evaluer(propose.code, cible.code);
+    prog.essais.push(eval_);
+    prog.trouve = eval_.juste;
+    prog.fini = eval_.juste || prog.essais.length >= geoJeu.MAX_ESSAIS;
+    if (prog.fini && date === today) {
+        prog.ms = Math.min(3 * 3600 * 1000, Math.max(0, Date.now() - (prog.debutA || Date.now())));
+        prog.score = geoJeu.score(prog.essais.length, prog.trouve);
+        mGeo.noterJourJoue(user, date);
+        mGeo.inscrireAuClassement(user, `${date}:${mode}`, prog.score, prog.ms, { essais: prog.essais.length, trouve: prog.trouve });
+    }
+    mfSet(cle, prog);
+    res.json({
+        ok: true, essai: eval_, restants: geoJeu.MAX_ESSAIS - prog.essais.length, fini: prog.fini, trouve: prog.trouve,
+        reponse: prog.fini ? { code: cible.code, nom: cible.nom, drapeau: geoJeu.drapeau(cible.code), region: cible.region, chemin: cible.chemin } : undefined,
+        score: prog.score, ms: prog.ms,
+        place: prog.fini && date === today ? mGeo.placeDe(user, `${date}:${mode}`) : null,
+        classement: prog.fini ? mGeo.classement(`${date}:${mode}`).slice(0, 15) : undefined,
+        serie: mGeo.serie(user),
+    });
+});
+
+app.get('/api/geo/classement', requireAuthApi, (req, res) => {
+    const mode = GEO_MODES.includes(req.query.mode) ? req.query.mode : 'silhouette';
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mfTodayId();
+    res.json({ classement: mGeo.classement(`${date}:${mode}`).slice(0, 30) });
+});
+
 app.use('/motjuste', requireAuth, express.static(__dirname + '/public/motjuste'));
 
 app.get('/api/juste/today', requireAuth, (req, res) => {
@@ -1587,6 +1805,14 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
     let pbacOnline = 0;
     try { pbacOnline = pbacApi.online().length; } catch (e) {}
 
+    // Les deux nouveaux jeux du jour. La Géographie compte deux modes, donc
+    // elle se lit comme les Mots Fléchés : une fraction, pas un oui/non.
+    const chProg = mfGet(`chiffres:prog:${user}:${today}`);
+    const geoFaits = ['silhouette', 'drapeau'].filter(m => {
+        const g = mfGet(`geo:prog:${user}:${today}:${m}`);
+        return !!(g && g.fini);
+    }).length;
+
     // Les vrais prénoms connectés par jeu, pour les tuiles du salon ("qui est
     // connecté" plutôt qu'un simple nombre). Undercover réutilise le même schéma.
     let perudoNames = [], pbacNames = [], undercoverOnlineCount = 0, undercoverNames = [], yamsOnlineCount = 0, yamsNames = [], mpOnlineCount = 0, mpNames = [];
@@ -1648,6 +1874,17 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
         // la meilleure raison de revenir demain, elle mérite d'être visible dès l'accueil.
         motus: { done: motusDone, over: motusOver, solvers: motusSolversToday, streak: motusStreak(user).current },
         motjuste: { done: mjDone, over: mjOver, solvers: mjSolversToday, streak: mjStreak(user).current },
+        chiffres: {
+            done: !!(chProg && chProg.fini && chProg.ecart === 0),
+            over: !!(chProg && chProg.fini),
+            solvers: mChiffres.classement(today).length,
+            streak: mChiffres.serie(user).encours,
+        },
+        geo: {
+            done: geoFaits, total: 2,
+            solvers: mGeo.classement(`${today}:silhouette`).length + mGeo.classement(`${today}:drapeau`).length,
+            streak: mGeo.serie(user).encours,
+        },
         pbac: { online: pbacOnline, names: pbacNames },
         undercover: { online: undercoverOnlineCount, names: undercoverNames },
         yams: { online: yamsOnlineCount, names: yamsNames },

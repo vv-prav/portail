@@ -1,0 +1,118 @@
+/* =====================================================================
+   LE COMPTE EST BON — même identité que le reste du salon (nuit chaude
+   et laiton). Les plaques reprennent le jaune des jeux télévisés, seule
+   couleur du jeu qui ne soit pas du salon : c'est ce qui le rend
+   reconnaissable au premier coup d'œil dans le panneau « Aujourd'hui ».
+   ===================================================================== */
+:root {
+    --ink:#14100b; --ink-2:#1d1710; --ink-3:#241b12;
+    --brass:#d9a94e; --brass-soft:#ecca82; --parchment:#efe4cf;
+    --muted:#a08f74; --line:rgba(217,169,78,0.20);
+    --good:#5aa87a; --bad:#d2624a;
+    --plaque:#f0e2c4; --plaque-encre:#241b12;
+}
+html,body { margin:0; padding:0; }
+body {
+    min-height:100svh; overflow-x:hidden;
+    font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; color:var(--parchment);
+    background:radial-gradient(130% 70% at 50% -8%, #2b2013 0%, transparent 55%), var(--ink);
+    background-attachment:fixed; -webkit-font-smoothing:antialiased;
+}
+body.is-boot .ch { opacity:0; }
+.ch { opacity:1; transition:opacity .2s; display:flex; flex-direction:column; gap:12px;
+    max-width:520px; margin:0 auto; padding:max(10px,env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom)); }
+
+.ch-head { display:flex; align-items:center; gap:10px; }
+.ch-titles { flex:1; min-width:0; }
+.ch-title { margin:0; font-size:1.2rem; font-weight:800;
+    background:linear-gradient(180deg,var(--brass-soft),var(--brass));
+    -webkit-background-clip:text; background-clip:text; color:transparent; }
+.ch-date { font-size:.74rem; color:var(--muted); text-transform:capitalize; }
+.ch-chrono { flex:0 0 auto; font-size:.86rem; font-weight:800; color:var(--brass-soft);
+    font-variant-numeric:tabular-nums; }
+.ch-chrono[hidden] { display:none; }
+
+.ch-strip { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
+.chip { font-size:.74rem; color:var(--muted); background:rgba(0,0,0,.28); border:1px solid var(--line);
+    border-radius:999px; padding:4px 11px; }
+.chip[hidden] { display:none; }
+.chip b { color:var(--brass-soft); }
+
+/* L'écran d'entrée : le chronomètre ne part qu'au clic, jamais au chargement. */
+.ch-start { display:grid; place-items:center; padding:36px 0; }
+.ch-start[hidden] { display:none; }
+.ch-start-box { text-align:center; max-width:320px; }
+.ch-start-emoji { font-size:2.6rem; margin-bottom:10px; }
+.ch-start-txt { font-size:.86rem; color:var(--muted); line-height:1.55; margin:0 0 18px; }
+
+/* La cible : c'est le seul chiffre qui compte, il occupe la place en
+   conséquence. */
+.ch-jeu[hidden] { display:none; }
+.ch-cible-label { text-align:center; font-size:.66rem; text-transform:uppercase; letter-spacing:1px;
+    color:var(--muted); margin:6px 0 0; }
+.ch-cible { text-align:center; margin:0; font-size:3.2rem; font-weight:900; line-height:1.05;
+    color:var(--brass-soft); font-variant-numeric:tabular-nums;
+    text-shadow:0 4px 20px rgba(217,169,78,.25); }
+.ch-ecart { text-align:center; margin:2px 0 0; font-size:.82rem; color:var(--muted); font-weight:700; }
+.ch-ecart.proche { color:var(--brass-soft); }
+.ch-ecart.juste { color:var(--good); }
+.ch-ecart[hidden] { display:none; }
+
+/* Les plaques. Une plaque issue d'un calcul se distingue de celles du tirage :
+   sans ça, on ne sait plus ce qu'on a déjà fabriqué. */
+.ch-plaques { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:14px; }
+.ch-plaque { min-width:58px; height:58px; padding:0 10px; border-radius:12px; border:2px solid transparent;
+    background:linear-gradient(180deg,#fff8e8,var(--plaque)); color:var(--plaque-encre);
+    font-size:1.35rem; font-weight:900; font-family:inherit; font-variant-numeric:tabular-nums;
+    cursor:pointer; box-shadow:0 3px 0 rgba(0,0,0,.35), 0 6px 14px rgba(0,0,0,.3);
+    transition:transform .12s, box-shadow .12s, opacity .2s; }
+.ch-plaque:active { transform:translateY(2px); box-shadow:0 1px 0 rgba(0,0,0,.35); }
+.ch-plaque.issue { background:linear-gradient(180deg,var(--brass-soft),var(--brass)); }
+.ch-plaque.choisie { border-color:var(--good); transform:translateY(-3px);
+    box-shadow:0 6px 0 rgba(0,0,0,.35), 0 0 0 3px rgba(90,168,122,.35); }
+.ch-plaque.utilisee { opacity:.16; pointer-events:none; box-shadow:none; }
+.ch-plaque.arrive { animation:chArrive .4s cubic-bezier(.2,1.4,.4,1); }
+@keyframes chArrive { from { transform:scale(.4) rotate(-8deg); opacity:0; } }
+
+.ch-consigne { text-align:center; font-size:.78rem; color:var(--muted); margin:12px 0 0; min-height:1.1em; }
+
+.ch-ops { display:flex; justify-content:center; gap:8px; margin-top:8px; }
+.ch-op { width:56px; height:48px; border-radius:12px; border:1px solid var(--line);
+    background:rgba(255,255,255,.04); color:var(--brass-soft); font-size:1.4rem; font-family:inherit;
+    cursor:pointer; transition:background .15s, border-color .15s, transform .1s; }
+.ch-op:active { transform:scale(.94); }
+.ch-op.on { background:linear-gradient(180deg,var(--brass-soft),var(--brass)); color:var(--ink);
+    border-color:var(--brass); font-weight:800; }
+
+/* Le fil des opérations : c'est la mémoire du joueur, il doit rester lisible
+   sans effort — d'où les chiffres alignés en colonne. */
+.ch-etapes { display:flex; flex-direction:column; gap:4px; margin-top:14px; }
+.ch-etape { display:flex; justify-content:space-between; align-items:baseline; gap:12px;
+    padding:8px 12px; border-radius:10px; background:rgba(255,255,255,.03); border:1px solid var(--line);
+    font-size:.86rem; font-variant-numeric:tabular-nums; }
+.ch-etape b { color:var(--brass-soft); font-size:.95rem; }
+
+.ch-actions { display:flex; gap:8px; margin-top:16px; }
+.ch-actions .ds-btn { flex:1; }
+
+/* Fin de manche */
+.ch-fin-emoji { text-align:center; font-size:2.6rem; margin:0 0 4px; }
+.ch-solution { display:flex; flex-direction:column; gap:4px; margin:6px 0 14px; }
+.ch-solution-titre, .ch-board-titre { margin:8px 0 2px; font-size:.64rem; text-transform:uppercase;
+    letter-spacing:.9px; color:var(--brass-soft); font-weight:700; text-align:left; }
+.ch-board { display:flex; flex-direction:column; gap:3px; margin-top:10px; }
+.ch-board-row { display:grid; grid-template-columns:24px 22px 1fr auto auto; gap:8px; align-items:center;
+    padding:7px 10px; border-radius:9px; background:rgba(255,255,255,.03); border:1px solid transparent;
+    font-family:inherit; color:var(--parchment); cursor:pointer; text-align:left; font-size:.78rem; }
+.ch-board-row.moi { border-color:var(--brass); background:rgba(217,169,78,.1); }
+.ch-b-rang { text-align:center; }
+.ch-b-nom { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ch-b-ecart { color:var(--brass-soft); font-weight:800; font-variant-numeric:tabular-nums; }
+.ch-b-temps { color:var(--muted); font-size:.7rem; font-variant-numeric:tabular-nums; }
+
+@media (max-width:340px) {
+    .ch-plaque { min-width:48px; height:50px; font-size:1.15rem; }
+    .ch-op { width:48px; height:44px; }
+    .ch-cible { font-size:2.6rem; }
+}
+@media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.001ms !important; transition-duration:.001ms !important; } }

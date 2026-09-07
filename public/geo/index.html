@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, interactive-widget=resizes-content">
+    <meta name="theme-color" content="#14100b">
+    <title>Géographie</title>
+    <link rel="icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="stylesheet" href="/design-system.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="is-boot">
+    <div class="gg">
+        <header class="gg-head">
+            <a class="ds-icon-btn" href="/" aria-label="Retour au salon">←</a>
+            <div class="gg-titles">
+                <h1 class="gg-title">Géographie</h1>
+                <span class="gg-date" id="gg-date"></span>
+            </div>
+            <span class="gg-chrono" id="gg-chrono" hidden>0:00</span>
+        </header>
+
+        <!-- Les deux modes du jour : le pays, puis le drapeau. -->
+        <div class="ds-segmented gg-modes" id="gg-modes">
+            <button type="button" class="on" data-mode="silhouette">🗺️ Le pays</button>
+            <button type="button" data-mode="drapeau">🏳️ Le drapeau</button>
+        </div>
+
+        <div class="gg-strip">
+            <span class="chip" id="gg-serie" hidden>🔥 <b>0</b></span>
+            <span class="chip" id="gg-next">🕛 —</span>
+            <span class="chip" id="gg-archive-chip" hidden>📅 Archive</span>
+        </div>
+
+        <!-- L'ÉCRAN D'ENTRÉE -->
+        <div class="gg-start" id="gg-start">
+            <div class="gg-start-box">
+                <div class="gg-start-emoji" id="gg-start-emoji">🌍</div>
+                <p class="gg-start-txt" id="gg-start-txt">Six essais. Chaque proposition te donne la distance et la direction du pays cherché.</p>
+                <button class="ds-btn" id="gg-start-btn" type="button">Commencer</button>
+            </div>
+        </div>
+
+        <!-- LA MANCHE -->
+        <section class="gg-jeu" id="gg-jeu" hidden>
+            <div class="gg-indice" id="gg-indice"></div>
+
+            <form class="gg-form" id="gg-form" autocomplete="off">
+                <input class="ds-input" id="gg-saisie" type="text" placeholder="Un pays…"
+                       autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false"
+                       aria-label="Proposer un pays">
+                <div class="gg-suggest" id="gg-suggest" hidden></div>
+            </form>
+            <p class="gg-restants" id="gg-restants"></p>
+
+            <div class="gg-essais" id="gg-essais"></div>
+        </section>
+    </div>
+
+    <!-- FIN DE MANCHE -->
+    <div class="ds-overlay" id="gg-fin" hidden>
+        <div class="ds-card tall">
+            <button type="button" class="ds-card-close" id="gg-fin-close" aria-label="Fermer">✕</button>
+            <p class="gg-fin-emoji" id="gg-fin-emoji">🎉</p>
+            <h2 class="ds-card-title" id="gg-fin-titre">—</h2>
+            <div class="gg-reponse" id="gg-reponse"></div>
+            <p class="ds-card-text" id="gg-fin-texte"></p>
+            <button class="ds-btn ghost" id="gg-partage" type="button">Partager mon résultat</button>
+            <button class="ds-btn ghost" id="gg-autre" type="button" hidden>Passer à l'autre mode</button>
+            <div class="gg-board" id="gg-board"></div>
+        </div>
+    </div>
+
+    <script src="/profile-viewer.js"></script>
+    <script src="/design-system.js"></script>
+    <script src="/enchainement.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

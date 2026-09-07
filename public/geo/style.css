@@ -1,0 +1,111 @@
+/* =====================================================================
+   GÉOGRAPHIE — la silhouette et le drapeau du jour
+   Même nuit chaude que le reste du salon. La silhouette est en laiton
+   plein sur fond sombre : un contour blanc paraîtrait imprimé, alors
+   qu'ici la forme EST le sujet.
+   ===================================================================== */
+:root {
+    --ink:#14100b; --ink-2:#1d1710; --ink-3:#241b12;
+    --brass:#d9a94e; --brass-soft:#ecca82; --parchment:#efe4cf;
+    --muted:#a08f74; --line:rgba(217,169,78,0.20);
+    --good:#5aa87a; --tiede:#c9a24a; --bad:#d2624a;
+}
+html,body { margin:0; padding:0; }
+body {
+    min-height:100svh; overflow-x:hidden;
+    font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; color:var(--parchment);
+    background:radial-gradient(130% 70% at 50% -8%, #172a2b 0%, transparent 55%), var(--ink);
+    background-attachment:fixed; -webkit-font-smoothing:antialiased;
+}
+body.is-boot .gg { opacity:0; }
+.gg { opacity:1; transition:opacity .2s; display:flex; flex-direction:column; gap:12px;
+    max-width:520px; margin:0 auto; padding:max(10px,env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom)); }
+
+.gg-head { display:flex; align-items:center; gap:10px; }
+.gg-titles { flex:1; min-width:0; }
+.gg-title { margin:0; font-size:1.2rem; font-weight:800;
+    background:linear-gradient(180deg,var(--brass-soft),var(--brass));
+    -webkit-background-clip:text; background-clip:text; color:transparent; }
+.gg-date { font-size:.74rem; color:var(--muted); text-transform:capitalize; }
+.gg-chrono { flex:0 0 auto; font-size:.86rem; font-weight:800; color:var(--brass-soft); font-variant-numeric:tabular-nums; }
+.gg-chrono[hidden] { display:none; }
+
+.gg-modes { margin:0; }
+.gg-strip { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
+.chip { font-size:.74rem; color:var(--muted); background:rgba(0,0,0,.28); border:1px solid var(--line);
+    border-radius:999px; padding:4px 11px; }
+.chip[hidden] { display:none; }
+.chip b { color:var(--brass-soft); }
+
+.gg-start { display:grid; place-items:center; padding:32px 0; }
+.gg-start[hidden] { display:none; }
+.gg-start-box { text-align:center; max-width:330px; }
+.gg-start-emoji { font-size:2.8rem; margin-bottom:10px; }
+.gg-start-txt { font-size:.86rem; color:var(--muted); line-height:1.55; margin:0 0 18px; }
+
+.gg-jeu[hidden] { display:none; }
+
+/* L'indice du jour. La zone garde la même hauteur dans les deux modes, pour
+   que basculer de l'un à l'autre ne fasse pas sauter toute la page. */
+.gg-indice { display:grid; place-items:center; min-height:180px; padding:10px;
+    border-radius:16px; background:rgba(255,255,255,.02); border:1px solid var(--line); }
+.gg-indice.silhouette svg { width:min(72vw,260px); height:auto; display:block;
+    filter:drop-shadow(0 6px 18px rgba(0,0,0,.5)); animation:ggEntree .5s ease both; }
+.gg-indice.silhouette path { fill:var(--brass); }
+.gg-drapeau { font-size:clamp(4.5rem,26vw,7rem); line-height:1.1; animation:ggEntree .5s ease both; }
+@keyframes ggEntree { from { opacity:0; transform:scale(.9); } }
+
+/* La saisie et ses suggestions. Aucun clavier à l'écran : celui du téléphone
+   suffit, comme partout ailleurs dans le salon. */
+.gg-form { position:relative; margin-top:14px; }
+.gg-suggest { position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:30;
+    background:var(--ink-2); border:1px solid var(--line); border-radius:12px; overflow:hidden;
+    box-shadow:0 12px 28px rgba(0,0,0,.5); }
+.gg-suggest[hidden] { display:none; }
+.gg-sug { display:block; width:100%; padding:11px 14px; border:0; background:transparent;
+    color:var(--parchment); font-family:inherit; font-size:.86rem; text-align:left; cursor:pointer; }
+.gg-sug + .gg-sug { border-top:1px solid var(--line); }
+.gg-sug.on, .gg-sug:active { background:rgba(217,169,78,.16); color:var(--brass-soft); }
+.gg-restants { text-align:center; font-size:.74rem; color:var(--muted); margin:10px 0 0; min-height:1em; }
+
+/* Les essais : le drapeau, le nom, la distance, la direction, la proximité.
+   La jauge en dessous se lit d'un coup d'œil, avant même les chiffres. */
+.gg-essais { display:flex; flex-direction:column; gap:6px; margin-top:12px; }
+.gg-essai { display:grid; grid-template-columns:auto 1fr auto auto auto; gap:8px; align-items:center;
+    padding:9px 11px 11px; border-radius:11px; background:rgba(255,255,255,.03);
+    border:1px solid var(--line); font-size:.8rem; animation:ggEssai .3s ease both; }
+@keyframes ggEssai { from { opacity:0; transform:translateY(-6px); } }
+.gg-essai.juste { border-color:var(--good); background:rgba(90,168,122,.12); }
+.gg-essai.voisin { border-color:var(--tiede); }
+.gg-e-drapeau { font-size:1.15rem; }
+.gg-e-nom { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.gg-e-km { color:var(--muted); font-variant-numeric:tabular-nums; font-size:.74rem; }
+.gg-e-dir { font-size:.95rem; }
+.gg-e-prox { color:var(--brass-soft); font-weight:800; font-variant-numeric:tabular-nums; min-width:38px; text-align:right; }
+.gg-e-jauge { grid-column:1 / -1; height:4px; border-radius:999px; background:rgba(255,255,255,.06); overflow:hidden; margin-top:2px; }
+.gg-e-jauge i { display:block; height:100%; border-radius:999px;
+    background:linear-gradient(90deg,var(--bad),var(--tiede),var(--good)); background-size:280px 100%; }
+.gg-essai.juste .gg-e-jauge i { background:var(--good); }
+
+/* Fin de manche : on montre la réponse sous ses DEUX formes — celui qui vient
+   de jouer le drapeau découvre la silhouette, et inversement. */
+.gg-fin-emoji { text-align:center; font-size:2.6rem; margin:0 0 4px; }
+.gg-reponse { display:grid; place-items:center; gap:6px; margin:6px 0 10px; }
+.gg-rep-nom { margin:0; font-size:1.1rem; font-weight:800; color:var(--brass-soft); }
+.gg-rep-forme { width:130px; height:auto; }
+.gg-rep-forme path { fill:var(--brass); opacity:.85; }
+.gg-rep-region { margin:0; font-size:.74rem; color:var(--muted); }
+
+.gg-board { display:flex; flex-direction:column; gap:3px; margin-top:10px; }
+.gg-board-titre { margin:10px 0 2px; font-size:.64rem; text-transform:uppercase; letter-spacing:.9px;
+    color:var(--brass-soft); font-weight:700; text-align:left; }
+.gg-board-row { display:grid; grid-template-columns:24px 22px 1fr auto auto; gap:8px; align-items:center;
+    padding:7px 10px; border-radius:9px; background:rgba(255,255,255,.03); border:1px solid transparent;
+    font-family:inherit; color:var(--parchment); cursor:pointer; text-align:left; font-size:.78rem; }
+.gg-board-row.moi { border-color:var(--brass); background:rgba(217,169,78,.1); }
+.gg-b-rang { text-align:center; }
+.gg-b-nom { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.gg-b-essais { color:var(--brass-soft); font-weight:800; font-variant-numeric:tabular-nums; }
+.gg-b-temps { color:var(--muted); font-size:.7rem; font-variant-numeric:tabular-nums; }
+
+@media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.001ms !important; transition-duration:.001ms !important; } }
