@@ -86,6 +86,15 @@ const TITRES = [
     { id: 'roidedes', nom: 'Roi des dés', emoji: '🎲', rarete: 'unique',
       desc: 'Le plus de victoires au Yams.',
       mesure: (s) => (s.yamsVictoires > 0 ? s.yamsVictoires : null), ordre: 'max' },
+    { id: 'mainchaude', nom: 'La main chaude', emoji: '🔥', rarete: 'unique',
+      desc: 'Meilleur score jamais réalisé sur une feuille de Yams.',
+      mesure: (s) => (s.yamsMeilleurScore > 0 ? s.yamsMeilleurScore : null), ordre: 'max' },
+    { id: 'pluiededes', nom: 'Pluie de dés', emoji: '🎲', rarete: 'unique',
+      desc: 'Le plus de Yams réalisés, toutes parties confondues.',
+      mesure: (s) => (s.yamsRealises > 0 ? s.yamsRealises : null), ordre: 'max' },
+    { id: 'invaincu', nom: 'L’invaincu', emoji: '🛡️', rarete: 'unique',
+      desc: 'La plus longue série de victoires d’affilée au Yams.',
+      mesure: (s) => (s.yamsSerie > 1 ? s.yamsSerie : null), ordre: 'max' },
     { id: 'plumebac', nom: 'Plume du Petit Bac', emoji: '✏️', rarete: 'unique',
       desc: 'Meilleure manche jamais jouée au Petit Bac.',
       mesure: (s) => (s.pbacMeilleureManche > 0 ? s.pbacMeilleureManche : null), ordre: 'max' },
@@ -109,7 +118,8 @@ function statsParJoueur(cache, pseudos, series, points) {
             motusManches: 0, motusEchecs: 0, motusTotalEssais: 0, motusTrouves: 0,
             motusMeilleurEssais: null, motusMoyenneEssais: null,
             mjMeilleurEssais: null, mfMeilleurTemps: null,
-            yamsParties: 0, yamsVictoires: 0, pbacParties: 0, pbacMeilleureManche: 0,
+            yamsParties: 0, yamsVictoires: 0, yamsMeilleurScore: 0, yamsRealises: 0, yamsSerie: 0,
+            pbacParties: 0, pbacMeilleureManche: 0,
             mpCourses: 0, perudoParties: 0, multiParties: 0,
             messages: 0, jeuxDifferents: 0,
             serie: (series && series[p]) || 0, meilleureSerie: 0,
@@ -164,7 +174,11 @@ function statsParJoueur(cache, pseudos, series, points) {
         // Stats multijoueur (Yams et Petit Bac indexent par pseudo normalisé)
         if (famille === 'yams:stats' && typeof val === 'object') {
             const s = st.get(parNorm.get(seg[2])); if (!s) continue;
-            s.yamsParties = val.gamesPlayed || 0; s.yamsVictoires = val.gamesWon || 0;
+            s.yamsParties = (val.gamesPlayed || 0) + (val.soloPlayed || 0);
+            s.yamsVictoires = val.gamesWon || 0;
+            s.yamsMeilleurScore = val.bestScore || 0;
+            s.yamsRealises = val.totalYams || 0;
+            s.yamsSerie = val.meilleureSerie || 0;
             continue;
         }
         if (famille === 'pbac:stats' && typeof val === 'object') {

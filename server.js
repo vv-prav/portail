@@ -2106,7 +2106,7 @@ app.get('/api/salon/mystats-summary', requireAuthApi, (req, res) => {
     if (motusDays.length) totals.push(['Motus', motusDays.length]);
     const mjDays = mfGet(kMjDays(pseudo)) || [];
     if (mjDays.length) totals.push(['Le Mot Juste', mjDays.length]);
-    try { const y = yamsApi.statsFor(pseudo); if (y && y.gamesPlayed) totals.push(['Yams', y.gamesPlayed]); } catch (e) {}
+    try { const y = yamsApi.statsFor(pseudo); const n = y ? y.gamesPlayed + (y.soloPlayed || 0) : 0; if (n) totals.push(['Yams', n]); } catch (e) {}
     try { const m = motusPartyApi.statsFor(pseudo); if (m && m.matchesPlayed) totals.push(['Motus Party', m.matchesPlayed]); } catch (e) {}
     totals.sort((a, b) => b[1] - a[1]);
     res.json({ weekCount, favoriteGame: totals.length ? totals[0][0] : null });
@@ -2156,8 +2156,10 @@ app.get('/api/public-profile', requireAuthApi, (req, res) => {
         let duels = null;
         try {
             const y = yamsApi.statsFor(pseudo);
-            const vs = y && y.vsOpponent && y.vsOpponent[moi];
-            if (vs && (vs.wins || vs.losses)) duels = { sesVictoires: vs.wins || 0, mesVictoires: vs.losses || 0 };
+            const vs = (y && y.duels || []).find(d => d.pseudo === moi);
+            if (vs && (vs.wins || vs.losses || vs.draws)) {
+                duels = { sesVictoires: vs.wins || 0, mesVictoires: vs.losses || 0, nuls: vs.draws || 0 };
+            }
         } catch (e) {}
         const monRang = placeAuClassement(moi), sonRang = placeAuClassement(pseudo);
         faceAface = {

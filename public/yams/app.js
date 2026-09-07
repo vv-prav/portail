@@ -128,6 +128,19 @@ const PIP_LAYOUTS = {
     5: [[28, 28], [72, 28], [50, 50], [28, 72], [72, 72]],
     6: [[28, 24], [72, 24], [28, 50], [72, 50], [28, 76], [72, 76]],
 };
+// L'icône de chiffre dans la feuille : un dé au trait, de la même famille que
+// les icônes de combinaison juste en face. Avant, la moitié « Chiffres »
+// montrait des dés réalistes en parchemin — reflet compris — pendant que la
+// moitié « Combinaisons » montrait des glyphes laiton plats : les deux moitiés
+// de la même feuille n'avaient pas l'air d'appartenir à la même table. Et le
+// dé, calé à 26 px, débordait de sa case de 18.
+function deIconeSvg(n) {
+    const pips = PIP_LAYOUTS[n] || [];
+    return `<svg viewBox="0 0 100 100" class="ym-de-icone" aria-hidden="true">
+        <rect x="9" y="9" width="82" height="82" rx="22" fill="none" stroke="currentColor" stroke-width="8"/>
+        ${pips.map(([x, y]) => `<circle cx="${x}" cy="${y}" r="8" fill="currentColor"/>`).join('')}
+    </svg>`;
+}
 function diceFaceSvg(n, extraClass, applySkin) {
     const pips = PIP_LAYOUTS[n] || [];
     const skin = applySkin ? (DICE_SKINS[currentSkin] || DICE_SKINS.classic) : null;
@@ -702,43 +715,29 @@ $('confirmOk').addEventListener('click', () => {
 function apercuDisponible(s) {
     return s.status === 'playing' && s.hasRolled && !!s.possible && !!s.turnPseudo;
 }
-// Le meilleur coup encore jouable, pour le signaler d'un coup d'oeil.
-function meilleurCoup(s) {
-    if (!apercuDisponible(s)) return -1;
-    const p = s.players.find(x => x.pseudo === s.turnPseudo);
-    if (!p) return -1;
-    let best = -1;
-    for (const [cat, pts] of Object.entries(s.possible)) {
-        if (p.scores[cat] === null && pts > best) best = pts;
-    }
-    return best;
-}
-
 const TOUTES_CATS = [...UPPER_CATS, ...LOWER_CATS];
 const LOWER_KEYS = LOWER_CATS.map(c => c.key);
 const nomDeCat = (cat) => (TOUTES_CATS.find(c => c.key === cat) || {}).label || cat;
 
-function celluleDe(cat, p, i, s, apercu, best) {
+// L'aperçu se contente d'annoncer ce que la case rapporterait. Il ne désigne
+// pas le meilleur coup : le choix appartient au joueur, et une case dorée le
+// faisait à sa place. La sélection se fait au clic, comme avant.
+function celluleDe(cat, p, i, s, apercu) {
     const val = p.scores[cat];
     if (val !== null) return `<span class="ym-cell filled" style="--pcolor:${playerColor(i)}">${val}</span>`;
     if (apercu && p.pseudo === s.turnPseudo) {
         const pts = s.possible[cat] || 0;
-        const ton = pts === 0 ? ' zero' : (pts === best && best > 0 ? ' top' : '');
-        return `<span class="ym-cell apercu${ton}">${pts}</span>`;
+        return `<span class="ym-cell apercu${pts === 0 ? ' zero' : ''}">${pts}</span>`;
     }
     return `<span class="ym-cell empty">—</span>`;
 }
-function ligneDe(cat, label, iconHtml, s, apercu, best) {
+function ligneDe(cat, label, iconHtml, s, apercu) {
     const isMyTurn = s.turnPseudo === myPseudo;
     const me = s.players.find(p => p.pseudo === myPseudo);
     const jouable = isMyTurn && s.hasRolled && me && me.scores[cat] === null;
-    // Une seule rangée signalée — la meilleure. Avant, toutes celles qui
-    // rapportaient un point clignotaient ensemble : jusqu'à treize animations
-    // en boucle, qui ne désignaient plus rien.
-    const meilleure = jouable && s.possible && s.possible[cat] === best && best > 0;
-    return `<div class="ym-ligne${jouable ? ' jouable' : ''}${meilleure ? ' meilleure' : ''}" data-cat="${cat}" role="row">
+    return `<div class="ym-ligne${jouable ? ' jouable' : ''}" data-cat="${cat}" role="row">
         <span class="ym-ligne-nom"><span class="ym-ligne-icone">${iconHtml}</span>${esc(label)}</span>
-        ${s.players.map((p, i) => celluleDe(cat, p, i, s, apercu, best)).join('')}
+        ${s.players.map((p, i) => celluleDe(cat, p, i, s, apercu)).join('')}
     </div>`;
 }
 function ligneCalcul(nom, valeurs, classe) {
@@ -749,9 +748,12 @@ function ligneCalcul(nom, valeurs, classe) {
 }
 function renderSheet(s) {
     const apercu = apercuDisponible(s) && apercusVisibles;
-    const best = apercu ? meilleurCoup(s) : -1;
     const hauts = s.players.map(p => UPPER_KEYS.reduce((sum, k) => sum + (p.scores[k] || 0), 0));
     const bas = s.players.map(p => LOWER_KEYS.reduce((sum, k) => sum + (p.scores[k] || 0), 0) + (p.yamsBonus || 0));
+    // À deux, la feuille tient en deux colonnes côte à côte — chiffres à
+    // gauche, combinaisons à droite — et se lit d'un seul écran. Au-delà, les
+    // cellules n'y entrent plus : on repasse en une colonne pleine largeur.
+    const deuxColonnes = s.players.length <= 2;
 
     const entete = `<div class="ym-ligne entete" role="row">
         <span class="ym-ligne-nom">${s.serie ? `<span class="ym-manche">Manche ${s.manche}</span>` : ''}</span>
@@ -763,46 +765,49 @@ function renderSheet(s) {
             ${s.serie ? `<span class="ym-col-serie">${(s.serie[p.pseudo] || 0) + p.total}</span>` : ''}
         </button>`).join('')}
     </div>`;
+    // En deux colonnes, chaque colonne rappelle à qui appartient chaque case :
+    // l'en-tête général est trop loin de la colonne de droite pour servir.
+    const miniTete = `<div class="ym-ligne minitete"><span class="ym-ligne-nom"></span>
+        ${s.players.map((p, i) => `<span class="ym-mini-nom" style="--pcolor:${playerColor(i)}">${p.pseudo === myPseudo ? 'Toi' : esc(p.pseudo)}</span>`).join('')}</div>`;
 
-    $('feuille').style.setProperty('--joueurs', s.players.length);
-    $('feuille').innerHTML = entete
-        + `<p class="ym-section">Chiffres</p>`
-        + UPPER_CATS.map(c => ligneDe(c.key, c.label, diceFaceSvg(c.face, 'small'), s, apercu, best)).join('')
+    const blocChiffres = `<p class="ym-section">Chiffres</p>`
+        + (deuxColonnes ? miniTete : '')
+        + UPPER_CATS.map(c => ligneDe(c.key, c.label, deIconeSvg(c.face), s, apercu)).join('')
         + ligneCalcul('Bonus <em>63 et +</em>',
             hauts.map(u => `<span class="ym-cell ${u >= 63 ? 'bonus-ok' : 'calcul'}">${u >= 63 ? '+35' : '−' + (63 - u)}</span>`), 'bonus')
-        + ligneCalcul('Sous-total', hauts.map(u => `<span class="ym-cell calcul">${u}</span>`), 'soustotal')
-        + `<p class="ym-section">Combinaisons</p>`
-        + LOWER_CATS.map(c => ligneDe(c.key, c.label, catIconSvg(c.key), s, apercu, best)).join('')
-        + ligneCalcul('Sous-total' + (s.players.some(p => p.yamsBonus) ? ' <em>bonus Yams compris</em>' : ''),
-            bas.map(u => `<span class="ym-cell calcul">${u}</span>`), 'soustotal')
-        + ligneCalcul('Total', s.players.map((p, i) => `<span class="ym-cell total" style="--pcolor:${playerColor(i)}">${p.total}</span>`), 'grandtotal');
+        + ligneCalcul('Sous-total', hauts.map(u => `<span class="ym-cell calcul">${u}</span>`), 'soustotal');
 
-    $('feuille').querySelectorAll('.ym-ligne.jouable').forEach(row => row.addEventListener('click', () => {
+    const blocCombinaisons = `<p class="ym-section">Combinaisons</p>`
+        + (deuxColonnes ? miniTete : '')
+        + LOWER_CATS.map(c => ligneDe(c.key, c.label, catIconSvg(c.key), s, apercu)).join('')
+        + ligneCalcul('Sous-total' + (s.players.some(p => p.yamsBonus) ? ' <em>bonus Yams compris</em>' : ''),
+            bas.map(u => `<span class="ym-cell calcul">${u}</span>`), 'soustotal');
+
+    const total = ligneCalcul('Total',
+        s.players.map((p, i) => `<span class="ym-cell total" style="--pcolor:${playerColor(i)}">${p.total}</span>`), 'grandtotal');
+
+    const f = $('feuille');
+    f.style.setProperty('--joueurs', s.players.length);
+    f.classList.toggle('double', deuxColonnes);
+    f.innerHTML = entete
+        + (deuxColonnes
+            ? `<div class="ym-double"><div class="ym-colonne">${blocChiffres}</div><div class="ym-colonne">${blocCombinaisons}</div></div>`
+            : blocChiffres + blocCombinaisons)
+        + total;
+
+    f.querySelectorAll('.ym-ligne.jouable').forEach(row => row.addEventListener('click', () => {
         const cat = row.dataset.cat;
         selectPending(cat, nomDeCat(cat), s.possible[cat]);
     }));
-    $('feuille').querySelectorAll('.ym-col-tete').forEach(b =>
+    f.querySelectorAll('.ym-col-tete').forEach(b =>
         b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
     PortailProfile.fetchAvatars(s.players.map(p => p.pseudo)).then(a => {
         scoreAvatars = a;
-        $('feuille').querySelectorAll('.ym-col-bulle').forEach(el => { el.innerHTML = PortailProfile.bubbleHTML(a[el.dataset.p]); });
+        f.querySelectorAll('.ym-col-bulle').forEach(el => { el.innerHTML = PortailProfile.bubbleHTML(a[el.dataset.p]); });
     });
     // Si les dés ont changé depuis la sélection (nouveau lancer), la case en attente n'a plus de sens.
     if (pendingCategory && pendingDiceKey !== s.dice.join(',')) clearPending();
 }
-// Le son se coupe d'un geste, et le choix se retient.
-function majBoutonSon() {
-    $('ym-son').textContent = sonActif ? '🔊' : '🔇';
-    $('ym-son').setAttribute('aria-label', sonActif ? 'Couper le son' : 'Remettre le son');
-}
-$('ym-son').addEventListener('click', () => {
-    sonActif = !sonActif;
-    localStorage.setItem(SON_CLE, sonActif ? '1' : '0');
-    majBoutonSon();
-    if (sonActif) sonDe();
-});
-majBoutonSon();
-
 $('btn-roll').addEventListener('click', () => { clearPending(); socket.emit('yams_roll'); });
 
 // ---------- Le chronomètre du tour ----------

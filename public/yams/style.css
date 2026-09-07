@@ -132,6 +132,9 @@ body {
 .ym-ligne-icone { flex:0 0 auto; width:18px; height:18px; display:grid; place-items:center; }
 .ym-ligne-icone svg { width:100%; height:100%; }
 .ym-cat-icon { width:100%; height:100%; fill:var(--brass-soft); opacity:.85; }
+/* Le dé au trait des chiffres : même couleur, même poids que les icônes de
+   combinaison, pour que les deux moitiés de la feuille se ressemblent. */
+.ym-de-icone { width:100%; height:100%; color:var(--brass-soft); opacity:.85; }
 .ym-section { margin:8px 0 2px; padding:0 6px; font-size:.62rem; text-transform:uppercase;
     letter-spacing:.9px; color:var(--brass-soft); font-weight:700; }
 
@@ -156,8 +159,25 @@ body {
    jouable, meilleure, choisie. Pas trois couleurs différentes. */
 .ym-ligne.jouable { cursor:pointer; border-color:rgba(217,169,78,.28); background:rgba(217,169,78,.035); }
 .ym-ligne.jouable:active { background:rgba(217,169,78,.12); }
-.ym-ligne.meilleure { border-color:var(--brass); background:rgba(217,169,78,.10); }
 .ym-ligne.pending { border-color:var(--brass); background:rgba(217,169,78,.2); box-shadow:0 0 0 1px var(--brass) inset; }
+/* ---------- Deux colonnes, pour les parties à deux ----------
+   Les cellules y sont plus étroites et les libellés peuvent passer à la ligne :
+   c'est ce qui permet aux deux moitiés de tenir côte à côte. Au-delà de deux
+   joueurs cette classe n'est pas posée et la feuille reprend toute la largeur. */
+.ym-double { display:grid; grid-template-columns:1fr 1fr; gap:8px; align-items:start; }
+.ym-double .ym-colonne { display:flex; flex-direction:column; gap:3px; min-width:0; }
+.ym-double .ym-ligne { grid-template-columns:minmax(0,1fr) repeat(var(--joueurs,2), minmax(24px, 34px));
+    gap:3px; padding:4px 5px; }
+.ym-double .ym-ligne-nom { white-space:normal; font-size:.68rem; line-height:1.15; }
+.ym-double .ym-ligne-icone { width:15px; height:15px; }
+.ym-double .ym-cell { height:23px; font-size:.68rem; }
+.ym-double .ym-section { margin:2px 0 2px; }
+/* Le rappel des joueurs en tête de chaque colonne : l'en-tête général est trop
+   loin de la colonne de droite pour qu'on sache à qui appartient une case. */
+.ym-ligne.minitete { padding:0 5px 3px; border-bottom:1px solid var(--line); border-radius:0; }
+.ym-mini-nom { font-size:.55rem; color:var(--pcolor,var(--muted)); text-align:center;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:700; }
+
 .ym-ligne.bonus, .ym-ligne.soustotal { background:rgba(255,255,255,.03); }
 .ym-ligne.grandtotal { background:rgba(217,169,78,.08); border-color:rgba(217,169,78,.28); margin-top:4px; }
 .ym-ligne.grandtotal .ym-ligne-nom { font-weight:800; color:var(--brass-soft); }
@@ -187,8 +207,6 @@ body {
 .ym-cell.apercu { color:var(--brass-soft); background:rgba(217,169,78,.05);
     border:1.5px dashed rgba(217,169,78,.45); font-weight:700; opacity:.9;
     animation:ymApercu .25s ease both; }
-.ym-cell.apercu.top { color:var(--ink); background:linear-gradient(180deg,var(--brass-soft),var(--brass));
-    border-style:solid; border-color:var(--brass); opacity:1; box-shadow:0 2px 8px rgba(217,169,78,.30); }
 .ym-cell.apercu.zero { color:var(--muted); background:transparent;
     border-color:rgba(160,143,116,.30); font-weight:600; opacity:.5; }
 @keyframes ymApercu { from { opacity:0; transform:translateY(-3px); } }

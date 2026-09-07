@@ -122,8 +122,9 @@
         if (!f) return '';
         const bouts = [];
         if (f.duels) {
-            const total = f.duels.sesVictoires + f.duels.mesVictoires;
-            bouts.push(`Au Yams, <b>${f.duels.mesVictoires}</b> victoire${f.duels.mesVictoires > 1 ? 's' : ''} pour toi contre <b>${f.duels.sesVictoires}</b> sur ${total} duel${total > 1 ? 's' : ''}.`);
+            const nuls = f.duels.nuls || 0;
+            const total = f.duels.sesVictoires + f.duels.mesVictoires + nuls;
+            bouts.push(`Au Yams, <b>${f.duels.mesVictoires}</b> victoire${f.duels.mesVictoires > 1 ? 's' : ''} pour toi contre <b>${f.duels.sesVictoires}</b>${nuls ? ` et <b>${nuls}</b> nul${nuls > 1 ? 's' : ''}` : ''}, sur ${total} duel${total > 1 ? 's' : ''}.`);
         }
         if (f.monRang && f.sonRang) {
             bouts.push(f.monRang < f.sonRang
