@@ -290,12 +290,21 @@ app.post('/api/login', (req, res) => {
         return res.status(401).json({ error: 'Nom ou mot de passe incorrect.' });
     }
     if (user.banned) return res.status(403).json({ error: "Ce compte a été suspendu." });
+    // Un mot de passe temporaire posé par un administrateur ne vaut qu'un
+    // jour : passé ce délai il ne sert plus à rien, et surtout il ne traîne
+    // pas indéfiniment alors que quelqu'un d'autre l'a vu passer.
+    if (user.tempExpire && Date.now() > user.tempExpire) {
+        return res.status(401).json({ error: 'Ce mot de passe provisoire a expiré. Redemande de l’aide depuis « Mot de passe oublié ».' });
+    }
     loginOk(tk);
     user.prevLogin = user.lastLogin || 0;
     user.lastLogin = Date.now();
     saveUsers();
     setSessionCookie(res, pseudo);
-    res.json({ ok: true, user: { pseudo } });
+    // `doitChanger` force l'écran de changement à l'arrivée : sans ça, le mot
+    // de passe qu'un administrateur a lu resterait celui du compte pour
+    // toujours, ce qui vide la manœuvre de son sens.
+    res.json({ ok: true, user: { pseudo }, doitChanger: !!user.doitChanger });
 });
 
 // --- Récupération de mot de passe avec le code noté à l'inscription ---
@@ -331,6 +340,43 @@ app.post('/api/new-code', requireAuthApi, (req, res) => {
     res.json({ ok: true, recoveryCode: code });
 });
 
+// =====================================================================
+//  « J'ai oublié mon mot de passe ET mon code »
+//
+//  Le code de récupération est noté une seule fois, à l'inscription, et
+//  presque personne ne le garde. Sans lui, l'écran « Mot de passe oublié »
+//  était un cul-de-sac : aucun moyen de signaler qu'on est bloqué.
+//
+//  Ici, tout le monde se connaît : c'est l'administrateur qui reconnaît la
+//  personne, hors de l'application, et lui pose un mot de passe provisoire.
+//  Cette route ne fait que lui transmettre la demande.
+// =====================================================================
+const DEMANDES_CLE = 'comptes:demandes';
+app.post('/api/aide-connexion', (req, res) => {
+    const pseudo = String((req.body || {}).pseudo || '').trim();
+    const mot = String((req.body || {}).message || '').trim().slice(0, 200);
+    const tk = triesKey(req, 'aide:' + pseudo);
+    const wait = loginBlocked(tk);
+    if (wait) return res.status(429).json({ error: `Trop de demandes. Réessaie dans ${wait} min.` });
+    if (!pseudo) return res.status(400).json({ error: 'Indique ton nom.' });
+    // On dit franchement qu'un nom est inconnu : dans un salon privé où les
+    // pseudos s'affichent dans tous les classements, cacher l'information ne
+    // protège rien — alors qu'une faute de frappe avalée en silence
+    // produirait une demande que personne ne verrait jamais.
+    if (!registeredUsers[pseudo]) {
+        loginFailed(tk);
+        return res.status(404).json({ error: 'Aucun compte à ce nom. Vérifie l’orthographe exacte.' });
+    }
+    const liste = (mfGet(DEMANDES_CLE) || []).slice();
+    // Une seule demande en attente par personne : inutile d'en empiler dix.
+    if (liste.some(d => d.pseudo === pseudo && !d.traitee)) {
+        return res.json({ ok: true, deja: true });
+    }
+    liste.push({ pseudo, message: mot, ts: Date.now(), traitee: false });
+    mfSet(DEMANDES_CLE, liste.slice(-60));
+    res.json({ ok: true });
+});
+
 app.post('/api/logout', (req, res) => {
     res.clearCookie('salon_session', { path: '/' });
     res.json({ ok: true });
@@ -339,7 +385,7 @@ app.post('/api/logout', (req, res) => {
 app.get('/api/me', (req, res) => {
     const pseudo = currentUser(req);
     if (!pseudo) return res.status(401).json({ error: 'Non connecté.' });
-    res.json({ user: { pseudo, isAdmin: isAdmin(pseudo) } });
+    res.json({ user: { pseudo, isAdmin: isAdmin(pseudo) }, doitChanger: !!(registeredUsers[pseudo] && registeredUsers[pseudo].doitChanger) });
 });
 
 // ---------------------------------------------------------------------
@@ -2645,8 +2691,17 @@ app.post('/api/account/change-password', requireAuthApi, (req, res) => {
     if (!verifyPassword(current, user.passwordHash)) return res.status(401).json({ error: 'Mot de passe actuel incorrect.' });
     if (next.length < MIN_PASSWORD) return res.status(400).json({ error: `Mot de passe trop court (${MIN_PASSWORD} caractères minimum).` });
     user.passwordHash = hashPassword(next);
+    // Le compte reprend son cours normal : le mot de passe provisoire n'a plus
+    // de raison d'expirer, et l'écran de changement forcé ne revient plus.
+    delete user.doitChanger;
+    delete user.tempExpire;
     saveUsers(true);
-    res.json({ ok: true });
+    // Un mot de passe choisi soi-même mérite un nouveau code : celui qui vient
+    // de se faire dépanner n'a par définition plus le sien.
+    const code = makeRecoveryCode();
+    user.recoveryHash = hashPassword(code);
+    saveUsers(true);
+    res.json({ ok: true, recoveryCode: code });
 });
 
 // ---------------------------------------------------------------------

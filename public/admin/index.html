@@ -80,6 +80,11 @@
 
         <!-- COMPTES -->
         <section class="pane" id="pane-accounts" hidden>
+            <div class="card" id="demandes-carte" hidden>
+                <h2 class="card-title">Demandes d'aide à la connexion</h2>
+                <p class="card-sub">Quelqu'un a perdu son mot de passe <b>et</b> son code. Reconnais la personne, puis pose-lui un mot de passe provisoire depuis sa fiche : la demande se marquera traitée.</p>
+                <div class="list" id="demandes-liste"></div>
+            </div>
             <div class="card">
                 <input class="ds-input" id="acc-q" placeholder="Rechercher un pseudo…" autocapitalize="off" aria-label="Rechercher un compte">
                 <div class="ds-segmented" id="acc-sort">

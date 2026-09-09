@@ -40,7 +40,7 @@ function switchTab(tab) {
     ['home', 'accounts', 'parties', 'perudo', 'grids', 'motus', 'motjuste', 'chiffres', 'geo', 'dict', 'titres', 'sante', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== tab); });
     document.querySelectorAll('.ad-tile').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
     if (tab === 'home') loadOverview();
-    if (tab === 'accounts') loadAccounts();
+    if (tab === 'accounts') { loadAccounts(); loadDemandes(); }
     if (tab === 'parties') loadParties();
     if (tab === 'perudo') loadPerudo();
     if (tab === 'grids') loadGrids();
@@ -282,7 +282,12 @@ async function openAccount(pseudo) {
     add('Réinitialiser le mot de passe', () => ask('🔑', 'Réinitialiser ?', `Un mot de passe temporaire sera créé pour ${data.pseudo}, qui sera déconnecté.`, [
         { label: 'Confirmer', run: async () => {
             const r = await api('/api/admin/account/password', { pseudo: data.pseudo });
-            if (r.ok) ask('🔑', 'Mot de passe temporaire', 'Transmets-le à la personne. Elle pourra le changer ensuite.', [], r.data.tempPassword);
+            if (r.ok) {
+                ask('🔑', 'Mot de passe provisoire',
+                    'Transmets-le à la personne. Il n’est valable que 24 heures, et elle devra en choisir un vrai dès sa connexion.',
+                    [], r.data.tempPassword);
+                loadDemandes();   // la demande correspondante vient d'être traitée
+            }
             else toast(r.data.error || 'Erreur');
         } }]));
     add('Générer un code de récupération', () => ask('🎫', 'Nouveau code ?', `L'ancien code de ${data.pseudo} sera invalidé.`, [
@@ -1123,5 +1128,33 @@ $('fus-go').addEventListener('click', () => {
             loadAccounts();
         } }], null, source);
 });
+
+// =====================================================================
+//  LES DEMANDES D'AIDE À LA CONNEXION
+//  Le code de récupération n'est montré qu'une fois et presque personne ne
+//  le garde : sans ce canal, « Mot de passe oublié » était un cul-de-sac.
+// =====================================================================
+async function loadDemandes() {
+    const { data } = await api('/api/admin/demandes');
+    const attente = (data && data.enAttente) || [];
+    $('demandes-carte').hidden = !attente.length;
+    if (!attente.length) return;
+    $('demandes-liste').innerHTML = attente.map(d => `
+        <div class="ds-row static">
+            <span class="ds-row-main">
+                <span class="ds-row-name">${esc(d.pseudo)}</span>
+                <span class="ds-row-sub">${esc(d.message || 'sans message')} · ${new Date(d.ts).toLocaleString('fr-FR')}</span>
+            </span>
+            <button class="mini" data-fiche="${esc(d.pseudo)}" type="button">Ouvrir</button>
+            <button class="mini danger" data-ignorer="${esc(d.pseudo)}" type="button">Ignorer</button>
+        </div>`).join('');
+    $('demandes-liste').querySelectorAll('[data-fiche]').forEach(b =>
+        b.addEventListener('click', () => openAccount(b.dataset.fiche)));
+    $('demandes-liste').querySelectorAll('[data-ignorer]').forEach(b =>
+        b.addEventListener('click', async () => {
+            await api('/api/admin/demandes/ignorer', { pseudo: b.dataset.ignorer });
+            toast('Demande écartée.'); loadDemandes();
+        }));
+}
 
 setInterval(() => { if (!$('pane-home').hidden) loadOverview(); }, 30000);

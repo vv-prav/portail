@@ -566,6 +566,9 @@ async function auth(kind) {
     $('btn-login').disabled = $('btn-register').disabled = false;
     if (!ok) { setError(data.error || t('err_generic')); return; }
     if (data.recoveryCode) { showCode(data.recoveryCode, data.user.pseudo); return; }
+    // Un mot de passe provisoire posé par un administrateur : on ne laisse pas
+    // entrer sans en choisir un vrai, puisque quelqu'un d'autre l'a lu.
+    if (data.doitChanger) { enterHub(data.user.pseudo, data.user.isAdmin); exigerNouveauMotDePasse(); return; }
     enterHub(data.user.pseudo, data.user.isAdmin);
 }
 $('entry-form').addEventListener('submit', (e) => { e.preventDefault(); auth('login'); });
@@ -608,11 +611,67 @@ $('f-send').addEventListener('click', async () => {
     showCode(data.recoveryCode, data.user.pseudo);
 });
 
+// =====================================================================
+//  QUAND LE CODE DE RÉCUPÉRATION EST PERDU LUI AUSSI
+//
+//  Le code n'est montré qu'une fois, à l'inscription, et presque personne
+//  ne le garde. « Mot de passe oublié » était alors un cul-de-sac. Ici
+//  tout le monde se connaît : on prévient, quelqu'un du salon reconnaît la
+//  personne et lui pose un mot de passe provisoire.
+// =====================================================================
+$('f-sans-code').addEventListener('click', () => {
+    $('a-pseudo').value = $('f-pseudo').value.trim() || $('pseudo').value.trim();
+    $('a-error').textContent = '';
+    $('ov-forgot').hidden = true;
+    $('ov-aide').hidden = false;
+});
+$('a-cancel').addEventListener('click', () => { $('ov-aide').hidden = true; });
+$('aide-close').addEventListener('click', () => { $('ov-aide').hidden = true; });
+$('a-send').addEventListener('click', async () => {
+    const pseudo = $('a-pseudo').value.trim();
+    if (!pseudo) { $('a-error').textContent = t('err_fill'); return; }
+    $('a-send').disabled = true;
+    const { ok, data } = await api('/api/aide-connexion', { pseudo, message: $('a-mot').value.trim() });
+    $('a-send').disabled = false;
+    if (!ok) { $('a-error').textContent = data.error || t('err_generic'); return; }
+    $('ov-aide').hidden = true;
+    DS.confirm({
+        emoji: '📨', title: data.deja ? 'Demande déjà envoyée' : 'C’est transmis',
+        text: data.deja
+            ? 'Ta demande est déjà en attente. Quelqu’un va te donner un mot de passe provisoire.'
+            : 'Quelqu’un du salon va te reconnaître et te donner un mot de passe provisoire, à changer dès ta première connexion.',
+        actions: [], cancelLabel: 'Fermer', closeIcon: false,
+    });
+});
+
+// L'écran de changement obligatoire, après un dépannage. Il n'a pas de
+// bouton pour s'en aller : le mot de passe provisoire a été lu par
+// quelqu'un d'autre, le garder n'a pas de sens.
+function exigerNouveauMotDePasse() {
+    $('ov-obligatoire').hidden = false;
+    $('ob-actuel').focus();
+}
+$('ob-send').addEventListener('click', async () => {
+    const current = $('ob-actuel').value, next = $('ob-next').value;
+    if (!current || !next) { $('ob-error').textContent = t('err_fill'); return; }
+    $('ob-send').disabled = true;
+    const { ok, data } = await api('/api/account/change-password', { current, next });
+    $('ob-send').disabled = false;
+    if (!ok) { $('ob-error').textContent = data.error || t('err_generic'); return; }
+    $('ov-obligatoire').hidden = true;
+    // On lui donne aussitôt un code neuf : par définition, il n'a plus le sien.
+    if (data.recoveryCode) showCode(data.recoveryCode, null);
+});
+
 // ---------- Démarrage ----------
 applyI18n();
 (async function boot() {
     const { ok, data } = await api('/api/me');
-    if (ok && data.user) enterHub(data.user.pseudo, data.user.isAdmin);
+    if (ok && data.user) {
+        enterHub(data.user.pseudo, data.user.isAdmin);
+        // Recharger la page ne doit pas faire oublier le changement exigé.
+        if (data.doitChanger) exigerNouveauMotDePasse();
+    }
     else { setState('entry'); setTimeout(() => { const p = $('pseudo'); if (p) p.focus(); }, 120); }
 })();
 

@@ -278,9 +278,19 @@ module.exports = function attachAdmin(app, ctx) {
         const temp = makeRecoveryCode().slice(0, 9);           // mot de passe temporaire lisible
         u.passwordHash = hashPassword(temp);
         u.sessionEpoch = Date.now();                            // déconnecte les sessions existantes
+        // Deux garde-fous, sans lesquels la manœuvre perd son sens : ce mot de
+        // passe a été lu par quelqu'un d'autre, donc il ne vaut qu'un jour, et
+        // le joueur doit en choisir un vrai dès son arrivée.
+        u.doitChanger = true;
+        u.tempExpire = Date.now() + 24 * 3600 * 1000;
         saveUsers(true);
-        log(currentUser(req), 'reset mot de passe', pseudo);
-        res.json({ ok: true, tempPassword: temp });
+        // La demande d'aide correspondante est marquée traitée : sinon elle
+        // resterait en attente dans l'admin alors que c'est fait.
+        const liste = (mf.get('comptes:demandes') || []).map(d =>
+            (d.pseudo === pseudo && !d.traitee ? { ...d, traitee: true, traiteeLe: Date.now(), par: currentUser(req) } : d));
+        mf.set('comptes:demandes', liste);
+        log(currentUser(req), 'mot de passe provisoire', pseudo);
+        res.json({ ok: true, tempPassword: temp, expireDans: '24 heures' });
     });
 
     A('/account/recovery', (req, res) => {
@@ -1198,6 +1208,27 @@ module.exports = function attachAdmin(app, ctx) {
         });
     });
 
+
+    // ---------- Les demandes d'aide à la connexion ----------
+    // Quelqu'un qui a perdu son mot de passe ET son code n'avait aucun moyen
+    // de le signaler. Ces demandes arrivent ici ; l'administrateur reconnaît
+    // la personne hors de l'application et lui pose un mot de passe
+    // provisoire, ce qui marque la demande traitée.
+    G('/demandes', (req, res) => {
+        const liste = (mf.get('comptes:demandes') || []).slice().reverse();
+        res.json({
+            enAttente: liste.filter(d => !d.traitee),
+            traitees: liste.filter(d => d.traitee).slice(0, 20),
+        });
+    });
+    A('/demandes/ignorer', (req, res) => {
+        const pseudo = String(req.body.pseudo || '');
+        const liste = (mf.get('comptes:demandes') || []).map(d =>
+            (d.pseudo === pseudo && !d.traitee ? { ...d, traitee: true, ignoree: true, traiteeLe: Date.now() } : d));
+        mf.set('comptes:demandes', liste);
+        log(currentUser(req), 'demande d’aide ignorée', pseudo);
+        res.json({ ok: true });
+    });
 
     // =================================================================
     //  MODÉRATION DES STATISTIQUES MULTIJOUEUR

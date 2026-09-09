@@ -65,6 +65,11 @@ La liste est désormais **inversée** : on charge `redis.keys('*')` moins les de
 - Code de récupération à l'inscription (`POST /api/new-code` pour en régénérer un).
 - `requireAuth` (pages) et `requireAuthApi` (API) sont les deux middlewares de garde ; ils mettent aussi à jour discrètement `user.lastSeen` (respectivement toutes les ~5 min pour les pages, ~30s pour les appels API) — c'est ce qui alimente le statut « en ligne » du salon.
 - `requireAdmin` protège tout `/admin` et `/api/admin/*`.
+- **Quand le code de récupération est perdu lui aussi.** Il n'est montré qu'une fois, à l'inscription, et presque personne ne le garde : « Mot de passe oublié » était alors un cul-de-sac. Le chemin de secours s'appuie sur le fait que tout le monde se connaît ici — c'est un humain qui reconnaît la personne, pas un courriel (aucune adresse n'est collectée).
+  1. `POST /api/aide-connexion` dépose une demande dans `comptes:demandes` (une seule en attente par personne). Un nom inconnu est **signalé franchement** : les pseudos s'affichent déjà dans tous les classements, donc les cacher ne protège rien, alors qu'une faute de frappe avalée en silence produirait une demande que personne ne verrait.
+  2. L'administrateur voit la demande dans l'onglet Comptes et pose un mot de passe provisoire depuis la fiche, ce qui marque la demande traitée.
+  3. Ce provisoire porte `doitChanger` et `tempExpire` (24 h). ⚠️ **Les deux sont indispensables** : quelqu'un d'autre l'a lu, donc il ne doit ni durer ni rester le mot de passe du compte. `doitChanger` est renvoyé par `/api/login` **et** par `/api/me`, sinon un simple rechargement de page suffirait à le contourner.
+  4. `/api/account/change-password` lève les deux drapeaux et **délivre un code de récupération neuf** : celui qui vient d'être dépanné n'a par définition plus le sien.
 - Changement de pseudo (`/api/account/rename`) et de mot de passe (`/api/account/change-password`). **Le renommage migre désormais les statistiques** : `comptes/renommage.js` planifie puis applique la migration (clés `<app>:<type>:<pseudo>` renommées, valeurs à champ `u` réécrites, index et `vsOpponent` suivis). Attention aux deux pièges que le module documente : Yams et Petit Bac indexent par pseudo **normalisé**, et `mf:hist:<date>` a une date au rang où les autres familles ont un pseudo.
 
 ## Arborescence complète

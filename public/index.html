@@ -115,6 +115,35 @@
         </div>
     </div>
 
+    <!-- Demander de l'aide quand le code est perdu aussi -->
+    <div class="ds-overlay" id="ov-aide" hidden>
+        <div class="ds-card">
+            <button type="button" class="ds-card-close" id="aide-close" aria-label="Fermer">✕</button>
+            <div class="ov-emoji">🙋</div>
+            <h2 class="ds-card-title ov-title">Pas de code ?</h2>
+            <p class="ov-sub">Ça arrive. Préviens ici : quelqu'un du salon te reconnaîtra et te donnera un mot de passe provisoire, à changer dès ta première connexion.</p>
+            <input class="ds-input" id="a-pseudo" type="text" placeholder="Ton nom" autocapitalize="off" autocorrect="off" aria-label="Ton nom">
+            <input class="ds-input" id="a-mot" type="text" placeholder="Un mot pour qu'on te reconnaisse (facultatif)" aria-label="Message">
+            <div class="entry-error" id="a-error" role="alert"></div>
+            <button class="ds-btn" id="a-send" type="button">Envoyer la demande</button>
+            <button class="ds-btn ghost" id="a-cancel" type="button">Annuler</button>
+        </div>
+    </div>
+
+    <!-- Choisir un vrai mot de passe après un dépannage -->
+    <div class="ds-overlay" id="ov-obligatoire" hidden>
+        <div class="ds-card">
+            <div class="ov-emoji">🔑</div>
+            <h2 class="ds-card-title ov-title">Choisis ton mot de passe</h2>
+            <p class="ov-sub">Celui qu'on t'a donné est provisoire, et quelqu'un d'autre l'a vu. Choisis-en un à toi pour continuer.</p>
+            <input class="ds-input" id="ob-actuel" type="password" placeholder="Le mot de passe provisoire" autocomplete="current-password" aria-label="Mot de passe provisoire">
+            <input class="ds-input" id="ob-next" type="password" placeholder="Ton nouveau mot de passe" autocomplete="new-password" aria-label="Nouveau mot de passe">
+            <p class="hint">6 caractères minimum.</p>
+            <div class="entry-error" id="ob-error" role="alert"></div>
+            <button class="ds-btn" id="ob-send" type="button">Enregistrer</button>
+        </div>
+    </div>
+
     <!-- Code de récupération -->
     <div class="ds-overlay" id="ov-code" hidden>
         <div class="ds-card">
@@ -139,6 +168,7 @@
             <input class="ds-input" id="f-pass" type="password" data-ph="ph_newpass" placeholder="Nouveau mot de passe" aria-label="Nouveau mot de passe">
             <div class="entry-error" id="f-error" role="alert"></div>
             <button class="ds-btn" id="f-send" type="button" data-i="forgot_send">Réinitialiser</button>
+            <button class="link-btn" id="f-sans-code" type="button">Je n'ai pas mon code</button>
             <button class="ds-btn ghost" id="f-cancel" type="button" data-i="cancel">Annuler</button>
         </div>
     </div>
