@@ -37,7 +37,7 @@ function fmtDur(sec) {
 
 // ---------- Onglets ----------
 function switchTab(tab) {
-    ['home', 'accounts', 'parties', 'perudo', 'grids', 'motus', 'motjuste', 'dict', 'titres', 'sante', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== tab); });
+    ['home', 'accounts', 'parties', 'perudo', 'grids', 'motus', 'motjuste', 'chiffres', 'geo', 'dict', 'titres', 'sante', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== tab); });
     document.querySelectorAll('.ad-tile').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
     if (tab === 'home') loadOverview();
     if (tab === 'accounts') loadAccounts();
@@ -46,9 +46,11 @@ function switchTab(tab) {
     if (tab === 'grids') loadGrids();
     if (tab === 'motus') loadMotus();
     if (tab === 'motjuste') loadMotJuste();
+    if (tab === 'chiffres') loadChiffres();
+    if (tab === 'geo') loadGeo();
     if (tab === 'dict') { loadDictStats(); loadDict(); }
     if (tab === 'titres') loadTitres();
-    if (tab === 'sante') loadSante();
+    if (tab === 'sante') { loadSante(); loadFrequentation(); }
     if (tab === 'system') { loadOverview(); loadAdmins(); }
     window.scrollTo(0, 0);
 }
@@ -91,6 +93,17 @@ document.addEventListener('click', (e) => {
 });
 
 // ---------- Boîte générique ----------
+// La journée du salon commence à minuit à PARIS, pas à minuit UTC. Le
+// navigateur, lui, calculait `new Date().toISOString().slice(0,10)` : entre
+// minuit et deux heures du matin, l'admin ouvrait donc sur la veille — le mot
+// du Motus « ne changeait pas » alors qu'il avait déjà changé côté serveur.
+// Même formule que `mfDayId()` dans server.js, à ne pas laisser diverger.
+function dateDuSalon(d) {
+    return new Intl.DateTimeFormat('fr-CA', {
+        timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(d || new Date());
+}
+
 function ask(emoji, title, sub, actions, code, confirmText) {
     DS.confirm({ emoji, title, text: sub, actions, code, confirmText });
 }
@@ -169,11 +182,18 @@ function renderLog() {
         : '<p class="empty">Aucune action trouvée.</p>';
 }
 async function loadLog() {
-    const { data } = await api('/api/admin/log');
-    _logCache = (data && data.log) || [];
+    // Le filtre part au serveur : le journal garde trois cents lignes et on
+    // n'en recevait que les dernières, donc chercher en local en manquait.
+    const q = ($('log-q').value || '').trim();
+    const { data } = await api('/api/admin/log' + (q ? '?q=' + encodeURIComponent(q) : ''));
+    _logCache = (data && (data.lignes || data.log)) || [];
+    const total = data && data.total;
+    const el = $('sante-journal-total');
+    if (el) el.textContent = total ? `${_logCache.length} ligne(s) affichée(s) sur ${total} au journal.` : '';
     renderLog();
 }
-$('log-q').addEventListener('input', renderLog);
+let logT = null;
+$('log-q').addEventListener('input', () => { clearTimeout(logT); logT = setTimeout(loadLog, 250); });
 $('log-export').addEventListener('click', () => {
     const rows = [['date', 'admin', 'action', 'cible', 'détail']];
     _logCache.forEach(e => rows.push([
@@ -511,7 +531,7 @@ async function loadGrids() {
     $('gr-diff').innerHTML = Object.entries(L).map(([lv, v]) =>
         `<div class="kv-row"><span>${LV_LABEL[lv] || lv}</span><b>${v.solved}/${v.started} réussies (${v.rate}%) · moy ${v.avg ? mmss(v.avg) : '—'} · ${v.gaveUp} abandons</b></div>`).join('')
         || '<p class="empty">Pas encore de données.</p>';
-    if (!$('gr-date').value) $('gr-date').value = new Date().toISOString().slice(0, 10);
+    if (!$('gr-date').value) $('gr-date').value = dateDuSalon();
     loadGridDay();
 }
 $('gr-date').addEventListener('change', loadGridDay);
@@ -579,7 +599,7 @@ async function loadMotus() {
     const d = await api('/api/admin/motus/difficulty');
     const v = d.data || {};
     $('mt-diff').innerHTML = `<div class="kv-row"><span>Sur 14 jours</span><b>${v.solved || 0}/${v.started || 0} trouvés (${v.rate || 0}%) · moy ${v.avgTries || 0} essais · ${v.lost || 0} échecs</b></div>`;
-    if (!$('mt-date').value) $('mt-date').value = new Date().toISOString().slice(0, 10);
+    if (!$('mt-date').value) $('mt-date').value = dateDuSalon();
     loadMotusDay();
 }
 $('mt-date').addEventListener('change', loadMotusDay);
@@ -624,7 +644,7 @@ async function loadMotusComments(date) {
 
 $('mt-regen').addEventListener('click', () => {
     const date = $('mt-date').value;
-    const aujourdhui = date === new Date().toISOString().slice(0, 10);
+    const aujourdhui = date === dateDuSalon();
     ask('♻️', 'Tirer un nouveau mot ?',
         `Un mot différent sera tiré pour le ${date}. Les parties de ce jour-là et le classement seront effacés.`
         + (aujourdhui ? "\n\nC'est la date du jour : ceux qui ont la grille ouverte devront la recharger." : ''), [
@@ -650,7 +670,7 @@ async function loadMotJuste() {
     const d = await api('/api/admin/motjuste/difficulty');
     const v = d.data || {};
     $('mj-diff').innerHTML = `<div class="kv-row"><span>Sur 14 jours</span><b>${v.solved || 0}/${v.started || 0} trouvés (${v.rate || 0}%) · moy ${v.avgGuesses || 0} mots essayés</b></div>`;
-    if (!$('mj-date').value) $('mj-date').value = new Date().toISOString().slice(0, 10);
+    if (!$('mj-date').value) $('mj-date').value = dateDuSalon();
     loadMotJusteDay();
     loadMotJusteVocab();
 }
@@ -664,7 +684,7 @@ async function loadMotJusteDay() {
         <div class="kv-row"><span>Mot du jour</span><b>${esc(data.word)}</b></div>
         <div class="kv-row"><span>Parties</span><b>${data.started} commencées · ${data.solved} trouvées</b></div>`;
     $('mj-neighbors-box').innerHTML = '<p class="card-sub" style="margin-top:10px">Mots les plus proches (repère admin) :</p>' +
-        (data.neighbors || []).map(n => `<span class="chip mini" style="display:inline-block;margin:2px">${esc(n.m)} ${n.score > 0 ? '+' : ''}${n.score.toFixed(1)}</span>`).join(' ');
+        (data.neighbors || []).map(n => `<span class="ds-chip" style="display:inline-block;margin:2px">${esc(n.m)} ${n.score > 0 ? '+' : ''}${n.score.toFixed(1)}</span>`).join(' ');
     $('mj-board-box').innerHTML = (data.board || []).length ? data.board.map((e, i) => `
         <div class="bd-row${e.susp ? ' susp' : ''}">
             <span>${i + 1}. ${esc(e.u)}</span><b>${e.guesses} mot${e.guesses > 1 ? 's' : ''}</b>
@@ -829,12 +849,29 @@ async function loadSante() {
         + ligne('Mémoire', data.memoire + ' Mo')
         + ligne('Comptes', data.comptes)
         + ligne('Poids de la clé des comptes', Math.round(data.poidsComptes / 1024) + ' Ko')
-        + ligne('Clés en base', data.clesTotal);
+        + ligne('Clés en base', data.clesTotal + (data.poidsTotal ? ' · ' + Math.round(data.poidsTotal / 1024) + ' Ko' : ''))
+        + ligne('Maintenance', data.maintenance ? '🔧 salon fermé' : 'salon ouvert');
+    // Sans Redis, tout est perdu au redéploiement : ça ne peut pas rester une
+    // ligne parmi d'autres.
+    const al = $('sante-alerte');
+    al.hidden = !data.alerte;
+    al.textContent = data.alerte || '';
+    const ko = (n) => Math.round(n / 1024);
     $('sante-familles').innerHTML = (data.familles || []).map(f => `
         <div class="ds-row static">
-            <span class="ds-row-main"><span class="ds-row-name">${esc(f.famille)}</span></span>
-            <b>${f.cles}</b>
+            <span class="ds-row-main"><span class="ds-row-name">${esc(f.famille)}</span>
+                <span class="ds-row-sub">${f.cles} clé${f.cles > 1 ? 's' : ''}</span></span>
+            <b>${ko(f.octets) >= 1 ? ko(f.octets) + ' Ko' : f.octets + ' o'}</b>
         </div>`).join('') || '<p class="empty">Aucune donnée.</p>';
+    // Les clés qu'aucun code ne lit : `mf_data` et `mf_progress` traînaient
+    // depuis des mois sans que rien ne les signale.
+    $('sante-orphelines').innerHTML = (data.orphelines || []).length
+        ? `<p class="card-sub" style="margin-top:12px">Clés qu'aucun jeu ne reconnaît — sans doute mortes</p>`
+          + data.orphelines.map(o => `
+            <div class="bd-row">
+                <span>${esc(o.cle)}</span><b>${ko(o.octets) >= 1 ? ko(o.octets) + ' Ko' : o.octets + ' o'}</b>
+            </div>`).join('')
+        : '';
     $('sante-journal').innerHTML = (data.journal || []).map(j => `
         <div class="ds-row static">
             <span class="ds-row-main">
@@ -906,4 +943,185 @@ $('sys-purge').addEventListener('click', () => ask('🧹', 'Lancer le ménage ?'
     } }]));
 
 loadOverview();
+// =====================================================================
+//  LE COMPTE EST BON — le panneau qui manquait
+// =====================================================================
+async function loadChiffres() {
+    if (!$('ch-date').value) $('ch-date').value = dateDuSalon();
+    loadChiffresJour();
+}
+$('ch-date').addEventListener('change', loadChiffresJour);
+async function loadChiffresJour() {
+    const date = $('ch-date').value;
+    const { data } = await api('/api/admin/chiffres/day?date=' + encodeURIComponent(date));
+    if (!data) return;
+    $('ch-box').innerHTML = `
+        <div class="kv-row"><span>La donne</span><b>${data.nombres.join('  ')}</b></div>
+        <div class="kv-row"><span>La cible</span><b>${data.cible}</b></div>
+        <div class="kv-row"><span>Solution</span><b>${esc((data.solution || []).join('  ·  '))}</b></div>
+        <div class="kv-row"><span>Parties</span><b>${data.joues} jouées · ${data.justes} comptes justes${data.ecartMoyen != null ? ' · écart moyen ' + data.ecartMoyen : ''}</b></div>`;
+    $('ch-board').innerHTML = (data.classement || []).length
+        ? data.classement.map((e, i) => `
+            <div class="bd-row${e.susp ? ' susp' : ''}">
+                <span>${i + 1}. ${esc(e.u)}</span>
+                <b>${e.ecart === 0 ? 'juste' : '+' + e.ecart}${e.ms != null ? ' · ' + Math.round(e.ms / 1000) + ' s' : ''}</b>
+                <button class="mini" data-flag="${esc(e.u)}" type="button">${e.susp ? 'Valider' : 'Suspect'}</button>
+                <button class="mini danger" data-del="${esc(e.u)}" type="button">✕</button>
+            </div>`).join('')
+        : '<p class="empty">Aucun score ce jour-là.</p>';
+    $('ch-board').querySelectorAll('[data-flag]').forEach(b => b.addEventListener('click', async () => {
+        await api('/api/admin/chiffres/board/flag', { date, pseudo: b.dataset.flag }); loadChiffresJour();
+    }));
+    $('ch-board').querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
+        await api('/api/admin/chiffres/board/remove', { date, pseudo: b.dataset.del });
+        toast('Score supprimé.'); loadChiffresJour();
+    }));
+}
+$('ch-regen').addEventListener('click', () => {
+    const date = $('ch-date').value;
+    ask('♻️', 'Tirer une nouvelle donne ?',
+        `Une autre donne sera tirée pour le ${date}. Les parties de ce jour-là et le classement seront effacés.`, [
+        { label: 'Tirer une nouvelle donne', danger: true, run: async () => {
+            const { ok, data } = await api('/api/admin/chiffres/regen', { date });
+            if (!ok) return toast((data && data.error) || 'Le tirage a échoué.');
+            toast(`Nouvelle donne : ${data.nombres.join(' ')} → ${data.cible}.`);
+            loadChiffresJour();
+        } }]);
+});
+
+// =====================================================================
+//  GÉOGRAPHIE — deux modes dans un seul panneau
+// =====================================================================
+async function loadGeo() {
+    if (!$('ge-date').value) $('ge-date').value = dateDuSalon();
+    loadGeoJour();
+}
+$('ge-date').addEventListener('change', loadGeoJour);
+async function loadGeoJour() {
+    const date = $('ge-date').value;
+    const { data } = await api('/api/admin/geo/day?date=' + encodeURIComponent(date));
+    if (!data) return;
+    $('ge-modes').innerHTML = (data.modes || []).map(m => `
+        <div class="ad-bloc">
+            <div class="kv-row"><span>${m.mode === 'drapeau' ? '🏳️ Le drapeau' : '🗺️ Le pays'}</span><b>${m.drapeau} ${esc(m.pays)} <i class="card-sub" style="font-style:normal">(${esc(m.region || '')})</i></b></div>
+            <div class="kv-row"><span>Parties</span><b>${m.joues} jouées · ${m.trouves} trouvés${m.essaisMoyens != null ? ' · ' + m.essaisMoyens + ' essais en moyenne' : ''}</b></div>
+            <div data-board="${m.mode}">${(m.classement || []).length ? m.classement.map((e, i) => `
+                <div class="bd-row${e.susp ? ' susp' : ''}">
+                    <span>${i + 1}. ${esc(e.u)}</span>
+                    <b>${e.trouve ? e.essais + '/' + data.maxEssais : 'raté'}${e.ms != null ? ' · ' + Math.round(e.ms / 1000) + ' s' : ''}</b>
+                    <button class="mini" data-flag="${esc(e.u)}" data-mode="${m.mode}" type="button">${e.susp ? 'Valider' : 'Suspect'}</button>
+                    <button class="mini danger" data-del="${esc(e.u)}" data-mode="${m.mode}" type="button">✕</button>
+                </div>`).join('') : '<p class="empty">Aucun score ce jour-là.</p>'}</div>
+            <button class="mini danger wide" data-regen="${m.mode}" type="button">Tirer un autre pays</button>
+        </div>`).join('');
+    $('ge-modes').querySelectorAll('[data-flag]').forEach(b => b.addEventListener('click', async () => {
+        await api('/api/admin/geo/board/flag', { date, mode: b.dataset.mode, pseudo: b.dataset.flag }); loadGeoJour();
+    }));
+    $('ge-modes').querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
+        await api('/api/admin/geo/board/remove', { date, mode: b.dataset.mode, pseudo: b.dataset.del });
+        toast('Score supprimé.'); loadGeoJour();
+    }));
+    $('ge-modes').querySelectorAll('[data-regen]').forEach(b => b.addEventListener('click', () => {
+        const mode = b.dataset.regen;
+        ask('♻️', 'Tirer un autre pays ?',
+            `Un autre pays sera tiré pour le ${date} (${mode === 'drapeau' ? 'drapeau' : 'silhouette'}). Les parties de ce mode et son classement seront effacés.`, [
+            { label: 'Tirer un autre pays', danger: true, run: async () => {
+                const { ok, data: d } = await api('/api/admin/geo/regen', { date, mode });
+                if (!ok) return toast((d && d.error) || 'Le tirage a échoué.');
+                toast(`Nouveau pays : ${d.drapeau} ${d.pays}.`);
+                loadGeoJour();
+            } }]);
+    }));
+}
+
+// =====================================================================
+//  FRÉQUENTATION
+// =====================================================================
+async function loadFrequentation() {
+    const { data } = await api('/api/admin/frequentation?jours=30');
+    if (!data) return;
+    const t = data.tendance;
+    $('freq-kv').innerHTML = `
+        <div class="kv-row"><span>Joueurs actifs (7 jours)</span><b>${data.actifs7j} sur ${data.comptes}</b></div>
+        <div class="kv-row"><span>Tendance sur le mois</span><b class="${t > 0 ? 'ok' : (t < 0 ? 'ko' : '')}">${t == null ? '—' : (t > 0 ? '+' : '') + t + ' %'}</b></div>`;
+    const max = Math.max(1, ...data.serie.map(j => j.parties));
+    $('freq-courbe').innerHTML = data.serie.map(j =>
+        `<i style="height:${Math.round((j.parties / max) * 100)}%" title="${j.date} : ${j.parties} partie(s), ${j.joueurs} joueur(s)"></i>`).join('');
+    $('freq-endormis').innerHTML = (data.endormis || []).length
+        ? `<p class="card-sub">Comptes sans passage depuis plus d'un mois</p>`
+          + data.endormis.map(e => `<div class="log-row"><span class="lg-a">${esc(e.pseudo)}</span><span class="lg-t">${e.jours} jours</span></div>`).join('')
+        : '';
+}
+
+// =====================================================================
+//  RESTAURATION, MAINTENANCE, FUSION
+// =====================================================================
+let _sauvegarde = null;
+$('sys-fichier').addEventListener('change', async (e) => {
+    const f = e.target.files && e.target.files[0];
+    _sauvegarde = null;
+    $('sys-restore').disabled = true;
+    if (!f) return;
+    try {
+        _sauvegarde = JSON.parse(await f.text());
+    } catch (err) { toast('Fichier illisible.'); return; }
+    // On vérifie la forme AVANT de proposer le bouton : mieux vaut refuser un
+    // mauvais fichier ici que d'écraser à moitié les données.
+    if (!_sauvegarde.users || !_sauvegarde.motsfleches) {
+        _sauvegarde = null;
+        toast('Ce fichier n’est pas une sauvegarde du salon.');
+        return;
+    }
+    $('sys-restore').disabled = false;
+    toast(`${Object.keys(_sauvegarde.users).length} comptes, ${Object.keys(_sauvegarde.motsfleches).length} clés — prêt.`);
+});
+$('sys-restore').addEventListener('click', () => {
+    if (!_sauvegarde) return;
+    const quand = _sauvegarde.exportedAt ? new Date(_sauvegarde.exportedAt).toLocaleString('fr-FR') : 'date inconnue';
+    ask('⚠️', 'Restaurer cette sauvegarde ?',
+        `Toutes les données actuelles seront remplacées par celles du ${quand}.\n\n`
+        + `${Object.keys(_sauvegarde.users).length} comptes et ${Object.keys(_sauvegarde.motsfleches).length} clés vont être écrits. `
+        + `Ce qui a été créé depuis sera perdu.`, [
+        { label: 'Restaurer', danger: true, run: async () => {
+            const { ok, data } = await api('/api/admin/restore', { sauvegarde: _sauvegarde, confirmation: 'RESTAURER' });
+            if (!ok) return toast((data && data.error) || 'La restauration a échoué.');
+            toast(`Restauré : ${data.comptes.apres} comptes, ${data.cles.apres} clés.`);
+            loadSante(); loadAccounts();
+        } }], null, 'RESTAURER');
+});
+
+$('sys-maint').addEventListener('click', async () => {
+    const { data: etat } = await api('/api/admin/sante');
+    const actif = !!(etat && etat.maintenance);
+    if (actif) {
+        const { ok } = await api('/api/admin/maintenance', { actif: false });
+        if (ok) { toast('Le salon est rouvert.'); loadSante(); }
+        return;
+    }
+    ask('🔧', 'Fermer le salon ?',
+        'Personne ne pourra plus entrer, sauf les administrateurs. À rouvrir depuis ce même bouton.', [
+        { label: 'Fermer le salon', danger: true, run: async () => {
+            const { ok } = await api('/api/admin/maintenance', { actif: true, message: $('sys-maint-msg').value });
+            if (ok) { toast('Salon fermé.'); loadSante(); }
+        } }]);
+});
+
+$('fus-go').addEventListener('click', () => {
+    const source = ($('fus-source').value || '').trim();
+    const cible = ($('fus-cible').value || '').trim();
+    if (!source || !cible) return toast('Indique les deux comptes.');
+    if (source === cible) return toast('Ce sont les mêmes comptes.');
+    ask('🔗', 'Fusionner les comptes ?',
+        `Les données de « ${source} » iront vers « ${cible} », puis « ${source} » sera supprimé.\n\n`
+        + `Ce qui existe déjà chez « ${cible} » est conservé : rien n'est écrasé.\n\n`
+        + `Retape « ${source} » pour confirmer.`, [
+        { label: 'Fusionner', danger: true, run: async () => {
+            const { ok, data } = await api('/api/admin/account/merge', { source, cible, confirmation: source });
+            if (!ok) return toast((data && data.error) || 'La fusion a échoué.');
+            toast(`${data.deplacees} clés déplacées${data.conflits ? `, ${data.conflits} conservées chez ${cible}` : ''}.`);
+            $('fus-source').value = ''; $('fus-cible').value = '';
+            loadAccounts();
+        } }], null, source);
+});
+
 setInterval(() => { if (!$('pane-home').hidden) loadOverview(); }, 30000);

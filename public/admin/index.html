@@ -16,7 +16,7 @@
 <body>
     <div class="ad">
         <header class="ad-head">
-            <a class="ds-back" href="/" aria-label="Retour au salon">←</a>
+            <a class="ds-icon-btn" href="/" aria-label="Retour au salon">←</a>
             <div class="ad-titles">
                 <h1 class="ad-title">Administration</h1>
                 <span class="ad-sub" id="ad-who">—</span>
@@ -31,6 +31,8 @@
             <button class="ad-tile" data-tab="grids" type="button"><span class="ad-tile-emoji">🧩</span><span>Grilles</span></button>
             <button class="ad-tile" data-tab="motus" type="button"><span class="ad-tile-emoji">🟨</span><span>Motus</span></button>
             <button class="ad-tile" data-tab="motjuste" type="button"><span class="ad-tile-emoji">🧊</span><span>Le Mot Juste</span></button>
+            <button class="ad-tile" data-tab="chiffres" type="button"><span class="ad-tile-emoji">🔢</span><span>Le compte est bon</span></button>
+            <button class="ad-tile" data-tab="geo" type="button"><span class="ad-tile-emoji">🌍</span><span>Géographie</span></button>
             <button class="ad-tile" data-tab="dict" type="button"><span class="ad-tile-emoji">📖</span><span>Dictionnaire</span></button>
             <button class="ad-tile" data-tab="titres" type="button"><span class="ad-tile-emoji">🏅</span><span>Titres</span></button>
             <button class="ad-tile" data-tab="sante" type="button"><span class="ad-tile-emoji">💓</span><span>Santé</span></button>
@@ -271,17 +273,47 @@
             </div>
         </section>
 
+        <!-- LE COMPTE EST BON -->
+        <section class="pane" id="pane-chiffres" hidden>
+            <div class="card">
+                <h2 class="card-title">La donne du jour</h2>
+                <input class="ds-input" id="ch-date" type="date" aria-label="Date de la donne">
+                <div id="ch-box"></div>
+                <div id="ch-board"></div>
+                <button class="mini danger wide" id="ch-regen" type="button">Tirer une nouvelle donne</button>
+            </div>
+        </section>
+
+        <!-- GÉOGRAPHIE -->
+        <section class="pane" id="pane-geo" hidden>
+            <div class="card">
+                <h2 class="card-title">Les deux modes du jour</h2>
+                <input class="ds-input" id="ge-date" type="date" aria-label="Date de la manche">
+                <div id="ge-modes"></div>
+            </div>
+        </section>
+
         <section class="pane" id="pane-sante" hidden>
+            <p class="ad-alerte" id="sante-alerte" hidden></p>
             <div class="card">
                 <h2 class="card-title">État du serveur</h2>
                 <div class="kv" id="sante-kv"></div>
             </div>
             <div class="card">
+                <h2 class="card-title">Fréquentation</h2>
+                <div class="kv" id="freq-kv"></div>
+                <div class="ad-courbe" id="freq-courbe"></div>
+                <p class="card-sub">Une barre par jour sur trente jours : les parties de tous les jeux du jour.</p>
+                <div class="list" id="freq-endormis"></div>
+            </div>
+            <div class="card">
                 <h2 class="card-title">Données en base</h2>
                 <div class="list" id="sante-familles"></div>
+                <div id="sante-orphelines"></div>
             </div>
             <div class="card">
                 <h2 class="card-title">Dernières actions d'administration</h2>
+                <p class="card-sub" id="sante-journal-total"></p>
                 <div class="list" id="sante-journal"></div>
             </div>
         </section>
@@ -291,6 +323,25 @@
                 <h2 class="card-title">Sauvegarde</h2>
                 <p class="card-sub">Télécharge toutes les données (comptes + mots fléchés) en JSON. À faire régulièrement.</p>
                 <a class="ds-btn" href="/api/admin/backup" download>Télécharger la sauvegarde</a>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Restauration</h2>
+                <p class="card-sub">Remplace <b>toutes</b> les données par celles d'un fichier de sauvegarde. Les comptes et parties créés depuis seront perdus.</p>
+                <input class="ds-input" id="sys-fichier" type="file" accept="application/json,.json" aria-label="Fichier de sauvegarde">
+                <button class="mini danger wide" id="sys-restore" type="button" disabled>Restaurer cette sauvegarde</button>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Maintenance</h2>
+                <p class="card-sub">Ferme le salon à tout le monde sauf aux administrateurs, le temps d'une restauration ou d'un correctif.</p>
+                <input class="ds-input" id="sys-maint-msg" placeholder="Message affiché aux joueurs…" aria-label="Message de maintenance">
+                <button class="ds-btn" id="sys-maint" type="button">Fermer le salon</button>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Fusionner deux comptes</h2>
+                <p class="card-sub">Déplace les données du premier vers le second, puis supprime le premier. Utile quand quelqu'un s'est réinscrit sous un autre nom.</p>
+                <input class="ds-input" id="fus-source" placeholder="Compte à absorber…" autocapitalize="off" aria-label="Compte source">
+                <input class="ds-input" id="fus-cible" placeholder="Compte à conserver…" autocapitalize="off" style="margin-top:8px" aria-label="Compte cible">
+                <button class="mini danger wide" id="fus-go" type="button">Fusionner</button>
             </div>
             <div class="card">
                 <h2 class="card-title">Entretien</h2>

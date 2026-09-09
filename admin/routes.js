@@ -4,6 +4,7 @@
 //  côté serveur, jamais seulement en cachant un bouton dans l'interface.
 // =====================================================================
 const fs = require('fs');
+const { norm: normPseudo } = require('../comptes/renommage');
 
 module.exports = function attachAdmin(app, ctx) {
     const { requireAdmin, currentUser, isAdmin, users, saveUsers,
@@ -17,6 +18,9 @@ module.exports = function attachAdmin(app, ctx) {
         if (list.length > 300) list.splice(0, list.length - 300);
         mf.set(LOG_KEY, list);
     }
+
+    const CH = () => ctx.chiffres;
+    const GE = () => ctx.geo;
 
     const A = (path, handler) => app.post('/api/admin' + path, requireAdmin, handler);
     const G = (path, handler) => app.get('/api/admin' + path, requireAdmin, handler);
@@ -204,8 +208,27 @@ module.exports = function attachAdmin(app, ctx) {
         }
         const motus = dailyStats('motus:prog');
         const motjuste = dailyStats('mj:prog');
+        // ⚠️ Yams et Petit Bac indexent par pseudo NORMALISÉ : lire la clé brute
+        // renvoyait toujours vide, donc la fiche n'a jamais montré le Yams.
+        const norme = normPseudo(pseudo);
         let yams = null;
-        try { const s = cache[`yams:stats:${pseudo}`]; if (s && s.gamesPlayed) yams = s; } catch (e) {}
+        try { const s = cache[`yams:stats:${norme}`]; if (s && s.gamesPlayed) yams = s; } catch (e) {}
+        let pbac = null;
+        try { const s = cache[`pbac:stats:${norme}`]; if (s && s.gamesPlayed) pbac = s; } catch (e) {}
+        let undercover = null, drapeaux = null;
+        try { const f = ctx.undercover().statsFor(pseudo); if (f && f.parties) undercover = f; } catch (e) {}
+        try { const f = ctx.drapeaux().statsFor(pseudo); if (f && (f.parties || f.solo)) drapeaux = f; } catch (e) {}
+        // Les deux jeux du jour récents : une clé par journée, comme le Motus.
+        const compteJour = (prefixe, estReussi) => {
+            const r = { joues: 0, reussis: 0 };
+            for (const [k, v] of Object.entries(cache)) {
+                if (!k.startsWith(`${prefixe}:${pseudo}:`) || !v || !v.fini) continue;
+                r.joues++; if (estReussi(v)) r.reussis++;
+            }
+            return r.joues ? r : null;
+        };
+        const chiffres = compteJour('chiffres:prog', v => v.ecart === 0);
+        const geo = compteJour('geo:prog', v => !!v.trouve);
         let motusparty = null;
         try { const s = cache[`motusparty:stats:${pseudo}`]; if (s && s.matchesPlayed) motusparty = s; } catch (e) {}
         res.json({
@@ -220,6 +243,7 @@ module.exports = function attachAdmin(app, ctx) {
             avatar: u.avatar || '', avatarPhoto: u.avatarPhoto || '',
             motsfleches: { ...mfStats, daysPlayed: days.length },
             perudo, motus, motjuste, yams, motusparty,
+            pbac, undercover, drapeaux, chiffres, geo,
         });
     });
 
@@ -293,22 +317,64 @@ module.exports = function attachAdmin(app, ctx) {
         res.json({ ok: true });
     });
 
+    // Efface TOUTE trace d'un joueur dans le cache commun.
+    //
+    // L'ancienne version ne nettoyait que les Mots Fléchés : le compte
+    // disparaissait, mais Motus, Le Mot Juste, Le compte est bon, la
+    // Géographie et les cinq fiches multijoueur restaient en base, tout comme
+    // son nom dans les classements des autres jeux et dans le face-à-face de
+    // ses adversaires. Une demande de suppression n'était donc pas honorée.
+    //
+    // Trois pièges : Yams et Petit Bac indexent par pseudo NORMALISÉ ; les
+    // classements sont des tableaux d'objets à champ `u` ; et le pseudo
+    // apparaît aussi comme CLÉ dans le `vsOpponent` des autres joueurs.
+    function supprimerDonneesJoueur(pseudo) {
+        const cache = mf.cache();
+        const norme = normPseudo(pseudo);
+        let cles = 0, lignes = 0;
+        for (const [k, v] of Object.entries(cache)) {
+            const seg = k.split(':');
+            // Les clés qui lui appartiennent en propre, quel que soit le jeu.
+            if (seg[2] === pseudo || seg[2] === norme) { mf.del(k); cles++; continue; }
+            if (!v) continue;
+            // Les classements : on retire ses lignes sans toucher aux autres.
+            if (Array.isArray(v) && v.some(e => e && e.u === pseudo)) {
+                mf.set(k, v.filter(e => !e || e.u !== pseudo));
+                lignes++;
+                continue;
+            }
+            // Les index de statistiques, et l'historique des parties.
+            if (Array.isArray(v) && v.includes(pseudo)) { mf.set(k, v.filter(x => x !== pseudo)); continue; }
+            if (k === 'admin:gameHistory' && Array.isArray(v)) {
+                const reste = v.map(g => ({ ...g, players: (g.players || []).filter(p => (p && p.pseudo ? p.pseudo : p) !== pseudo) }))
+                    .filter(g => (g.players || []).length);
+                if (reste.length !== v.length) { mf.set(k, reste); }
+                continue;
+            }
+            // Le face-à-face de ses adversaires le nomme en clé d'objet.
+            if (typeof v === 'object' && v.vsOpponent && v.vsOpponent[pseudo]) {
+                const copie = { ...v, vsOpponent: { ...v.vsOpponent } };
+                delete copie.vsOpponent[pseudo];
+                mf.set(k, copie);
+            }
+            // Les titres attribués à la main.
+            if (k === 'titres:manuels' && typeof v === 'object' && v[pseudo]) {
+                const copie = { ...v }; delete copie[pseudo]; mf.set(k, copie);
+            }
+        }
+        return { cles, lignes };
+    }
+
     A('/account/delete', (req, res) => {
         const pseudo = String(req.body.pseudo || '');
         if (isAdmin(pseudo)) return res.status(400).json({ error: 'Impossible de supprimer un administrateur.' });
         const U = users();
         if (!U[pseudo]) return res.status(404).json({ error: 'Compte introuvable.' });
         delete U[pseudo];
-        const cache = mf.cache();
-        for (const k of Object.keys(cache)) {
-            if (k.startsWith(`mf:prog:${pseudo}:`) || k === `mf:days:${pseudo}`) mf.del(k);
-            if (k.startsWith('mf:board:') && Array.isArray(cache[k]) && cache[k].some(e => e.u === pseudo)) {
-                mf.set(k, cache[k].filter(e => e.u !== pseudo));
-            }
-        }
+        const efface = supprimerDonneesJoueur(pseudo);
         saveUsers(true);
-        log(currentUser(req), 'SUPPRESSION', pseudo);
-        res.json({ ok: true });
+        log(currentUser(req), 'SUPPRESSION', `${pseudo} (${efface.cles} clés, ${efface.lignes} lignes de classement)`);
+        res.json({ ok: true, ...efface });
     });
 
     // =================================================================
@@ -830,11 +896,22 @@ module.exports = function attachAdmin(app, ctx) {
 
     A('/motjuste/regen', (req, res) => {
         const date = /^\d{4}-\d{2}-\d{2}$/.test(req.body.date || '') ? req.body.date : mf.today();
-        mf.del(`mj:word:${date}`);
+        const ancien = motjuste.word(date);
+        // Le tirage est déterministe sur la date : supprimer la clé et
+        // recalculer redonnait exactement le même mot. Ce bouton effaçait donc
+        // les parties du jour et le classement pour rien. Même correctif que
+        // celui appliqué au Motus.
+        let nouveau = ancien;
+        for (let i = 0; i < 25 && nouveau === ancien; i++) {
+            motjuste.varianteSuivante(date);
+            mf.del(motjuste.kWord(date));
+            nouveau = motjuste.word(date);
+        }
+        if (nouveau === ancien) return res.status(409).json({ error: 'Impossible de tirer un mot différent.' });
         for (const k of Object.keys(mf.cache())) if (k.startsWith('mj:prog:') && k.endsWith(`:${date}`)) mf.del(k);
         mf.del(motjuste.kBoard(date));
-        log(currentUser(req), 'mot du Mot Juste régénéré', date);
-        res.json({ ok: true, word: motjuste.word(date) });
+        log(currentUser(req), 'mot du Mot Juste régénéré', `${date} : ${ancien} → ${nouveau}`);
+        res.json({ ok: true, ancien, word: nouveau });
     });
 
     A('/motjuste/board/remove', (req, res) => {
@@ -923,6 +1000,52 @@ module.exports = function attachAdmin(app, ctx) {
     //  SYSTÈME
     // =================================================================
     // Sauvegarde complète à télécharger
+    // On pouvait exporter, jamais réimporter : en cas de problème, la
+    // sauvegarde ne servait à rien. La restauration est volontairement
+    // exigeante — elle demande de retaper RESTAURER — et elle refuse un
+    // fichier qui n'a pas la forme attendue plutôt que d'écraser à moitié.
+    A('/restore', (req, res) => {
+        const b = req.body || {};
+        if (b.confirmation !== 'RESTAURER') return res.status(400).json({ error: 'Confirmation manquante.' });
+        const données = b.sauvegarde;
+        if (!données || typeof données !== 'object') return res.status(400).json({ error: 'Fichier illisible.' });
+        if (!données.users || typeof données.users !== 'object') return res.status(400).json({ error: 'Ce fichier ne contient pas de comptes : ce n’est pas une sauvegarde du salon.' });
+        const cacheSauve = données.motsfleches && typeof données.motsfleches === 'object' ? données.motsfleches : null;
+        if (!cacheSauve) return res.status(400).json({ error: 'Ce fichier ne contient pas les données de jeu.' });
+
+        const U = users();
+        const avantComptes = Object.keys(U).length, avantCles = Object.keys(mf.cache()).length;
+        // Les comptes : on remplace en place, l'objet étant partagé avec server.js.
+        for (const k of Object.keys(U)) delete U[k];
+        for (const [k, v] of Object.entries(données.users)) U[k] = v;
+        saveUsers(true);
+        // Les données de jeu : on écrit clé par clé pour que la persistance
+        // suive son cours normal, et on retire celles qui n'existent plus.
+        const anciennes = new Set(Object.keys(mf.cache()));
+        for (const [k, v] of Object.entries(cacheSauve)) { mf.set(k, v); anciennes.delete(k); }
+        for (const k of anciennes) mf.del(k);
+        if (données.dictionnaire && dict.setOverrides) { try { dict.setOverrides(données.dictionnaire); } catch (e) {} }
+        log(currentUser(req), 'RESTAURATION', `${Object.keys(données.users).length} comptes, ${Object.keys(cacheSauve).length} clés`);
+        res.json({
+            ok: true,
+            comptes: { avant: avantComptes, apres: Object.keys(U).length },
+            cles: { avant: avantCles, apres: Object.keys(mf.cache()).length },
+            sauvegardeDu: données.exportedAt || null,
+        });
+    });
+
+    // ---------- Mode maintenance ----------
+    // Pour bloquer l'entrée pendant une restauration ou un correctif, sans
+    // couper le service ni laisser quelqu'un jouer sur des données en cours
+    // de réécriture. Les administrateurs, eux, passent toujours.
+    A('/maintenance', (req, res) => {
+        const actif = !!(req.body || {}).actif;
+        const message = String((req.body || {}).message || '').slice(0, 200);
+        mf.set('admin:maintenance', actif ? { actif: true, message, depuis: Date.now(), par: currentUser(req) } : null);
+        log(currentUser(req), actif ? 'maintenance activée' : 'maintenance levée', message);
+        res.json({ ok: true, actif });
+    });
+
     G('/backup', (req, res) => {
         const payload = {
             exportedAt: new Date().toISOString(),
@@ -951,8 +1074,14 @@ module.exports = function attachAdmin(app, ctx) {
         res.json({ ok: true, announce: text });
     });
 
+    // Le journal, filtrable : trois cents lignes sans recherche ne servent
+    // à rien quand on cherche ce qui est arrivé à un compte précis.
     G('/log', (req, res) => {
-        res.json({ log: (mf.get(LOG_KEY) || []).slice(-100).reverse() });
+        const q = String(req.query.q || '').toLowerCase().trim();
+        let liste = (mf.get(LOG_KEY) || []).slice().reverse();
+        if (q) liste = liste.filter(l =>
+            [l.who, l.action, l.target, l.detail].some(x => String(x || '').toLowerCase().includes(q)));
+        res.json({ total: (mf.get(LOG_KEY) || []).length, lignes: liste.slice(0, 200) });
     });
 
     // Annonce lisible par tout le monde (affichée dans le salon)
@@ -1026,8 +1155,24 @@ module.exports = function attachAdmin(app, ctx) {
             const f = k.split(':').slice(0, 2).join(':');
             familles[f] = (familles[f] || 0) + 1;
         }
-        const top = Object.entries(familles).sort((a, b) => b[1] - a[1]).slice(0, 12)
-            .map(([f, n]) => ({ famille: f, cles: n }));
+        // Le poids compte autant que le nombre : douze clés de vocabulaire
+        // pèsent plus que trois cents progressions, et on ne le voyait pas.
+        const poids = {};
+        for (const k of cles) {
+            const f = k.split(':').slice(0, 2).join(':');
+            let taille = 0;
+            try { taille = JSON.stringify(cache[k]).length; } catch (e) {}
+            poids[f] = (poids[f] || 0) + taille;
+        }
+        const top = Object.entries(familles).sort((a, b) => (poids[b[0]] || 0) - (poids[a[0]] || 0)).slice(0, 16)
+            .map(([f, n]) => ({ famille: f, cles: n, octets: poids[f] || 0 }));
+        // Les clés que plus aucun code ne lit. `mf_data` et `mf_progress`
+        // traînent depuis des mois sans que rien ne les signale.
+        const CONNUES = ['mf', 'motus', 'mj', 'rec', 'voyages', 'pbac', 'yams', 'motusparty',
+            'undercover', 'drapeaux', 'chiffres', 'geo', 'admin', 'titres', 'perudo'];
+        const orphelines = cles.filter(k => !CONNUES.includes(k.split(':')[0]))
+            .map(k => { let t = 0; try { t = JSON.stringify(cache[k]).length; } catch (e) {} return { cle: k, octets: t }; })
+            .sort((a, b) => b.octets - a.octets).slice(0, 20);
         const comptes = Object.keys(users()).length;
         let poidsComptes = 0;
         try { poidsComptes = JSON.stringify(users()).length; } catch (e) {}
@@ -1040,11 +1185,289 @@ module.exports = function attachAdmin(app, ctx) {
             memoire: Math.round(process.memoryUsage().rss / 1048576),
             comptes, poidsComptes,
             clesTotal: cles.length,
+            poidsTotal: Object.values(poids).reduce((a, b) => a + b, 0),
             familles: top,
+            orphelines,
+            // Sans Redis, TOUT est perdu au redéploiement : le disque de Render
+            // est éphémère. L'état était affiché, mais rien ne criait.
+            alerte: !(typeof redis === 'function' ? redis() : redis)
+                ? 'Redis n’est pas connecté : toutes les données seront perdues au prochain redéploiement.'
+                : null,
+            maintenance: !!mf.get('admin:maintenance'),
             journal: (mf.get(LOG_KEY) || []).slice(-12).reverse(),
         });
     });
 
+
+    // =================================================================
+    //  MODÉRATION DES STATISTIQUES MULTIJOUEUR
+    //  La vue Parties listait les tables et permettait de les fermer, rien
+    //  de plus : si une fiche était fausse — triche, partie qui a mal
+    //  tourné, test resté en base — aucune action n'existait.
+    // =================================================================
+    // Où vit la fiche de chaque jeu, et sous quelle forme de pseudo.
+    const FICHES = {
+        yams: { cle: (p) => `yams:stats:${normPseudo(p)}`, index: 'yams:statsIndex', nom: 'Yams' },
+        pbac: { cle: (p) => `pbac:stats:${normPseudo(p)}`, index: null, nom: 'Petit Bac' },
+        motusparty: { cle: (p) => `motusparty:stats:${p}`, index: null, nom: 'Motus Party' },
+        undercover: { cle: (p) => `undercover:stats:${p}`, index: 'undercover:statsIndex', nom: 'Infiltré' },
+        drapeaux: { cle: (p) => `drapeaux:stats:${p}`, index: 'drapeaux:statsIndex', nom: 'Quiz des drapeaux' },
+    };
+
+    G('/stats/fiche', (req, res) => {
+        const pseudo = String(req.query.pseudo || '');
+        const jeu = FICHES[req.query.jeu] ? req.query.jeu : null;
+        if (!pseudo || !jeu) return res.status(400).json({ error: 'Jeu ou joueur manquant.' });
+        res.json({ jeu, nom: FICHES[jeu].nom, pseudo, cle: FICHES[jeu].cle(pseudo), fiche: mf.get(FICHES[jeu].cle(pseudo)) || null });
+    });
+
+    // Remettre à zéro la fiche d'un joueur sur un jeu. On la SUPPRIME plutôt
+    // que d'écrire des zéros : le jeu la recrée vierge au besoin, et une
+    // fiche à zéro traînerait dans tous les classements.
+    A('/stats/reset', (req, res) => {
+        const pseudo = String(req.body.pseudo || '');
+        const jeu = FICHES[req.body.jeu] ? req.body.jeu : null;
+        if (!pseudo || !jeu) return res.status(400).json({ error: 'Jeu ou joueur manquant.' });
+        const f = FICHES[jeu];
+        mf.del(f.cle(pseudo));
+        if (f.index) {
+            const idx = mf.get(f.index) || [];
+            mf.set(f.index, idx.filter(x => x !== pseudo));
+        }
+        // Et son nom dans le face-à-face des autres, sinon il y survit.
+        for (const [k, v] of Object.entries(mf.cache())) {
+            if (v && typeof v === 'object' && v.vsOpponent && v.vsOpponent[pseudo]) {
+                const copie = { ...v, vsOpponent: { ...v.vsOpponent } };
+                delete copie.vsOpponent[pseudo];
+                mf.set(k, copie);
+            }
+        }
+        log(currentUser(req), 'statistiques remises à zéro', pseudo, f.nom);
+        res.json({ ok: true });
+    });
+
+    // L'historique des parties : une ligne fausse y restait pour toujours,
+    // alors qu'il alimente le classement de saison.
+    A('/historique/supprimer', (req, res) => {
+        const at = Number(req.body.endedAt);
+        if (!at) return res.status(400).json({ error: 'Partie non identifiée.' });
+        const liste = mf.get('admin:gameHistory') || [];
+        const reste = liste.filter(g => g.endedAt !== at);
+        if (reste.length === liste.length) return res.status(404).json({ error: 'Partie introuvable.' });
+        mf.set('admin:gameHistory', reste);
+        log(currentUser(req), 'partie retirée de l’historique', new Date(at).toLocaleString('fr-FR'));
+        res.json({ ok: true, restantes: reste.length });
+    });
+
+    // =================================================================
+    //  FUSION DE COMPTES
+    //  Le pseudo sert d'identifiant partout : quelqu'un qui se réinscrit
+    //  sous un autre nom repart de zéro sans recours. La fusion déplace
+    //  toutes les données de la source vers la cible, puis supprime la
+    //  source. Elle réutilise le module de renommage, qui connaît déjà les
+    //  pièges (pseudos normalisés, tableaux à champ `u`, index, duels).
+    // =================================================================
+    A('/account/merge', (req, res) => {
+        const source = String(req.body.source || ''), cible = String(req.body.cible || '');
+        if (!source || !cible || source === cible) return res.status(400).json({ error: 'Deux comptes différents sont nécessaires.' });
+        const U = users();
+        if (!U[source]) return res.status(404).json({ error: `Compte « ${source} » introuvable.` });
+        if (!U[cible]) return res.status(404).json({ error: `Compte « ${cible} » introuvable.` });
+        if (isAdmin(source)) return res.status(400).json({ error: 'Impossible de fusionner un administrateur.' });
+        if (req.body.confirmation !== source) return res.status(400).json({ error: 'Confirmation manquante.' });
+
+        // ⚠️ La cible a déjà ses propres données. On ne peut pas simplement
+        // renommer les clés : deux `yams:stats` ne se superposent pas. On
+        // déplace donc ce qui n'existe pas encore chez la cible, et on
+        // signale le reste plutôt que d'écraser en silence.
+        const cache = mf.cache();
+        const norme = { source: normPseudo(source), cible: normPseudo(cible) };
+        let deplacees = 0, conservees = [];
+        for (const [k, v] of Object.entries({ ...cache })) {
+            const seg = k.split(':');
+            if (seg[2] !== source && seg[2] !== norme.source) {
+                // Les classements. Renommer la ligne suffit — sauf si la cible
+                // y figure déjà : on la ferait alors apparaître DEUX FOIS le
+                // même jour. Dans ce cas la ligne de la source est retirée,
+                // l'historique de la cible faisant foi.
+                if (Array.isArray(v) && v.some(e => e && e.u === source)) {
+                    const cibleDejaLa = v.some(e => e && e.u === cible);
+                    mf.set(k, cibleDejaLa
+                        ? v.filter(e => !e || e.u !== source)
+                        : v.map(e => (e && e.u === source ? { ...e, u: cible } : e)));
+                }
+                continue;
+            }
+            seg[2] = (seg[2] === norme.source) ? norme.cible : cible;
+            const nouvelle = seg.join(':');
+            if (cache[nouvelle] !== undefined) { conservees.push(k); continue; }
+            mf.set(nouvelle, v);
+            mf.del(k);
+            deplacees++;
+        }
+        // La source disparaît, avec ce qui n'a pas pu être déplacé.
+        delete U[source];
+        const efface = supprimerDonneesJoueur(source);
+        saveUsers(true);
+        log(currentUser(req), 'FUSION', `${source} → ${cible}`, `${deplacees} clés déplacées, ${conservees.length} conservées à la cible`);
+        res.json({ ok: true, deplacees, conflits: conservees.length, effacees: efface.cles });
+    });
+
+    // =================================================================
+    //  FRÉQUENTATION
+    //  On ne pouvait pas savoir si le salon est plus ou moins joué qu'il y
+    //  a un mois. Tout se recalcule depuis les clés datées existantes.
+    // =================================================================
+    G('/frequentation', (req, res) => {
+        const jours = Math.min(90, Math.max(7, Number(req.query.jours) || 30));
+        const cache = mf.cache();
+        const parJour = new Map();
+        for (let i = jours - 1; i >= 0; i--) parJour.set(mf.shift(mf.today(), -i), { date: mf.shift(mf.today(), -i), parties: 0, joueurs: new Set() });
+        for (const [k, v] of Object.entries(cache)) {
+            const seg = k.split(':');
+            if (seg[1] !== 'prog' || !v) continue;
+            // La date est en 4ᵉ segment partout : mf/motus/mj/geo/chiffres.
+            const jour = parJour.get(seg[3]);
+            if (!jour) continue;
+            jour.parties++;
+            jour.joueurs.add(seg[2]);
+        }
+        const serie = [...parJour.values()].map(j => ({ date: j.date, parties: j.parties, joueurs: j.joueurs.size }));
+        const moitie = Math.floor(serie.length / 2);
+        const somme = (t) => t.reduce((s, j) => s + j.parties, 0);
+        const recent = somme(serie.slice(moitie)), ancien = somme(serie.slice(0, moitie));
+        // Les comptes qui n'ont rien fait depuis longtemps : à relancer, ou
+        // simplement bon à savoir.
+        const U = users();
+        const maintenant = Date.now();
+        const endormis = Object.values(U)
+            .filter(u => u.lastSeen && (maintenant - u.lastSeen) > 30 * 864e5)
+            .sort((a, b) => b.lastSeen - a.lastSeen)
+            .slice(0, 15)
+            .map(u => ({ pseudo: u.pseudo, jours: Math.round((maintenant - u.lastSeen) / 864e5) }));
+        res.json({
+            serie,
+            tendance: ancien ? Math.round(((recent - ancien) / ancien) * 100) : null,
+            actifs7j: new Set([...parJour.values()].slice(-7).flatMap(j => [...j.joueurs])).size,
+            comptes: Object.keys(U).length,
+            endormis,
+        });
+    });
+
+    // =================================================================
+    //  LE COMPTE EST BON et LA GÉOGRAPHIE
+    //  Les deux jeux du jour récents n'avaient aucun panneau : impossible
+    //  de voir la donne, de retirer un score suspect ou de retirer un
+    //  contenu raté, alors que les trois anciens ont tout ça.
+    // =================================================================
+    const dateValide = (d) => (/^\d{4}-\d{2}-\d{2}$/.test(d || '') ? d : mf.today());
+
+    G('/chiffres/day', (req, res) => {
+        const date = dateValide(req.query.date);
+        const donne = CH().donne(date);
+        const m = CH().moteur;
+        const classement = m.classement(date);
+        let joues = 0, justes = 0, totalEcart = 0;
+        for (const [k, v] of Object.entries(mf.cache())) {
+            if (!k.startsWith('chiffres:prog:') || !k.endsWith(`:${date}`) || !v || !v.fini) continue;
+            joues++; totalEcart += (v.ecart || 0);
+            if (v.ecart === 0) justes++;
+        }
+        res.json({
+            date, today: mf.today(),
+            nombres: donne.nombres, cible: donne.cible,
+            solution: (donne.solution || []).map(e => `${e.a} ${e.op} ${e.b} = ${e.r}`),
+            joues, justes, ecartMoyen: joues ? Math.round(totalEcart / joues) : null,
+            classement: classement.map(e => ({ u: e.u, ecart: e.ecart, ms: e.ms, susp: !!e.susp })),
+        });
+    });
+
+    A('/chiffres/regen', (req, res) => {
+        const date = dateValide(req.body.date);
+        const avant = CH().donne(date);
+        // Même piège que le Motus : la donne est tirée d'une graine calculée
+        // sur la date. Sans faire avancer la variante, on retomberait sur la
+        // même donne et le bouton effacerait les parties pour rien.
+        let nouvelle = avant;
+        for (let i = 0; i < 25 && nouvelle.cible === avant.cible && nouvelle.nombres.join() === avant.nombres.join(); i++) {
+            CH().moteur.varianteSuivante(date);
+            mf.del(CH().kDonne(date));
+            nouvelle = CH().donne(date);
+        }
+        for (const k of Object.keys(mf.cache())) if (k.startsWith('chiffres:prog:') && k.endsWith(`:${date}`)) mf.del(k);
+        mf.del(`chiffres:board:${date}`);
+        log(currentUser(req), 'donne du Compte est bon régénérée', `${date} : ${avant.cible} → ${nouvelle.cible}`);
+        res.json({ ok: true, nombres: nouvelle.nombres, cible: nouvelle.cible });
+    });
+
+    A('/chiffres/board/remove', (req, res) => {
+        const date = dateValide(req.body.date), pseudo = String(req.body.pseudo || '');
+        const cle = `chiffres:board:${date}`;
+        mf.set(cle, (mf.get(cle) || []).filter(e => e.u !== pseudo));
+        log(currentUser(req), 'score du Compte est bon supprimé', pseudo, date);
+        res.json({ ok: true });
+    });
+    A('/chiffres/board/flag', (req, res) => {
+        const date = dateValide(req.body.date), pseudo = String(req.body.pseudo || '');
+        const cle = `chiffres:board:${date}`;
+        mf.set(cle, (mf.get(cle) || []).map(e => (e.u === pseudo ? { ...e, susp: !e.susp } : e)));
+        log(currentUser(req), 'score du Compte est bon marqué', pseudo);
+        res.json({ ok: true });
+    });
+
+    G('/geo/day', (req, res) => {
+        const date = dateValide(req.query.date);
+        const m = GE().moteur;
+        const modes = GE().modes.map(mode => {
+            const cible = GE().duJour(mode, date);
+            let joues = 0, trouves = 0, totalEssais = 0;
+            for (const [k, v] of Object.entries(mf.cache())) {
+                if (!k.startsWith('geo:prog:') || !k.endsWith(`:${date}:${mode}`) || !v || !v.fini) continue;
+                joues++;
+                if (v.trouve) { trouves++; totalEssais += (v.essais || []).length; }
+            }
+            return {
+                mode, pays: cible.nom, code: cible.code, drapeau: GE().drapeau(cible.code), region: cible.region,
+                joues, trouves, essaisMoyens: trouves ? +(totalEssais / trouves).toFixed(1) : null,
+                classement: m.classement(`${date}:${mode}`).map(e => ({ u: e.u, essais: e.essais, trouve: e.trouve, ms: e.ms, susp: !!e.susp })),
+            };
+        });
+        res.json({ date, today: mf.today(), maxEssais: GE().maxEssais, modes });
+    });
+
+    A('/geo/regen', (req, res) => {
+        const date = dateValide(req.body.date);
+        const mode = GE().modes.includes(req.body.mode) ? req.body.mode : 'silhouette';
+        const avant = GE().duJour(mode, date);
+        let nouveau = avant;
+        for (let i = 0; i < 25 && nouveau.code === avant.code; i++) {
+            GE().moteur.varianteSuivante(date);
+            mf.del(GE().kPays(mode, date));
+            nouveau = GE().duJour(mode, date);
+        }
+        if (nouveau.code === avant.code) return res.status(409).json({ error: 'Impossible de tirer un autre pays.' });
+        for (const k of Object.keys(mf.cache())) if (k.startsWith('geo:prog:') && k.endsWith(`:${date}:${mode}`)) mf.del(k);
+        mf.del(`geo:board:${date}:${mode}`);
+        log(currentUser(req), 'pays de la Géographie régénéré', `${date} ${mode} : ${avant.nom} → ${nouveau.nom}`);
+        res.json({ ok: true, pays: nouveau.nom, drapeau: GE().drapeau(nouveau.code) });
+    });
+
+    A('/geo/board/remove', (req, res) => {
+        const date = dateValide(req.body.date), pseudo = String(req.body.pseudo || '');
+        const mode = GE().modes.includes(req.body.mode) ? req.body.mode : 'silhouette';
+        const cle = `geo:board:${date}:${mode}`;
+        mf.set(cle, (mf.get(cle) || []).filter(e => e.u !== pseudo));
+        log(currentUser(req), 'score de Géographie supprimé', pseudo, `${date} ${mode}`);
+        res.json({ ok: true });
+    });
+    A('/geo/board/flag', (req, res) => {
+        const date = dateValide(req.body.date), pseudo = String(req.body.pseudo || '');
+        const mode = GE().modes.includes(req.body.mode) ? req.body.mode : 'silhouette';
+        const cle = `geo:board:${date}:${mode}`;
+        mf.set(cle, (mf.get(cle) || []).map(e => (e.u === pseudo ? { ...e, susp: !e.susp } : e)));
+        log(currentUser(req), 'score de Géographie marqué', pseudo);
+        res.json({ ok: true });
+    });
 
     // =================================================================
     //  TITRES

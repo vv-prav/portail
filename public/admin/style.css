@@ -149,3 +149,23 @@ body {
 /* Formulaire d'attribution d'un titre. */
 .ti-form { display: flex; flex-direction: column; gap: 8px; }
 .ti-label { font-size: .72rem; color: var(--muted); }
+
+/* ---------- Ajouts de l'audit d'administration ---------- */
+/* Sans Redis, tout est perdu au redéploiement : l'alerte ne peut pas
+   ressembler à une ligne d'information parmi d'autres. */
+.ad-alerte { margin:0 0 12px; padding:12px 14px; border-radius:12px; font-size:.82rem; line-height:1.5;
+    background:rgba(210,98,74,.14); border:1px solid rgba(210,98,74,.5); color:#ffb4a0; font-weight:600; }
+.ad-alerte[hidden] { display:none; }
+
+/* Un bloc par mode dans le panneau Géographie. */
+.ad-bloc { padding:10px; border-radius:12px; background:rgba(255,255,255,.02);
+    border:1px solid var(--line); margin-bottom:10px; }
+.ad-bloc:last-child { margin-bottom:0; }
+
+/* La courbe de fréquentation : une barre par jour, lue d'un coup d'œil. */
+.ad-courbe { display:flex; align-items:flex-end; gap:2px; height:56px; margin:10px 0 6px; }
+.ad-courbe i { flex:1; min-height:2px; border-radius:2px 2px 0 0;
+    background:linear-gradient(180deg,var(--brass-soft),var(--brass)); opacity:.85; }
+.ad-courbe i:hover { opacity:1; }
+.kv-row b.ok { color:var(--good,#5aa87a); }
+.kv-row b.ko { color:var(--bad,#d2624a); }

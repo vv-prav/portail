@@ -242,7 +242,24 @@ function requireAuth(req, res, next) {
         user.lastSeen = Date.now();
         saveUsers();
     }
+    // Mode maintenance : on bloque l'entrée le temps d'une restauration ou
+    // d'un correctif, pour que personne ne joue sur des données en cours de
+    // réécriture. Les administrateurs passent toujours — sinon on se
+    // verrouillerait dehors soi-même.
+    const m = mfGet('admin:maintenance');
+    if (m && m.actif && !isAdmin(u)) return res.status(503).send(pageMaintenance(m));
     return next();
+}
+function pageMaintenance(m) {
+    const message = String(m.message || 'Le salon est fermé quelques minutes, le temps d’une mise à jour.')
+        .replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    return `<!doctype html><html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Le Salon — fermé un instant</title>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#14100b;color:#efe4cf;
+font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:24px}
+h1{font-size:1.3rem;margin:0 0 10px;color:#ecca82}p{color:#a08f74;line-height:1.6;max-width:340px;margin:0}
+.e{font-size:3rem;margin-bottom:12px}</style></head>
+<body><div><div class="e">🔧</div><h1>On revient tout de suite</h1><p>${message}</p></div></body></html>`;
 }
 
 // ---------------------------------------------------------------------
@@ -449,7 +466,7 @@ function mfPurge() {
             else if (parts[1] === 'board' || parts[1] === 'cmt') { date = parts[2]; limit = limitMotusShort; }
             else if (parts[1] === 'prog') { date = parts[3]; limit = limitMotusShort; }
         } else if (parts[0] === 'mj') {
-            if (parts[1] === 'word') { date = parts[2]; limit = limitMjWord; }
+            if (parts[1] === 'word' || parts[1] === 'variante') { date = parts[2]; limit = limitMjWord; }
             else if (parts[1] === 'board' || parts[1] === 'cmt') { date = parts[2]; limit = limitMjShort; }
             else if (parts[1] === 'prog') { date = parts[3]; limit = limitMjShort; }
         } else if (parts[0] === 'chiffres' && parts[1] === 'donne') {
@@ -1074,6 +1091,20 @@ function mjRand(seed) {
         return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
 }
+// Même défaut que le Motus, et même correctif : le tirage étant déterministe
+// sur la date, supprimer la clé et recalculer redonne le MÊME mot. Ce compteur
+// décale la graine. À zéro, elle est identique à l'ancienne — aucune date
+// passée ne change de mot.
+const kMjVariante = (d) => `mj:variante:${d}`;
+function mjGraine(date) {
+    const n = Number(mfGet(kMjVariante(date))) || 0;
+    return 'motjuste|' + date + (n ? '|' + n : '');
+}
+function mjVarianteSuivante(date) {
+    const n = (Number(mfGet(kMjVariante(date))) || 0) + 1;
+    mfSet(kMjVariante(date), n);
+    return n;
+}
 const kMjWord = (d) => `mj:word:${d}`;
 const kMjProg = (u, d) => `mj:prog:${u}:${d}`;
 const kMjBoard = (d) => `mj:board:${d}`;
@@ -1089,7 +1120,7 @@ function mjPickWord(date, forcePersist) {
     }
     let candidates = all.filter(w => !recent.has(w));
     if (!candidates.length) candidates = all;
-    const rnd = mjRand(mjHashSeed('motjuste|' + date));
+    const rnd = mjRand(mjHashSeed(mjGraine(date)));
     const pick = candidates[Math.floor(rnd() * candidates.length)] || all[0];
     if (forcePersist) mfSet(kMjWord(date), pick);
     return pick;
@@ -2646,6 +2677,7 @@ require('./admin/routes')(app, {
     },
     motjuste: {
         word: mjWord, wordPreview: mjWordPreview,
+        kWord: kMjWord, varianteSuivante: mjVarianteSuivante,
         kProg: kMjProg, kBoard: kMjBoard, kCmt: kMjCmt,
         engine: mjEngine,
     },
@@ -2653,6 +2685,15 @@ require('./admin/routes')(app, {
     undercover: () => undercoverApi,
     yams: () => yamsApi,
     drapeaux: () => drapeauxApi,
+    // Les deux jeux du jour récents, pour leur panneau d'administration.
+    chiffres: {
+        moteur: mChiffres, donne: chiffresDonne, kDonne: kChiffresDonne,
+        resoudre: chiffresJeu.resoudreCourt, tirage: chiffresJeu.tirage,
+    },
+    geo: {
+        moteur: mGeo, duJour: geoDuJour, kPays: kGeoPays,
+        drapeau: geoJeu.drapeau, modes: GEO_MODES, maxEssais: geoJeu.MAX_ESSAIS,
+    },
     motusparty: () => motusPartyApi,
 });
 
