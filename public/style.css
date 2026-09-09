@@ -323,3 +323,21 @@ body.is-hub   .hub   { display: block; }
     .hub-inner { padding-top: 10px; }
     .hub-head { margin-bottom: 12px; }
 }
+
+/* ---------------------------------------------------------------------
+   CE QUI T'ATTEND — invitations, tables ouvertes, prochain rendez-vous.
+   Posé sur la page d'accueil et pas dans le hall : le hall, personne n'y
+   passe ; ici, tout le monde vient chercher son jeu du jour.
+   --------------------------------------------------------------------- */
+.hub-appels { display: flex; flex-direction: column; gap: 6px; margin: 10px 0 0; }
+.hub-appel { display: flex; align-items: center; gap: 9px; padding: 10px 12px; border-radius: 12px;
+    color: inherit; background: rgba(255,255,255,.03); border: 1px solid var(--line); }
+/* Une invitation nominative attend une réponse : c'est la seule qui insiste. */
+.hub-appel.invit { background: linear-gradient(165deg, rgba(217,169,78,.16), rgba(0,0,0,.12));
+    border-color: rgba(217,169,78,.4); }
+.hub-appel.discret { opacity: .75; }
+.hub-appel-emoji { font-size: 1.05rem; flex: 0 0 auto; }
+.hub-appel-texte { flex: 1; min-width: 0; font-size: .8rem;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hub-appel-go { flex: 0 0 auto; font-size: .74rem; font-weight: 700;
+    color: var(--brass-soft); white-space: nowrap; }

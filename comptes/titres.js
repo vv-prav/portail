@@ -73,6 +73,10 @@ const TITRES = [
       desc: 'Cent points au classement du Salon.',
       obtenu: (s) => s.points >= 100 },
 
+    { id: 'releve', nom: 'Qui relève le gant', emoji: '⚔️', rarete: 'commun',
+      desc: 'Trois défis joués — la manche des autres, faite à son heure.',
+      obtenu: (s) => s.defisJoues >= 3 },
+
     // ---- Uniques : un seul détenteur, il change de mains ----
     { id: 'maitre', nom: 'Maître du Salon', emoji: '👑', rarete: 'unique',
       desc: 'Premier au classement du Salon.',
@@ -95,6 +99,9 @@ const TITRES = [
     { id: 'invaincu', nom: 'L’invaincu', emoji: '🛡️', rarete: 'unique',
       desc: 'La plus longue série de victoires d’affilée au Yams.',
       mesure: (s) => (s.yamsSerie > 1 ? s.yamsSerie : null), ordre: 'max' },
+    { id: 'lancegants', nom: 'Le lanceur de gants', emoji: '🥇', rarete: 'unique',
+      desc: 'Le plus de défis remportés.',
+      mesure: (s) => (s.defisGagnes > 0 ? s.defisGagnes : null), ordre: 'max' },
     { id: 'cartographe', nom: 'Le cartographe', emoji: '🗺️', rarete: 'unique',
       desc: 'Le meilleur taux de bonnes réponses au Quiz des drapeaux.',
       mesure: (s) => (s.drapeauxParties >= 2 ? s.drapeauxTaux : null), ordre: 'max' },
@@ -139,6 +146,7 @@ function statsParJoueur(cache, pseudos, series, points) {
             chiffresJours: 0, chiffresJustes: 0, geoJours: 0, geoTrouves: 0,
             pbacParties: 0, pbacMeilleureManche: 0,
             mpCourses: 0, perudoParties: 0, multiParties: 0,
+            defisJoues: 0, defisGagnes: 0,
             messages: 0, jeuxDifferents: 0,
             serie: (series && series[p]) || 0, meilleureSerie: 0,
             points: (points && points[p]) || 0,
@@ -218,6 +226,13 @@ function statsParJoueur(cache, pseudos, series, points) {
             s.drapeauxRapide = val.plusRapide != null ? val.plusRapide : null;
             continue;
         }
+        // Les défis indexent eux aussi par pseudo brut.
+        if (famille === 'defi:stats' && typeof val === 'object') {
+            const s2 = st.get(seg[2]); if (!s2) continue;
+            s2.defisJoues = val.parties || 0;
+            s2.defisGagnes = val.victoires || 0;
+            continue;
+        }
         if (famille === 'undercover:stats' && typeof val === 'object') {
             const s = st.get(seg[2]); if (!s) continue;
             s.ucParties = val.parties || 0;
@@ -240,7 +255,7 @@ function statsParJoueur(cache, pseudos, series, points) {
         s.motusMoyenneEssais = s.motusTrouves ? Math.round((s.motusTotalEssais / s.motusTrouves) * 100) / 100 : null;
         s.multiParties = s.yamsParties + s.pbacParties + s.mpCourses + s.perudoParties;
         s.jeuxDifferents = [s.motusJours, s.mfJours, s.mjJours, s.yamsParties, s.pbacParties, s.mpCourses, s.perudoParties,
-            s.drapeauxParties, s.ucParties, s.chiffresJours, s.geoJours]
+            s.drapeauxParties, s.ucParties, s.chiffresJours, s.geoJours, s.defisJoues]
             .filter(n => n > 0).length;
         s.meilleureSerie = Math.max(s.meilleureSerie, s.serie);
     }

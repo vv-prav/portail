@@ -164,7 +164,7 @@ io.on('connection', (socket) => {
         if (!pseudo) return socket.emit('motusparty_error', 'Session expirée, reviens au salon.');
         const id = 'mp' + (nextId++);
         const g = {
-            id, host: pseudo, status: 'lobby',
+            id, host: pseudo, status: 'lobby', creeA: Date.now(),
             players: [freshPlayer(socket.id, pseudo)],
             spectators: [],
             maxRounds: Math.min(10, Math.max(1, Number(maxRounds) || DEFAULT_ROUNDS)),
@@ -296,7 +296,12 @@ io.on('connection', (socket) => {
 
 return {
     online: () => [...new Set(Object.values(games).flatMap(g => g.players.filter(p => p.connected).map(p => p.pseudo)))],
-    games: () => Object.values(games).map(g => ({ id: g.id, host: g.host, status: g.status, players: g.players.map(p => p.pseudo) })),
+    games: () => Object.values(games).map(g => ({
+        id: g.id, host: g.host, status: g.status, creeA: g.creeA || 0,
+        players: g.players.map(p => p.pseudo),
+        presents: g.players.filter(p => p.connected).map(p => p.pseudo),
+    })),
+    limites: { min: MIN_PLAYERS, max: MAX_PLAYERS },
     statsFor: (pseudo) => loadMpStats(pseudo),
     endGame: (id) => {
         const g = games[id];

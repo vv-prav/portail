@@ -83,3 +83,98 @@ body {
 /* Une partie qu'on peut regarder n'est pas une partie morte : son action reste
    lisible, dans une teinte plus discrète que « Rejoindre ». */
 .jo-table-etat.regarder { color: var(--muted); font-weight: 600; }
+
+/* =====================================================================
+   Ce qui répond au salon vide.
+   Trois blocs qui ne demandent PAS que deux personnes soient là en même
+   temps : une invitation, un rendez-vous, un souvenir.
+   ===================================================================== */
+
+/* ---------- Invitations reçues ---------- */
+/* Quelqu'un attend une réponse maintenant : c'est la seule chose de cette
+   page qui soit urgente, elle passe donc avant tout le reste et s'autorise
+   un fond plein là où les autres blocs restent en retrait. */
+.jo-invits { display: flex; flex-direction: column; gap: 7px; }
+.jo-invit { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-radius: 12px;
+    background: linear-gradient(165deg, rgba(217,169,78,.16), rgba(0,0,0,.15));
+    border: 1px solid rgba(217,169,78,.4); border-left: 3px solid var(--acc, var(--brass)); }
+.jo-invit-emoji { font-size: 1.15rem; flex: 0 0 auto; }
+.jo-invit-corps { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.jo-invit-corps b { font-size: .85rem; }
+.jo-invit-corps em { font-style: normal; font-size: .7rem; color: var(--muted); }
+.jo-invit-oui { flex: 0 0 auto; font-size: .76rem; font-weight: 700; color: var(--brass-soft); white-space: nowrap; }
+.jo-invit-non { flex: 0 0 auto; border: none; background: transparent; color: var(--muted);
+    font-family: inherit; font-size: .9rem; cursor: pointer; padding: 4px 2px; }
+.jo-invit-non:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+
+/* ---------- Rendez-vous ---------- */
+.jo-rdv { display: flex; flex-direction: column; gap: 7px; margin-bottom: 9px; }
+.jo-rdv-l { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-radius: 12px;
+    background: rgba(255,255,255,.03); border: 1px solid var(--line);
+    border-left: 3px solid var(--acc, var(--brass)); }
+.jo-rdv-emoji { font-size: 1.1rem; flex: 0 0 auto; }
+.jo-rdv-corps { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.jo-rdv-corps b { font-size: .84rem; }
+.jo-rdv-corps em { font-style: normal; font-size: .71rem; color: var(--muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jo-rdv-action { flex: 0 0 auto; font-size: .74rem; font-weight: 700; color: var(--brass-soft);
+    white-space: nowrap; cursor: pointer; padding: 6px 10px; border-radius: 999px;
+    border: 1px solid var(--line); }
+.jo-rdv-action.dedans { color: var(--good); border-color: rgba(90,168,122,.45); }
+.jo-rdv-action.annuler { color: var(--muted); font-weight: 400; border-color: transparent; }
+.jo-rdv-creer { width: 100%; }
+
+/* Le formulaire */
+.jo-champ-label { font-size: .68rem; text-transform: uppercase; letter-spacing: .7px;
+    color: var(--muted); font-weight: 700; margin: 14px 0 6px; }
+.jo-rdv-jeux, .jo-rdv-rapide { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 4px; }
+.jo-rdv-jeu, .jo-rdv-quand { padding: 7px 11px; border-radius: 999px; border: 1px solid var(--line);
+    background: transparent; color: var(--muted); font-family: inherit; font-size: .74rem;
+    cursor: pointer; appearance: none; }
+.jo-rdv-jeu.on, .jo-rdv-quand.on { background: rgba(217,169,78,.14); border-color: var(--brass);
+    color: var(--brass-soft); font-weight: 700; }
+.jo-rdv-quand { margin-bottom: 6px; }
+#jo-rdv-valider { width: 100%; margin-top: 16px; }
+
+/* ---------- Le souvenir ---------- */
+/* Un salon vide sans mémoire est une impasse. Ce bloc est le seul contenu
+   de la page quand il n'y a rien, donc il a le droit de respirer. */
+.jo-souvenir { display: flex; align-items: center; gap: 11px; margin-top: 9px;
+    padding: 13px 13px; border-radius: 12px; color: inherit;
+    background: rgba(255,255,255,.03); border: 1px solid var(--line);
+    border-left: 3px solid var(--acc, var(--brass)); }
+.jo-souvenir-emoji { font-size: 1.3rem; flex: 0 0 auto; }
+.jo-souvenir-corps { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.jo-souvenir-corps em { font-style: normal; font-size: .66rem; text-transform: uppercase;
+    letter-spacing: .6px; color: var(--muted); }
+.jo-souvenir-corps b { font-size: .86rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jo-souvenir-go { flex: 0 0 auto; font-size: .74rem; font-weight: 700; color: var(--brass-soft); white-space: nowrap; }
+
+/* ---------- Compléments ---------- */
+.jo-vide.petit { padding: 12px 14px; font-size: .76rem; }
+.jo-astuce { margin: 8px 0 0; font-size: .7rem; color: var(--muted); text-align: center; }
+/* Le solo est la seule chose jouable quand le salon est vide : il se signale. */
+.jo-cat-solo { font-size: .64rem; color: var(--good); letter-spacing: .3px; }
+/* Un jeu qui demande plus de monde qu'il n'y en a n'est pas interdit — on
+   peut toujours ouvrir une table et attendre — il passe juste au second plan. */
+.jo-cat.pas-assez { opacity: .5; }
+
+/* ---------- Défis ---------- */
+/* Le hall n'en donne qu'un aperçu : trois lignes et un lien. La liste
+   complète a sa page, et un défi se joue rarement à la volée. */
+.jo-defis { display: flex; flex-direction: column; gap: 7px; }
+.jo-defi { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-radius: 12px;
+    color: inherit; background: rgba(255,255,255,.03); border: 1px solid var(--line);
+    border-left: 3px solid var(--acc, var(--brass)); }
+.jo-defi.fait { opacity: .55; }
+.jo-defi-emoji { font-size: 1.1rem; flex: 0 0 auto; }
+.jo-defi-corps { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.jo-defi-corps b { font-size: .84rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jo-defi-corps em { font-style: normal; font-size: .71rem; color: var(--muted); }
+.jo-defi-go { flex: 0 0 auto; font-size: .74rem; font-weight: 700; color: var(--brass-soft); white-space: nowrap; }
+.jo-defis-tout { display: block; text-align: center; font-size: .74rem; color: var(--brass-soft);
+    font-weight: 700; padding: 8px; }
+/* L'encadré « rien ici » devient lui-même la porte d'entrée : c'est le seul
+   endroit où l'explication a une chance d'être lue. */
+.jo-vide.lien { display: block; color: var(--muted); }
+.jo-vide.lien b { display: block; margin-top: 6px; color: var(--brass-soft); }

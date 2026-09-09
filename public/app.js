@@ -172,7 +172,9 @@ function tileBadge(app) {
 // Une seule tuile multijoueur désormais : elle agrège les joueurs présents
 // dans les cinq jeux, puisqu'ils partagent tous l'espace /jouer/.
 const MULTIPLAYER_APPS = new Set(['jouer']);
-const JEUX_MULTI_IDS = ['perudo', 'pbac', 'undercover', 'yams', 'motusparty'];
+// ⚠️ Le quiz des drapeaux manquait ici : y jouer ne faisait apparaître
+// personne sur la tuile « Jouer ensemble ».
+const JEUX_MULTI_IDS = ['perudo', 'pbac', 'undercover', 'yams', 'motusparty', 'drapeaux'];
 function tileOnlineInfo(a) {
     // La tuile « Jouer ensemble » rassemble les présents de tous les jeux.
     const names = a.id === 'jouer'
@@ -282,6 +284,7 @@ async function loadPulse() {
     renderOnlinePlayers(data.salonOnline);
     renderRecentlyActive(data.recentlyActive);
     renderLiveGames(data.activeGames);
+    renderAppels(data);
     const st = $('me-streak');
     if (data.mf && data.mf.streak > 0) { st.innerHTML = '🔥 <b>' + data.mf.streak + '</b>'; st.hidden = false; }
     else st.hidden = true;
@@ -501,7 +504,67 @@ async function renderRecentlyActive(list) {
     host.querySelectorAll('.hub-recent-row').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.p)));
 }
 
-const LIVE_GAME_LINK = { perudo: '/perudo/', pbac: '/pbac/', undercover: '/undercover/' };
+// Trois jeux sur six manquaient : leurs parties en cours pointaient vers « # ».
+const LIVE_GAME_LINK = {
+    perudo: '/perudo/', pbac: '/pbac/', undercover: '/undercover/',
+    yams: '/yams/', motusparty: '/motus/party/', drapeaux: '/drapeaux/',
+};
+
+// ---------------------------------------------------------------------
+//  CE QUI T'ATTEND
+//
+//  Le multijoueur ne manque pas d'interface, il manque de passage : les
+//  jeux du jour font 90 % des visites, et le hall est une pièce devant
+//  laquelle personne ne marche. Une invitation, une table qui attend, un
+//  rendez-vous — ça ne sert à rien dans le hall, ça sert ici, sur la page
+//  que tout le monde ouvre tous les matins.
+// ---------------------------------------------------------------------
+function renderAppels(data) {
+    const host = $('hub-appels');
+    if (!host) return;
+    const lignes = [];
+
+    for (const i of (data.invitations || [])) {
+        lignes.push(`<a class="hub-appel invit" href="${i.href}/?creer=1">
+            <span class="hub-appel-emoji">${i.emoji}</span>
+            <span class="hub-appel-texte"><b>${esc(i.de)}</b> te propose ${esc(i.nom)}</span>
+            <span class="hub-appel-go">On y va ›</span></a>`);
+    }
+    for (const t of (data.tablesOuvertes || []).slice(0, 2)) {
+        const qui = (t.presents && t.presents[0]) || t.hote;
+        lignes.push(`<a class="hub-appel" href="${t.href}">
+            <span class="hub-appel-emoji">${t.emoji}</span>
+            <span class="hub-appel-texte"><b>${esc(qui)}</b> attend au ${esc(t.nom)}</span>
+            <span class="hub-appel-go">Rejoindre ›</span></a>`);
+    }
+    // Les défis qui attendent encore ta manche. C'est la ligne la plus utile
+    // de ce bloc : un défi ne périme pas dans la minute, il t'attend, et
+    // personne n'a besoin d'être connecté.
+    const enAttente = (data.defis && data.defis.attente) || 0;
+    if (enAttente) {
+        lignes.push(`<a class="hub-appel" href="/defis/">
+            <span class="hub-appel-emoji">⚔️</span>
+            <span class="hub-appel-texte">${enAttente} défi${enAttente > 1 ? 's' : ''} t’attend${enAttente > 1 ? 'ent' : ''}</span>
+            <span class="hub-appel-go">Jouer ›</span></a>`);
+    }
+
+    const r = (data.rendezvous || [])[0];
+    if (r) {
+        const d = new Date(r.quand);
+        const heure = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+        const demain = new Date(); demain.setDate(demain.getDate() + 1);
+        const jour = d.toDateString() === new Date().toDateString() ? 'ce soir'
+            : (d.toDateString() === demain.toDateString() ? 'demain'
+               : d.toLocaleDateString('fr-FR', { weekday: 'long' }));
+        lignes.push(`<a class="hub-appel discret" href="/jouer/">
+            <span class="hub-appel-emoji">${r.emoji}</span>
+            <span class="hub-appel-texte">${esc(r.nom)} ${esc(jour)} à ${esc(heure)} · ${r.inscrits.length} inscrit${r.inscrits.length > 1 ? 's' : ''}</span>
+            <span class="hub-appel-go">${r.jeViens ? '✓' : 'Je viens'}</span></a>`);
+    }
+
+    host.innerHTML = lignes.join('');
+    host.hidden = !lignes.length;
+}
 function renderLiveGames(list) {
     const host = $('hub-live-games');
     if (!host) return;

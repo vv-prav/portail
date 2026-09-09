@@ -276,7 +276,7 @@ io.on('connection', (socket) => {
         if (!pseudo) return socket.emit('uc_error', 'Session expirée, reviens au salon.');
         const id = 'u' + (nextId++);
         games[id] = {
-            id, host: pseudo, status: 'lobby',
+            id, host: pseudo, status: 'lobby', creeA: Date.now(),
             players: [{ sid: socket.id, pseudo, connected: true, alive: true, role: null, word: null }],
             undercoverCount: 0, round: 0, turnIndex: 0, votes: {},
             mrWhiteEnabled: false, subgroupsEnabled: false, awaitingMrWhiteGuess: null, civilWord: null,
@@ -444,7 +444,12 @@ function ficheUc(pseudo) {
 
 return {
     statsFor: (pseudo) => ficheUc(pseudo),
-    games: () => Object.values(games).map(g => ({ id: g.id, host: g.host, status: g.status, players: g.players.map(p => p.pseudo) })),
+    games: () => Object.values(games).map(g => ({
+        id: g.id, host: g.host, status: g.status, creeA: g.creeA || 0,
+        players: g.players.map(p => p.pseudo),
+        presents: g.players.filter(p => p.connected).map(p => p.pseudo),
+    })),
+    limites: { min: 3, max: MAX_PLAYERS },
     online: () => [...new Set(Object.values(games).flatMap(g => g.players.filter(p => p.connected).map(p => p.pseudo)))],
     endGame: (id) => {
         const g = games[id];

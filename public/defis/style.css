@@ -1,0 +1,128 @@
+/* =====================================================================
+   LES DÉFIS — deux jeux, un seul écrin.
+   La page emprunte ses couleurs de tuiles au Motus du jour et ses cartes
+   de réponse au quiz des drapeaux : un défi doit ressembler au jeu qu'il
+   rejoue, pas à une troisième chose.
+   ===================================================================== */
+body {
+    min-height: 100svh; overflow-x: hidden;
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color: var(--parchment);
+    background: radial-gradient(130% 70% at 50% -8%, #23252c 0%, transparent 55%), var(--ink);
+    background-attachment: fixed; -webkit-font-smoothing: antialiased;
+}
+.df-wrap { display: flex; flex-direction: column; gap: 12px; max-width: 520px; margin: 0 auto;
+    padding: max(10px, env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom)); }
+
+.df-head { display: flex; align-items: center; gap: 10px; }
+.df-titles { flex: 1; min-width: 0; }
+.df-title { margin: 0; font-size: 1.15rem; font-weight: 800;
+    background: linear-gradient(180deg, var(--brass-soft), var(--brass));
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+.df-sub { font-size: .74rem; color: var(--muted); }
+
+.df-view[hidden] { display: none; }
+.df-view { display: flex; flex-direction: column; gap: 10px; }
+.df-section-title { font-size: .68rem; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--muted); font-weight: 700; margin: 12px 0 2px; }
+.df-intro { font-size: .8rem; color: var(--muted); line-height: 1.55; margin: 0; }
+.df-vide { font-size: .78rem; color: var(--muted); line-height: 1.5; text-align: center; margin: 0;
+    padding: 16px 14px; border-radius: 12px; background: rgba(255,255,255,.02); border: 1px dashed var(--line); }
+
+/* ---------- Lancer ---------- */
+.df-lancer { display: flex; flex-direction: column; gap: 7px; margin-top: 4px; }
+.df-lancer-btn { display: flex; align-items: center; gap: 11px; padding: 12px 13px; border-radius: 12px;
+    background: rgba(255,255,255,.035); border: 1px solid var(--line);
+    border-left: 3px solid var(--acc, var(--brass)); color: inherit; font-family: inherit;
+    text-align: left; cursor: pointer; }
+.df-lancer-btn:active { transform: scale(.995); }
+.df-lancer-emoji { font-size: 1.35rem; flex: 0 0 auto; }
+.df-lancer-corps { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.df-lancer-corps b { font-size: .88rem; }
+.df-lancer-corps em { font-style: normal; font-size: .7rem; color: var(--muted); }
+.df-lancer-go { color: var(--muted); flex: 0 0 auto; }
+
+/* ---------- La liste ---------- */
+.df-liste { display: flex; flex-direction: column; gap: 7px; }
+.df-l { display: flex; align-items: center; gap: 10px; padding: 11px 12px; border-radius: 12px;
+    background: linear-gradient(165deg, rgba(255,255,255,.04), rgba(0,0,0,.18));
+    border: 1px solid var(--line); border-left: 3px solid var(--acc, var(--brass));
+    color: inherit; font-family: inherit; text-align: left; cursor: pointer; }
+/* Un défi déjà fait n'appelle plus à l'action : il s'efface derrière ceux
+   qui attendent encore une manche. */
+.df-l.fait { opacity: .6; }
+.df-l-emoji { font-size: 1.15rem; flex: 0 0 auto; }
+.df-l-corps { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.df-l-corps b { font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.df-l-corps em { font-style: normal; font-size: .71rem; color: var(--muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.df-l-corps em b { color: var(--brass-soft); font-size: .71rem; }
+.df-l-go { flex: 0 0 auto; font-size: .74rem; font-weight: 700; color: var(--brass-soft); white-space: nowrap; }
+
+/* ---------- Motus ---------- */
+.df-consigne { text-align: center; font-size: .8rem; color: var(--muted); margin: 6px 0 0; }
+.df-grille { display: flex; flex-direction: column; gap: 6px; align-items: center; margin-top: 4px; }
+.df-rang { display: grid; grid-template-columns: repeat(var(--cols, 6), 1fr); gap: 6px; width: 100%; }
+.df-case { aspect-ratio: 1; display: grid; place-items: center; border-radius: 8px;
+    font-size: clamp(1rem, 6vw, 1.5rem); font-weight: 800; text-transform: uppercase;
+    background: rgba(255,255,255,.03); border: 1.5px solid var(--line); color: var(--parchment); }
+.df-case.vide { opacity: .45; }
+.df-case.saisie { border-color: rgba(217,169,78,.4); }
+/* Le curseur est une bordure, pas un trait clignotant : sur une grille, on
+   suit la case, pas un caret. */
+.df-case.saisie.active { border-color: var(--brass); background: rgba(217,169,78,.08); }
+.df-case.correct { background: #c2513a; border-color: #c2513a; color: #fff; }
+.df-case.present { background: transparent; border-color: var(--brass); color: var(--brass-soft); }
+.df-case.absent { background: rgba(255,255,255,.02); border-color: var(--line); color: var(--muted); }
+
+/* L'input invisible qui suit la saisie : présent dans le document (donc
+   focusable et capable d'ouvrir le clavier), mais jamais visible. */
+.df-ombre { position: fixed; opacity: 0; pointer-events: none; width: 1px; height: 1px;
+    top: 50%; left: 50%; border: 0; padding: 0; font-size: 16px; }
+.df-erreur { text-align: center; font-size: .78rem; color: var(--bad, #d2624a); min-height: 1.2em; margin: 2px 0 0; }
+
+/* ---------- Quiz ---------- */
+.df-barre { display: flex; align-items: center; gap: 8px; }
+.df-num { font-size: .78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.df-chrono { margin-left: auto; font-size: .86rem; font-weight: 800; color: var(--brass-soft);
+    font-variant-numeric: tabular-nums; }
+.df-enonce { text-align: center; font-size: 1rem; font-weight: 700; margin: 8px 0 0; line-height: 1.35; }
+.df-media { display: grid; place-items: center; min-height: 110px; }
+.df-media[hidden] { display: none; }
+.df-drapeau { font-size: clamp(4rem, 22vw, 6.5rem); line-height: 1.1; }
+.df-choix { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.df-choix-btn { display: flex; align-items: center; justify-content: center; gap: 10px;
+    min-height: 60px; padding: 10px 14px; border-radius: 14px;
+    border: 1.5px solid var(--line); background: rgba(255,255,255,.035);
+    color: var(--parchment); font-family: inherit; font-size: .95rem; font-weight: 600;
+    cursor: pointer; transition: background .15s, border-color .15s, opacity .2s; }
+.df-choix-btn:disabled { cursor: default; }
+.df-choix-drapeau { font-size: 1.8rem; line-height: 1; }
+/* Un nom de pays long ne doit pas casser la hauteur du bouton : il se coupe. */
+.df-choix-texte { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.df-choix-btn.drapeau-seul { min-height: 74px; }
+.df-choix-btn.drapeau-seul .df-choix-drapeau { font-size: 2.8rem; }
+.df-choix-btn.juste { border-color: var(--good); background: rgba(90,168,122,.2); }
+.df-choix-btn.faux { border-color: var(--bad); background: rgba(210,98,74,.18); }
+.df-choix-btn.eteint { opacity: .35; }
+.df-repondu { text-align: center; font-size: .8rem; color: var(--muted); margin: 4px 0 0; min-height: 1.2em; }
+.df-repondu.juste { color: var(--good); font-weight: 700; }
+.df-repondu.faux { color: var(--bad); font-weight: 700; }
+
+/* ---------- La fin ---------- */
+.df-fin-emoji { text-align: center; font-size: 2.8rem; margin: 14px 0 2px; }
+.df-fin-titre { text-align: center; margin: 0 0 4px; font-size: 1.2rem; }
+.df-fin-detail { text-align: center; margin: 0 0 10px; font-size: .84rem; color: var(--muted); }
+.df-classement { display: flex; flex-direction: column; gap: 3px; }
+.df-cl { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; align-items: center;
+    padding: 8px 11px; border-radius: 9px; background: rgba(255,255,255,.03);
+    border: 1px solid transparent; font-size: .82rem; }
+.df-cl.moi { border-color: var(--brass); background: rgba(217,169,78,.1); }
+.df-cl-place { text-align: center; color: var(--muted); }
+.df-cl-nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.df-cl-score { color: var(--brass-soft); font-weight: 800; font-variant-numeric: tabular-nums; }
+/* Tant qu'il reste des heures, le classement n'est pas définitif — et le
+   croire serait la meilleure façon d'être déçu. */
+.df-attente { text-align: center; font-size: .72rem; color: var(--muted); margin: 12px 0 6px; line-height: 1.5; }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; } }

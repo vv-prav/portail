@@ -585,7 +585,7 @@ io.on('connection', (socket) => {
         if (!pseudo) return socket.emit('yams_error', 'Session expirée, reviens au salon.');
         const id = 'y' + (nextId++);
         const g = {
-            id, host: pseudo, status: 'lobby',
+            id, host: pseudo, status: 'lobby', creeA: Date.now(),
             players: [{ sid: socket.id, pseudo, connected: true, scores: freshScores(), yamsBonus: 0 }],
             spectators: [],
             turnIndex: 0, dice: [1, 1, 1, 1, 1], held: [false, false, false, false, false],
@@ -755,7 +755,12 @@ io.on('connection', (socket) => {
 
 return {
     online: () => [...new Set(Object.values(games).flatMap(g => g.players.filter(p => p.connected).map(p => p.pseudo)))],
-    games: () => Object.values(games).map(g => ({ id: g.id, host: g.host, status: g.status, players: g.players.map(p => p.pseudo) })),
+    games: () => Object.values(games).map(g => ({
+        id: g.id, host: g.host, status: g.status, creeA: g.creeA || 0,
+        players: g.players.map(p => p.pseudo),
+        presents: g.players.filter(p => p.connected).map(p => p.pseudo),
+    })),
+    limites: { min: MIN_PLAYERS, max: MAX_PLAYERS },
     statsFor: (pseudo) => ficheComplete(pseudo),
     endGame: (id) => {
         const g = games[id];

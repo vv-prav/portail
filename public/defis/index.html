@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <!-- Grille de taille fixe : `overlays-content`, sinon le clavier natif fait
+         rétrécir toute la page et la grille devient illisible. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, interactive-widget=overlays-content">
+    <meta name="theme-color" content="#14100b">
+    <title>Les défis</title>
+    <link rel="icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="stylesheet" href="/design-system.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="df-wrap">
+        <header class="df-head">
+            <a class="ds-icon-btn" id="df-retour" href="/jouer/" aria-label="Retour">←</a>
+            <div class="df-titles">
+                <h1 class="df-title">Les défis</h1>
+                <span class="df-sub" id="df-sub">Même manche pour tout le monde</span>
+            </div>
+        </header>
+
+        <!-- LA LISTE -->
+        <section class="df-view" id="v-liste">
+            <p class="df-intro">Quelqu’un lance une manche, tout le monde reçoit exactement la même,
+                et chacun la fait quand il veut dans les vingt-quatre heures. Personne n’a besoin
+                d’être là en même temps.</p>
+            <div class="df-lancer" id="df-lancer"></div>
+            <h2 class="df-section-title">En cours</h2>
+            <div class="df-liste" id="df-liste"></div>
+        </section>
+
+        <!-- MOTUS -->
+        <section class="df-view" id="v-motus" hidden>
+            <p class="df-consigne" id="mo-consigne">—</p>
+            <div class="df-grille" id="mo-grille"></div>
+            <!-- L'input invisible qui suit la case active : aucun clavier à
+                 l'écran dans ce projet, on utilise celui du téléphone. -->
+            <input class="df-ombre" id="mo-ombre" type="text" autocomplete="off"
+                   autocorrect="off" autocapitalize="characters" spellcheck="false" inputmode="text">
+            <p class="df-erreur" id="mo-erreur"></p>
+        </section>
+
+        <!-- QUIZ -->
+        <section class="df-view" id="v-quiz" hidden>
+            <div class="df-barre">
+                <span class="df-num" id="qz-num">1 / 10</span>
+                <span class="df-chrono" id="qz-chrono">0:00</span>
+            </div>
+            <p class="df-enonce" id="qz-enonce">—</p>
+            <div class="df-media" id="qz-media" hidden></div>
+            <div class="df-choix" id="qz-choix"></div>
+            <p class="df-repondu" id="qz-repondu"></p>
+        </section>
+
+        <!-- FIN -->
+        <section class="df-view" id="v-fin" hidden>
+            <p class="df-fin-emoji" id="fin-emoji">🏁</p>
+            <h2 class="df-fin-titre" id="fin-titre">—</h2>
+            <p class="df-fin-detail" id="fin-detail"></p>
+            <h3 class="df-section-title">Classement</h3>
+            <div class="df-classement" id="fin-classement"></div>
+            <p class="df-attente" id="fin-attente"></p>
+            <button class="ds-btn ghost" id="fin-retour">Retour aux défis</button>
+        </section>
+    </div>
+
+    <script src="/profile-viewer.js"></script>
+    <script src="/design-system.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

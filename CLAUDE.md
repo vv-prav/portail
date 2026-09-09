@@ -92,6 +92,7 @@ portail/
 ├── perudo/game.js
 ├── undercover/game.js
 ├── yams/game.js
+├── defis/jeu.js               ← les défis : multijoueur sans rendez-vous (aucun socket)
 └── public/
     ├── index.html / app.js / style.css     ← LE SALON (page d'accueil)
     ├── design-system.css / design-system.js ← voir section dédiée
@@ -103,6 +104,7 @@ portail/
     ├── carnet/                              ← les sorties et les recettes réunies
     ├── sw.js                                ← service worker (cache hors-ligne)
     ├── admin/
+    ├── defis/                              ← les défis (Motus + quiz, une seule page)
     ├── chance/
     ├── motjuste/
     ├── mots-fleches/
@@ -136,6 +138,7 @@ Chaque mini-app suit le même schéma : `public/<app>/index.html` + `app.js` + `
 | **Infiltré** | `undercover/game.js` | `uc_*` | Mr Blanc, sous-groupes, mode à distance et mode local (un seul téléphone qui tourne). |
 | **Yams** | `yams/game.js` | `yams_*` | **Un joueur absent ne bloque plus la table** : `advanceTurn` ne fait tourner que les joueurs présents (`joueurPresent`), la partie se termine quand tous les présents ont fini, et une déconnexion en pleine main passe le tour sur-le-champ. Minuteur de tour de 90 s (`TOUR_MAX_MS`), réarmé à chaque lancer ; deux expirations d'affilée et le joueur est marqué `parti` (feuille conservée, retour possible à tout moment). Numéro de tour, journal des derniers coups et jauge du bonus 63 côté client. **Chaque case libre affiche ce qu'elle rapporterait** au joueur qui a la main, zéros compris : le serveur envoyait déjà `possible` pour toutes les catégories, il fallait juste le montrer au lieu d'obliger à taper une case pour le découvrir. Code couleur : le laiton désigne ce qui se joue (aperçu en pointillés, meilleur coup en plein), le gris ce qui ne rapporte rien, la couleur du joueur ce qui est acquis, le vert le bonus atteint. Les couleurs de joueur ont été sorties du laiton et du vert, qu'elles imitaient (`#d98a4a` contre `#d9a94e`, `#5aa87a` égal à `--good`), et les sous-totaux ne sont plus en laiton. Une seule rangée est signalée — la meilleure — au lieu de treize animations en boucle simultanées. Skins de dés (47, catalogue repris de Perudo), bête noire, spectateurs, classement/historique/face-à-face. | **La feuille est une vraie grille** : une ligne par case, une colonne par joueur (`--joueurs` posée en JS). **À deux joueurs elle repasse en deux colonnes côte à côte** (classe `.double` sur `#feuille`) — 490 px au lieu de 823, tout tient d'un écran ; au-delà de deux, les cellules n'y entrent plus et on garde une seule colonne pleine largeur. Les icônes de chiffres sont des **dés au trait** de la même famille que les icônes de combinaison — avant, une moitié de la feuille montrait des dés réalistes en parchemin et l'autre des glyphes laiton plats, et le dé calé à 26 px débordait de sa case de 18. **L'aperçu ne désigne pas le meilleur coup** : il annonce ce que chaque case rapporterait, rien de plus, le choix reste au joueur. Les deux colonnes côte à côte d'avant ne laissaient que 160 px aux cellules, qui passaient à la ligne dès **trois** joueurs — 76 px par rangée au lieu de 30. L'en-tête de colonne (avatar, nom, total, cumul de série) remplace le bandeau de scores, qui répétait la même chose. **Aperçus décalés après le roulement des dés** (`masquerApercus`), sinon l'état arrivait avant l'animation et annonçait le résultat. **Égalité = personne ne gagne** (`gagnantsDe`) : l'ancien `winnerOf` donnait la victoire au premier inscrit, et cette fausse victoire entrait dans les stats, le face-à-face et l'historique. **Partie en solo** (`MIN_PLAYERS = 1`), qui ne compte ni victoire ni face-à-face. **Règle du joker** : la case Yams remplie, cinq dés identiques valent la valeur pleine de la case choisie (`scoresPossibles` sert l'aperçu **et** le score noté, ils ne doivent jamais diverger). **Son** en WebAudio synthétisé (aucun fichier, marche hors-ligne, coupable via `yams_son`). **Rappel de tour** : son, vibration et titre d'onglet clignotant. Série de revanches (`g.serie`), record du salon (`recordDuSalon`, cache 30 s), fin de partie avec faits marquants et feuille complète. Statistiques très élargies : une ligne par case (`parCategorie`), moyennes du salon comme point de repère, forces/faiblesses, nuls, séries, solo, face-à-face avec les dernières rencontres. Ces statistiques ressortent **partout** : carte du profil et bulle publique (11 lignes via `portraitJoueur`), « jeu le plus joué » du résumé (solo compris), classement du Salon, et trois titres uniques de plus (`mainchaude` meilleur score, `pluiededes` le plus de Yams, `invaincu` la plus longue série). ⚠️ `statsFor` renvoie désormais `duels` (liste) et non plus `vsOpponent` (objet) : le face-à-face de la bulle de profil lisait l'ancien champ et s'affichait vide.
 | **Motus Party** | `motusparty/game.js` | `motusparty_*` | Course en temps réel : tout le monde devine le même mot, classé par ordre d'arrivée. Barème : 1er=10pts, 2e=7, 3e=5, 4e=3, 5e et + =1 si trouvé, 0 sinon. Saisie **directe dans la grille au clavier natif** (input invisible `#mp-shadow` qui suit la case active), **première lettre offerte** comme au Motus du jour — le serveur l'envoie via `firstLetter` dans `stateFor`. Bandeau de score du match pendant la course, repli de l'entête et des adversaires quand le clavier s'ouvre (`body.clavier-ouvert`). Réutilise le dictionnaire Motus (`motusPool`/`motusKnown` injectés depuis `server.js`). |
+| **Les défis** | `defis/jeu.js` | (aucun — HTTP seulement) | **Le multijoueur qui n'exige pas d'être là en même temps.** Voir la section dédiée. |
 | **Quiz des drapeaux** | `drapeaux/game.js` + `drapeaux/questions.js` | `drapeaux_*` | **1 à 10 joueurs, en simultané — surtout pas au tour par tour.** À dix, n'importe quelle structure au tour par tour donnerait 90 % de temps mort ; ici tout le monde répond à la même question en même temps et la vitesse départage. Conséquence structurelle : **une déconnexion ne bloque rien**, le joueur absent marque zéro sur ce qu'il rate. Le serveur mène la partie de bout en bout (ferme la question, montre la réponse, enchaîne) : rien n'attend un clic de l'hôte. Barème 100 pts + bonus de vitesse dégressif, **dernière question comptée double**. Partie en solo possible, qui ne compte ni victoire ni palmarès. Cinq types de question, réglages de l'hôte (10/15/20 questions, 8/12/20 s, trois difficultés). ⚠️ La bonne réponse n'est **jamais** envoyée avec la question : elle n'arrive qu'avec la correction. Réutilise `geo/pays.js` tel quel — aucune donnée nouvelle.
 
 ### Jeux du jour (un mot/une grille par jour, pas de temps réel)
@@ -278,6 +281,44 @@ Depuis, trois regroupements de plus :
 - **Le carnet** (`/carnet/`) réunit les sorties et les recettes : deux apps qui ne sont pas des jeux mais des notes sur la vie du cercle, trop maigres chacune pour justifier sa tuile. Les photos de recettes restent à faire — elles demandent un stockage externe, pas Redis.
 - **L'admin** perd ses quatre onglets par jeu identiques au profit de deux vues : *Parties* (toutes les tables, via `/api/admin/parties`) et *Santé* (Redis, mémoire, clés par famille, journal).
 
+## « Jouer ensemble » — et le problème que cette page ne pouvait pas résoudre seule
+
+Le hall (`/jouer/`) répond bien aux deux questions qu'on se pose — qui joue, et sinon quoi lancer. Sauf que **la réponse était presque toujours « personne »** : Motus du jour compte 186 clés de statistiques, Yams 5 et Motus Party 2. Ce n'est pas un défaut d'interface, c'est que le temps réel exige que deux personnes ouvrent l'appli à la même minute, et qu'entre gens qui ont une vie ça n'arrive pas tout seul.
+
+Quatre réponses ont donc été ajoutées, dont **trois ne demandent pas la simultanéité** :
+
+- **Les défis** (`defis/jeu.js`, `/defis/`) — voir la section dédiée. C'est la réponse de fond.
+- **Les rendez-vous** (`salon:rdv`) — « je lance un Petit Bac ce soir à 21 h », les autres s'inscrivent. On fabrique la coïncidence au lieu de l'espérer. Un rendez-vous **ne crée aucune table** : à l'heure dite, l'hôte ouvre une partie normalement. Réserver une table d'avance obligerait à la garder ouverte des heures, et le ramasseur de tables fantômes la fermerait — deux mécanismes qui se contrediraient.
+- **Les invitations** (`salon:invitations`, 15 min de vie) — le hall savait qui était là **et** ce qui était ouvert, il ne reliait simplement pas les deux : toucher quelqu'un ouvrait sa fiche de statistiques.
+- **La mémoire** — un salon vide rappelle la dernière partie (`admin:gameHistory`, jusqu'ici enfermé dans l'admin) avec un bouton *Relancer*. « Aucune table ouverte » était une impasse.
+
+⚠️ **Tout ça ne sert à rien dans le hall.** Les jeux du jour font 90 % du passage ; `/jouer/` est une pièce devant laquelle personne ne marche. L'annonce doit donc aller **là où sont les gens** : le bloc « ce qui t'attend » de l'accueil (`renderAppels`, alimenté par `tablesOuvertes` / `rendezvous` / `invitations` / `defis` du pouls) et la fin de chaque jeu du jour (`Enchainement.annonceDe`, qui passe **avant** le jeu du jour suivant — une table attend du monde maintenant, la grille de demain attendra).
+
+### Les pièges corrigés au passage
+
+⚠️ **`JEUX_MULTI` est la seule liste des jeux multijoueurs, et tout doit passer par elle.** Les jeux étaient énumérés à la main à trois endroits (le pouls, `snapshotActiveGames`, la liste des tables) : le quiz des drapeaux manquait dans deux, Motus Party dans un. Conséquence : jouer aux drapeaux n'apparaissait nulle part sur l'accueil et **aucune de ces parties n'entrait dans `admin:gameHistory`**, donc aucune ne comptait au classement de saison. `toutesLesTables()` / `tablesDuJeu()` / `limitesDuJeu()` sont désormais les seuls chemins. Côté client, `JEUX_MULTI_IDS` et `LIVE_GAME_LINK` (`public/app.js`) sont les deux mêmes pièges — ce dernier faisait pointer trois jeux sur `#`.
+
+⚠️ **Les tables fantômes.** Une déconnexion ne fait que marquer le joueur absent (`p.connected = false`) ; rien n'effaçait un salon d'attente que tout le monde avait quitté. Or `games()` renvoyait **tous** les joueurs sans distinction, quand `online()` filtrait sur `connected` : le hall annonçait donc « Rejoindre » sur des tables vides depuis des heures — un mensonge sur la seule chose qu'on lui demande. Les cinq modules exposent maintenant `presents`, `creeA` et `limites` en plus de `players`, et `fermerLesTablesFantomes()` (server.js) ferme les **salons d'attente** sans personne de connecté au bout de 5 minutes. Jamais une partie en cours : on peut y revenir.
+
+⚠️ **Le catalogue mentait sur le solo.** Il annonçait « Yams — 2 à 4 joueurs » alors que `MIN_PLAYERS = 1` depuis la refonte. Le solo est justement la seule chose jouable quand le salon est vide, c'est-à-dire presque toujours : c'était le pire endroit où se tromper. Le catalogue est aussi trié selon le nombre de présents, et la famille « à un seul téléphone » passe devant quand personne n'est en ligne.
+
+### Le hall en direct
+
+`/jouer/` sondait le serveur toutes les dix secondes alors que les six jeux qu'il annonce parlent déjà socket.io. Le serveur compare désormais sa propre mémoire toutes les deux secondes (`empreinteDesTables`) et émet un simple `hall_bouge` dans la salle `salon_hall` ; chacun redemande alors **sa** version — l'état est personnel (« moi », « je viens », la dernière partie), il ne se diffuse pas tel quel. Un sondage de 45 s reste en filet si le socket tombe.
+
+⚠️ L'empreinte doit contenir **la présence** autant que les tables : c'est de la liste des présents que part le geste « proposer une partie ». Elle ne compare que l'ensemble des pseudos présents, jamais leur `lastSeen` — sinon elle changerait à chaque battement et tout le monde redemanderait tout, en boucle.
+
+## Les défis (`defis/jeu.js`) — le multijoueur sans rendez-vous
+
+La mécanique des jeux du jour (une manche identique pour tous, un classement, un temps qui départage) appliquée aux jeux qu'on voulait faire ensemble : quelqu'un lance une manche, **tout le monde reçoit exactement la même**, chacun la fait quand il veut dans les 24 h, et on compare. On ne joue pas en même temps, on joue la même chose — et c'est suffisant pour que ça compte.
+
+Deux types, choisis parce que ce sont les deux jeux rapides dont le temps réel n'apportait rien : `motus` (même mot, six essais, barème 7 − essais, 0 si échec) et `drapeaux` (même série de dix questions dans le même ordre, score = bonnes réponses). Le module **n'ouvre aucun socket**, c'est tout l'intérêt.
+
+- ⚠️ **Le contenu ne quitte jamais le serveur en entier** : le mot n'est envoyé qu'à la fin de la manche de celui qui demande, la bonne réponse d'une question qu'après y avoir répondu, et **le classement n'est visible qu'une fois qu'on a joué** — le voir avant donnerait le niveau à battre.
+- ⚠️ **Deux règles pour qu'une victoire en soit une** : à moins de deux participants il n'y a personne à battre (lancer son propre défi et le faire en premier ne vaut pas un palmarès), et à égalité en tête personne ne gagne — la même règle qu'au Yams, pour la même raison. Le vainqueur est **recalculé à chaque clôture** (`recalculerVictoires`) tant que le défi court, plutôt qu'attribué puis rattrapé.
+- Les clés `defi:<id>` / `defi:prog:<id>:<pseudo>` / `defi:joueurs:<id>` ne portent pas de date **dans leur nom** : `mfPurge()` les ramasse d'après le `creeA` de la manche, au bout d'une semaine. ⚠️ Jamais `defi:stats:<pseudo>`.
+- **Classement du Salon** : les défis sont le seul jeu multijoueur qui compte vraiment **en saison**, parce qu'ils sont datés (`finiA`) et qu'on sait qui a gagné — là où `admin:gameHistory` n'enregistre pas le vainqueur. Vu que la saison est la vue par défaut, ça compte.
+
 ## Les statistiques : où elles doivent apparaître
 
 ⚠️ **Le piège qui s'est répété à chaque nouveau jeu.** Écrire les statistiques d'un jeu ne suffit pas : il faut aussi les brancher aux **six endroits** qui les montrent. À chaque ajout, un ou plusieurs ont été oubliés — l'Infiltré, lui, ne persistait *rien du tout*, et on pouvait y jouer vingt parties sans qu'il en reste la moindre trace.
@@ -292,6 +333,8 @@ Liste à parcourir pour **tout** nouveau jeu :
 | **Titres** (`comptes/titres.js`) | lire la famille de clés, compter le jeu dans `jeuxDifferents`, et lui donner au moins un titre — sinon on peut y exceller sans que rien ne le montre. Préférer des titres **relatifs** (le meilleur, le plus rapide) : pas de seuil à calibrer sur des données qui n'existent pas encore. |
 | **Résultats du jour** (`/api/salon/resultats-du-jour`) | pour un jeu du jour seulement. |
 | **Admin** (`MODULES_JEUX` dans `admin/routes.js` + `ctx` dans `server.js`) | pour un jeu multijoueur seulement. |
+
+Dernier passage en date : **les défis** ont été branchés sur la carte du profil, le résumé, le classement (saison **et** depuis toujours) et deux titres (`releve`, `lancegants`). Ils n'apparaissent ni dans les résultats du jour (ils ne sont pas quotidiens) ni dans `MODULES_JEUX` (ils n'ont ni socket ni table).
 
 Et pour un jeu du jour, ne pas oublier non plus le panneau « Aujourd'hui » (`JEUX_DU_JOUR` dans `public/app.js` + le pouls), `public/enchainement.js`, et le préchargement du service worker.
 

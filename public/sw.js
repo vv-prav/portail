@@ -1,5 +1,5 @@
 // Incrémente cette version à CHAQUE changement de fichier statique.
-const CACHE_VERSION = 'salon-v103';
+const CACHE_VERSION = 'salon-v104';
 const CORE = [
     '/', '/index.html', '/app.js', '/style.css', '/manifest.json',
     '/design-system.css', '/design-system.js', '/profile-viewer.js', '/invitation.js', '/enchainement.js', '/vues.js',
@@ -15,6 +15,7 @@ const CORE = [
     '/chiffres/', '/chiffres/app.js', '/chiffres/style.css',
     '/geo/', '/geo/app.js', '/geo/style.css',
     '/drapeaux/', '/drapeaux/app.js', '/drapeaux/style.css',
+    '/defis/', '/defis/app.js', '/defis/style.css',
     '/pbac/', '/pbac/app.js', '/pbac/style.css',
     '/undercover/', '/undercover/app.js', '/undercover/style.css',
     '/chance/', '/chance/app.js', '/chance/style.css',

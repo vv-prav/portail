@@ -530,6 +530,29 @@ function mfPurge() {
         }
         if (date && /^\d{4}-\d{2}-\d{2}$/.test(date) && date < limit) { mfDel(k); removed++; }
     }
+    // Les défis ne sont pas datés dans leur clé : ils portent leur date en
+    // valeur. Un défi ne vit qu'une journée, mais ses clés survivraient pour
+    // toujours si personne ne les ramassait — on garde une semaine, le temps
+    // qu'un classement reste consultable, puis on efface la manche ET les
+    // progressions qui vont avec. ⚠️ Jamais `defi:stats:*` : ce sont les
+    // statistiques des joueurs, elles n'ont pas de date de péremption.
+    const limiteDefi = Date.now() - 7 * 864e5;
+    const defisMorts = new Set();
+    for (const k of Object.keys(mfCache)) {
+        const parts = k.split(':');
+        if (parts[0] !== 'defi' || parts.length !== 2) continue;
+        const d = mfCache[k];
+        if (d && d.creeA && d.creeA < limiteDefi) { defisMorts.add(parts[1]); mfDel(k); removed++; }
+    }
+    if (defisMorts.size) {
+        for (const k of Object.keys(mfCache)) {
+            const parts = k.split(':');
+            if (parts[0] !== 'defi') continue;
+            if (parts[1] === 'joueurs' && defisMorts.has(parts[2])) { mfDel(k); removed++; }
+            else if (parts[1] === 'prog' && defisMorts.has(parts[2])) { mfDel(k); removed++; }
+        }
+    }
+
     // les séries de jours ne sont pas datées : on borne leur taille
     for (const k of Object.keys(mfCache)) {
         if ((k.startsWith('mf:days:') || k.startsWith('motus:days:') || k.startsWith('mj:days:')) && Array.isArray(mfCache[k]) && mfCache[k].length > 400) {
@@ -961,6 +984,18 @@ const motusPartyApi = require('./motusparty/game')(app, io, {
 // `geo/pays.js` tel quel — aucune donnée nouvelle à créer.
 app.use('/drapeaux', requireAuth, express.static(__dirname + '/public/drapeaux'));
 const drapeauxApi = require('./drapeaux/game')(app, io, { get: mfGet, set: mfSet });
+
+// ---------------------------------------------------------------------
+//  LES DÉFIS — le multijoueur sans rendez-vous
+//  Monté ici parce qu'il a besoin du vocabulaire Motus, qui vit juste
+//  au-dessus. Il n'ouvre aucun socket : c'est tout l'intérêt.
+// ---------------------------------------------------------------------
+const defisApi = require('./defis/jeu')(app, requireAuthApi, {
+    get: mfGet, set: mfSet,
+    utilisateur: currentUser,
+    motus: { pool: motusPool, known: motusKnown, marks: motusMarks, essais: MOTUS_TRIES },
+});
+app.use('/defis', requireAuth, express.static(__dirname + '/public/defis'));
 
 app.get('/api/motus/today', requireAuth, (req, res) => {
     const user = currentUser(req), today = mfTodayId();
@@ -1563,32 +1598,15 @@ const GAME_HISTORY_MAX = 150;
 let knownLiveGames = new Map(); // id -> { app, label, players, seenAt }
 
 function snapshotActiveGames() {
+    // `toutesLesTables()` est la seule liste des jeux multijoueurs. Avant, les
+    // cinq jeux étaient énumérés ici à la main — et le quiz des drapeaux, ajouté
+    // après, n'y figurait pas : aucune de ses parties n'entrait dans
+    // l'historique, donc aucune ne comptait dans le classement de saison.
     const current = new Map();
-    try {
-        perudoApi.games().filter(g => g.started && !g.vsBot).forEach(g => {
-            current.set('perudo:' + g.id, { app: 'perudo', label: 'Perudo', players: g.players.map(p => p.pseudo) });
-        });
-    } catch (e) {}
-    try {
-        pbacApi.games().filter(g => g.status !== 'lobby' && g.status !== 'ended').forEach(g => {
-            current.set('pbac:' + g.id, { app: 'pbac', label: 'Petit Bac', players: g.players });
-        });
-    } catch (e) {}
-    try {
-        undercoverApi.games().filter(g => g.status !== 'lobby' && g.status !== 'ended').forEach(g => {
-            current.set('undercover:' + g.id, { app: 'undercover', label: 'Infiltré', players: g.players });
-        });
-    } catch (e) {}
-    try {
-        yamsApi.games().filter(g => g.status !== 'lobby' && g.status !== 'ended').forEach(g => {
-            current.set('yams:' + g.id, { app: 'yams', label: 'Yams', players: g.players });
-        });
-    } catch (e) {}
-    try {
-        motusPartyApi.games().filter(g => g.status !== 'lobby' && g.status !== 'ended').forEach(g => {
-            current.set('motusparty:' + g.id, { app: 'motusparty', label: 'Motus Party', players: g.players });
-        });
-    } catch (e) {}
+    for (const t of toutesLesTables()) {
+        if (t.statut !== 'encours') continue;
+        current.set(t.jeu + ':' + t.id, { app: t.jeu, label: t.nom, players: t.joueurs });
+    }
     return current;
 }
 function pollGameHistory() {
@@ -1949,28 +1967,27 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
         .slice(0, 3)
         .map(u => ({ pseudo: u.pseudo, lastSeen: u.lastSeen }));
 
-    // Parties en cours, tous jeux confondus, avec les prénoms des joueurs présents.
-    const activeGames = [];
-    try {
-        perudoApi.games().filter(g => g.started && !g.vsBot).forEach(g => {
-            activeGames.push({ app: 'perudo', label: 'Perudo', players: g.players.map(p => p.pseudo) });
-        });
-    } catch (e) {}
-    try {
-        pbacApi.games().filter(g => g.status !== 'lobby' && g.status !== 'ended').forEach(g => {
-            activeGames.push({ app: 'pbac', label: 'Petit Bac', players: g.players });
-        });
-    } catch (e) {}
-    try {
-        undercoverApi.games().filter(g => g.status !== 'lobby' && g.status !== 'ended').forEach(g => {
-            activeGames.push({ app: 'undercover', label: 'Infiltré', players: g.players });
-        });
-    } catch (e) {}
-    try {
-        yamsApi.games().filter(g => g.status !== 'lobby' && g.status !== 'ended').forEach(g => {
-            activeGames.push({ app: 'yams', label: 'Yams', players: g.players });
-        });
-    } catch (e) {}
+    // Parties en cours et tables qui attendent du monde, tous jeux confondus.
+    // Elles étaient énumérées jeu par jeu ici aussi : Motus Party et le quiz
+    // des drapeaux n'y figuraient pas, et y jouer ne se voyait donc nulle part
+    // sur l'accueil.
+    const lesTables = toutesLesTables();
+    const activeGames = lesTables
+        .filter(t => t.statut === 'encours')
+        .map(t => ({ app: t.jeu, label: t.nom, players: t.joueurs }));
+
+    // Les tables qui attendent encore quelqu'un, et les rendez-vous à venir.
+    // C'est ce que le panneau « Aujourd'hui » et la fin des jeux du jour vont
+    // annoncer : les jeux du jour font 90 % du passage, le hall multijoueur
+    // est une pièce devant laquelle personne ne marche. L'invitation doit
+    // aller là où sont les gens, pas l'inverse.
+    const tablesOuvertes = lesTables
+        .filter(t => t.statut === 'attente' && t.presents.length && !t.presents.includes(user))
+        .map(t => ({
+            jeu: t.jeu, nom: t.nom, emoji: t.emoji, accent: t.accent, href: t.href,
+            hote: t.hote, presents: t.presents, creeA: t.creeA,
+        }));
+    const rdvAVenir = rendezVousOuverts(user).filter(r => r.quand > Date.now());
 
     res.json({
         mf: { done, total: MF_LEVELS.length, streak }, perudo: { online, games, names: perudoNames },
@@ -1996,6 +2013,9 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
         motusparty: { online: mpOnlineCount, names: mpNames },
         drapeaux: { online: drapeauxNames.length, names: drapeauxNames },
         salonOnline, activeGames, recentlyActive,
+        tablesOuvertes, rendezvous: rdvAVenir,
+        invitations: invitationsPour(user),
+        defis: { attente: defisApi.enAttentePour(user) },
     });
 });
 
@@ -2178,6 +2198,19 @@ function portraitJoueur(pseudo) {
             ]);
     }
 
+    let df = null;
+    try { df = defisApi.statsFor(pseudo); } catch (e) {}
+    if (df && df.parties) {
+        const parType = df.parType || {};
+        ajoute('defis', 'Les défis', '⚔️', df.parties,
+            df.victoires + ' défi' + (df.victoires > 1 ? 's' : '') + ' remporté' + (df.victoires > 1 ? 's' : ''), [
+                ['Défis joués', df.parties], ['Remportés', df.victoires || null],
+                ['Points cumulés', df.points || null],
+                ['Dont Motus', parType.motus || null],
+                ['Dont Drapeaux', parType.drapeaux || null],
+            ]);
+    }
+
     let mp = null;
     try { mp = motusPartyApi.statsFor(pseudo); } catch (e) {}
     if (mp && mp.matchesPlayed) {
@@ -2262,6 +2295,19 @@ function serieDepuisJours(jours) {
 // ---------------------------------------------------------------------
 // Quatre modules partagent exactement la même forme ({id, host, status,
 // players}) ; Perudo a la sienne, plus riche, et reste traité à part.
+
+// ---------------------------------------------------------------------
+//  LES JEUX MULTIJOUEURS — la liste, et elle est unique.
+//
+//  Elle était énumérée à la main à trois endroits (le pouls, l'historique
+//  des parties, la liste des tables) : le quiz des drapeaux manquait dans
+//  deux d'entre eux et Motus Party dans un, si bien qu'y jouer ne
+//  laissait aucune trace sur l'accueil ni dans le classement de saison.
+//  Tout ce qui a besoin de parcourir les jeux passe désormais par ici.
+//
+//  Perudo reste à part : il n'a pas de `status`, ignore les parties
+//  contre l'ordinateur et garde son propre hall.
+// ---------------------------------------------------------------------
 const JEUX_MULTI = [
     { id: 'pbac', nom: 'Petit Bac', emoji: '✏️', accent: '#c2513a', href: '/pbac', api: () => pbacApi },
     { id: 'undercover', nom: 'Infiltré', emoji: '🕵️', accent: '#6f7bb0', href: '/undercover', api: () => undercoverApi },
@@ -2270,38 +2316,291 @@ const JEUX_MULTI = [
     { id: 'drapeaux', nom: 'Quiz des drapeaux', emoji: '🏳️', accent: '#6f7bb0', href: '/drapeaux', api: () => drapeauxApi },
 ];
 
-app.get('/api/salon/tables', requireAuthApi, (req, res) => {
-    const tables = [];
+// Toutes les tables d'un jeu, quel que soit le jeu, sous une forme unique.
+function tablesDuJeu(j) {
+    let liste = [];
+    try { liste = j.api().games() || []; } catch (e) { return []; }
+    return liste.filter(g => g.status !== 'ended').map(g => ({
+        jeu: j.id, nom: j.nom, emoji: j.emoji, accent: j.accent,
+        id: g.id, hote: g.host,
+        joueurs: g.players || [],
+        presents: g.presents || g.players || [],
+        creeA: g.creeA || 0,
+        statut: g.status === 'lobby' ? 'attente' : 'encours',
+        href: `${j.href}/?table=${encodeURIComponent(g.id)}`,
+    }));
+}
+function tablesPerudo() {
+    try {
+        return (perudoApi.games() || []).filter(g => !g.vsBot).map(g => ({
+            jeu: 'perudo', nom: 'Perudo', emoji: '🎲', accent: '#d9a94e',
+            id: g.id, hote: (g.players[0] || {}).pseudo || '—',
+            joueurs: g.players.filter(p => !p.isBot).map(p => p.pseudo),
+            presents: g.players.filter(p => !p.isBot && p.connected !== false).map(p => p.pseudo),
+            creeA: g.creeA || g.createdAt || 0,
+            statut: g.started ? 'encours' : 'attente',
+            href: '/perudo',           // Perudo garde son propre hall et son identité
+        }));
+    } catch (e) { return []; }
+}
+// Toutes les tables, tous jeux confondus. Une seule fonction : c'est elle
+// que lisent la liste des tables, le pouls et l'historique.
+function toutesLesTables() {
+    return [...JEUX_MULTI.flatMap(tablesDuJeu), ...tablesPerudo()];
+}
+
+// Les limites de chaque jeu (combien il en faut, combien il en tient),
+// lues sur les modules eux-mêmes plutôt que recopiées : une table peut
+// ainsi annoncer « 3/12 » sans que personne ait à tenir un tableau à jour.
+function limitesDuJeu(id) {
+    if (id === 'perudo') return { min: 2, max: 12 };
+    const j = JEUX_MULTI.find(x => x.id === id);
+    if (!j) return null;
+    try { return j.api().limites || null; } catch (e) { return null; }
+}
+
+// ---------------------------------------------------------------------
+//  LES TABLES FANTÔMES
+//  Une déconnexion ne fait que marquer le joueur absent : rien n'effaçait
+//  jamais un salon d'attente que tout le monde avait quitté. Le hall
+//  annonçait donc « Rejoindre » sur des tables vides depuis des heures —
+//  un mensonge sur la seule chose qu'on lui demande.
+//
+//  On ne ferme que des salons d'attente (jamais une partie en cours, où
+//  quelqu'un peut revenir), vides de tout joueur connecté, et ouverts
+//  depuis assez longtemps pour qu'un simple passage de tunnel ne compte
+//  pas comme un abandon.
+// ---------------------------------------------------------------------
+const TABLE_FANTOME_MS = 5 * 60 * 1000;
+function fermerLesTablesFantomes() {
+    const maintenant = Date.now();
     for (const j of JEUX_MULTI) {
-        let liste = [];
-        try { liste = j.api().games() || []; } catch (e) { continue; }
-        for (const g of liste) {
-            if (g.status === 'ended') continue;
-            tables.push({
-                jeu: j.id, nom: j.nom, emoji: j.emoji, accent: j.accent,
-                id: g.id, hote: g.host, joueurs: g.players || [],
-                statut: g.status === 'lobby' ? 'attente' : 'encours',
-                href: `${j.href}/?table=${encodeURIComponent(g.id)}`,
-            });
+        let api = null;
+        try { api = j.api(); } catch (e) { continue; }
+        if (!api || !api.endGame) continue;
+        for (const t of tablesDuJeu(j)) {
+            if (t.statut !== 'attente') continue;
+            if (t.presents.length) continue;
+            if (!t.creeA || maintenant - t.creeA < TABLE_FANTOME_MS) continue;
+            try { api.endGame(t.id); } catch (e) {}
         }
     }
-    // Perudo : on ignore les parties contre l'ordinateur, qui ne se rejoignent pas.
-    try {
-        for (const g of (perudoApi.games() || [])) {
-            if (g.vsBot) continue;
-            tables.push({
-                jeu: 'perudo', nom: 'Perudo', emoji: '🎲', accent: '#d9a94e',
-                id: g.id, hote: (g.players[0] || {}).pseudo || '—',
-                joueurs: g.players.filter(p => !p.isBot).map(p => p.pseudo),
-                statut: g.started ? 'encours' : 'attente',
-                href: '/perudo',           // Perudo garde son propre hall et son identité
-            });
-        }
-    } catch (e) {}
+}
+setInterval(fermerLesTablesFantomes, 60 * 1000);
 
+// ---------------------------------------------------------------------
+//  LES RENDEZ-VOUS
+//
+//  Le multijoueur du salon demandait jusqu'ici que deux personnes ouvrent
+//  l'appli à la même minute. Ça n'arrive pas tout seul : Yams et Motus
+//  Party comptent cinq et deux clés de statistiques quand le Motus du
+//  jour en compte cent quatre-vingt-six.
+//
+//  Un rendez-vous retourne le problème — au lieu d'espérer la
+//  coïncidence, on la fabrique : « je lance un Petit Bac ce soir à 21 h »,
+//  et les autres s'inscrivent à l'avance. Rien de temps réel là-dedans,
+//  donc rien qui exige d'être connecté au bon moment ; c'est justement
+//  l'intérêt.
+//
+//  Un rendez-vous ne crée aucune table : à l'heure dite, l'hôte ouvre une
+//  partie comme d'habitude. Réserver une table d'avance obligerait à la
+//  garder ouverte des heures, et le ramasseur de tables fantômes la
+//  fermerait — deux mécanismes qui se contrediraient.
+// ---------------------------------------------------------------------
+const K_RDV = 'salon:rdv';
+const RDV_MAX = 20;                       // au-delà, ce n'est plus un salon, c'est un agenda
+const RDV_SURVIE_MS = 2 * 60 * 60 * 1000; // un rendez-vous reste affiché 2 h après l'heure dite
+
+function rdvTous() {
+    const liste = mfGet(K_RDV);
+    return Array.isArray(liste) ? liste : [];
+}
+// Le ménage se fait à la lecture : pas de minuteur de plus à entretenir, et
+// un rendez-vous passé disparaît de lui-même au prochain regard.
+function rdvVivants() {
+    const maintenant = Date.now();
+    const liste = rdvTous().filter(r => r && r.quand && (maintenant - r.quand) < RDV_SURVIE_MS);
+    if (liste.length !== rdvTous().length) mfSet(K_RDV, liste);
+    return liste;
+}
+function rdvPublic(r, moi) {
+    const j = jeuMulti(r.jeu);
+    return {
+        id: r.id, jeu: r.jeu,
+        nom: (j && j.nom) || r.jeu, emoji: (j && j.emoji) || '🎮',
+        accent: (j && j.accent) || '#d9a94e', href: (j && j.href) || '/jouer/',
+        hote: r.hote, quand: r.quand, note: r.note || '',
+        inscrits: r.inscrits || [],
+        jeViens: (r.inscrits || []).includes(moi),
+        cEstMoi: r.hote === moi,
+    };
+}
+function rendezVousOuverts(moi) {
+    return rdvVivants().sort((a, b) => a.quand - b.quand).map(r => rdvPublic(r, moi));
+}
+
+app.post('/api/salon/rdv', requireAuthApi, (req, res) => {
+    const moi = currentUser(req);
+    const jeu = String((req.body && req.body.jeu) || '');
+    if (!jeuMulti(jeu)) return res.status(400).json({ error: 'Jeu inconnu.' });
+    const quand = Number((req.body && req.body.quand) || 0);
+    if (!quand || !isFinite(quand)) return res.status(400).json({ error: 'Heure manquante.' });
+    // Cinq minutes de marge en arrière : le temps de remplir le formulaire ne
+    // doit pas rendre invalide une heure choisie à la minute près.
+    if (quand < Date.now() - 5 * 60 * 1000) return res.status(400).json({ error: 'Cette heure est déjà passée.' });
+    if (quand > Date.now() + 14 * 864e5) return res.status(400).json({ error: 'Pas au-delà de deux semaines.' });
+
+    const liste = rdvVivants();
+    if (liste.length >= RDV_MAX) return res.status(400).json({ error: 'Trop de rendez-vous ouverts.' });
+    // Un seul rendez-vous à la fois par personne et par jeu : sinon un double
+    // clic en pose deux, et la liste devient illisible.
+    if (liste.some(r => r.hote === moi && r.jeu === jeu)) {
+        return res.status(400).json({ error: 'Tu as déjà un rendez-vous ouvert pour ce jeu.' });
+    }
+    const r = {
+        id: 'rdv' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        jeu, hote: moi, quand,
+        note: String((req.body && req.body.note) || '').slice(0, 120),
+        inscrits: [moi],                  // celui qui propose vient, forcément
+        creeA: Date.now(),
+    };
+    liste.push(r);
+    mfSet(K_RDV, liste);
+    res.json({ ok: true, rendezvous: rdvPublic(r, moi) });
+});
+
+app.post('/api/salon/rdv/inscription', requireAuthApi, (req, res) => {
+    const moi = currentUser(req);
+    const liste = rdvVivants();
+    const r = liste.find(x => x.id === String((req.body && req.body.id) || ''));
+    if (!r) return res.status(404).json({ error: 'Ce rendez-vous n’existe plus.' });
+    r.inscrits = r.inscrits || [];
+    const dedans = r.inscrits.includes(moi);
+    // L'hôte ne peut pas se désinscrire de son propre rendez-vous : il
+    // l'annule, ce qui est autrement plus clair pour ceux qui s'y étaient
+    // inscrits.
+    if (dedans && r.hote === moi) return res.status(400).json({ error: 'Annule le rendez-vous plutôt.' });
+    r.inscrits = dedans ? r.inscrits.filter(p => p !== moi) : [...r.inscrits, moi];
+    mfSet(K_RDV, liste);
+    res.json({ ok: true, rendezvous: rdvPublic(r, moi) });
+});
+
+app.post('/api/salon/rdv/annuler', requireAuthApi, (req, res) => {
+    const moi = currentUser(req);
+    const liste = rdvVivants();
+    const r = liste.find(x => x.id === String((req.body && req.body.id) || ''));
+    if (!r) return res.json({ ok: true });
+    if (r.hote !== moi && !isAdmin(moi)) return res.status(403).json({ error: 'Ce rendez-vous n’est pas le tien.' });
+    mfSet(K_RDV, liste.filter(x => x !== r));
+    res.json({ ok: true });
+});
+
+// Retrouve la présentation d'un jeu (emoji, couleur, lien) à partir de son
+// identifiant, Perudo compris.
+function jeuMulti(id) {
+    if (id === 'perudo') return { id: 'perudo', nom: 'Perudo', emoji: '🎲', accent: '#d9a94e', href: '/perudo' };
+    return JEUX_MULTI.find(j => j.id === id) || null;
+}
+
+// La dernière partie jouée — la tienne de préférence, sinon la dernière du
+// salon. Une pièce vide sans mémoire est une impasse : « la dernière fois,
+// c'était un Petit Bac avec Théo et Lisa » donne au moins un geste à faire.
+function dernierePartie(moi) {
+    const histo = mfGet(GAME_HISTORY_KEY) || [];
+    const utile = (e) => e && e.app && Array.isArray(e.players) && e.players.length;
+    const sienne = histo.find(e => utile(e) && e.players.includes(moi));
+    const e = sienne || histo.find(utile);
+    if (!e) return null;
+    const j = jeuMulti(e.app);
+    return {
+        jeu: e.app, nom: e.label || (j && j.nom) || e.app,
+        emoji: (j && j.emoji) || '🎮', accent: (j && j.accent) || '#d9a94e',
+        href: (j && j.href) || '/jouer/',
+        joueurs: e.players, quand: e.endedAt || 0, moi: !!sienne,
+    };
+}
+
+// ---------------------------------------------------------------------
+//  « ON SE FAIT UNE PARTIE ? »
+//
+//  Le hall affichait qui était connecté, et le clic sur quelqu'un ouvrait
+//  sa fiche de statistiques. Le geste évident — lui proposer de jouer —
+//  n'existait pas : la page savait déjà qui était là ET ce qui était
+//  ouvert, elle ne reliait simplement pas les deux.
+//
+//  Une invitation ne vaut que dans l'instant : passé un quart d'heure,
+//  elle ne veut plus rien dire et disparaît d'elle-même.
+// ---------------------------------------------------------------------
+const K_INVIT = 'salon:invitations';
+const INVIT_VIE_MS = 15 * 60 * 1000;
+
+function invitVivantes() {
+    const brut = mfGet(K_INVIT);
+    const liste = Array.isArray(brut) ? brut : [];
+    const maintenant = Date.now();
+    const gardees = liste.filter(i => i && (maintenant - i.quand) < INVIT_VIE_MS);
+    if (gardees.length !== liste.length) mfSet(K_INVIT, gardees);
+    return gardees;
+}
+function invitationsPour(pseudo) {
+    return invitVivantes().filter(i => i.a === pseudo).map(i => {
+        const j = jeuMulti(i.jeu);
+        return {
+            id: i.id, de: i.de, jeu: i.jeu, quand: i.quand,
+            nom: (j && j.nom) || i.jeu, emoji: (j && j.emoji) || '🎮',
+            accent: (j && j.accent) || '#d9a94e', href: (j && j.href) || '/jouer/',
+        };
+    });
+}
+
+app.post('/api/salon/inviter', requireAuthApi, (req, res) => {
+    const moi = currentUser(req);
+    const a = String((req.body && req.body.a) || '');
+    const jeu = String((req.body && req.body.jeu) || '');
+    if (!registeredUsers[a]) return res.status(404).json({ error: 'Personne à ce nom.' });
+    if (a === moi) return res.status(400).json({ error: 'Difficile de jouer seul à deux.' });
+    if (!jeuMulti(jeu)) return res.status(400).json({ error: 'Jeu inconnu.' });
+
+    const liste = invitVivantes();
+    // Une seule invitation en cours par personne, par destinataire et par jeu :
+    // relancer trois fois de suite n'a jamais fait venir personne.
+    if (liste.some(i => i.de === moi && i.a === a && i.jeu === jeu)) return res.json({ ok: true, deja: true });
+    liste.push({ id: 'inv' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+                 de: moi, a, jeu, quand: Date.now() });
+    mfSet(K_INVIT, liste);
+    res.json({ ok: true });
+});
+
+app.post('/api/salon/invitation/vue', requireAuthApi, (req, res) => {
+    const moi = currentUser(req);
+    const id = String((req.body && req.body.id) || '');
+    mfSet(K_INVIT, invitVivantes().filter(i => !(i.id === id && i.a === moi)));
+    res.json({ ok: true });
+});
+
+app.get('/api/salon/tables', requireAuthApi, (req, res) => {
+    const moi = currentUser(req);
     // Les tables en attente d'abord : ce sont les seules qu'on peut rejoindre.
-    tables.sort((a, b) => (a.statut === b.statut ? 0 : a.statut === 'attente' ? -1 : 1));
-    res.json({ tables, moi: currentUser(req) });
+    const tables = toutesLesTables()
+        .map(t => ({ ...t, limites: limitesDuJeu(t.jeu) }))
+        .sort((a, b) => (a.statut === b.statut ? 0 : a.statut === 'attente' ? -1 : 1));
+
+    // Qui est là, en une seule requête avec les tables : le hall en faisait
+    // deux, et la seconde partait sans savoir qui était « moi » — au premier
+    // chargement, on se voyait donc soi-même dans la liste des autres.
+    const FENETRE_MS = 3 * 60 * 1000, maintenant = Date.now();
+    const presents = Object.values(registeredUsers)
+        .filter(u => u && u.lastSeen && (maintenant - u.lastSeen) < FENETRE_MS && u.pseudo !== moi)
+        .map(u => u.pseudo)
+        .sort((a, b) => a.localeCompare(b));
+
+    res.json({
+        tables, moi, presents,
+        rendezvous: rendezVousOuverts(moi),
+        derniere: dernierePartie(moi),
+        invitations: invitationsPour(moi),
+        defis: defisApi.resumes(moi),
+    });
 });
 
 
@@ -2571,6 +2870,7 @@ app.get('/api/salon/mystats-summary', requireAuthApi, (req, res) => {
     if (pbTot && pbTot.gamesPlayed) totals.push(['Petit Bac', pbTot.gamesPlayed]);
     try { const u = undercoverApi.statsFor(pseudo); if (u && u.parties) totals.push(['Infiltré', u.parties]); } catch (e) {}
     try { const d = drapeauxApi.statsFor(pseudo); const n = d ? d.parties + (d.solo || 0) : 0; if (n) totals.push(['Quiz des drapeaux', n]); } catch (e) {}
+    try { const f = defisApi.statsFor(pseudo); if (f && f.parties) totals.push(['Les défis', f.parties]); } catch (e) {}
     const chJours = Object.keys(mfCache).filter(k => k.startsWith(`chiffres:prog:${pseudo}:`) && mfCache[k] && mfCache[k].fini).length;
     if (chJours) totals.push(['Le compte est bon', chJours]);
     const geoJours = Object.keys(mfCache).filter(k => k.startsWith(`geo:prog:${pseudo}:`) && mfCache[k] && mfCache[k].fini).length;
@@ -2758,6 +3058,50 @@ require('./admin/routes')(app, {
 // ---------------------------------------------------------------------
 app.use(express.static('public'));
 
+// ---------------------------------------------------------------------
+//  LE HALL EN DIRECT
+//
+//  « Jouer ensemble » interrogeait le serveur toutes les dix secondes,
+//  alors que les six jeux qu'il annonce parlent déjà socket.io. Une table
+//  qui s'ouvrait mettait donc jusqu'à dix secondes à apparaître — sur une
+//  page dont c'est la seule raison d'être.
+//
+//  On ne diffuse pas l'état lui-même : il est personnel (« moi », « je
+//  viens », la dernière partie). On diffuse seulement le fait qu'il a
+//  changé, et chacun redemande sa propre version. Le serveur compare sa
+//  mémoire toutes les deux secondes — c'est un tour de boucle sur
+//  quelques objets, sans le moindre aller-retour réseau.
+// ---------------------------------------------------------------------
+const SALLE_HALL = 'salon_hall';
+let empreinteHall = '';
+function empreinteDesTables() {
+    const tables = toutesLesTables()
+        .map(t => `${t.jeu}:${t.id}:${t.statut}:${t.presents.join(',')}`).sort().join('|');
+    const rdv = rdvVivants().map(r => r.id + ':' + (r.inscrits || []).length).sort().join(',');
+    // Les invitations sont personnelles, mais le signal, lui, ne l'est pas :
+    // chacun redemande ensuite sa propre version. Une empreinte commune suffit.
+    const invit = invitVivantes().map(i => i.id).sort().join(',');
+    // Qui est là compte autant que ce qui est ouvert : c'est de cette liste que
+    // part le geste « proposer une partie ». Sans elle dans l'empreinte,
+    // quelqu'un qui arrivait dans le salon n'apparaissait qu'au bout de
+    // quarante-cinq secondes, sur le filet de sécurité. On ne compare que
+    // l'ensemble des présents, pas leur `lastSeen` : sinon l'empreinte
+    // changerait à chaque battement et tout le monde redemanderait tout, en
+    // boucle, pour rien.
+    const maintenant = Date.now();
+    const presents = Object.values(registeredUsers)
+        .filter(u => u && u.lastSeen && (maintenant - u.lastSeen) < 3 * 60 * 1000)
+        .map(u => u.pseudo).sort().join(',');
+    return `${tables}#${rdv}#${invit}#${presents}`;
+}
+setInterval(() => {
+    let e = '';
+    try { e = empreinteDesTables(); } catch (err) { return; }
+    if (e === empreinteHall) return;
+    empreinteHall = e;
+    try { io.to(SALLE_HALL).emit('hall_bouge'); } catch (err) {}
+}, 2000);
+
 io.on('connection', (socket) => {
     // Prêt pour Perudo & co. Le salon lui-même n'a pas besoin de temps réel.
 
@@ -2765,6 +3109,10 @@ io.on('connection', (socket) => {
     // les résolutions en direct des autres, jamais tout le portail.
     socket.on('motus_join', () => { socket.join('motus_room'); });
     socket.on('motus_leave', () => { socket.leave('motus_room'); });
+
+    // Salle du hall : ceux qui regardent « Jouer ensemble » en ce moment.
+    socket.on('hall_join', () => { socket.join(SALLE_HALL); });
+    socket.on('hall_leave', () => { socket.leave(SALLE_HALL); });
 });
 
 // Filet de sécurité : aucune erreur ne doit faire tomber le serveur

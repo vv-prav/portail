@@ -582,7 +582,7 @@ io.on('connection', (socket) => {
         }
         const baseCategories = sanitizeCategories(categories);
         const g = {
-            id, host: pseudo, status: 'lobby',
+            id, host: pseudo, status: 'lobby', creeA: Date.now(),
             players: [{ sid: socket.id, pseudo, connected: true }],
             categories: baseCategories, currentCategories: baseCategories.slice(),
             maxRounds: [3, 5, 7].includes(Number(rounds)) ? Number(rounds) : 5,
@@ -856,7 +856,12 @@ io.on('connection', (socket) => {
 });
 
 return {
-    games: () => Object.values(games).map(g => ({ id: g.id, host: g.host, status: g.status, players: g.players.map(p => p.pseudo) })),
+    games: () => Object.values(games).map(g => ({
+        id: g.id, host: g.host, status: g.status, creeA: g.creeA || 0,
+        players: g.players.map(p => p.pseudo),
+        presents: g.players.filter(p => p.connected).map(p => p.pseudo),
+    })),
+    limites: { min: 1, max: MAX_PLAYERS },
     online: () => [...new Set(Object.values(games).flatMap(g => g.players.filter(p => p.connected).map(p => p.pseudo)))],
     endGame: (id) => {
         const g = games[id];

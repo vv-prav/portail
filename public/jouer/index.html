@@ -19,6 +19,12 @@
             <p class="jo-sub" id="jo-sub">Un instant…</p>
         </header>
 
+        <!-- INVITATIONS REÇUES — elles passent avant tout le reste : quelqu'un
+             attend une réponse, maintenant. -->
+        <section class="jo-section" id="jo-invit-section" hidden>
+            <div class="jo-invits" id="jo-invits"></div>
+        </section>
+
         <button type="button" class="ds-btn jo-creer" id="jo-creer">＋ Créer une partie</button>
 
         <!-- TABLES OUVERTES -->
@@ -27,23 +33,61 @@
             <div class="jo-tables" id="jo-tables"></div>
         </section>
 
+        <!-- DÉFIS — le multijoueur qui ne demande pas d'être là en même temps -->
+        <section class="jo-section">
+            <h2 class="jo-section-title">Défis</h2>
+            <div class="jo-defis" id="jo-defis"></div>
+        </section>
+
+        <!-- RENDEZ-VOUS -->
+        <section class="jo-section">
+            <h2 class="jo-section-title">Rendez-vous</h2>
+            <div class="jo-rdv" id="jo-rdv"></div>
+            <button type="button" class="ds-btn ghost small jo-rdv-creer" id="jo-rdv-creer">📅 Proposer un rendez-vous</button>
+        </section>
+
         <!-- QUI EST LÀ -->
         <section class="jo-section" id="jo-online-section" hidden>
             <h2 class="jo-section-title">En ce moment dans le salon</h2>
             <div class="jo-online" id="jo-online"></div>
+            <p class="jo-astuce">Touche quelqu’un pour lui proposer une partie.</p>
         </section>
     </div>
 
     <!-- CATALOGUE -->
     <div class="ds-overlay" id="jo-catalogue" hidden>
-        <div class="ds-card jo-card">
+        <div class="ds-card jo-card tall">
             <button type="button" class="ds-card-close" id="jo-cat-close" aria-label="Fermer">✕</button>
             <h2 class="ds-card-title">Quel jeu ?</h2>
-            <p class="ds-card-text">Choisis un jeu, tu régleras la partie juste après.</p>
+            <p class="ds-card-text" id="jo-cat-intro">Choisis un jeu, tu régleras la partie juste après.</p>
             <div class="jo-cat-liste" id="jo-cat-liste"></div>
         </div>
     </div>
 
+    <!-- PROPOSER UN RENDEZ-VOUS -->
+    <div class="ds-overlay" id="jo-rdv-form" hidden>
+        <div class="ds-card jo-card">
+            <button type="button" class="ds-card-close" id="jo-rdv-close" aria-label="Fermer">✕</button>
+            <h2 class="ds-card-title">Proposer un rendez-vous</h2>
+            <p class="ds-card-text">Personne n’a besoin d’être connecté maintenant : les autres verront la
+                proposition en passant, et diront s’ils viennent.</p>
+
+            <p class="jo-champ-label">Quel jeu ?</p>
+            <div class="jo-rdv-jeux" id="jo-rdv-jeux"></div>
+
+            <p class="jo-champ-label">Quand ?</p>
+            <div class="jo-rdv-rapide" id="jo-rdv-rapide"></div>
+            <input class="ds-input" type="datetime-local" id="jo-rdv-quand">
+
+            <p class="jo-champ-label">Un mot (facultatif)</p>
+            <input class="ds-input" type="text" id="jo-rdv-note" maxlength="120" placeholder="« après le repas »">
+
+            <p class="ds-field-error" id="jo-rdv-erreur" hidden></p>
+            <button class="ds-btn" id="jo-rdv-valider">Proposer</button>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
     <script src="/design-system.js"></script>
     <script src="/profile-viewer.js"></script>
     <script src="app.js"></script>

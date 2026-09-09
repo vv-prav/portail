@@ -99,6 +99,24 @@ function calculerClassement(cache, pseudos, series, saison) {
                 ligne.points += BAREME.matchJoue;
             }
         }
+        // Les défis, eux, sont datés — chaque manche porte son `finiA`. Ils
+        // échappent donc à la limite ci-dessus : on sait quand la manche a été
+        // jouée ET qui l'a remportée, donc une victoire y compte vraiment.
+        // C'est important : la saison est la vue par défaut du classement, et
+        // un défi joué aujourd'hui doit rapporter aujourd'hui.
+        for (const [cle, val] of Object.entries(cache)) {
+            if (!val || typeof val !== 'object') continue;
+            const seg = cle.split(':');
+            if (seg[0] !== 'defi' || seg[1] !== 'prog' || seg.length !== 4) continue;
+            if (!val.fini || !val.finiA || val.finiA < saison.debut) continue;
+            const ligne = parPseudo.get(seg[3]);
+            if (!ligne) continue;
+            const stats = cache[`defi:stats:${seg[3]}`];
+            const gagne = !!(stats && Array.isArray(stats.defisGagnes) && stats.defisGagnes.includes(seg[2]));
+            ligne.matchsJoues++;
+            if (gagne) { ligne.matchsGagnes++; ligne.points += BAREME.matchGagne; }
+            else ligne.points += BAREME.matchJoue;
+        }
     } else
     { const MULTI = [
         { prefixe: 'pbac:stats', normalise: true,  joues: 'gamesPlayed',   gagnes: 'gamesWon' },
@@ -106,6 +124,9 @@ function calculerClassement(cache, pseudos, series, saison) {
         { prefixe: 'motusparty:stats', normalise: false, joues: 'matchesPlayed', gagnes: 'matchesWon' },
         { prefixe: 'drapeaux:stats', normalise: false, joues: 'parties', gagnes: 'victoires' },
         { prefixe: 'undercover:stats', normalise: false, joues: 'parties', gagnes: 'victoires' },
+        // Les défis : même barème que le reste du multijoueur — une manche
+        // jouée chacun de son côté reste une manche jouée contre les autres.
+        { prefixe: 'defi:stats', normalise: false, joues: 'parties', gagnes: 'victoires' },
     ];
     for (const [cle, val] of Object.entries(cache)) {
         if (!val || typeof val !== 'object') continue;

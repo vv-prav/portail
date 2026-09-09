@@ -328,7 +328,7 @@ io.on('connection', (socket) => {
         if (!options.types.length) options.types = Questions.TOUS_TYPES;
         const id = 'd' + (nextId++);
         games[id] = {
-            id, host: pseudo, status: 'lobby', phase: 'attente',
+            id, host: pseudo, status: 'lobby', creeA: Date.now(), phase: 'attente',
             options, questions: [], qIndex: 0, timer: null,
             players: [nouveauJoueur(socket.id, pseudo)], spectators: [],
         };
@@ -472,7 +472,12 @@ function classementDuSalon() {
 
 return {
     online: () => [...new Set(Object.values(games).flatMap(g => g.players.filter(present).map(p => p.pseudo)))],
-    games: () => Object.values(games).map(g => ({ id: g.id, host: g.host, status: g.status, players: g.players.map(p => p.pseudo) })),
+    games: () => Object.values(games).map(g => ({
+        id: g.id, host: g.host, status: g.status, creeA: g.creeA || 0,
+        players: g.players.map(p => p.pseudo),
+        presents: g.players.filter(p => present(p)).map(p => p.pseudo),
+    })),
+    limites: { min: MIN_PLAYERS, max: MAX_PLAYERS },
     statsFor: (pseudo) => ficheDe(pseudo),
     endGame: (id) => {
         const g = games[id];
