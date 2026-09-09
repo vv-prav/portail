@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, interactive-widget=resizes-content">
+    <meta name="theme-color" content="#14100b">
+    <title>Le quiz des drapeaux</title>
+    <link rel="icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="stylesheet" href="/design-system.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="qz">
+        <header class="qz-head">
+            <a class="ds-icon-btn" href="/jouer/" aria-label="Retour à l'espace multijoueurs">←</a>
+            <div class="qz-titles">
+                <h1 class="qz-title">Le quiz des drapeaux</h1>
+                <span class="qz-sub" id="qz-sub">Salon des parties</span>
+            </div>
+        </header>
+
+        <!-- LOBBY -->
+        <section class="qz-view" id="v-lobby">
+            <div class="qz-reglages">
+                <p class="qz-field-label">Nombre de questions</p>
+                <div class="ds-segmented" id="setQuestions">
+                    <button type="button" data-v="10">10</button>
+                    <button type="button" class="on" data-v="15">15</button>
+                    <button type="button" data-v="20">20</button>
+                </div>
+                <p class="qz-field-label">Temps par question</p>
+                <div class="ds-segmented" id="setDuree">
+                    <button type="button" data-v="8">8 s</button>
+                    <button type="button" class="on" data-v="12">12 s</button>
+                    <button type="button" data-v="20">20 s</button>
+                </div>
+                <p class="qz-field-label">Difficulté</p>
+                <div class="ds-segmented" id="setNiveau">
+                    <button type="button" data-v="facile">Faciles</button>
+                    <button type="button" class="on" data-v="moyen">Toutes</button>
+                    <button type="button" data-v="expert">Expert</button>
+                </div>
+                <p class="qz-field-label">Types de questions</p>
+                <div class="qz-types" id="setTypes"></div>
+                <button class="ds-btn" id="btn-create">Créer une partie</button>
+                <p class="qz-solo-hint">Personne en ligne ? Lance quand même : on peut jouer seul pour s'entraîner.</p>
+            </div>
+            <button class="ds-btn ghost" id="btn-stats">Mes statistiques</button>
+            <button class="ds-btn ghost" id="btn-classement">🏆 Classement du salon</button>
+            <p class="qz-list-label" id="lobby-vide" hidden>Aucune partie ouverte pour l'instant.</p>
+            <div class="qz-tables" id="qz-tables"></div>
+        </section>
+
+        <!-- SALLE D'ATTENTE -->
+        <section class="qz-view" id="v-waiting" hidden>
+            <p class="qz-field-label" id="wait-reglages">—</p>
+            <div class="ds-waiting-list" id="wait-players"></div>
+            <button class="ds-btn" id="btn-start" hidden>Lancer la partie</button>
+            <p class="qz-hint" id="wait-hint">En attente de l'hôte…</p>
+            <button class="ds-btn ghost" id="btn-leave">Quitter la partie</button>
+        </section>
+
+        <!-- QUESTION -->
+        <section class="qz-view" id="v-question" hidden>
+            <div class="qz-barre-haut">
+                <span class="qz-num" id="q-num">1 / 15</span>
+                <span class="qz-double" id="q-double" hidden>× 2</span>
+                <span class="qz-chrono" id="q-chrono">—</span>
+            </div>
+            <div class="qz-jauge"><i id="q-jauge"></i></div>
+
+            <p class="qz-enonce" id="q-enonce">—</p>
+            <div class="qz-media" id="q-media"></div>
+
+            <div class="qz-choix" id="q-choix"></div>
+
+            <p class="qz-repondu" id="q-repondu"></p>
+            <p class="qz-spectateur" id="q-spectateur" hidden>👀 Tu regardes cette partie</p>
+
+            <!-- Le classement pendant la partie : le podium et TA ligne. À dix,
+                 la liste entière est illisible sur un téléphone. -->
+            <button type="button" class="qz-mini-classement" id="q-mini"></button>
+        </section>
+
+        <!-- FIN -->
+        <section class="qz-view" id="v-fin" hidden>
+            <div class="qz-confetti" id="qz-confetti"></div>
+            <p class="qz-fin-emoji" id="fin-emoji">🏆</p>
+            <h2 class="qz-fin-titre" id="fin-titre">—</h2>
+            <div class="qz-podium" id="fin-podium"></div>
+            <div class="qz-faits" id="fin-faits"></div>
+            <div class="qz-classement-complet" id="fin-classement"></div>
+            <button class="ds-btn" id="btn-rematch" hidden>Rejouer</button>
+            <button class="ds-btn ghost" id="btn-retour">Retour au salon des parties</button>
+        </section>
+    </div>
+
+    <!-- MES STATISTIQUES -->
+    <div class="ds-overlay" id="v-stats" hidden>
+        <div class="ds-card tall">
+            <button type="button" class="ds-card-close" id="stats-close" aria-label="Fermer">✕</button>
+            <h2 class="ds-card-title">Mes statistiques</h2>
+            <div id="statsCorps"></div>
+        </div>
+    </div>
+
+    <!-- CLASSEMENT DU SALON -->
+    <div class="ds-overlay" id="v-classement" hidden>
+        <div class="ds-card tall">
+            <button type="button" class="ds-card-close" id="classement-close" aria-label="Fermer">✕</button>
+            <h2 class="ds-card-title">Classement du salon</h2>
+            <div id="classementCorps"></div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/profile-viewer.js"></script>
+    <script src="/design-system.js"></script>
+    <script src="/vues.js"></script>
+    <script src="/invitation.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

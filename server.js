@@ -894,6 +894,11 @@ const motusPartyApi = require('./motusparty/game')(app, io, {
     get: mfGet, set: mfSet,
 });
 
+// Le quiz des drapeaux : jusqu'à dix joueurs en simultané. Il réutilise
+// `geo/pays.js` tel quel — aucune donnée nouvelle à créer.
+app.use('/drapeaux', requireAuth, express.static(__dirname + '/public/drapeaux'));
+const drapeauxApi = require('./drapeaux/game')(app, io, { get: mfGet, set: mfSet });
+
 app.get('/api/motus/today', requireAuth, (req, res) => {
     const user = currentUser(req), today = mfTodayId();
     let date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : today;
@@ -1836,11 +1841,14 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
     // Les vrais prénoms connectés par jeu, pour les tuiles du salon ("qui est
     // connecté" plutôt qu'un simple nombre). Undercover réutilise le même schéma.
     let perudoNames = [], pbacNames = [], undercoverOnlineCount = 0, undercoverNames = [], yamsOnlineCount = 0, yamsNames = [], mpOnlineCount = 0, mpNames = [];
+    // (les noms du quiz des drapeaux sont relevés juste après)
     try { perudoNames = perudoApi.online().map(p => p.pseudo); } catch (e) {}
     try { pbacNames = pbacApi.online(); } catch (e) {}
     try { undercoverNames = undercoverApi.online(); undercoverOnlineCount = undercoverNames.length; } catch (e) {}
     try { yamsNames = yamsApi.online(); yamsOnlineCount = yamsNames.length; } catch (e) {}
     try { mpNames = motusPartyApi.online(); mpOnlineCount = mpNames.length; } catch (e) {}
+    let drapeauxNames = [];
+    try { drapeauxNames = drapeauxApi.online(); } catch (e) {}
 
     // Joueurs du salon actuellement en ligne : présence déduite de la fraîcheur de
     // lastSeen (mis à jour par ce même endpoint, interrogé toutes les 60 s côté client).
@@ -1909,6 +1917,7 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
         undercover: { online: undercoverOnlineCount, names: undercoverNames },
         yams: { online: yamsOnlineCount, names: yamsNames },
         motusparty: { online: mpOnlineCount, names: mpNames },
+        drapeaux: { online: drapeauxNames.length, names: drapeauxNames },
         salonOnline, activeGames, recentlyActive,
     });
 });
@@ -2013,6 +2022,21 @@ function portraitJoueur(pseudo) {
             ]);
     }
 
+    let dr = null;
+    try { dr = drapeauxApi.statsFor(pseudo); } catch (e) {}
+    if (dr && dr.questions) {
+        ajoute('drapeaux', 'Quiz des drapeaux', '🏳️', dr.parties + (dr.solo || 0),
+            dr.victoires + ' parties gagnées', [
+                ['Parties', dr.parties || null], ['Victoires', dr.victoires || null],
+                ['En solo', dr.solo || null],
+                ['Nuls', dr.nuls || null],
+                ['Bonnes réponses', dr.bonnes + ' / ' + dr.questions + ' (' + dr.tauxBonnes + ' %)'],
+                ['Meilleur score', dr.meilleurScore], ['Score moyen', dr.moyenne || null],
+                ['Meilleure série', dr.meilleureSerie > 1 ? dr.meilleureSerie + ' d\u2019affilée' : null],
+                ['Plus rapide', dr.plusRapide != null ? (dr.plusRapide / 1000).toFixed(1) + ' s' : null],
+            ]);
+    }
+
     let mp = null;
     try { mp = motusPartyApi.statsFor(pseudo); } catch (e) {}
     if (mp && mp.matchesPlayed) {
@@ -2102,6 +2126,7 @@ const JEUX_MULTI = [
     { id: 'undercover', nom: 'Infiltré', emoji: '🕵️', accent: '#6f7bb0', href: '/undercover', api: () => undercoverApi },
     { id: 'yams', nom: 'Yams', emoji: '🎯', accent: '#ecca82', href: '/yams', api: () => yamsApi },
     { id: 'motusparty', nom: 'Motus Party', emoji: '🏁', accent: '#d9a94e', href: '/motus/party', api: () => motusPartyApi },
+    { id: 'drapeaux', nom: 'Quiz des drapeaux', emoji: '🏳️', accent: '#6f7bb0', href: '/drapeaux', api: () => drapeauxApi },
 ];
 
 app.get('/api/salon/tables', requireAuthApi, (req, res) => {

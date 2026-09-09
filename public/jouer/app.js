@@ -33,6 +33,8 @@ const CATALOGUE = [
       joueurs: '2 à 4 joueurs', duree: 'environ 15 min' },
     { id: 'motusparty', nom: 'Motus Party', emoji: '🏁', accent: '#d9a94e', href: '/motus/party',
       joueurs: '2 à 8 joueurs', duree: 'environ 5 min' },
+    { id: 'drapeaux', nom: 'Quiz des drapeaux', emoji: '🏳️', accent: '#6f7bb0', href: '/drapeaux',
+      joueurs: '1 à 10 joueurs', duree: 'environ 5 min' },
 ];
 
 const CATALOGUE_LOCAL = [

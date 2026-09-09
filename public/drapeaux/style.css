@@ -1,0 +1,157 @@
+/* =====================================================================
+   LE QUIZ DES DRAPEAUX — même nuit chaude que le reste du salon.
+   Tout est dimensionné pour être touché vite : les quatre réponses font
+   la largeur de l'écran et 64 px de haut, parce que la vitesse compte et
+   qu'une cible étroite se rate.
+   ===================================================================== */
+:root {
+    --ink:#14100b; --ink-2:#1d1710; --ink-3:#241b12;
+    --brass:#d9a94e; --brass-soft:#ecca82; --parchment:#efe4cf;
+    --muted:#a08f74; --line:rgba(217,169,78,0.20);
+    --good:#5aa87a; --bad:#d2624a; --tiede:#c9a24a;
+}
+html,body { margin:0; padding:0; }
+body {
+    min-height:100svh; overflow-x:hidden;
+    font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; color:var(--parchment);
+    background:radial-gradient(130% 70% at 50% -8%, #22252e 0%, transparent 55%), var(--ink);
+    background-attachment:fixed; -webkit-font-smoothing:antialiased;
+}
+.qz { position:relative; display:flex; flex-direction:column; gap:12px; max-width:520px; margin:0 auto;
+    padding:max(10px,env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom)); }
+
+.qz-head { display:flex; align-items:center; gap:10px; }
+.qz-titles { flex:1; min-width:0; }
+.qz-title { margin:0; font-size:1.15rem; font-weight:800;
+    background:linear-gradient(180deg,var(--brass-soft),var(--brass));
+    -webkit-background-clip:text; background-clip:text; color:transparent; }
+.qz-sub { font-size:.74rem; color:var(--muted); }
+
+.qz-view[hidden] { display:none; }
+.qz-view { display:flex; flex-direction:column; gap:10px; }
+.qz-field-label { font-size:.68rem; text-transform:uppercase; letter-spacing:.7px; color:var(--muted);
+    margin:10px 0 6px; text-align:center; }
+.qz-hint, .qz-list-label { font-size:.78rem; color:var(--muted); text-align:center; margin:10px 0; }
+.qz-list-label[hidden] { display:none; }
+.qz-solo-hint { font-size:.72rem; color:var(--muted); text-align:center; margin:10px 0 0; line-height:1.45; }
+
+/* Lobby */
+.qz-reglages { padding:14px; border-radius:14px; background:rgba(255,255,255,.02); border:1px solid var(--line); }
+.qz-types { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:14px; }
+.qz-type { padding:6px 11px; border-radius:999px; border:1px solid var(--line); background:transparent;
+    color:var(--muted); font-family:inherit; font-size:.72rem; cursor:pointer; appearance:none; }
+.qz-type.on { background:rgba(217,169,78,.14); border-color:var(--brass); color:var(--brass-soft); font-weight:700; }
+.qz-tables { display:flex; flex-direction:column; gap:10px; margin-top:6px; }
+
+/* ---------- La question ---------- */
+.qz-barre-haut { display:flex; align-items:center; gap:8px; }
+.qz-num { font-size:.78rem; color:var(--muted); font-variant-numeric:tabular-nums; }
+.qz-double { font-size:.68rem; font-weight:800; color:var(--ink); background:linear-gradient(180deg,var(--brass-soft),var(--brass));
+    padding:2px 8px; border-radius:999px; }
+.qz-double[hidden] { display:none; }
+.qz-chrono { margin-left:auto; font-size:.86rem; font-weight:800; color:var(--brass-soft);
+    font-variant-numeric:tabular-nums; }
+.qz-chrono.urgent { color:var(--bad); }
+/* La jauge se vide d'après l'heure de fin donnée par le serveur : aucune
+   horloge locale à synchroniser, et un rechargement retombe juste. */
+.qz-jauge { height:5px; border-radius:999px; background:rgba(255,255,255,.06); overflow:hidden; }
+.qz-jauge i { display:block; height:100%; border-radius:999px;
+    background:linear-gradient(90deg,var(--bad),var(--tiede),var(--good)); background-size:300px 100%;
+    transition:width .1s linear; }
+
+.qz-enonce { text-align:center; font-size:1rem; font-weight:700; margin:8px 0 0; line-height:1.35; }
+.qz-media { display:grid; place-items:center; min-height:120px; }
+.qz-media[hidden] { display:none; }
+.qz-drapeau { font-size:clamp(4rem,22vw,6.5rem); line-height:1.1; animation:qzEntree .35s ease both; }
+@keyframes qzEntree { from { opacity:0; transform:scale(.88); } }
+
+/* Quatre grandes cibles. Sur un jeu de vitesse, une cible étroite se rate. */
+.qz-choix { display:flex; flex-direction:column; gap:8px; margin-top:6px; }
+.qz-choix-btn { display:flex; align-items:center; justify-content:center; gap:10px;
+    min-height:64px; padding:10px 14px; border-radius:14px;
+    border:1.5px solid var(--line); background:rgba(255,255,255,.035);
+    color:var(--parchment); font-family:inherit; font-size:.95rem; font-weight:600;
+    cursor:pointer; transition:background .15s, border-color .15s, transform .1s, opacity .2s; }
+.qz-choix-btn:active:not(:disabled) { transform:scale(.985); }
+.qz-choix-btn:disabled { cursor:default; }
+.qz-choix-drapeau { font-size:1.8rem; line-height:1; }
+.qz-choix-texte { min-width:0; overflow:hidden; text-overflow:ellipsis; }
+.qz-choix-btn.drapeau-seul { min-height:76px; }
+.qz-choix-btn.drapeau-seul .qz-choix-drapeau { font-size:2.8rem; }
+.qz-choix-btn.choisi { border-color:var(--brass); background:rgba(217,169,78,.16); }
+.qz-choix-btn.juste { border-color:var(--good); background:rgba(90,168,122,.2); }
+.qz-choix-btn.faux { border-color:var(--bad); background:rgba(210,98,74,.18); }
+.qz-choix-btn.eteint { opacity:.35; }
+
+.qz-repondu { text-align:center; font-size:.8rem; color:var(--muted); margin:4px 0 0; min-height:1.2em; }
+.qz-repondu.juste { color:var(--good); font-weight:700; }
+.qz-repondu.faux { color:var(--bad); font-weight:700; }
+.qz-repondu b { font-size:.95rem; }
+.qz-spectateur { text-align:center; font-size:.76rem; color:var(--brass-soft); margin:0; }
+.qz-spectateur[hidden] { display:none; }
+
+/* Le classement pendant la partie : le podium et TA ligne seulement. À dix
+   joueurs, la liste entière ne tient pas et ne se lit pas d'un coup d'œil. */
+.qz-mini-classement { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:6px;
+    margin-top:8px; padding:8px 10px; border-radius:12px; background:rgba(255,255,255,.02);
+    border:1px solid var(--line); font-family:inherit; cursor:pointer; }
+.qz-mini-classement[hidden] { display:none; }
+.qz-mini-l { display:inline-flex; align-items:baseline; gap:4px; font-size:.72rem; color:var(--muted); }
+.qz-mini-l b { color:var(--brass-soft); font-size:.68rem; }
+.qz-mini-l i { font-style:normal; color:var(--parchment); font-weight:800; font-variant-numeric:tabular-nums; }
+.qz-mini-l.moi { color:var(--brass-soft); }
+.qz-mini-sep { color:var(--muted); opacity:.5; }
+
+/* ---------- La fin ---------- */
+.qz-fin-emoji { text-align:center; font-size:2.8rem; margin:14px 0 2px; }
+.qz-fin-titre { text-align:center; margin:0 0 16px; font-size:1.2rem; }
+.qz-podium { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+.qz-podium-place { display:flex; align-items:center; gap:10px; padding:11px 14px; border-radius:12px;
+    background:rgba(255,255,255,.03); border:1px solid var(--line); font-family:inherit;
+    color:var(--parchment); cursor:pointer; text-align:left; }
+.qz-podium-place.p1 { border-color:var(--brass); background:rgba(217,169,78,.12); }
+.qz-podium-medaille { font-size:1.3rem; }
+.qz-podium-nom { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:700; }
+.qz-podium-score { color:var(--brass-soft); font-variant-numeric:tabular-nums; }
+
+.qz-faits { display:flex; flex-direction:column; gap:5px; margin-bottom:14px; }
+.qz-fait { margin:0; font-size:.78rem; color:var(--muted); background:rgba(255,255,255,.03);
+    border:1px solid var(--line); border-radius:10px; padding:8px 11px; text-align:left; }
+.qz-sous-titre { margin:14px 0 6px; font-size:.64rem; text-transform:uppercase; letter-spacing:.9px;
+    color:var(--brass-soft); font-weight:700; text-align:left; }
+.qz-classement-complet { display:flex; flex-direction:column; gap:3px; margin-bottom:16px; }
+.qz-cl-row { display:grid; grid-template-columns:28px 1fr auto; gap:10px; align-items:center;
+    padding:8px 11px; border-radius:9px; background:rgba(255,255,255,.03); border:1px solid transparent;
+    font-family:inherit; color:var(--parchment); cursor:pointer; text-align:left; font-size:.82rem; }
+.qz-cl-row.moi { border-color:var(--brass); background:rgba(217,169,78,.1); }
+.qz-cl-place { text-align:center; color:var(--muted); }
+.qz-cl-nom { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.qz-cl-nom em { display:block; font-style:normal; font-size:.64rem; color:var(--muted); margin-top:1px; }
+.qz-cl-score { color:var(--brass-soft); font-weight:800; font-variant-numeric:tabular-nums; }
+
+/* ---------- Les statistiques ---------- */
+.qz-bilan { margin:0 0 12px; font-size:.84rem; color:var(--muted); text-align:center; }
+.qz-bilan b { color:var(--parchment); }
+.qz-type-ligne { display:grid; grid-template-columns:1fr auto auto; grid-template-areas:"nom taux detail" "jauge jauge jauge";
+    gap:3px 10px; align-items:baseline; padding:7px 10px; border-radius:9px; background:rgba(255,255,255,.02);
+    margin-bottom:3px; text-align:left; }
+.qz-type-nom { grid-area:nom; font-size:.78rem; }
+.qz-type-taux { grid-area:taux; font-size:.84rem; font-weight:800; color:var(--brass-soft); font-variant-numeric:tabular-nums; }
+.qz-type-detail { grid-area:detail; font-size:.66rem; color:var(--muted); font-variant-numeric:tabular-nums; }
+.qz-type-jauge { grid-area:jauge; height:4px; border-radius:999px; background:rgba(255,255,255,.06); overflow:hidden; margin-top:3px; }
+.qz-type-jauge i { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,var(--tiede),var(--good)); }
+
+/* Confettis de victoire */
+.qz-confetti { position:fixed; inset:0; pointer-events:none; overflow:hidden; z-index:5; }
+.qz-confetti-bit { position:absolute; top:-16px; width:9px; height:14px; opacity:0;
+    animation:qzChute linear forwards; }
+@keyframes qzChute {
+    0% { opacity:1; transform:translate(0,0) rotate(0deg); }
+    100% { opacity:0; transform:translate(var(--derive,0), 110vh) rotate(540deg); }
+}
+
+@media (max-width:340px) {
+    .qz-choix-btn { min-height:56px; font-size:.88rem; }
+    .qz-choix-btn.drapeau-seul .qz-choix-drapeau { font-size:2.3rem; }
+}
+@media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.001ms !important; transition-duration:.001ms !important; } }
