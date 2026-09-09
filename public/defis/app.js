@@ -25,6 +25,7 @@ async function api(chemin, corps) {
 function vue(id) {
     ['v-liste', 'v-motus', 'v-quiz', 'v-fin'].forEach(v => { $(v).hidden = v !== id; });
     window.scrollTo(0, 0);
+    if (window.Vues) Vues.suivre(id);
 }
 function duree(ms) {
     const s = Math.round((ms || 0) / 1000);
@@ -68,6 +69,9 @@ async function chargerListe() {
     $('df-sub').textContent = aFaire
         ? `${aFaire} défi${aFaire > 1 ? 's' : ''} t’attend${aFaire > 1 ? 'ent' : ''}`
         : 'Même manche pour tout le monde';
+    // On rend la flèche à son lien : depuis la liste, le retour est le hall.
+    $('df-retour').onclick = null;
+    courant = null;
     vue('v-liste');
 }
 
@@ -112,6 +116,9 @@ async function ouvrir(id) {
     const { data } = await api('/api/defis/' + encodeURIComponent(id));
     if (!data || data.error) return DS.toast((data && data.error) || 'Défi introuvable.');
     courant = data;
+    // Depuis une manche, la flèche ramène à la liste des défis. ⚠️ Il faut la
+    // relâcher en arrivant sur la liste (voir `chargerListe`), sinon elle garde
+    // ce comportement pour toujours et on ne peut plus quitter la page.
     $('df-retour').onclick = (e) => { e.preventDefault(); chargerListe(); };
 
     if (data.moi.etat === 'fini') return montrerFin(data, null);
@@ -327,6 +334,10 @@ function montrerFin(d, detail) {
         : '';
     vue('v-fin');
 }
+
+// Le geste retour du téléphone remonte d'une vue, il ne quitte pas le site :
+// depuis une manche ou un résultat, il ramène à la liste.
+if (window.Vues) Vues.surRetour(() => chargerListe());
 
 // ---------- Démarrage ----------
 // Un lien direct vers un défi (?d=<id>) permet de le partager tel quel.
