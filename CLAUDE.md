@@ -53,6 +53,12 @@ Deux systèmes de stockage coexistent :
 
 **Piège à connaître** : n'importe quel module qui a besoin de lire/écrire une donnée persistante reçoit `{ get: mfGet, set: mfSet }` en dépendance depuis `server.js` — jamais d'accès direct à Redis depuis un module de jeu.
 
+⚠️ **Le piège qui a coûté le plus cher : l'écriture et la lecture n'avaient pas la même portée.** `mfFlush()` envoie dans Redis **toute** clé modifiée, sans filtre. `loadMf()`, lui, ne relisait au démarrage qu'une liste blanche de familles (`mf:*`, `motus:*`, `mj:*`, `pbac:*`, `rec:*`, `voyages:*`). Tout ce qui n'y figurait pas était donc écrit puis jamais relu : à chaque redémarrage, l'appli repartait de zéro dessus **et réécrivait par-dessus les vraies valeurs**. Étaient concernés `yams:*` (toutes les statistiques du Yams), `motusparty:stats`, `titres:manuels` (les titres attribués à la main) et `admin:gameHistory` (dont dépend le classement de saison).
+
+Le défaut ne se voyait **qu'en production** : en développement, `mf_data.json` est relu en entier, donc tous les tests locaux passaient. Sur Render, qui met le service en veille au bout de quelques minutes d'inactivité, il se manifestait comme « les données se réinitialisent une heure après avoir joué ».
+
+La liste est désormais **inversée** : on charge `redis.keys('*')` moins les deux clés qui appartiennent à quelqu'un d'autre (`portail_users`, les comptes du salon ; `users`, les profils Perudo). Un jeu ajouté demain est donc persisté correctement sans que personne ait à y penser — c'est exactement l'oubli qui a produit ce bug. **Ne jamais revenir à une liste blanche ici.**
+
 ## Authentification
 
 - `POST /api/register` / `POST /api/login` → cookie de session signé HMAC, `httpOnly`.

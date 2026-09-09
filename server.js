@@ -393,14 +393,34 @@ async function mfFlush() {
 async function loadMf() {
     if (redis) {
         try {
-            const keys = [...await redis.keys('mf:*'), ...await redis.keys('rec:*'), ...await redis.keys('motus:*'), ...await redis.keys('mj:*'), ...await redis.keys('pbac:*'), ...await redis.keys('voyages:*')];
+            // ⚠️ Ce chargement listait autrefois les familles une par une
+            // (`mf:*`, `motus:*`, `mj:*`, `pbac:*`, `rec:*`, `voyages:*`).
+            // Les écritures, elles, n'ont jamais filtré : TOUTE clé modifiée
+            // part dans Redis. Les familles absentes de cette liste étaient
+            // donc écrites puis jamais relues — à chaque redémarrage, l'appli
+            // repartait de zéro dessus et réécrivait par-dessus. Les
+            // statistiques du Yams, celles de Motus Party, les titres
+            // attribués à la main et l'historique des parties disparaissaient
+            // ainsi en silence, et le défaut ne se voyait qu'en production :
+            // en local, `mf_data.json` est relu en entier.
+            //
+            // La liste est donc inversée. On charge tout, sauf les deux clés
+            // qui appartiennent à quelqu'un d'autre. Un jeu ajouté demain est
+            // persisté correctement sans que personne ait à y penser — c'est
+            // exactement l'oubli qui a produit ce bug.
+            const HORS_CACHE = new Set([
+                'portail_users',   // les comptes du salon, gérés par saveUsers/loadUsers
+                'users',           // les profils Perudo, gérés par perudo/game.js
+            ]);
+            const keys = (await redis.keys('*')).filter(k => !HORS_CACHE.has(k));
             for (let i = 0; i < keys.length; i += 50) {
                 const chunk = keys.slice(i, i + 50);
                 const vals = await redis.mget(...chunk);
                 chunk.forEach((k, j) => { if (vals[j] != null) mfCache[k] = vals[j]; });
             }
-            console.log(`🧩 ${keys.length} clé(s) mots fléchés chargée(s).`);
-        } catch (e) { console.log('⚠️  Lecture Redis (mots fléchés) :', e.message); }
+            const familles = [...new Set(keys.map(k => k.split(':')[0]))].sort();
+            console.log(`🧩 ${keys.length} clé(s) chargée(s) — ${familles.join(', ')}`);
+        } catch (e) { console.log('⚠️  Lecture Redis :', e.message); }
     } else {
         try { mfCache = JSON.parse(fs.readFileSync('./mf_data.json', 'utf-8')) || {}; } catch (e) { mfCache = {}; }
     }
