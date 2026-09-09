@@ -68,12 +68,17 @@ function calculerClassement(cache, pseudos, series, saison) {
         if (!val || typeof val !== 'object') continue;
         const seg = cle.split(':');
         if (seg[1] !== 'prog') continue;
-        if (!['motus', 'mf', 'mj'].includes(seg[0])) continue;
-        // La date est en 4ᵉ segment : mf:prog:<pseudo>:<date>:<niveau>.
+        if (!['motus', 'mf', 'mj', 'chiffres', 'geo'].includes(seg[0])) continue;
+        // La date est en 4ᵉ segment pour toutes les familles : les niveaux et
+        // les modes viennent APRÈS (mf:prog:<pseudo>:<date>:<niveau>,
+        // geo:prog:<pseudo>:<date>:<mode>), et Le compte est bon s'arrête là
+        // (chiffres:prog:<pseudo>:<date>).
         if (saison && !(seg[3] || '').startsWith(saison.prefixe)) continue;
         const ligne = parPseudo.get(seg[2]);
         if (!ligne) continue;                       // compte supprimé depuis
-        if (val.solved) { ligne.jourTrouves++; ligne.points += BAREME.jourTrouve; }
+        const reussi = seg[0] === 'chiffres' ? (val.fini && val.ecart === 0)
+            : (seg[0] === 'geo' ? !!val.trouve : !!val.solved);
+        if (reussi) { ligne.jourTrouves++; ligne.points += BAREME.jourTrouve; }
         else { ligne.jourJoues++; ligne.points += BAREME.jourJoue; }
     }
 
@@ -99,6 +104,8 @@ function calculerClassement(cache, pseudos, series, saison) {
         { prefixe: 'pbac:stats', normalise: true,  joues: 'gamesPlayed',   gagnes: 'gamesWon' },
         { prefixe: 'yams:stats', normalise: true,  joues: 'gamesPlayed',   gagnes: 'gamesWon' },
         { prefixe: 'motusparty:stats', normalise: false, joues: 'matchesPlayed', gagnes: 'matchesWon' },
+        { prefixe: 'drapeaux:stats', normalise: false, joues: 'parties', gagnes: 'victoires' },
+        { prefixe: 'undercover:stats', normalise: false, joues: 'parties', gagnes: 'victoires' },
     ];
     for (const [cle, val] of Object.entries(cache)) {
         if (!val || typeof val !== 'object') continue;

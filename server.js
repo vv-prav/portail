@@ -1472,7 +1472,7 @@ app.use('/yams', requireAuth, express.static(__dirname + '/public/yams'));
 // ---------------------------------------------------------------------
 //  INFILTRÉ — jeu social de déduction, intégré sous /undercover.
 // ---------------------------------------------------------------------
-const undercoverApi = require('./undercover/game')(app, io, requireAuth);
+const undercoverApi = require('./undercover/game')(app, io, requireAuth, { get: mfGet, set: mfSet });
 app.use('/undercover', requireAuth, express.static(__dirname + '/public/undercover'));
 
 // ---------------------------------------------------------------------
@@ -1993,6 +1993,70 @@ function portraitJoueur(pseudo) {
             ['Mots essayés en moyenne', mj.avgTries],
         ], 'Jours joués et série depuis toujours ; le détail porte sur les 15 derniers jours.');
 
+    // ---------- Les deux jeux du jour récents ----------
+    // Leurs progressions ne suivent pas la forme des trois anciens (pas de
+    // `guesses`), donc `dailyGameStats` ne leur convient pas : on relit
+    // directement leurs clés, qui sont peu nombreuses.
+    const chiffres = { jours: 0, justes: 0, totalEcart: 0, meilleurTemps: null, points: 0 };
+    for (const [k, v] of Object.entries(mfCache)) {
+        if (!k.startsWith(`chiffres:prog:${pseudo}:`) || !v || !v.fini) continue;
+        chiffres.jours++;
+        if (v.ecart === 0) chiffres.justes++;
+        chiffres.totalEcart += (v.ecart || 0);
+        chiffres.points += (v.score || 0);
+        if (v.ms != null && (chiffres.meilleurTemps === null || v.ms < chiffres.meilleurTemps)) chiffres.meilleurTemps = v.ms;
+    }
+    if (chiffres.jours) {
+        ajoute('chiffres', 'Le compte est bon', '🔢', chiffres.jours,
+            chiffres.justes + ' comptes justes', [
+                ['Jours joués', chiffres.jours],
+                ['Série en cours', mChiffres.serie(pseudo).encours || null],
+                ['Comptes justes', chiffres.justes],
+                ['Réussite', Math.round((chiffres.justes / chiffres.jours) * 100) + ' %'],
+                ['Écart moyen', chiffres.jours ? Math.round(chiffres.totalEcart / chiffres.jours) : null],
+                ['Meilleur temps', chiffres.meilleurTemps != null ? Math.round(chiffres.meilleurTemps / 1000) + ' s' : null],
+                ['Points cumulés', chiffres.points],
+            ]);
+    }
+
+    const geo = { parties: 0, trouves: 0, totalEssais: 0, parMode: { silhouette: 0, drapeau: 0 }, meilleurTemps: null };
+    for (const [k, v] of Object.entries(mfCache)) {
+        if (!k.startsWith(`geo:prog:${pseudo}:`) || !v || !v.fini) continue;
+        geo.parties++;
+        if (v.trouve) { geo.trouves++; geo.totalEssais += (v.essais || []).length; }
+        const mode = k.split(':').pop();
+        if (geo.parMode[mode] !== undefined) geo.parMode[mode]++;
+        if (v.trouve && v.ms != null && (geo.meilleurTemps === null || v.ms < geo.meilleurTemps)) geo.meilleurTemps = v.ms;
+    }
+    if (geo.parties) {
+        ajoute('geo', 'Géographie', '🌍', geo.parties,
+            geo.trouves + ' pays trouvés', [
+                ['Manches jouées', geo.parties],
+                ['Série en cours', mGeo.serie(pseudo).encours || null],
+                ['Trouvés', geo.trouves],
+                ['Réussite', Math.round((geo.trouves / geo.parties) * 100) + ' %'],
+                ['Essais en moyenne', geo.trouves ? (geo.totalEssais / geo.trouves).toFixed(1) : null],
+                ['Silhouettes', geo.parMode.silhouette || null],
+                ['Drapeaux', geo.parMode.drapeau || null],
+                ['Meilleur temps', geo.meilleurTemps != null ? Math.round(geo.meilleurTemps / 1000) + ' s' : null],
+            ]);
+    }
+
+    // L'Infiltré : les rôles sont asymétriques, donc un simple « parties /
+    // victoires » ne dirait rien. Le détail par rôle, si.
+    let uc = null;
+    try { uc = undercoverApi.statsFor(pseudo); } catch (e) {}
+    if (uc && uc.parties) {
+        ajoute('undercover', 'Infiltré', '🕵️', uc.parties,
+            uc.victoires + ' parties gagnées', [
+                ['Parties', uc.parties], ['Victoires', uc.victoires],
+                ['Réussite', uc.tauxVictoire != null ? uc.tauxVictoire + ' %' : null],
+                ...uc.roles.map(r => ['En ' + r.nom, `${r.victoires}/${r.parties}` + (r.taux != null ? ` (${r.taux} %)` : '')]),
+                ['Mots devinés en Mr Blanc', uc.motsDevines || null],
+                ['Fois éliminé', uc.elimine || null],
+            ]);
+    }
+
     // Petit Bac n'expose pas de statsFor : ses stats vivent dans le cache commun,
     // indexées par pseudo NORMALISÉ.
     const pb = mfGet(`pbac:stats:${normPseudo(pseudo)}`);
@@ -2210,6 +2274,36 @@ app.get('/api/salon/resultats-du-jour', requireAuthApi, (req, res) => {
             : [],
     });
 
+    // Les deux jeux du jour récents manquaient à ce panneau : on les faisait,
+    // et « Les résultats du jour » n'en disait pas un mot.
+    const chProg = mfGet(`chiffres:prog:${user}:${date}`);
+    const chFini = !!(chProg && chProg.fini);
+    jeux.push({
+        id: 'chiffres', nom: 'Le compte est bon', emoji: '🔢', accent: '#c2513a', href: '/chiffres',
+        joue: chFini,
+        mot: chFini ? String(chiffresDonne(date).cible) : null,
+        classement: chFini
+            ? mChiffres.classement(date).map(e => ({ pseudo: e.u, detail: e.ecart === 0 ? 'compte juste' : 'à ' + e.ecart }))
+            : [],
+    });
+
+    // La Géographie a deux modes : chacun son classement, réunis sous une
+    // seule entrée pour ne pas alourdir le panneau.
+    for (const mode of ['silhouette', 'drapeau']) {
+        const gProg = mfGet(`geo:prog:${user}:${date}:${mode}`);
+        const gFini = !!(gProg && gProg.fini);
+        const cible = gFini ? geoDuJour(mode, date) : null;
+        jeux.push({
+            id: 'geo-' + mode, nom: mode === 'drapeau' ? 'Le drapeau mystère' : 'Le pays mystère',
+            emoji: mode === 'drapeau' ? '🏳️' : '🗺️', accent: '#6f7bb0', href: '/geo',
+            joue: gFini,
+            mot: cible ? cible.nom : null,
+            classement: gFini
+                ? mGeo.classement(`${date}:${mode}`).map(e => ({ pseudo: e.u, detail: e.trouve ? e.essais + '/6' : 'raté' }))
+                : [],
+        });
+    }
+
     for (const j of jeux) {
         j.maPlace = j.classement.findIndex(e => e.pseudo === user) + 1 || null;
         j.classement = j.classement.slice(0, 12);
@@ -2378,6 +2472,9 @@ app.get('/api/salon/mystats-summary', requireAuthApi, (req, res) => {
         if (mfGet(kMotusProg(pseudo, d))) weekCount++;
         if (mfGet(kMjProg(pseudo, d))) weekCount++;
         for (const lv of MF_LEVELS) { if (mfGet(`mf:prog:${pseudo}:${d}:${lv}`)) weekCount++; }
+        // Les deux jeux du jour récents comptent aussi dans la semaine.
+        if (mfGet(`chiffres:prog:${pseudo}:${d}`)) weekCount++;
+        for (const mode of ['silhouette', 'drapeau']) { if (mfGet(`geo:prog:${pseudo}:${d}:${mode}`)) weekCount++; }
     }
     // "Jeu le plus joué" compare les totaux cumulés de chaque jeu entre eux.
     const totals = [];
@@ -2390,6 +2487,17 @@ app.get('/api/salon/mystats-summary', requireAuthApi, (req, res) => {
     if (mjDays.length) totals.push(['Le Mot Juste', mjDays.length]);
     try { const y = yamsApi.statsFor(pseudo); const n = y ? y.gamesPlayed + (y.soloPlayed || 0) : 0; if (n) totals.push(['Yams', n]); } catch (e) {}
     try { const m = motusPartyApi.statsFor(pseudo); if (m && m.matchesPlayed) totals.push(['Motus Party', m.matchesPlayed]); } catch (e) {}
+    // Cinq jeux manquaient à cette comparaison : le « jeu le plus joué » ne
+    // pouvait donc jamais être le Petit Bac, l'Infiltré, le Quiz des drapeaux,
+    // Le compte est bon ni la Géographie, même en y jouant tous les jours.
+    const pbTot = mfGet(`pbac:stats:${normPseudo(pseudo)}`);
+    if (pbTot && pbTot.gamesPlayed) totals.push(['Petit Bac', pbTot.gamesPlayed]);
+    try { const u = undercoverApi.statsFor(pseudo); if (u && u.parties) totals.push(['Infiltré', u.parties]); } catch (e) {}
+    try { const d = drapeauxApi.statsFor(pseudo); const n = d ? d.parties + (d.solo || 0) : 0; if (n) totals.push(['Quiz des drapeaux', n]); } catch (e) {}
+    const chJours = Object.keys(mfCache).filter(k => k.startsWith(`chiffres:prog:${pseudo}:`) && mfCache[k] && mfCache[k].fini).length;
+    if (chJours) totals.push(['Le compte est bon', chJours]);
+    const geoJours = Object.keys(mfCache).filter(k => k.startsWith(`geo:prog:${pseudo}:`) && mfCache[k] && mfCache[k].fini).length;
+    if (geoJours) totals.push(['Géographie', geoJours]);
     totals.sort((a, b) => b[1] - a[1]);
     res.json({ weekCount, favoriteGame: totals.length ? totals[0][0] : null });
 });
@@ -2544,6 +2652,7 @@ require('./admin/routes')(app, {
     pbac: () => pbacApi,
     undercover: () => undercoverApi,
     yams: () => yamsApi,
+    drapeaux: () => drapeauxApi,
     motusparty: () => motusPartyApi,
 });
 

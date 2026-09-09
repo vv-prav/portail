@@ -559,6 +559,7 @@ module.exports = function attachAdmin(app, ctx) {
     //  MOTUS PARTY
     // =================================================================
     const MP = () => ctx.motusparty();
+    const DR = () => ctx.drapeaux && ctx.drapeaux();
 
     // =================================================================
     //  GRILLES (mots fléchés)
@@ -969,6 +970,7 @@ module.exports = function attachAdmin(app, ctx) {
         { id: 'undercover', nom: 'Infiltré', emoji: '🕵️', api: () => UC() },
         { id: 'yams', nom: 'Yams', emoji: '🎯', api: () => YM() },
         { id: 'motusparty', nom: 'Motus Party', emoji: '🏁', api: () => MP() },
+        { id: 'drapeaux', nom: 'Quiz des drapeaux', emoji: '🏳️', api: () => DR() },
     ];
 
     G('/parties', (req, res) => {

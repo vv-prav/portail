@@ -95,6 +95,21 @@ const TITRES = [
     { id: 'invaincu', nom: 'L’invaincu', emoji: '🛡️', rarete: 'unique',
       desc: 'La plus longue série de victoires d’affilée au Yams.',
       mesure: (s) => (s.yamsSerie > 1 ? s.yamsSerie : null), ordre: 'max' },
+    { id: 'cartographe', nom: 'Le cartographe', emoji: '🗺️', rarete: 'unique',
+      desc: 'Le meilleur taux de bonnes réponses au Quiz des drapeaux.',
+      mesure: (s) => (s.drapeauxParties >= 2 ? s.drapeauxTaux : null), ordre: 'max' },
+    { id: 'gachette', nom: 'La gâchette', emoji: '⚡', rarete: 'unique',
+      desc: 'La réponse juste la plus rapide jamais donnée au Quiz des drapeaux.',
+      mesure: (s) => (s.drapeauxRapide != null ? s.drapeauxRapide : null), ordre: 'min' },
+    { id: 'camelon', nom: 'Le caméléon', emoji: '🦎', rarete: 'unique',
+      desc: 'Le plus de parties gagnées à l’Infiltré.',
+      mesure: (s) => (s.ucVictoires > 0 ? s.ucVictoires : null), ordre: 'max' },
+    { id: 'calculateur', nom: 'La tête de calcul', emoji: '🔢', rarete: 'unique',
+      desc: 'Le plus de comptes justes au Compte est bon.',
+      mesure: (s) => (s.chiffresJustes > 0 ? s.chiffresJustes : null), ordre: 'max' },
+    { id: 'globetrotteur', nom: 'Le globe-trotteur', emoji: '🌍', rarete: 'unique',
+      desc: 'Le plus de pays trouvés à la Géographie du jour.',
+      mesure: (s) => (s.geoTrouves > 0 ? s.geoTrouves : null), ordre: 'max' },
     { id: 'plumebac', nom: 'Plume du Petit Bac', emoji: '✏️', rarete: 'unique',
       desc: 'Meilleure manche jamais jouée au Petit Bac.',
       mesure: (s) => (s.pbacMeilleureManche > 0 ? s.pbacMeilleureManche : null), ordre: 'max' },
@@ -119,6 +134,9 @@ function statsParJoueur(cache, pseudos, series, points) {
             motusMeilleurEssais: null, motusMoyenneEssais: null,
             mjMeilleurEssais: null, mfMeilleurTemps: null,
             yamsParties: 0, yamsVictoires: 0, yamsMeilleurScore: 0, yamsRealises: 0, yamsSerie: 0,
+            drapeauxParties: 0, drapeauxTaux: null, drapeauxSerie: 0, drapeauxRapide: null,
+            ucParties: 0, ucVictoires: 0, ucMrBlanc: 0,
+            chiffresJours: 0, chiffresJustes: 0, geoJours: 0, geoTrouves: 0,
             pbacParties: 0, pbacMeilleureManche: 0,
             mpCourses: 0, perudoParties: 0, multiParties: 0,
             messages: 0, jeuxDifferents: 0,
@@ -139,6 +157,16 @@ function statsParJoueur(cache, pseudos, series, points) {
             if (seg[0] === 'motus') s.motusJours = n;
             else if (seg[0] === 'mf') s.mfJours = n;
             else if (seg[0] === 'mj') s.mjJours = n;
+            else if (seg[0] === 'chiffres') s.chiffresJours = n;
+            else if (seg[0] === 'geo') s.geoJours = n;
+            continue;
+        }
+        if (seg[0] === 'chiffres' && seg[1] === 'prog' && val && val.fini) {
+            const s = st.get(seg[2]); if (s && val.ecart === 0) s.chiffresJustes++;
+            continue;
+        }
+        if (seg[0] === 'geo' && seg[1] === 'prog' && val && val.fini) {
+            const s = st.get(seg[2]); if (s && val.trouve) s.geoTrouves++;
             continue;
         }
         if (famille === 'motus:beststreak' && typeof val === 'number') {
@@ -181,6 +209,22 @@ function statsParJoueur(cache, pseudos, series, points) {
             s.yamsSerie = val.meilleureSerie || 0;
             continue;
         }
+        // Le Quiz des drapeaux et l'Infiltré indexent par pseudo brut.
+        if (famille === 'drapeaux:stats' && typeof val === 'object') {
+            const s = st.get(seg[2]); if (!s) continue;
+            s.drapeauxParties = (val.parties || 0) + (val.solo || 0);
+            s.drapeauxTaux = val.questions ? Math.round((val.bonnes / val.questions) * 100) : null;
+            s.drapeauxSerie = val.meilleureSerie || 0;
+            s.drapeauxRapide = val.plusRapide != null ? val.plusRapide : null;
+            continue;
+        }
+        if (famille === 'undercover:stats' && typeof val === 'object') {
+            const s = st.get(seg[2]); if (!s) continue;
+            s.ucParties = val.parties || 0;
+            s.ucVictoires = val.victoires || 0;
+            s.ucMrBlanc = val.motsDevines || 0;
+            continue;
+        }
         if (famille === 'pbac:stats' && typeof val === 'object') {
             const s = st.get(parNorm.get(seg[2])); if (!s) continue;
             s.pbacParties = val.gamesPlayed || 0; s.pbacMeilleureManche = val.bestRoundScore || 0;
@@ -195,7 +239,8 @@ function statsParJoueur(cache, pseudos, series, points) {
         s.joursTotal = s.motusJours + s.mfJours + s.mjJours;
         s.motusMoyenneEssais = s.motusTrouves ? Math.round((s.motusTotalEssais / s.motusTrouves) * 100) / 100 : null;
         s.multiParties = s.yamsParties + s.pbacParties + s.mpCourses + s.perudoParties;
-        s.jeuxDifferents = [s.motusJours, s.mfJours, s.mjJours, s.yamsParties, s.pbacParties, s.mpCourses, s.perudoParties]
+        s.jeuxDifferents = [s.motusJours, s.mfJours, s.mjJours, s.yamsParties, s.pbacParties, s.mpCourses, s.perudoParties,
+            s.drapeauxParties, s.ucParties, s.chiffresJours, s.geoJours]
             .filter(n => n > 0).length;
         s.meilleureSerie = Math.max(s.meilleureSerie, s.serie);
     }

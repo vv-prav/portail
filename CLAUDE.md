@@ -268,6 +268,23 @@ Depuis, trois regroupements de plus :
 - **Le carnet** (`/carnet/`) réunit les sorties et les recettes : deux apps qui ne sont pas des jeux mais des notes sur la vie du cercle, trop maigres chacune pour justifier sa tuile. Les photos de recettes restent à faire — elles demandent un stockage externe, pas Redis.
 - **L'admin** perd ses quatre onglets par jeu identiques au profit de deux vues : *Parties* (toutes les tables, via `/api/admin/parties`) et *Santé* (Redis, mémoire, clés par famille, journal).
 
+## Les statistiques : où elles doivent apparaître
+
+⚠️ **Le piège qui s'est répété à chaque nouveau jeu.** Écrire les statistiques d'un jeu ne suffit pas : il faut aussi les brancher aux **six endroits** qui les montrent. À chaque ajout, un ou plusieurs ont été oubliés — l'Infiltré, lui, ne persistait *rien du tout*, et on pouvait y jouer vingt parties sans qu'il en reste la moindre trace.
+
+Liste à parcourir pour **tout** nouveau jeu :
+
+| Où | Quoi faire |
+|---|---|
+| **Carte du profil** (`portraitJoueur` → `ajoute(...)`, `server.js`) | sert aussi la bulle de profil publique. ⚠️ `if (!parties) return` : passer un compteur à zéro fait disparaître la carte. |
+| **Résumé** (`/api/salon/mystats-summary`) | `totals.push([nom, n])` pour le « jeu le plus joué », et `weekCount` pour un jeu du jour. |
+| **Classement du Salon** (`comptes/classement.js`) | jeu du jour → ajouter le préfixe à la liste `['motus','mf','mj','chiffres','geo']` **et** la façon dont il marque sa réussite (`solved`, `ecart===0`, `trouve`) ; multijoueur → une ligne dans `MULTI`. |
+| **Titres** (`comptes/titres.js`) | lire la famille de clés, compter le jeu dans `jeuxDifferents`, et lui donner au moins un titre — sinon on peut y exceller sans que rien ne le montre. Préférer des titres **relatifs** (le meilleur, le plus rapide) : pas de seuil à calibrer sur des données qui n'existent pas encore. |
+| **Résultats du jour** (`/api/salon/resultats-du-jour`) | pour un jeu du jour seulement. |
+| **Admin** (`MODULES_JEUX` dans `admin/routes.js` + `ctx` dans `server.js`) | pour un jeu multijoueur seulement. |
+
+Et pour un jeu du jour, ne pas oublier non plus le panneau « Aujourd'hui » (`JEUX_DU_JOUR` dans `public/app.js` + le pouls), `public/enchainement.js`, et le préchargement du service worker.
+
 ## Le classement du Salon
 
 `comptes/classement.js` calcule un score transversal à tous les jeux, exposé par `GET /api/salon/classement` et affiché replié en bas de l'accueil. **Il ne stocke rien** : tout est recalculé à la demande depuis les clés existantes, donc changer le barème ne demande aucune migration. La **saison en cours** (mois calendaire) est la vue par défaut ; « depuis toujours » reste consultable. En saison, les jeux du jour se filtrent sur la date de leur clé, et le multijoueur se fonde sur `admin:gameHistory` — qui horodate chaque partie mais **n'enregistre pas le vainqueur**, donc une partie y compte comme participation seulement. Le barème est isolé en haut du fichier — c'est un choix de jeu, pas une contrainte technique.

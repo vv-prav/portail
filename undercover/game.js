@@ -45,7 +45,69 @@ const PAIRS = [
     ['Colique', 'Migraine'], ['Anniversaire surprise', 'Enterrement surprise'], ['Playlist', 'Mixtape'],
 ];
 
-module.exports = function attachUndercover(app, io, requireAuth) {
+module.exports = function attachUndercover(app, io, requireAuth, deps) {
+
+// =====================================================================
+//  STATISTIQUES
+//  L'Infiltré ne persistait RIEN : pas une clé, pas un compteur. On
+//  pouvait y jouer vingt parties sans qu'il en reste la moindre trace —
+//  ni carte de profil, ni classement du Salon, ni titre. C'était le seul
+//  jeu multijoueur dans ce cas.
+//
+//  Les rôles étant asymétriques, un simple « parties / victoires » ne
+//  dirait pas grand-chose : gagner en civil et gagner en Mr Blanc n'ont
+//  rien à voir. On compte donc par rôle.
+// =====================================================================
+const mfGet = (deps && deps.get) || (() => undefined);
+const mfSet = (deps && deps.set) || (() => {});
+const kUcStats = (pseudo) => `undercover:stats:${pseudo}`;
+const UC_INDEX = 'undercover:statsIndex';
+const ROLES = ['civil', 'undercover', 'mrwhite'];
+function ucStatsVierges() {
+    return {
+        parties: 0, victoires: 0,
+        parRole: { civil: { parties: 0, victoires: 0 }, undercover: { parties: 0, victoires: 0 }, mrwhite: { parties: 0, victoires: 0 } },
+        motsDevines: 0,        // Mr Blanc qui retrouve le mot des civils
+        elimine: 0,            // combien de fois on s'est fait sortir
+    };
+}
+function chargerUcStats(pseudo) {
+    const s = mfGet(kUcStats(pseudo));
+    if (!s || typeof s !== 'object') return ucStatsVierges();
+    const base = ucStatsVierges();
+    return { ...base, ...s, parRole: { ...base.parRole, ...(s.parRole || {}) } };
+}
+function enregistrerUcStats(pseudo, stats) {
+    mfSet(kUcStats(pseudo), stats);
+    const index = mfGet(UC_INDEX) || [];
+    if (!index.includes(pseudo)) { index.push(pseudo); mfSet(UC_INDEX, index); }
+}
+// Qui gagne selon l'issue : les civils, les deux infiltrés ensemble, ou le
+// seul Mr Blanc quand il devine le mot.
+function aGagne(role, issue) {
+    if (issue === 'civils') return role === 'civil';
+    if (issue === 'infiltres') return role === 'undercover' || role === 'mrwhite';
+    if (issue === 'mrwhite') return role === 'mrwhite';
+    return false;
+}
+// Appelée une seule fois par partie, au moment où `status` passe à 'ended'.
+function cloturerUc(g) {
+    if (!g || g.statsEcrites) return;
+    g.statsEcrites = true;
+    for (const p of g.players) {
+        if (!p.role || !ROLES.includes(p.role)) continue;
+        const s = chargerUcStats(p.pseudo);
+        const gagne = aGagne(p.role, g.winner);
+        s.parties++;
+        if (gagne) s.victoires++;
+        s.parRole[p.role].parties++;
+        if (gagne) s.parRole[p.role].victoires++;
+        if (!p.alive) s.elimine++;
+        if (p.role === 'mrwhite' && g.winner === 'mrwhite') s.motsDevines++;
+        enregistrerUcStats(p.pseudo, s);
+    }
+}
+
 
 app.get('/undercover/pairs.json', requireAuth, (req, res) => res.json(PAIRS));
 
@@ -158,8 +220,8 @@ function checkWin(g) {
     const a = alive(g);
     const impostors = a.filter(p => p.role === 'undercover' || p.role === 'mrwhite').length;
     const civAlive = a.length - impostors;
-    if (impostors === 0) { g.status = 'ended'; g.winner = 'civils'; return true; }
-    if (impostors >= civAlive) { g.status = 'ended'; g.winner = 'infiltres'; return true; }
+    if (impostors === 0) { g.status = 'ended'; g.winner = 'civils'; cloturerUc(g); return true; }
+    if (impostors >= civAlive) { g.status = 'ended'; g.winner = 'infiltres'; cloturerUc(g); return true; }
     return false;
 }
 function advanceAfterResult(g) {
@@ -338,6 +400,7 @@ io.on('connection', (socket) => {
         if (correct) {
             clearTimeout(g._timer);
             g.status = 'ended'; g.winner = 'mrwhite';
+            cloturerUc(g);
             broadcastState(g); broadcastLobby();
             return;
         }
@@ -357,13 +420,30 @@ io.on('connection', (socket) => {
         const g = games[socketGame[socket.id]];
         if (!g || g.host !== socket.data.ucPseudo || g.status !== 'ended') return;
         g.status = 'lobby';
+        g.statsEcrites = false;
         g.players.forEach(p => { p.alive = true; p.role = null; p.word = null; });
         broadcastState(g);
         broadcastLobby();
     });
 });
 
+const NOMS_ROLE = { civil: 'Civil', undercover: 'Infiltré', mrwhite: 'Mr Blanc' };
+function ficheUc(pseudo) {
+    const s = chargerUcStats(pseudo);
+    return {
+        parties: s.parties, victoires: s.victoires,
+        tauxVictoire: s.parties ? Math.round((s.victoires / s.parties) * 100) : null,
+        motsDevines: s.motsDevines, elimine: s.elimine,
+        roles: ROLES.map(r => ({
+            role: r, nom: NOMS_ROLE[r],
+            parties: s.parRole[r].parties, victoires: s.parRole[r].victoires,
+            taux: s.parRole[r].parties ? Math.round((s.parRole[r].victoires / s.parRole[r].parties) * 100) : null,
+        })).filter(x => x.parties > 0),
+    };
+}
+
 return {
+    statsFor: (pseudo) => ficheUc(pseudo),
     games: () => Object.values(games).map(g => ({ id: g.id, host: g.host, status: g.status, players: g.players.map(p => p.pseudo) })),
     online: () => [...new Set(Object.values(games).flatMap(g => g.players.filter(p => p.connected).map(p => p.pseudo)))],
     endGame: (id) => {
