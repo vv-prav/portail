@@ -213,15 +213,23 @@ function qualityOk(res, cfg) {
  * @param {string} level 'moyen' | 'difficile' | 'expert'
  * @param {string} dateId 'AAAA-MM-JJ'
  * @param {string[]} recentWords mots vus récemment, à éviter
+ * @param {number} variante décale la graine sans toucher aux jours passés.
+ *        ⚠️ Sans ça, « Tirer une nouvelle grille » ne changeait RIEN : le
+ *        tirage ne dépend que de la date et du niveau, donc effacer la clé
+ *        redonnait exactement la même grille. C'est le même piège que sur le
+ *        Motus et Le Mot Juste — la quatrième fois qu'il se présente.
+ *        À zéro, la graine est identique à l'ancienne : aucune date passée ne
+ *        change de grille.
  */
-function generate(level, dateId, recentWords) {
+function generate(level, dateId, recentWords, variante) {
     const cfg = LEVELS[level] || LEVELS.moyen;
     const exclude = new Set(recentWords || []);
+    const suffixe = Number(variante) ? '|v' + Number(variante) : '';
     let best = null;        // grille valide ET dense
     let fallback = null;    // grille valide (filet de sécurité)
 
     for (let attempt = 0; attempt < 20; attempt++) {
-        const rnd = mulberry32(hashSeed(dateId + '|' + level + '|' + attempt));
+        const rnd = mulberry32(hashSeed(dateId + '|' + level + suffixe + '|' + attempt));
         const res = buildAttempt(cfg, rnd, exclude);
         if (!res || res.placed.length < 4) continue;
         if (!validate(res.grid, res.placed, cfg.rows, cfg.cols)) continue;
@@ -232,11 +240,11 @@ function generate(level, dateId, recentWords) {
         if (attempt >= 6 && best.placed.length >= Math.floor(cfg.target * 0.75)) break;
     }
     if (!best) best = fallback;                       // mieux vaut une grille correcte qu'aucune
-    if (!best && exclude.size) return generate(level, dateId, null);
+    if (!best && exclude.size) return generate(level, dateId, null, variante);
     if (!best) throw new Error('Génération impossible pour ' + level + ' ' + dateId);
 
     // une définition tirée au sort parmi celles du mot (stable pour la journée)
-    const rndDef = mulberry32(hashSeed(dateId + '|' + level + '|defs'));
+    const rndDef = mulberry32(hashSeed(dateId + '|' + level + suffixe + '|defs'));
     const grid = best.grid.map(row => row.map(v => (v && v !== BLOCK ? v : null)));
     const defs = best.placed.map(p => ({
         r: p.defR, c: p.defC, dir: p.dir,

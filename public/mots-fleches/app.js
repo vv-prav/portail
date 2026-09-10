@@ -205,7 +205,10 @@ function fitGrid(hauteurVisible) {
         (wrapW - pad - gap * (P.cols - 1)) / P.cols,
         (wrapH - pad - gap * (P.rows - 1)) / P.rows,
     ));
-    g.style.setProperty('--cell', Math.max(22, cell) + 'px');
+    // 30 px de côté au minimum : en dessous, on ne vise plus une case du pouce.
+    // Si la grille dépasse, son conteneur défile — mieux vaut faire glisser un
+    // damier lisible que viser des cases de huit millimètres.
+    g.style.setProperty('--cell', Math.max(30, cell) + 'px');
     positionShadowInput();
 }
 let _fitT = null;
@@ -243,6 +246,7 @@ surveillerClavier();
 // écrasait la grille. Le redimensionnement de fenêtre et la rotation suffisent.
 function repaintValues() {
     for (const k in els) els[k].querySelector('.mf-letter').textContent = values[k] || '';
+    majProgres();
 }
 
 // ---------- Sélection / navigation ----------
@@ -298,6 +302,40 @@ function jumpToNextSlot() {
         const hole = s.cells.find(({ r, c }) => !values[key(r, c)]);
         if (hole) { dir = s.dir; active = { ...hole }; refreshHighlights(); return; }
     }
+}
+
+// ---------- Navigation d'un mot à l'autre ----------
+// Sur un téléphone, viser la première case d'un mot est le geste le plus
+// pénible du jeu. Deux flèches suffisent à s'en passer.
+function allerAuMot(delta) {
+    if (!started || solved || gaveUp || !slots.length) return;
+    const idx = currentSlotIdx();
+    const depart = idx < 0 ? 0 : idx;
+    for (let i = 1; i <= slots.length; i++) {
+        const j = ((depart + delta * i) % slots.length + slots.length) % slots.length;
+        const s = slots[j];
+        // On s'arrête de préférence sur un mot encore incomplet.
+        const trou = s.cells.find(({ r, c }) => !values[key(r, c)]);
+        if (trou || i === slots.length) {
+            dir = s.dir;
+            active = { ...(trou || s.cells[0]) };
+            refreshHighlights();
+            shadow.focus({ preventScroll: true });
+            return;
+        }
+    }
+}
+$('clue-prev').addEventListener('click', () => allerAuMot(-1));
+$('clue-next').addEventListener('click', () => allerAuMot(1));
+
+// Combien de mots sont complets — pas forcément justes, mais remplis. C'est le
+// seul repère d'avancement du joueur : sans lui, une grille à moitié faite
+// ressemble à une grille à peine commencée.
+function majProgres() {
+    const box = $('mf-progres');
+    if (!box || !slots.length) return;
+    const faits = slots.filter(s => s.cells.every(({ r, c }) => values[key(r, c)])).length;
+    box.innerHTML = '✍️ <b>' + faits + '</b>/' + slots.length;
 }
 
 // ---------- Saisie ----------

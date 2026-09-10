@@ -146,7 +146,7 @@ Chaque mini-app suit le même schéma : `public/<app>/index.html` + `app.js` + `
 | App | Notes |
 |---|---|
 | **Motus** | Restructuré en hub à 2 entrées (`/motus/` → « Motus du jour » et « Motus Party »). Le clavier à l'écran a été **retiré** : saisie exclusivement via le clavier natif du téléphone (input invisible qui suit la case active). Discussion du jour, archives, style des tuiles personnalisable (4 thèmes de couleur). | Le **chronomètre part au clic sur « Commencer »** (`POST /api/motus/start`, une seule fois — recharger ne le relance pas, les archives ne sont pas chronométrées) : à nombre d'essais égal, le classement du jour départage au temps. Les entrées d'avant le chronométrage n'ont pas de `ms` et se rangent après celles qui en ont, sans jamais être perdues.
-| **Mots Fléchés** | Le plus ancien des jeux du jour, sert de référence pour le motif « saisie native ». Grilles générées (`motsfleches/generator.js`), dictionnaire avec niveaux de rareté. |
+| **Mots Fléchés** | Le plus ancien des jeux du jour, sert de référence pour le motif « saisie native ». Grilles générées (`motsfleches/generator.js`), dictionnaire avec niveaux de rareté. Voir la section dédiée : le stock de mots, la limite du générateur, et ce qui a été mesuré. |
 | **Le Mot Juste** | Jeu façon Contexto/Cémantix (proximité sémantique, thermomètre). |
 | **Le compte est bon** (`/chiffres`) | Six nombres, une cible, les quatre opérations — ni négatif ni fraction. **Aucun contenu à écrire** : la donne est tirée de la date, et un solveur exhaustif (`chiffres/jeu.js`) garantit que la cible est atteignable avant de la proposer. La solution affichée à la fin est la **plus courte**, obtenue par approfondissement progressif : sans ça la mémoïsation laissait passer un chemin qui repassait par 23 850 pour retomber sur 952, juste mais illisible. Le serveur rejoue les étapes au lieu de croire le total annoncé. Le chronomètre part au clic sur « Commencer ». |
 | **Géographie** (`/geo`) | Deux modes dans un seul jeu du jour : **Le pays** (silhouette) et **Le drapeau**. Même mécanique dans les deux — six essais, et chaque proposition donne distance, direction et proximité, ce qui rend un pays méconnu trouvable par triangulation plutôt qu'au hasard, et rend surtout le mode Drapeau jouable. Les drapeaux sont des **emoji** : aucun fichier à servir, aucun droit à vérifier, et un rendu net sur téléphone. Voir la section dédiée pour la base de pays. |
@@ -318,6 +318,44 @@ Deux types, choisis parce que ce sont les deux jeux rapides dont le temps réel 
 - ⚠️ **Deux règles pour qu'une victoire en soit une** : à moins de deux participants il n'y a personne à battre (lancer son propre défi et le faire en premier ne vaut pas un palmarès), et à égalité en tête personne ne gagne — la même règle qu'au Yams, pour la même raison. Le vainqueur est **recalculé à chaque clôture** (`recalculerVictoires`) tant que le défi court, plutôt qu'attribué puis rattrapé.
 - Les clés `defi:<id>` / `defi:prog:<id>:<pseudo>` / `defi:joueurs:<id>` ne portent pas de date **dans leur nom** : `mfPurge()` les ramasse d'après le `creeA` de la manche, au bout d'une semaine. ⚠️ Jamais `defi:stats:<pseudo>`.
 - **Classement du Salon** : les défis sont le seul jeu multijoueur qui compte vraiment **en saison**, parce qu'ils sont datés (`finiA`) et qu'on sait qui a gagné — là où `admin:gameHistory` n'enregistre pas le vainqueur. Vu que la saison est la vue par défaut, ça compte.
+
+## Mots Fléchés — le stock de mots et la limite du générateur
+
+C'est le jeu du jour n°2 en usage. Tout se joue sur le **dictionnaire**, et il faut avoir les ordres de grandeur en tête avant de toucher au reste.
+
+### Le stock, et pourquoi il commandait tout
+
+Trois grilles par jour mangent une cinquantaine de mots. La règle « pas de mot revu avant quinze jours » a donc besoin d'au moins trente jours de réserve **par longueur**. Avec 1 383 mots, le niveau Moyen n'en avait que vingt-trois — et quand il reste moins de huit mots d'une longueur, `poolsFor` abandonne la règle **en silence**. Mesuré : elle sautait vingt-trois jours sur trente pour les mots de trois lettres, qui faisaient justement 59 % des grilles. Résultat, **40 % des mots du niveau le plus joué revenaient à moins de quinze jours**.
+
+`words-plus.js` ajoute 359 entrées, dont 94 de **trois lettres** — `words-extra.js` n'en contenait aucune alors que c'est la longueur la plus sollicitée. Effet mesuré sur trente jours : répétitions **40 % → 8 %** en Moyen, **25 % → 0 %** en Difficile, **4 % → 0 %** en Expert ; part des mots de trois lettres 59 % → 46 %.
+
+⚠️ **Une définition ne doit jamais contenir sa réponse** ni un mot de la même famille. Il y en avait 34 (« JOUR → Journée », « CLOCHE → Elle sonne au clocher ») : toutes réécrites, et un test le vérifie en une ligne.
+
+### Ce que le générateur ne sait pas faire, et pourquoi
+
+⚠️ **30 à 36 % de chaque grille est une case noire MUETTE** — ni lettre, ni définition. Dans une vraie grille de magazine, presque chaque case noire porte une définition. C'est le défaut visuel principal, et il n'est **pas** un réglage à corriger : il découle de la méthode. Le générateur pose les mots un par un en s'interdisant de coller deux lettres côte à côte hors croisement (sans quoi il fabriquerait des suites qui ne sont pas des mots), ce qui produit forcément des îlots séparés par du vide.
+
+Une vraie grille se fabrique dans l'autre sens : on dessine d'abord le motif des cases noires, puis on remplit par satisfaction de contraintes. **Cette réécriture a été faite, mesurée, et abandonnée** — la garder aurait dégradé le jeu. Le compte rendu, pour qui voudra y revenir :
+
+- le motif seul atteignait **0 à 1 case muette** au lieu de 30 % ;
+- le remplissage réussissait **10 fois sur 10** en 9×9, 10×9 et 11×9 ;
+- ⚠️ mais **en conditions réelles**, l'exclusion anti-répétition rétrécit les réserves et tout s'effondre : 90 % de mots de trois lettres, 65 % de répétitions, et jusqu'à 52 % de cases muettes en Expert.
+- Deux contraintes structurelles à ne pas redécouvrir : une suite ne peut commencer **ni ligne 0 ni colonne 0** (la flèche n'aurait pas de case où loger) — sans ce garde-fou on obtient une colonne de onze lettres ne formant aucun mot ; et **huit colonnes ne laissent qu'une seule découpe de ligne possible**, donc toutes les lignes deviennent identiques et les colonnes trop longues pour le dictionnaire.
+
+**La conclusion est un ordre de grandeur, pas un bug** : un remplisseur de mots croisés dense a besoin de dizaines de milliers de mots ; nous en avons 1 581, dont 82 de huit lettres. Refaire le générateur ne vaudra le coup qu'après avoir plusieurs milliers de mots **avec leurs définitions** — et écrire des définitions ne s'automatise pas.
+
+### Les défauts corrigés
+
+- ⚠️ **« Tirer une nouvelle grille » ne changeait rien** — quatrième fois que ce piège se présente (Motus, Le Mot Juste, puis les deux jeux du jour récents). Le tirage ne dépend que de la date et du niveau : effacer la clé redonne la même grille. Un compteur `mf:variante:<date>:<niveau>` décale la graine, et la route insiste jusqu'à obtenir une grille différente. À zéro, aucune date passée ne bouge. La route **ne touche plus à `mf:hist:<date>`** : il porte les mots des **trois** niveaux du jour, et l'effacer faisait perdre la trace des deux autres.
+- ⚠️ **`/api/mf/check` était un oracle complet.** Il disait quelles cases étaient fausses, sur n'importe quel contenu envoyé : vingt-six requêtes par case suffisaient à lire la grille. La parade n'est pas un compteur d'appels — **vérifier enregistre d'abord ce qu'on envoie**, donc sonder une case revient à effacer sa propre grille. Le joueur honnête ne voit aucune différence.
+- **Les archives ont un plancher** (`ARCHIVE_JOURS`, commun aux trois anciens jeux du jour) : sans lui, demander une date de 2019 fabriquait **et stockait** une grille, autant de fois qu'on voulait.
+- **Une journée de Mots Fléchés compte pour une journée** au classement du Salon. Les trois niveaux étant comptés séparément, le jeu rapportait neuf points par jour quand le Motus en rapporte trois : un choix de difficulté valait trois jeux. Les grilles supplémentaires valent désormais une participation.
+
+### Sur téléphone
+
+- **Deux flèches encadrent la définition** pour passer d'un mot à l'autre : viser la première case d'un mot au pouce était le geste le plus pénible du jeu. Elles s'arrêtent de préférence sur un mot encore incomplet.
+- **Un compteur de mots remplis** dans le bandeau : sans repère d'avancement, une grille à moitié faite ressemble à une grille à peine commencée.
+- **La case ne descend plus sous 30 px** (elle tombait à 22). Si la grille dépasse, son conteneur défile. ⚠️ Le centrage se fait par `margin:auto` et **non** par `align-items:center` : dans un conteneur qui défile, un enfant centré par l'alignement voit son début rogné, et on ne peut plus remonter à la première ligne.
 
 ## Les statistiques : où elles doivent apparaître
 

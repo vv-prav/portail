@@ -64,6 +64,7 @@ function calculerClassement(cache, pseudos, series, saison) {
     for (const p of pseudos) parNorm.set(norm(p), p);
 
     // --- Jeux du jour : une clé de progression par joueur et par date ---
+    const joursMf = new Map();          // "<pseudo>|<date>" → journée de mots fléchés
     for (const [cle, val] of Object.entries(cache)) {
         if (!val || typeof val !== 'object') continue;
         const seg = cle.split(':');
@@ -78,8 +79,31 @@ function calculerClassement(cache, pseudos, series, saison) {
         if (!ligne) continue;                       // compte supprimé depuis
         const reussi = seg[0] === 'chiffres' ? (val.fini && val.ecart === 0)
             : (seg[0] === 'geo' ? !!val.trouve : !!val.solved);
+        // ⚠️ Les Mots Fléchés proposent TROIS grilles par jour, une par
+        // difficulté. Comptées séparément, elles rapportaient neuf points par
+        // jour quand le Motus en rapporte trois — un choix de difficulté valait
+        // trois jeux. On met la journée de côté et on la compte une seule fois
+        // plus bas ; les grilles supplémentaires valent une participation.
+        if (seg[0] === 'mf') {
+            const k = seg[2] + '|' + seg[3];
+            const j = joursMf.get(k) || { ligne, trouve: false, total: 0 };
+            j.total++;
+            if (reussi) j.trouve = true;
+            joursMf.set(k, j);
+            continue;
+        }
         if (reussi) { ligne.jourTrouves++; ligne.points += BAREME.jourTrouve; }
         else { ligne.jourJoues++; ligne.points += BAREME.jourJoue; }
+    }
+
+    // Une journée de Mots Fléchés vaut une journée, plus une participation par
+    // grille supplémentaire.
+    for (const j of joursMf.values()) {
+        if (j.trouve) { j.ligne.jourTrouves++; j.ligne.points += BAREME.jourTrouve; }
+        else { j.ligne.jourJoues++; j.ligne.points += BAREME.jourJoue; }
+        const extra = Math.max(0, j.total - 1);
+        j.ligne.jourJoues += extra;
+        j.ligne.points += extra * BAREME.jourJoue;
     }
 
     // --- Multijoueur ---

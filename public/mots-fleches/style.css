@@ -65,15 +65,31 @@ body.is-ready .mf { display:flex; }
 .archive-chip { color:var(--brass-soft); border-color:var(--brass); }
 .archive-chip[hidden] { display:none; }
 
-/* Définition active */
-.mf-clue { min-height:44px; display:flex; align-items:center; gap:8px; padding:10px 12px; cursor:pointer;
+/* Définition active, encadrée par deux flèches de navigation */
+.mf-cluebar { display:flex; align-items:stretch; gap:6px; flex:0 0 auto; }
+.mf-clue { flex:1; min-width:0; min-height:48px; display:flex; align-items:center; gap:8px; padding:10px 12px; cursor:pointer;
            background:linear-gradient(165deg,var(--ink-3),var(--ink-2)); border:1px solid var(--line);
            border-radius:12px; font-size:.92rem; line-height:1.3; }
 .clue-dir { color:var(--brass); flex:0 0 auto; }
+/* 44 px de côté : la taille minimale d'une cible tactile confortable. */
+.mf-nav { flex:0 0 auto; width:44px; border-radius:12px; border:1px solid var(--line);
+          background:linear-gradient(165deg,var(--ink-3),var(--ink-2)); color:var(--brass-soft);
+          font-family:inherit; font-size:1.4rem; line-height:1; cursor:pointer; }
+.mf-nav:active { background:var(--ink-3); }
+.mf-nav:disabled { opacity:.35; }
 
 /* Grille — dimensionnée en JS (variable --cell) pour toujours remplir
    exactement l'espace disponible, quels que soient rows/cols et l'écran. */
-.mf-grid-wrap { position:relative; display:flex; justify-content:center; align-items:center; flex:1; min-height:0; }
+/* La grille ne descend plus sous 30 px par case : en dessous, on ne vise plus
+   rien du pouce. Si elle ne tient pas, on la fait défiler plutôt que de la
+   rendre minuscule — un damier illisible n'est pas un compromis acceptable. */
+.mf-grid-wrap { position:relative; display:flex; flex:1; min-height:0;
+                overflow:auto; -webkit-overflow-scrolling:touch; }
+/* ⚠️ Centrage par `margin:auto` et NON par `align-items:center` : dans un
+   conteneur qui défile, un enfant centré par l'alignement voit son début
+   rogné — on ne peut plus remonter jusqu'à la première ligne. La marge
+   automatique centre aussi, mais laisse le défilement atteindre les bords. */
+.mf-grid { margin:auto; }
 .mf-grid { display:grid; gap:2px; background:rgba(217,169,78,.35); padding:2px;
            border-radius:10px; border:2px solid var(--brass); overflow:hidden;
            grid-template-columns:repeat(var(--cols,7), var(--cell,32px));

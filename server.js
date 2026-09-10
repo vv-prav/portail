@@ -425,6 +425,9 @@ function mfFormat(sec) { return Math.floor(sec / 60) + ':' + String(sec % 60).pa
 //  réécrites (quelques centaines d'octets au lieu de tout le jeu de données).
 //  Clés : mf:prog:<user>:<date>:<niv> · mf:board:<date>:<niv>
 //         mf:grid:<date>:<niv> · mf:hist:<date> · mf:cmt:<date> · mf:days:<user>
+// Profondeur des archives rejouables, commune aux trois anciens jeux du
+// jour — ils la codaient chacun en dur, à la même valeur.
+const ARCHIVE_JOURS = 14;
 const MF_KEEP_DAYS = 15;      // classements et messages
 const MF_KEEP_GRIDS = 20;     // grilles et progressions (archives sur 14 jours)
 
@@ -525,7 +528,7 @@ function mfPurge() {
             date = parts[3]; limit = limitLong;           // geo:prog:<pseudo>:<date>:<mode>
         } else {
             if (parts[1] === 'board' || parts[1] === 'cmt') { date = parts[2]; limit = limitShort; }
-            else if (parts[1] === 'grid' || parts[1] === 'hist') date = parts[2];
+            else if (parts[1] === 'grid' || parts[1] === 'hist' || parts[1] === 'variante') date = parts[2];
             else if (parts[1] === 'prog') date = parts[3];
         }
         if (date && /^\d{4}-\d{2}-\d{2}$/.test(date) && date < limit) { mfDel(k); removed++; }
@@ -570,6 +573,10 @@ const kGrid = (d, l) => `mf:grid:${d}:${l}`;
 const kHist = (d) => `mf:hist:${d}`;
 const kCmt = (d) => `mf:cmt:${d}`;
 const kDays = (u) => `mf:days:${u}`;
+// Le compteur de variante d'une grille : il décale la graine sans toucher aux
+// jours passés. Voir le commentaire de `generate` — c'est ce qui rend le bouton
+// « Tirer une nouvelle grille » de l'administration réellement efficace.
+const kMfVariante = (d, l) => `mf:variante:${d}:${l}`;
 
 // Grille (mise en cache) — rotation : on évite les mots des 15 derniers jours
 function mfGrid(date, level) {
@@ -580,7 +587,7 @@ function mfGrid(date, level) {
         const h = mfGet(kHist(mfShiftDay(date, -i)));
         if (Array.isArray(h)) recent.push(...h);
     }
-    const p = MF.generate(level, date, recent);
+    const p = MF.generate(level, date, recent, mfGet(kMfVariante(date, level)) || 0);
     mfSet(kGrid(date, level), p);
     const hist = mfGet(kHist(date)) || [];
     mfSet(kHist(date), hist.concat(p.wordList || []));
@@ -608,6 +615,11 @@ app.get('/api/mf/today', requireAuth, (req, res) => {
     const today = mfTodayId();
     let date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : today;
     if (date > today) date = today;
+    // ⚠️ Et pas plus loin en arrière que ce que les archives proposent : sans
+    // plancher, demander une date de 2019 fabriquait ET stockait une grille,
+    // autant de fois qu'on voulait.
+    const plancher = mfShiftDay(today, -ARCHIVE_JOURS);
+    if (date < plancher) date = plancher;
     const p = mfGrid(date, level);
     res.json({ ...mfPublic(p), today, isArchive: date !== today, nextIn: mfSecondsToMidnight() });
 });
@@ -647,7 +659,17 @@ app.post('/api/mf/progress', requireAuth, (req, res) => {
     res.json({ ok: true });
 });
 
-// --- Vérification (le serveur ne révèle jamais les lettres) ---
+// --- Vérification ---
+//
+// ⚠️ Le commentaire d'origine affirmait que « le serveur ne révèle jamais les
+// lettres ». C'était faux : la route disait quelles cases étaient fausses, sur
+// n'importe quel contenu envoyé. Vingt-six requêtes par case suffisaient donc à
+// lire la grille entière, sans jamais rien deviner.
+//
+// La parade n'est pas un compteur d'appels, c'est de rendre la sonde coûteuse :
+// vérifier ENREGISTRE d'abord ce qu'on envoie. Sonder une case revient donc à
+// effacer sa propre grille, ce que personne ne fera cent fois de suite. Et pour
+// le joueur honnête ça ne change rien — il vérifie ce qu'il vient d'écrire.
 function mfSlots(p) {
     return p.defs.map(def => {
         const cells = [];
@@ -659,9 +681,24 @@ function mfSlots(p) {
 }
 app.post('/api/mf/check', requireAuth, (req, res) => {
     const b = req.body || {};
+    const level = mfLevel(b.level);
     const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : mfTodayId();
-    const p = mfGrid(date, mfLevel(b.level));
-    const cells = b.cells || {};
+    const p = mfGrid(date, level);
+
+    // On enregistre AVANT de comparer : ce qu'on vérifie est ce qu'on a écrit.
+    const cle = kProg(currentUser(req), date, level);
+    const propre = {};
+    let n = 0;
+    for (const k in (b.cells || {})) {
+        if (n++ > 200) break;
+        const v = String(b.cells[k] || '').toUpperCase().slice(0, 1);
+        if (/^[A-Z]$/.test(v) && /^\d+,\d+$/.test(k)) propre[k] = v;
+    }
+    const avant = mfGet(cle) || {};
+    if (!avant.solved && !avant.gaveUp) {
+        mfSet(cle, { ...avant, cells: propre, ts: Date.now(), startedAt: avant.startedAt || Date.now() });
+    }
+    const cells = propre;
     const slots = mfSlots(p).map(s => ({ r: s.r, c: s.c, dir: s.dir, ok: s.cells.every(({ r, c }) => String(cells[r + ',' + c] || '').toUpperCase() === p.grid[r][c]) }));
     const wrong = [];
     for (const k in cells) {
@@ -767,7 +804,7 @@ app.get('/api/mf/states', requireAuth, (req, res) => {
 app.get('/api/mf/archive', requireAuth, (req, res) => {
     const user = currentUser(req), today = mfTodayId();
     const out = [];
-    for (let i = 1; i <= 14; i++) {
+    for (let i = 1; i <= ARCHIVE_JOURS; i++) {
         const d = mfShiftDay(today, -i);
         const done = MF_LEVELS.filter(lv => (mfGet(kProg(user, d, lv)) || {}).solved).length;
         out.push({ date: d, done });
@@ -1116,7 +1153,7 @@ app.get('/api/motus/mystats', requireAuth, (req, res) => {
 app.get('/api/motus/archive', requireAuth, (req, res) => {
     const user = currentUser(req), today = mfTodayId();
     const out = [];
-    for (let i = 1; i <= 14; i++) {
+    for (let i = 1; i <= ARCHIVE_JOURS; i++) {
         const d = mfShiftDay(today, -i);
         const p = mfGet(kMotusProg(user, d));
         out.push({ date: d, solved: !!(p && p.solved), tries: p ? (p.guesses || []).length : 0 });
@@ -1525,7 +1562,7 @@ app.get('/api/juste/board', requireAuth, (req, res) => {
 app.get('/api/juste/archive', requireAuth, (req, res) => {
     const user = currentUser(req), today = mfTodayId();
     const out = [];
-    for (let i = 1; i <= 14; i++) {
+    for (let i = 1; i <= ARCHIVE_JOURS; i++) {
         const d = mfShiftDay(today, -i);
         const p = mfGet(kMjProg(user, d));
         out.push({ date: d, solved: !!(p && p.solved), guesses: p ? (p.guesses || []).length : 0 });

@@ -37,10 +37,19 @@
             <span class="chip" id="mf-streak" title="Jours consécutifs">🔥 <b>0</b></span>
             <span class="chip" id="mf-next" title="Prochaine grille">🕛 —</span>
             <span class="chip live-chip" id="mf-live" hidden></span>
+            <span class="chip" id="mf-progres" title="Mots trouvés">✍️ <b>0</b>/0</span>
             <span class="chip archive-chip" id="mf-archive-chip" hidden>📅 Archive</span>
         </div>
 
-        <div class="mf-clue" id="mf-clue">Appuie sur « Commencer » pour lancer la grille.</div>
+        <!-- La définition en cours, avec de quoi passer d'un mot à l'autre sans
+             aller chercher la case à la main : sur un téléphone, viser une case
+             de huit millimètres pour changer de mot est le geste le plus pénible
+             du jeu. -->
+        <div class="mf-cluebar">
+            <button type="button" class="mf-nav" id="clue-prev" aria-label="Mot précédent">‹</button>
+            <div class="mf-clue" id="mf-clue">Appuie sur « Commencer » pour lancer la grille.</div>
+            <button type="button" class="mf-nav" id="clue-next" aria-label="Mot suivant">›</button>
+        </div>
 
         <div class="mf-grid-wrap" id="mf-grid-wrap">
             <div class="mf-grid" id="mf-grid"></div>
@@ -109,7 +118,7 @@
     </div>
 
     <!-- Aperçu d'une définition en grand -->
-    <div class="ds-overlay def-zoom" id="mf-defzoom" hidden>
+    <div class="ds-overlay" id="mf-defzoom" hidden>
         <div class="defzoom-card">
             <button type="button" class="ds-card-close" id="defzoom-close" aria-label="Fermer">✕</button>
             <span class="defzoom-dir" id="defzoom-dir">▶</span>

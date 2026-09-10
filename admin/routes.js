@@ -675,7 +675,9 @@ module.exports = function attachAdmin(app, ctx) {
                 try {
                     const recent = [];
                     for (let j = 0; j < 15; j++) { const h = mf.get(`mf:hist:${mf.shift(date, -j - 1)}`); if (Array.isArray(h)) recent.push(...h); }
-                    const p = MFG.generate(lv, date, recent);
+                    // Même variante que le tirage réel, sinon l'aperçu annoncerait
+                    // une autre grille que celle qui sortira.
+                    const p = MFG.generate(lv, date, recent, Number(mf.get(`mf:variante:${date}:${lv}`)) || 0);
                     day.levels[lv] = { words: p.words, list: p.wordList };
                 } catch (e) { day.levels[lv] = { error: true }; }
             }
@@ -687,13 +689,40 @@ module.exports = function attachAdmin(app, ctx) {
     A('/mf/regen', (req, res) => {
         const date = /^\d{4}-\d{2}-\d{2}$/.test(req.body.date || '') ? req.body.date : mf.today();
         const lv = mf.levels.includes(req.body.level) ? req.body.level : mf.levels[0];
-        mf.del(`mf:grid:${date}:${lv}`);
-        mf.del(`mf:hist:${date}`);
-        // les progressions de cette grille n'ont plus de sens
+
+        // ⚠️ Effacer la clé ne suffisait PAS : le tirage ne dépend que de la
+        // date et du niveau, donc la même grille revenait à l'identique. Il
+        // faut décaler la graine — c'est exactement le piège déjà corrigé sur
+        // le Motus, Le Mot Juste et les deux jeux du jour récents.
+        const ancienne = mf.get(`mf:grid:${date}:${lv}`);
+        const avant = ancienne ? (ancienne.wordList || []).join(',') : null;
+        let variante = Number(mf.get(`mf:variante:${date}:${lv}`)) || 0;
+
+        // ⚠️ On ne touche PAS à `mf:hist:${date}` : il porte les mots des TROIS
+        // niveaux du jour, et l'effacer faisait perdre la trace des deux autres
+        // — leurs mots redevenaient tirables dès le lendemain.
+        for (let essai = 0; essai < 12; essai++) {
+            variante++;
+            mf.set(`mf:variante:${date}:${lv}`, variante);
+            mf.del(`mf:grid:${date}:${lv}`);
+            const recent = [];
+            for (let i = 1; i <= 15; i++) {
+                const h = mf.get(`mf:hist:${mf.shift(date, -i)}`);
+                if (Array.isArray(h)) recent.push(...h);
+            }
+            let neuve = null;
+            try { neuve = MFG.generate(lv, date, recent, variante); } catch (e) { continue; }
+            if (!avant || (neuve.wordList || []).join(',') !== avant) {
+                mf.set(`mf:grid:${date}:${lv}`, neuve);
+                break;
+            }
+        }
+
+        // Les progressions et le classement de cette grille n'ont plus de sens.
         for (const k of Object.keys(mf.cache())) if (k.startsWith('mf:prog:') && k.endsWith(`:${date}:${lv}`)) mf.del(k);
         mf.del(`mf:board:${date}:${lv}`);
-        log(currentUser(req), 'grille régénérée', date + ' ' + lv);
-        res.json({ ok: true });
+        log(currentUser(req), 'grille régénérée', date + ' ' + lv + ' (variante ' + variante + ')');
+        res.json({ ok: true, variante });
     });
 
     A('/mf/board/remove', (req, res) => {
