@@ -219,6 +219,9 @@ body.is-hub   .hub   { display: block; }
 .hub-online-bubble img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
 .hub-online[hidden] { display: none; }
 
+/* Descendu sous le classement : il lui faut sa propre respiration, il ne
+   peut plus compter sur la marge du bloc « En ce moment » qui le précédait. */
+.hub-recent { margin: 22px 0 0; }
 .hub-recent[hidden] { display: none; }
 .hub-recent-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin: 0 0 8px; }
 .hub-recent-list { display: flex; flex-direction: column; gap: 6px; }

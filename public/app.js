@@ -202,7 +202,9 @@ const TILE_ORDER_KEY = 'erquy_tile_order';
 // Ordre de préférence par défaut, utilisé tant que personne n'a encore réorganisé les
 // tuiles à la main. Voyages et Recettes restent toujours tout en bas, même après.
 const DEFAULT_PRIORITY = ['jouer'];
-const ALWAYS_LAST = ['carnet'];
+// L'administration ferme toujours la marche : c'est un outil, pas une pièce du
+// salon. Le carnet reprend donc sa place juste après « Jouer ensemble ».
+const ALWAYS_LAST = ['admin'];
 function loadTileOrder(allIds) {
     let saved = [];
     try { saved = JSON.parse(localStorage.getItem(TILE_ORDER_KEY) || '[]'); } catch (e) {}
@@ -215,7 +217,7 @@ function loadTileOrder(allIds) {
         const rest = allIds.filter(id => !DEFAULT_PRIORITY.includes(id) && !ALWAYS_LAST.includes(id));
         order = [...DEFAULT_PRIORITY.filter(id => allIds.includes(id)), ...rest];
     }
-    // Voyages et Recettes : toujours en dernier, qu'un ordre ait été sauvegardé ou non.
+    // L'administration : toujours en dernier, qu'un ordre ait été sauvegardé ou non.
     // On les reprend depuis allIds et non depuis order : `rest` les avait
     // volontairement écartés, donc les chercher dans order les faisait
     // disparaître de la grille pour qui n'avait jamais réorganisé ses tuiles.

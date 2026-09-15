@@ -273,6 +273,8 @@ L'accueil ne porte plus que **2 tuiles** (Jouer ensemble, Le carnet, plus Admin)
 - **Perudo est volontairement traité à part** : il figure au catalogue et dans la liste, mais le clic ouvre son propre hall, avec son identité.
 - **Le retour suit la hiérarchie** : les salles d'attente ramènent à `/jouer/`, les jeux du jour au salon. Et `vues.js` fait remonter le geste retour du téléphone d'une vue au lieu de quitter le site.
 
+**L'ordre de l'accueil**, de haut en bas : identité · « En ce moment » · les blocs d'appel (invitations, tables ouvertes, annonce) · « Aujourd'hui » · les tuiles · le classement · « Passés récemment ». Deux intentions derrière : ce qui appelle à agir est en haut, ce qui n'est qu'une nouvelle du salon ferme la page. `ALWAYS_LAST = ['admin']` — l'administration est un outil, pas une pièce, et elle reste en dernier même pour qui a réorganisé ses tuiles.
+
 ⚠️ Piège rencontré : `loadTileOrder()` écartait Voyages et Recettes de `rest` puis ne les réajoutait que s'ils étaient déjà dans `order` — ils disparaissaient donc de la grille pour qui n'avait jamais réorganisé ses tuiles. Le bug était masqué par les ordres sauvegardés dans les navigateurs.
 
 Depuis, trois regroupements de plus :
