@@ -209,7 +209,10 @@ function startGame(g) {
     for (; idx < shuffled.length; idx++) { shuffled[idx].role = 'civil'; shuffled[idx].word = pair[0]; }
     g.civilWord = pair[0];
     g.round = 1;
-    g.turnIndex = 0;
+    // Qui parle en premier n'est pas neutre à l'Infiltré : le premier n'a
+    // aucun indice à exploiter, et c'était systématiquement le créateur de la
+    // table. Tirage au sort, montré par le plouf-plouf côté client.
+    g.turnIndex = Math.floor(Math.random() * alive(g).length);
     g.votes = {};
     g.awaitingMrWhiteGuess = null;
     g.status = 'speaking';
@@ -356,6 +359,15 @@ io.on('connection', (socket) => {
         if (!g || g.host !== socket.data.ucPseudo || g.status !== 'lobby') return;
         if (g.players.length < 3) return socket.emit('uc_error', 'Il faut au moins 3 joueurs.');
         startGame(g);
+        // Le tirage est déjà fait (startRound) : on ne fait que l'annoncer, pour
+        // que les deux ne puissent pas diverger.
+        const ordre = alive(g);
+        if (ordre.length > 1 && ordre[g.turnIndex]) {
+            io.to(roomOf(g)).emit('uc_plouf', {
+                joueurs: ordre.map(p => p.pseudo),
+                gagnant: ordre[g.turnIndex].pseudo,
+            });
+        }
         broadcastLobby();
     });
 

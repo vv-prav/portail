@@ -86,6 +86,10 @@ function initRemote() {
     });
     socket.on('uc_games', renderLobby);
     socket.on('uc_state', onState);
+    // Le plouf-plouf : le serveur a tiré qui commence, on ne fait que le
+    // montrer. L'attente est volontairement ignorée si le composant manque —
+    // une animation absente ne doit jamais empêcher de jouer.
+    socket.on('uc_plouf', (d) => { if (window.Plouf) Plouf.tirage(d || {}); });
     socket.on('uc_error', (msg) => {
         toast(msg || 'Erreur.');
         if (lastGameId && /existe plus/i.test(msg || '')) {

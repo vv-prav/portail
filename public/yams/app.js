@@ -226,6 +226,10 @@ function connect() {
     });
     socket.on('yams_games', renderLobby);
     socket.on('yams_state', onState);
+    // Le plouf-plouf : le serveur a tiré qui commence, on ne fait que le
+    // montrer. L'attente est volontairement ignorée si le composant manque —
+    // une animation absente ne doit jamais empêcher de jouer.
+    socket.on('yams_plouf', (d) => { if (window.Plouf) Plouf.tirage(d || {}); });
     socket.on('yams_stats_result', renderStats);
     socket.on('yams_leaderboard_result', renderLeaderboard);
     socket.on('yams_history_result', renderHistory);

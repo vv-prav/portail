@@ -234,6 +234,16 @@ S'auto-injecte dans la page (crée son propre DOM, pas besoin d'ajouter le moind
 
 S'auto-injecte lui aussi. Les quatre jeux multijoueurs partagent `#v-waiting` et `#wait-players`, donc le bouton « Inviter » se place seul sous la liste des joueurs — aucune app n'a de HTML à ajouter. Expose `Invitation.tableDuLien()` (l'id présent dans `?table=`), `Invitation.definirTable(id)` et `Invitation.effacer()`. Le paramètre d'URL est retiré une fois la table rejointe, sinon un rechargement après avoir quitté la table la rejoindrait en boucle.
 
+### `public/plouf.js`
+
+Le tirage au sort de **qui commence**, montré comme une roulette : une fenêtre unique qui fait défiler les joueurs (bulle d'avatar + pseudo) et ralentit jusqu'à s'arrêter sur le gagnant. S'auto-injecte, comme `invitation.js` — aucune app n'a de HTML à ajouter. Usage : `await Plouf.tirage({ joueurs, gagnant })`.
+
+⚠️ **L'animation ne décide de rien.** Le tirage est fait par le SERVEUR et diffusé à tous ; l'animation reçoit le gagnant et calcule le nombre de pas qui l'y mène. Si elle décidait, deux joueurs verraient des résultats différents et le jeu derrière ne saurait plus qui joue.
+
+⚠️ **Le piège de l'animation d'entrée — une variante de celui de `visibility`.** La première version posait `opacity: 0` sur le voile et comptait sur une transition pour l'amener à 1. Or une transition (et une animation partant d'une opacité nulle) **ne progresse pas tant que la page n'est pas peinte** : onglet en arrière-plan, aperçu masqué. Mesuré : `opacity` restait à 0 alors que le voile, lui, avalait bien les clics — un bloqueur plein écran invisible. La règle qui en sort : **l'état sûr doit être l'état visible**, et une animation d'entrée ne doit jamais porter sur ce qui rend l'élément visible. Ici le fondu porte sur la carte et n'utilise que `transform` : bloquée, elle laisse une carte à 94 %, ce qui ne gêne personne.
+
+Un filet de sécurité retire le voile quoi qu'il arrive, et une touche écourte l'animation.
+
 ### `public/profile-viewer.js`
 
 Système séparé (avant le design system, mais du même esprit) : `PortailProfile.fetchAvatars([pseudos])`, `PortailProfile.bubbleHTML(avatarData)`, `PortailProfile.open(pseudo)` (ouvre un profil public en lecture seule, alimenté par `GET /api/public-profile`, qui ne renvoie **jamais** rien de sensible).
@@ -309,6 +319,22 @@ Quatre réponses ont donc été ajoutées, dont **trois ne demandent pas la simu
 `/jouer/` sondait le serveur toutes les dix secondes alors que les six jeux qu'il annonce parlent déjà socket.io. Le serveur compare désormais sa propre mémoire toutes les deux secondes (`empreinteDesTables`) et émet un simple `hall_bouge` dans la salle `salon_hall` ; chacun redemande alors **sa** version — l'état est personnel (« moi », « je viens », la dernière partie), il ne se diffuse pas tel quel. Un sondage de 45 s reste en filet si le socket tombe.
 
 ⚠️ L'empreinte doit contenir **la présence** autant que les tables : c'est de la liste des présents que part le geste « proposer une partie ». Elle ne compare que l'ensemble des pseudos présents, jamais leur `lastSeen` — sinon elle changerait à chaque battement et tout le monde redemanderait tout, en boucle.
+
+## Qui commence — le plouf-plouf
+
+Le premier tour revenait toujours au joueur d'indice zéro, c'est-à-dire au premier inscrit, donc presque toujours à celui qui avait créé la table. Ça n'était écrit nulle part et ça ne se discutait pas. Le tirage est maintenant fait au hasard par le serveur, et `public/plouf.js` le montre.
+
+⚠️ **Deux jeux sur cinq seulement, et c'est volontaire.** Le plouf-plouf n'a de sens que là où quelqu'un commence vraiment :
+
+| Jeu | Premier joueur ? |
+|---|---|
+| **Yams** | oui — `g.turnIndex`, et commencer donne un avantage sur les cases qu'on choisit en premier |
+| **Infiltré** | oui — le premier à parler n'a aucun indice à exploiter |
+| Petit Bac · Motus Party · Quiz des drapeaux | **non** : tout le monde joue en même temps. Y afficher un tirage serait du théâtre. |
+
+Mesuré sur 24 parties de Yams et 15 d'Infiltré : l'annonce colle toujours à l'état réel (`turnPseudo`), et l'hôte ne commence plus que 9 fois sur 24 au lieu de 24.
+
+**Ce qui était déjà en place** et n'a pas eu besoin d'être ajouté : seul l'hôte peut lancer une partie ou une manche (garde serveur `g.host !== socket.data.<x>Pseudo` **et** bouton masqué côté client, dans les cinq jeux), et **l'hôte est transmis** au premier joueur restant quand le créateur quitte un salon d'attente — jamais en cours de partie, où il peut revenir.
 
 ## Les défis (`defis/jeu.js`) — le multijoueur sans rendez-vous
 

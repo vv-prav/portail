@@ -627,7 +627,18 @@ io.on('connection', (socket) => {
         // gagne pas contre personne. Seul le score, lui, compte vraiment.
         g.solo = g.players.length === 1;
         g.status = 'playing';
-        g.turnIndex = 0;
+        // ⚠️ Le premier tour revenait toujours à l'indice zéro, c'est-à-dire au
+        // premier inscrit — donc presque toujours à celui qui avait créé la
+        // table. Au Yams, commencer donne un vrai avantage sur les cases qu'on
+        // choisit en premier. Le tirage se fait donc ici, au hasard, et le
+        // client ne fait que le montrer.
+        g.turnIndex = Math.floor(Math.random() * g.players.length);
+        if (g.players.length > 1) {
+            io.to(roomOf(g)).emit('yams_plouf', {
+                joueurs: g.players.map(p => p.pseudo),
+                gagnant: g.players[g.turnIndex].pseudo,
+            });
+        }
         startTurn(g);
         broadcastState(g);
         broadcastLobby();
