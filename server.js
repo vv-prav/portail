@@ -2757,6 +2757,36 @@ function tousLesTitres(forcer) {
 }
 const titresDe = (pseudo) => tousLesTitres().get(pseudo) || [];
 
+// ---------------------------------------------------------------------
+//  LES TITRES QU'ON CHOISIT DE MONTRER
+//
+//  Les titres se gagnent, mais l'affichage est un choix : à douze badges,
+//  la bulle de profil devient un mur et plus rien ne ressort. Le joueur
+//  décide donc lesquels paraissent, et dans quel ordre.
+//
+//  Deux règles qui comptent :
+//   · la sélection est stockée sur le COMPTE (`user.titresAffiches`) et
+//     non dans le cache par clés — elle suit ainsi le renommage toute
+//     seule, alors qu'une clé `titres:choix:<pseudo>` demanderait une
+//     migration de plus ;
+//   · on filtre TOUJOURS contre les titres réellement détenus au moment
+//     de l'affichage. Un titre unique change de mains ; celui qui l'a
+//     perdu ne doit pas continuer à le porter parce qu'il l'avait coché.
+//     C'est aussi ce qui empêche d'afficher un titre qu'on n'a jamais eu.
+//
+//  Rien de choisi = tout est montré. C'est le comportement d'avant, donc
+//  personne ne voit son profil se vider du jour au lendemain.
+// ---------------------------------------------------------------------
+function titresVisiblesDe(pseudo) {
+    const tous = titresDe(pseudo);
+    const u = registeredUsers[pseudo];
+    const choix = u && Array.isArray(u.titresAffiches) ? u.titresAffiches : null;
+    if (!choix) return tous;
+    const parId = new Map(tous.map(t => [t.id, t]));
+    // L'ordre de la sélection est celui du joueur : on le respecte.
+    return choix.map(id => parId.get(id)).filter(Boolean);
+}
+
 // Le classement du Salon : un score transversal, recalculé à la demande depuis
 // les clés déjà en base. Rien n'est stocké, donc rien à migrer si le barème change.
 app.get('/api/salon/classement', requireAuthApi, (req, res) => {
@@ -2858,19 +2888,47 @@ app.get('/api/salon/profile', requireAuthApi, (req, res) => {
         jeux: portrait.jeux,
         totalParties: portrait.total,
         rang: placeAuClassement(pseudo),
+        // `titres` = tout ce qui est détenu (l'atelier de choix en a besoin),
+        // `titresAffiches` = les identifiants retenus, dans l'ordre voulu.
         titres: titresDe(pseudo),
+        titresAffiches: Array.isArray(user.titresAffiches) ? user.titresAffiches : null,
         calendrier: calendrierActivite(pseudo, 119),   // 17 semaines
     });
 });
 
 app.post('/api/salon/profile', requireAuthApi, (req, res) => {
-    const user = registeredUsers[currentUser(req)];
+    const pseudo = currentUser(req);
+    const user = registeredUsers[pseudo];
     if (!user) return res.status(404).json({ error: 'Compte introuvable.' });
-    const av = String((req.body && req.body.avatar) || '');
-    if (av !== '' && !SALON_AVATARS.includes(av)) return res.status(400).json({ error: 'Avatar invalide.' });
-    user.avatar = av;
+    const b = req.body || {};
+
+    // ⚠️ On ne touche QUE les champs présents dans la requête. La version
+    // précédente lisait `body.avatar` sans vérifier qu'il avait été envoyé :
+    // enregistrer n'importe quoi d'autre par cette route effaçait l'avatar.
+    if ('avatar' in b) {
+        const av = String(b.avatar || '');
+        if (av !== '' && !SALON_AVATARS.includes(av)) return res.status(400).json({ error: 'Avatar invalide.' });
+        user.avatar = av;
+    }
+
+    if ('titresAffiches' in b) {
+        // `null` remet le comportement par défaut : tout montrer.
+        if (b.titresAffiches === null) delete user.titresAffiches;
+        else {
+            if (!Array.isArray(b.titresAffiches)) return res.status(400).json({ error: 'Sélection invalide.' });
+            // On ne garde que des titres réellement détenus : la liste vient du
+            // navigateur, elle ne décide pas de ce qu'on a gagné.
+            const detenus = new Set(titresDe(pseudo).map(t => t.id));
+            const vus = new Set();
+            user.titresAffiches = b.titresAffiches
+                .map(x => String(x))
+                .filter(id => detenus.has(id) && !vus.has(id) && vus.add(id))
+                .slice(0, 40);
+        }
+    }
+
     saveUsers();
-    res.json({ ok: true, avatar: av });
+    res.json({ ok: true, avatar: user.avatar || '', titresAffiches: user.titresAffiches || null });
 });
 app.get('/api/salon/mystats-summary', requireAuthApi, (req, res) => {
     const pseudo = currentUser(req);
@@ -2982,7 +3040,7 @@ app.get('/api/public-profile', requireAuthApi, (req, res) => {
         favori: portrait.favori,
         totalParties: portrait.total,
         rang: placeAuClassement(pseudo),
-        titres: titresDe(pseudo),
+        titres: titresVisiblesDe(pseudo),
         jeux: portrait.jeux,
         faceAface,
     });

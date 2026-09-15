@@ -206,7 +206,7 @@ Une petite liste de mots vulgaires est écartée du **tirage** seulement — ils
   - **Suppression d'un compte** : `supprimerDonneesJoueur()` balaie tout le cache — clés propres (dont les pseudos **normalisés** du Yams et du Petit Bac), lignes de classement, index de statistiques, historique des parties, `vsOpponent` des adversaires et titres manuels. L'ancienne version ne nettoyait que les Mots Fléchés.
   - **Fusion de comptes** : déplace les clés de la source vers la cible, conserve ce qui existe déjà chez la cible plutôt que de l'écraser, et **dédoublonne les classements** — sinon la cible y figurait deux fois le même jour.
   - **Restauration** d'une sauvegarde (`/restore`), **mode maintenance** (bloque `requireAuth` sauf pour les administrateurs), **modération des fiches multijoueur** (`/stats/reset`), suppression d'une ligne d'historique, **fréquentation** sur 30 jours avec comptes endormis, journal filtrable côté serveur, alerte quand Redis est absent, et poids des données par famille avec repérage des clés mortes.
-- **Profil** (`/profil`) — page dédiée (plus un popup) : avatar/photo, résumé transversal, actions de compte, statistiques par jeu en onglets. Sous-page `/profil/style/` qui centralise **tous** les réglages de style personnalisables de tous les jeux (actuellement : thème de tuiles Motus, skin de dés Yams) — **conçue pour être étendue à chaque nouveau jeu personnalisable**, structure en tableau de config en haut du fichier, bien commentée pour ça.
+- **Profil** (`/profil`) — voir la section dédiée : trois onglets, et le choix des badges affichés. Sous-page `/profil/style/` qui centralise **tous** les réglages de style personnalisables de tous les jeux (actuellement : thème de tuiles Motus, skin de dés Yams) — **conçue pour être étendue à chaque nouveau jeu personnalisable**, structure en tableau de config en haut du fichier, bien commentée pour ça.
 
 ## Le système de design partagé
 
@@ -381,6 +381,37 @@ Et pour un jeu du jour, ne pas oublier non plus le panneau « Aujourd'hui » (`J
 `comptes/classement.js` calcule un score transversal à tous les jeux, exposé par `GET /api/salon/classement` et affiché replié en bas de l'accueil. **Il ne stocke rien** : tout est recalculé à la demande depuis les clés existantes, donc changer le barème ne demande aucune migration. La **saison en cours** (mois calendaire) est la vue par défaut ; « depuis toujours » reste consultable. En saison, les jeux du jour se filtrent sur la date de leur clé, et le multijoueur se fonde sur `admin:gameHistory` — qui horodate chaque partie mais **n'enregistre pas le vainqueur**, donc une partie y compte comme participation seulement. Le barème est isolé en haut du fichier — c'est un choix de jeu, pas une contrainte technique.
 
 Piège à connaître si tu ajoutes un jeu au calcul : Yams et Petit Bac indexent leurs stats par pseudo **normalisé** (`yams:stats:ALIX`), Motus Party par pseudo brut. Le module tient une table `norm(pseudo) → pseudo` pour ça.
+
+## Le profil (`/profil`)
+
+La page empilait sept sections en une seule colonne : identité, titres, résumé, compte, réglages, classement, statistiques. Sur un téléphone, changer son mot de passe demandait de traverser toutes ses statistiques, et rien n'indiquait ce qui restait en dessous.
+
+**Trois onglets**, et un principe pour les avoir choisis — *où j'en suis* / *ce que j'ai fait* / *ce que je change* :
+
+| Onglet | Contenu |
+|---|---|
+| **Mon salon** | les trois chiffres de tête, la place au classement, le calendrier d'assiduité, la semaine écoulée |
+| **Mes jeux** | une carte dépliable par jeu pratiqué, plus la ligne des jeux jamais touchés |
+| **Réglages** | le compte (pseudo, mot de passe, code, déconnexion) et la personnalisation |
+
+Trois et pas quatre : à 320 px, un quatrième onglet réduit chaque libellé à une abréviation. Mesuré à 91 px par onglet sur un écran de 320 — le texte tient sans être coupé.
+
+**L'identité reste au-dessus des onglets** (avatar, pseudo, badges) : elle ne répond à aucune des trois questions ci-dessus, elle dit seulement qui on est. L'onglet consulté est mémorisé, et une ancre (`/profil#reglages`) mène droit à une section.
+
+⚠️ **Deux niveaux collants, et pourquoi le bouton retour a changé de forme.** `.ds-back` est en `position:fixed` à 14 px du haut : dès que la barre d'onglets se collait, il se posait **sur** le premier onglet. Le retour vit donc maintenant dans une barre supérieure (`.pr-topbar`, collée à 0), et les onglets se collent juste dessous (`top:56px`). Le pseudo apparaît dans cette barre quand le grand titre sort de l'écran.
+
+⚠️ Ce suivi se fait avec un **écouteur de défilement, pas un `IntersectionObserver`** : ce dernier ne se déclenche pas tant que la page n'est pas peinte (onglet en arrière-plan, aperçu masqué), et le pseudo n'apparaissait alors jamais.
+
+### Choisir ses badges
+
+Les titres se gagnent en jouant ; leur **affichage est un choix**. À douze badges, la bulle de profil devient un mur où celui dont on est fier se noie dans les étapes obligatoires. L'atelier (`#ov-badges`) présente deux listes — « sur mon profil » et « pas affichés » — et une ligne passe de l'une à l'autre d'une touche.
+
+- **Où c'est stocké** : `user.titresAffiches`, sur le COMPTE et non dans le cache par clés. Une clé `titres:choix:<pseudo>` aurait demandé une ligne de plus dans `comptes/renommage.js` ; là, la sélection suit le renommage toute seule.
+- ⚠️ **`null` veut dire « tout montrer »**, et c'est l'état par défaut. Un badge gagné demain apparaît donc sans qu'il faille revenir cocher quoi que ce soit — et personne ne voit son profil se vider après la mise à jour. Le bouton « Tout afficher » repose `null`, il ne matérialise pas la liste complète.
+- ⚠️ **On filtre toujours contre les titres réellement détenus au moment de l'affichage** (`titresVisiblesDe`). Un titre unique change de mains : celui qui l'a perdu ne doit pas continuer à le porter parce qu'il l'avait coché. C'est aussi ce qui empêche d'afficher un titre qu'on n'a jamais eu — la liste vient du navigateur, elle ne décide pas de ce qui a été gagné.
+- L'ordre de la sélection est celui du joueur, d'où la flèche « ↑ » : le glisser-déposer est impraticable au pouce sur une liste qui défile. Chaque geste enregistre (tampon de 500 ms), il n'y a pas de bouton « Valider » à oublier.
+
+⚠️ **`POST /api/salon/profile` ne touche que les champs présents dans la requête.** L'ancienne version lisait `body.avatar` sans vérifier qu'il avait été envoyé : enregistrer autre chose par cette route **effaçait l'avatar**.
 
 ## Les titres
 

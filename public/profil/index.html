@@ -11,112 +11,171 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <a class="ds-back" href="/" aria-label="Retour au salon">←</a>
-
     <div class="pr-wrap">
-        <!-- EN-TÊTE -->
+        <!-- ================= LA BARRE DU HAUT =================
+             Le bouton retour flottant (`.ds-back`, en position fixe) venait se
+             poser SUR le premier onglet dès qu'on faisait défiler la page. Il
+             entre donc dans une barre, comme dans n'importe quelle application :
+             le retour à gauche, et le pseudo qui apparaît quand l'en-tête a
+             disparu — pour savoir de quel profil on parle sans remonter. -->
+        <div class="pr-topbar">
+            <a class="ds-icon-btn" href="/" aria-label="Retour au salon">←</a>
+            <span class="pr-topbar-nom" id="pr-topbar-nom"></span>
+        </div>
+
+        <!-- ================= L'IDENTITÉ =================
+             Elle reste en tête et ne dépend d'aucun onglet : c'est la seule
+             partie de la page qui répond à « qui suis-je ici ». -->
         <header class="pr-hero">
             <button class="pr-avatar" id="pr-avatar" type="button" aria-label="Changer d'avatar">✦</button>
-            <p class="pr-avatar-hint">Touche l'avatar pour le changer</p>
             <h1 class="pr-name" id="pr-name">—</h1>
             <p class="pr-meta" id="pr-meta">—</p>
+
+            <div class="pr-titres" id="pr-titres"></div>
+            <button type="button" class="pr-badges-btn" id="pr-badges-btn">🎖️ Mes badges</button>
         </header>
 
-        <!-- TITRES -->
-        <section class="pr-titres" id="pr-titres" hidden></section>
-
-        <!-- RÉSUMÉ TRANSVERSAL -->
-        <section class="pr-summary" id="pr-summary" hidden>
-            <div class="pr-summary-item">
-                <b id="sum-week">0</b>
-                <span>parties jouées cette semaine</span>
+        <!-- ================= LA NAVIGATION =================
+             Trois onglets, pas quatre : sur un téléphone de 320 px, un
+             quatrième réduit chaque libellé à une abréviation illisible.
+             La barre colle en haut pour rester atteignable au pouce après
+             avoir fait défiler. -->
+        <nav class="pr-nav" id="pr-nav" aria-label="Sections du profil">
+            <div class="ds-segmented">
+                <button type="button" data-onglet="salon" class="on">Mon salon</button>
+                <button type="button" data-onglet="jeux">Mes jeux</button>
+                <button type="button" data-onglet="reglages">Réglages</button>
             </div>
-            <div class="pr-summary-item">
-                <b id="sum-fav">—</b>
-                <span>jeu le plus joué</span>
-            </div>
-        </section>
+        </nav>
 
-        <!-- ACTIONS -->
-        <section class="pr-section">
-            <h2 class="pr-section-title">Mon compte</h2>
-            <div class="pr-actions">
-                <button type="button" class="pr-action" id="act-rename">
-                    <span class="pr-action-ico">✏️</span>
-                    <span class="pr-action-body"><b>Changer de pseudo</b><em>Ton nom affiché partout dans le salon</em></span>
-                    <span class="pr-action-go">›</span>
-                </button>
-                <button type="button" class="pr-action" id="act-password">
-                    <span class="pr-action-ico">🔒</span>
-                    <span class="pr-action-body"><b>Changer de mot de passe</b><em>À faire de temps en temps, c'est plus sûr</em></span>
-                    <span class="pr-action-go">›</span>
-                </button>
-<button type="button" class="pr-action" id="act-recovery">
-                    <span class="pr-action-ico">🔑</span>
-                    <span class="pr-action-body"><b>Nouveau code de récupération</b><em>Pour retrouver ton compte en cas d'oubli</em></span>
-                    <span class="pr-action-go">›</span>
-                </button>
-                <button type="button" class="pr-action danger" id="act-logout">
-                    <span class="pr-action-ico">🚪</span>
-                    <span class="pr-action-body"><b>Se déconnecter</b><em>Il faudra te reconnecter la prochaine fois</em></span>
-                    <span class="pr-action-go">›</span>
-                </button>
-            </div>
-        </section>
+        <!-- ================= MON SALON ================= -->
+        <section class="pr-pane" id="pane-salon">
+            <div class="pr-chiffres" id="pr-chiffres"></div>
 
+            <section class="pr-section" id="pr-rank-section" hidden>
+                <h2 class="pr-section-title" id="pr-rank-titre">Ma place au Salon</h2>
+                <div class="pr-rank" id="pr-rank"></div>
+                <p class="pr-cal-title" id="pr-cal-titre">Mon assiduité</p>
+                <div class="pr-cal" id="pr-cal" aria-label="Calendrier d'activité des dix-sept dernières semaines"></div>
+                <p class="pr-cal-legend"><span>moins</span><i class="n0"></i><i class="n1"></i><i class="n2"></i><i class="n3"></i><span>plus</span></p>
+            </section>
 
-        <!-- RÉGLAGES -->
-        <section class="pr-section">
-            <h2 class="pr-section-title">Réglages</h2>
-            <p class="pr-section-sub">Tout ce qui se personnalise est listé ici, même quand le réglage vit dans son jeu.</p>
-            <div class="pr-actions">
-
-                <div class="pr-lang-row">
-                    <span class="pr-lang-label">🌐 Langue</span>
-                    <div class="pr-lang-btns" id="pr-lang-btns">
-                        <button type="button" data-lang="fr">FR</button><button type="button" data-lang="en">EN</button><button type="button" data-lang="es">ES</button>
+            <section class="pr-section">
+                <h2 class="pr-section-title">Ces temps-ci</h2>
+                <div class="pr-summary" id="pr-summary" hidden>
+                    <div class="pr-summary-item">
+                        <b id="sum-week">0</b>
+                        <span>parties jouées cette semaine</span>
+                    </div>
+                    <div class="pr-summary-item">
+                        <b id="sum-fav">—</b>
+                        <span>jeu le plus joué</span>
                     </div>
                 </div>
-                
-                <a href="/profil/style/" class="pr-action">
-                    <span class="pr-action-ico">🎨</span>
-                    <span class="pr-action-body"><b>Style des jeux</b><em>Tuiles de Motus, dés de Yams</em></span>
-                    <span class="pr-action-go">›</span>
-                </a>
-                <a href="/mots-fleches" class="pr-action">
-                    <span class="pr-action-ico">🧩</span>
-                    <span class="pr-action-body"><b>Niveau des Mots Fléchés</b><em>Se choisit dans le jeu, en haut de la grille</em></span>
-                    <span class="pr-action-go">›</span>
-                </a>
-                <a href="/perudo" class="pr-action">
-                    <span class="pr-action-ico">🔊</span>
-                    <span class="pr-action-body"><b>Sons de Perudo</b><em>Se coupent depuis Perudo</em></span>
-                    <span class="pr-action-go">›</span>
-                </a>
-                <a href="/" class="pr-action">
-                    <span class="pr-action-ico">🔀</span>
-                    <span class="pr-action-body"><b>Ordre des tuiles</b><em>Bouton « Réorganiser », sur l'accueil</em></span>
-                    <span class="pr-action-go">›</span>
-                </a>
-            </div>
+            </section>
         </section>
 
-        <!-- RANG ET ASSIDUITÉ -->
-        <section class="pr-section" id="pr-rank-section" hidden>
-            <h2 class="pr-section-title">Ma place au Salon</h2>
-            <div class="pr-rank" id="pr-rank"></div>
-            <p class="pr-cal-title">Mon assiduité</p>
-            <div class="pr-cal" id="pr-cal" aria-label="Calendrier d'activité des dix-sept dernières semaines"></div>
-            <p class="pr-cal-legend"><span>moins</span><i class="n0"></i><i class="n1"></i><i class="n2"></i><i class="n3"></i><span>plus</span></p>
-        </section>
-
-        <!-- STATISTIQUES -->
-        <section class="pr-section">
-            <h2 class="pr-section-title">Mes statistiques</h2>
-            <div class="pr-chiffres" id="pr-chiffres"></div>
+        <!-- ================= MES JEUX ================= -->
+        <section class="pr-pane" id="pane-jeux" hidden>
             <div class="pr-games" id="pr-games"></div>
             <p class="pr-jamais" id="pr-jamais" hidden></p>
         </section>
+
+        <!-- ================= RÉGLAGES ================= -->
+        <section class="pr-pane" id="pane-reglages" hidden>
+            <section class="pr-section">
+                <h2 class="pr-section-title">Mon compte</h2>
+                <div class="pr-actions">
+                    <button type="button" class="pr-action" id="act-rename">
+                        <span class="pr-action-ico">✏️</span>
+                        <span class="pr-action-body"><b>Changer de pseudo</b><em>Ton nom affiché partout dans le salon</em></span>
+                        <span class="pr-action-go">›</span>
+                    </button>
+                    <button type="button" class="pr-action" id="act-password">
+                        <span class="pr-action-ico">🔒</span>
+                        <span class="pr-action-body"><b>Changer de mot de passe</b><em>À faire de temps en temps, c'est plus sûr</em></span>
+                        <span class="pr-action-go">›</span>
+                    </button>
+                    <button type="button" class="pr-action" id="act-recovery">
+                        <span class="pr-action-ico">🔑</span>
+                        <span class="pr-action-body"><b>Nouveau code de récupération</b><em>Pour retrouver ton compte en cas d'oubli</em></span>
+                        <span class="pr-action-go">›</span>
+                    </button>
+                    <button type="button" class="pr-action danger" id="act-logout">
+                        <span class="pr-action-ico">🚪</span>
+                        <span class="pr-action-body"><b>Se déconnecter</b><em>Il faudra te reconnecter la prochaine fois</em></span>
+                        <span class="pr-action-go">›</span>
+                    </button>
+                </div>
+            </section>
+
+            <section class="pr-section">
+                <h2 class="pr-section-title">Personnalisation</h2>
+                <p class="pr-section-sub">Tout ce qui se personnalise est listé ici, même quand le réglage vit dans son jeu.</p>
+                <div class="pr-actions">
+                    <div class="pr-lang-row">
+                        <span class="pr-lang-label">🌐 Langue</span>
+                        <div class="pr-lang-btns" id="pr-lang-btns">
+                            <button type="button" data-lang="fr">FR</button><button type="button" data-lang="en">EN</button><button type="button" data-lang="es">ES</button>
+                        </div>
+                    </div>
+                    <button type="button" class="pr-action" id="act-badges">
+                        <span class="pr-action-ico">🎖️</span>
+                        <span class="pr-action-body"><b>Mes badges</b><em>Choisir ceux qui s'affichent sur ton profil</em></span>
+                        <span class="pr-action-go">›</span>
+                    </button>
+                    <a href="/profil/style/" class="pr-action">
+                        <span class="pr-action-ico">🎨</span>
+                        <span class="pr-action-body"><b>Style des jeux</b><em>Tuiles de Motus, dés de Yams</em></span>
+                        <span class="pr-action-go">›</span>
+                    </a>
+                    <a href="/mots-fleches" class="pr-action">
+                        <span class="pr-action-ico">🧩</span>
+                        <span class="pr-action-body"><b>Niveau des Mots Fléchés</b><em>Se choisit dans le jeu, en haut de la grille</em></span>
+                        <span class="pr-action-go">›</span>
+                    </a>
+                    <a href="/perudo" class="pr-action">
+                        <span class="pr-action-ico">🔊</span>
+                        <span class="pr-action-body"><b>Sons de Perudo</b><em>Se coupent depuis Perudo</em></span>
+                        <span class="pr-action-go">›</span>
+                    </a>
+                    <a href="/" class="pr-action">
+                        <span class="pr-action-ico">🔀</span>
+                        <span class="pr-action-body"><b>Ordre des tuiles</b><em>Bouton « Réorganiser », sur l'accueil</em></span>
+                        <span class="pr-action-go">›</span>
+                    </a>
+                </div>
+            </section>
+        </section>
+    </div>
+
+    <!-- ================= MES BADGES =================
+         Une feuille pleine hauteur plutôt qu'une petite carte : la liste
+         peut compter vingt entrées, et chaque ligne doit rester assez
+         grande pour le pouce. -->
+    <div class="ds-overlay" id="ov-badges" hidden>
+        <div class="ds-card pr-feuille">
+            <button type="button" class="ds-card-close" id="badges-close" aria-label="Fermer">✕</button>
+            <h2 class="ds-card-title">Mes badges</h2>
+            <p class="ds-card-text">Choisis ceux qui s'affichent sur ton profil et partout où ton nom apparaît.
+                Touche une ligne pour la faire passer d'une liste à l'autre.</p>
+
+            <div class="pr-badges-outils">
+                <button type="button" class="ds-btn ghost small" id="badges-tout">Tout afficher</button>
+                <button type="button" class="ds-btn ghost small" id="badges-rien">Tout masquer</button>
+            </div>
+
+            <p class="pr-badges-titre">Sur mon profil <span id="badges-n">0</span></p>
+            <div class="pr-badges-liste" id="badges-on"></div>
+            <p class="pr-badges-vide" id="badges-on-vide" hidden>Aucun badge affiché. Ton profil restera sobre.</p>
+
+            <p class="pr-badges-titre">Pas affichés</p>
+            <div class="pr-badges-liste" id="badges-off"></div>
+            <p class="pr-badges-vide" id="badges-off-vide" hidden>Tous tes badges sont affichés.</p>
+
+            <p class="pr-badges-aucun" id="badges-aucun" hidden>Tu n'as pas encore de badge.
+                Ils se gagnent en jouant — un premier mot du jour suffit à décrocher le premier.</p>
+        </div>
     </div>
 
     <!-- CHANGER D'AVATAR -->
@@ -170,6 +229,7 @@
     </div>
 
     <script src="/design-system.js"></script>
+    <script src="/vues.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

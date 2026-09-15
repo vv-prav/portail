@@ -6,21 +6,21 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: radial-gradient(130% 70% at 50% -8%, #2b2013 0%, transparent 55%), var(--ink);
     background-attachment: fixed; -webkit-font-smoothing: antialiased;
-    padding: max(20px, env(safe-area-inset-top)) 18px 60px;
+    padding: 0 18px 60px;
 }
 
-.pr-wrap { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 26px; }
+.pr-wrap { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 0; }
 
 /* En-tête */
-.pr-hero { text-align: center; margin-top: 40px; }
+.pr-hero { text-align: center; margin-top: 18px; }
 .pr-avatar { width: 96px; height: 96px; margin: 0 auto; display: grid; place-items: center; font-size: 3rem;
     background: linear-gradient(165deg, var(--ink-3), var(--ink-2)); border: 2px solid var(--brass);
     border-radius: 50%; cursor: pointer; font-family: inherit; box-shadow: 0 8px 24px rgba(0,0,0,.5);
     overflow: hidden; color: inherit; }
 .pr-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
 .pr-avatar:active { transform: scale(.95); }
-.pr-avatar-hint { color: var(--muted); font-size: .72rem; margin: 10px 0 0; }
-.pr-name { font-size: 1.6rem; font-weight: 800; margin: 10px 0 4px;
+
+.pr-name { font-size: 1.6rem; font-weight: 800; margin: 14px 0 4px;
     background: linear-gradient(180deg, var(--brass-soft), var(--brass)); -webkit-background-clip: text;
     background-clip: text; color: transparent; }
 .pr-meta { font-size: .78rem; color: var(--muted); margin: 0; }
@@ -165,3 +165,127 @@ body {
 .pr-titre { cursor: pointer; border-width: 1px; font-family: inherit;
     background: transparent; -webkit-appearance: none; appearance: none; }
 .pr-titre:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+
+/* =====================================================================
+   LA NAVIGATION PAR ONGLETS
+   Trois panneaux au lieu d'une colonne de sept sections. La barre colle
+   en haut : après trois écrans de statistiques, changer de section ne
+   doit pas obliger à remonter toute la page.
+   ===================================================================== */
+.pr-topbar {
+    position: sticky; top: 0; z-index: 11;
+    display: flex; align-items: center; gap: 12px;
+    margin: 0 -18px; padding: max(8px, env(safe-area-inset-top)) 18px 8px;
+    min-height: 56px; box-sizing: border-box;
+    background: rgba(20, 16, 11, .9); backdrop-filter: blur(10px);
+}
+.pr-topbar-nom { font-weight: 800; font-size: 1rem; color: var(--brass-soft);
+    opacity: 0; transform: translateY(4px); transition: opacity .18s ease, transform .18s ease;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pr-topbar-nom.on { opacity: 1; transform: none; }
+
+.pr-nav {
+    /* Juste sous la barre du haut : les deux restent visibles ensemble. */
+    position: sticky; top: 56px; z-index: 10;
+    /* Les marges négatives compensent le padding horizontal du body : le
+       voile de fond doit couvrir toute la largeur, sinon le contenu se voit
+       défiler dans les gouttières. */
+    margin: 18px -18px 0; padding: 10px 18px;
+    background: rgba(20, 16, 11, .86); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+}
+.pr-nav .ds-segmented button { padding: 11px 6px; font-size: .78rem; }
+
+.pr-pane { display: flex; flex-direction: column; gap: 26px; padding-top: 22px; }
+.pr-pane[hidden] { display: none; }
+/* Les panneaux portent déjà leur espacement : une section n'a plus besoin
+   d'une marge propre. */
+.pr-pane > .pr-section { margin: 0; }
+
+/* =====================================================================
+   LES BADGES
+   ===================================================================== */
+/* Le bouton annonce le compte affiché sur le total : sans ce chiffre, on
+   ne sait pas qu'il y a un choix à faire derrière. */
+.pr-badges-btn {
+    margin-top: 4px; padding: 7px 14px; border-radius: 999px; cursor: pointer;
+    background: rgba(255,255,255,.04); border: 1px solid var(--line);
+    color: var(--muted); font-family: inherit; font-size: .74rem;
+}
+.pr-badges-btn:active { transform: scale(.97); }
+.pr-badges-btn:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+
+/* Une feuille pleine hauteur : la liste peut compter vingt entrées, et
+   chacune doit rester assez haute pour le pouce. */
+.pr-feuille { max-height: 88vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.pr-badges-outils { display: flex; gap: 8px; margin: 4px 0 18px; }
+.pr-badges-outils .ds-btn { flex: 1; }
+.pr-badges-titre {
+    margin: 18px 0 8px; font-size: .68rem; text-transform: uppercase; letter-spacing: .9px;
+    color: var(--brass-soft); font-weight: 700;
+}
+.pr-badges-titre span { color: var(--muted); font-weight: 400; letter-spacing: 0; text-transform: none; }
+.pr-badges-liste { display: flex; flex-direction: column; gap: 6px; }
+.pr-badges-vide, .pr-badges-aucun { margin: 0; font-size: .76rem; color: var(--muted); line-height: 1.5; }
+.pr-badges-aucun { text-align: center; padding: 22px 14px; border-radius: 12px;
+    background: rgba(255,255,255,.02); border: 1px dashed var(--line); }
+.pr-badges-vide[hidden], .pr-badges-aucun[hidden] { display: none; }
+
+/* Une ligne = une grande cible tactile, et la description répond sur place
+   à « c'est quoi, ce badge ? » — sinon il faut sortir de l'atelier pour
+   aller lire l'explication ailleurs. */
+.pb-ligne { display: flex; align-items: stretch; gap: 6px; }
+.pb {
+    flex: 1; min-width: 0; display: flex; align-items: flex-start; gap: 11px;
+    padding: 11px 12px; border-radius: 12px; cursor: pointer; text-align: left;
+    background: rgba(255,255,255,.03); border: 1px solid var(--line);
+    color: inherit; font-family: inherit;
+}
+.pb:active { transform: scale(.995); }
+.pb:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+/* Affiché : la bordure reprend la couleur de la rareté, comme la pastille
+   qu'on verra sur le profil. On reconnaît le résultat avant de fermer. */
+.pb[aria-pressed="true"] { background: rgba(217,169,78,.10); border-color: rgba(217,169,78,.45); }
+.pb[aria-pressed="true"].unique { border-color: var(--brass); background: rgba(217,169,78,.16); }
+.pb-emoji { flex: 0 0 auto; font-size: 1.3rem; width: 26px; text-align: center; line-height: 1.25; }
+.pb-corps { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.pb-corps b { font-size: .84rem; color: var(--parchment); line-height: 1.3; }
+/* La rareté vit sur la ligne de description, pas à côté du nom : à 320 px elle
+   poussait le nom sur deux lignes et chaque rangée montait à 104 px. */
+/* Pas de troncature : c'est ici qu'on décide ce qu'on affiche, donc il faut
+   pouvoir lire ce que chaque badge récompense. Une ligne un peu plus haute
+   vaut mieux qu'une phrase coupée. */
+.pb-desc { font-size: .68rem; color: var(--muted); line-height: 1.45; }
+.pb-desc .pb-rarete { margin-right: 6px; }
+.pb-rarete { font-style: normal; font-size: .58rem; text-transform: uppercase; letter-spacing: .6px;
+    padding: 2px 6px; border-radius: 999px; border: 1px solid; font-weight: 700; }
+.pb-rarete.unique { color: var(--brass-soft); border-color: var(--brass); background: rgba(217,169,78,.16); }
+.pb-rarete.rare { color: #c9b99c; border-color: rgba(217,169,78,.35); }
+.pb-rarete.commun { color: var(--muted); border-color: rgba(217,169,78,.18); }
+.pb-etat { flex: 0 0 auto; width: 22px; text-align: center; font-size: 1rem; color: var(--brass-soft); line-height: 1.25; }
+.pb[aria-pressed="false"] .pb-etat { color: var(--muted); }
+
+/* Remonter un badge d'un cran. Le glisser-déposer serait impraticable au
+   pouce sur une liste qui défile ; une flèche suffit à mettre devant celui
+   dont on est fier. */
+.pb-monter {
+    flex: 0 0 auto; width: 40px; border-radius: 12px; cursor: pointer;
+    background: rgba(255,255,255,.03); border: 1px solid var(--line);
+    color: var(--muted); font-family: inherit; font-size: .95rem;
+}
+.pb-monter:active { transform: scale(.95); }
+.pb-monter:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+
+/* Petit téléphone : on récupère de la largeur là où elle se voit. */
+@media (max-width: 360px) {
+    .pr-nav .ds-segmented button { padding: 10px 3px; font-size: .72rem; }
+    .pb { gap: 9px; padding: 10px; }
+    .pb-emoji { width: 22px; font-size: 1.15rem; }
+    .pb-monter { width: 34px; }
+}
+.pr-rank[hidden], .pr-cal-title[hidden] { display: none; }
+/* Le premier badge ne peut pas monter, et un badge masqué n'a pas d'ordre :
+   la flèche reste en place mais s'efface, pour que les lignes gardent la
+   même largeur. */
+.pb-monter[disabled] { opacity: .25; cursor: default; }
+.pb-monter.fantome { border-color: transparent; background: transparent; pointer-events: none; }

@@ -1,3 +1,22 @@
+// =====================================================================
+//  MON PROFIL
+//
+//  La page tenait en une seule colonne de sept sections empilées :
+//  identité, titres, résumé, compte, réglages, classement, statistiques.
+//  Sur un téléphone, ça fait un défilement interminable où l'on ne sait
+//  jamais ce qui reste en dessous, et où changer son mot de passe demande
+//  de traverser toutes ses statistiques.
+//
+//  Trois onglets désormais, et un seul principe pour les avoir choisis :
+//    · « Mon salon »  — ma place, mon assiduité, ma semaine (où j'en suis) ;
+//    · « Mes jeux »   — le détail jeu par jeu (ce que j'ai fait) ;
+//    · « Réglages »   — compte et personnalisation (ce que je change).
+//
+//  L'identité (avatar, nom, badges) reste AU-DESSUS des onglets : c'est la
+//  seule chose qui répond à « qui suis-je ici », elle n'appartient à aucune
+//  section. La barre d'onglets, elle, colle en haut — après trois écrans de
+//  défilement, on doit pouvoir changer de section sans remonter.
+// =====================================================================
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -20,6 +39,57 @@ function setAvatarBubble(el, photo, emoji) {
     el.innerHTML = photo ? `<img src="${photo}" alt="">` : esc(emoji || '✦');
 }
 
+// =====================================================================
+//  LES ONGLETS
+// =====================================================================
+const ONGLETS = ['salon', 'jeux', 'reglages'];
+let ongletCourant = 'salon';
+
+function montrerOnglet(id, memoriser) {
+    if (!ONGLETS.includes(id)) id = 'salon';
+    ongletCourant = id;
+    ONGLETS.forEach(o => { $('pane-' + o).hidden = o !== id; });
+    document.querySelectorAll('#pr-nav button').forEach(b =>
+        b.classList.toggle('on', b.dataset.onglet === id));
+    // On revient en haut du contenu, pas de la page : l'identité reste
+    // visible, et la barre d'onglets ne saute pas sous le doigt.
+    const nav = $('pr-nav');
+    if (memoriser && nav.getBoundingClientRect().top < 0) {
+        nav.scrollIntoView({ block: 'start', behavior: 'instant' in window ? 'instant' : 'auto' });
+    }
+    if (memoriser) {
+        try { localStorage.setItem('erquy_profil_onglet', id); } catch (e) {}
+        // L'ancre permet de revenir directement sur une section depuis
+        // ailleurs (/profil#reglages), et le geste retour la suit.
+        try { history.replaceState(null, '', '#' + id); } catch (e) {}
+    }
+}
+document.querySelectorAll('#pr-nav button').forEach(b =>
+    b.addEventListener('click', () => montrerOnglet(b.dataset.onglet, true)));
+
+// Au chargement : l'ancre d'abord (un lien précis l'emporte), sinon le
+// dernier onglet consulté.
+(function ongletInitial() {
+    const ancre = (location.hash || '').replace('#', '');
+    let voulu = ONGLETS.includes(ancre) ? ancre : null;
+    if (!voulu) { try { voulu = localStorage.getItem('erquy_profil_onglet'); } catch (e) {} }
+    montrerOnglet(voulu || 'salon', false);
+})();
+
+// Le pseudo n'apparaît dans la barre du haut qu'une fois le grand titre sorti
+// de l'écran : au repos, il ferait doublon avec celui de l'en-tête.
+function suivreLeTitre() {
+    const nom = $('pr-name'), barre = $('pr-topbar-nom');
+    // Un écouteur de défilement plutôt qu'un IntersectionObserver : ce dernier
+    // ne se déclenche pas tant que la page n'est pas peinte (onglet en
+    // arrière-plan), et le pseudo n'apparaissait alors jamais. Ici, une simple
+    // comparaison de positions, recalculée au défilement.
+    const maj = () => barre.classList.toggle('on', nom.getBoundingClientRect().bottom < 54);
+    window.addEventListener('scroll', maj, { passive: true });
+    window.addEventListener('resize', maj);
+    maj();
+}
+suivreLeTitre();
 
 // ---------- Ce que veut dire un badge ----------
 // Un titre sans explication n'est qu'un émoji : on ne sait ni ce qu'il
@@ -41,24 +111,162 @@ function expliquerTitre(t) {
     });
 }
 
-// ---------- Statistiques par jeu ----------
-// Refonte : l'ancienne version alignait neuf onglets qui défilaient
-// horizontalement — un par jeu, y compris ceux jamais joués — et n'en montrait
-// qu'un à la fois, dans une grille de petites boîtes serrées.
+// =====================================================================
+//  LES BADGES — ce qu'on gagne, et ce qu'on montre
 //
-// Elle recalculait aussi les chiffres depuis les anciens champs plats
-// (p.motus, p.mf…) alors que le serveur envoie déjà `jeux`, la liste que la
-// bulle de profil utilise. Deux sources pour la même chose, qui finissaient par
-// diverger : Petit Bac annonçait « suivi à venir » alors que ses stats
-// existaient. Une seule source désormais, et la même présentation qu'ailleurs.
+//  Les titres se gagnent en jouant ; l'affichage, lui, est un choix. À
+//  douze badges, la bulle de profil devient un mur où plus rien ne
+//  ressort — celui qu'on est fier d'avoir se noie dans les étapes
+//  obligatoires.
+//
+//  Trois décisions :
+//   · `null` veut dire « tout montrer », et c'est l'état par défaut. Un
+//     badge gagné demain apparaît donc tout seul, sans qu'il faille
+//     revenir cocher quoi que ce soit ;
+//   · l'ordre de la sélection est celui du joueur, d'où la flèche « ↑ » :
+//     on met devant celui qu'on veut voir en premier, sans glisser-déposer
+//     (impraticable au pouce sur une liste qui défile) ;
+//   · chaque geste enregistre. Pas de bouton « Valider » à oublier.
+// =====================================================================
+const ORDRE_RARETE = { unique: 0, rare: 1, commun: 2 };
+let mesTitres = [];          // tout ce que je détiens
+let monChoix = null;         // tableau d'identifiants, ou null = tout montrer
+
+const parRarete = (a, b) => (ORDRE_RARETE[a.rarete] ?? 9) - (ORDRE_RARETE[b.rarete] ?? 9);
+const titreParId = (id) => mesTitres.find(t => t.id === id);
+
+// La liste effectivement affichée, dans l'ordre voulu.
+function titresAffiches() {
+    if (!Array.isArray(monChoix)) return mesTitres.slice().sort(parRarete);
+    return monChoix.map(titreParId).filter(Boolean);
+}
+function titresMasques() {
+    const on = new Set(titresAffiches().map(t => t.id));
+    return mesTitres.filter(t => !on.has(t.id)).sort(parRarete);
+}
+
+// ---------- L'affichage dans l'en-tête ----------
+function rendreTitres() {
+    const liste = titresAffiches();
+    $('pr-titres').innerHTML = liste.map((t, i) =>
+        `<button type="button" class="pr-titre ${esc(t.rarete)}" data-i="${i}">${esc(t.emoji)} ${esc(t.nom)}</button>`).join('');
+    $('pr-titres').querySelectorAll('.pr-titre').forEach(b =>
+        b.addEventListener('click', () => expliquerTitre(liste[Number(b.dataset.i)])));
+    // Le bouton dit ce qu'il y a derrière : sans badge, il invite ; avec,
+    // il annonce combien sont montrés sur combien.
+    $('pr-badges-btn').textContent = mesTitres.length
+        ? `🎖️ Mes badges · ${liste.length}/${mesTitres.length}`
+        : '🎖️ Mes badges';
+}
+
+// ---------- L'atelier ----------
+let sauveT = null;
+function enregistrerChoix() {
+    clearTimeout(sauveT);
+    // Un tampon court : on enchaîne souvent plusieurs touches d'affilée, et
+    // chacune n'a pas besoin de son aller-retour réseau.
+    sauveT = setTimeout(async () => {
+        const { ok, data } = await api('/api/salon/profile', { titresAffiches: monChoix });
+        if (!ok) { toast((data && data.error) || 'Impossible d’enregistrer.'); return; }
+    }, 500);
+}
+
+function ligneBadge(t, affiche, position) {
+    // La flèche garde sa place même quand elle ne sert pas (premier de la
+    // liste, ou badge masqué) : sans ça les lignes n'ont pas toutes la même
+    // largeur et la colonne part en accordéon.
+    const monter = affiche
+        ? `<button type="button" class="pb-monter" data-monter="${esc(t.id)}"
+             aria-label="Mettre ${esc(t.nom)} plus en avant"${position > 0 ? '' : ' disabled'}>↑</button>`
+        : '<span class="pb-monter fantome" aria-hidden="true"></span>';
+    return `<div class="pb-ligne">
+        <button type="button" class="pb ${esc(t.rarete)}" data-bascule="${esc(t.id)}" aria-pressed="${affiche}">
+            <span class="pb-emoji">${esc(t.emoji)}</span>
+            <span class="pb-corps">
+                <b>${esc(t.nom)}</b>
+                <span class="pb-desc"><em class="pb-rarete ${esc(t.rarete)}">${esc(t.rarete)}</em>${esc(t.desc)}</span>
+            </span>
+            <span class="pb-etat" aria-hidden="true">${affiche ? '✓' : '+'}</span>
+        </button>
+        ${monter}
+    </div>`;
+}
+
+function rendreAtelier() {
+    const on = titresAffiches(), off = titresMasques();
+    $('badges-aucun').hidden = mesTitres.length > 0;
+    $('badges-on').innerHTML = on.map((t, i) => ligneBadge(t, true, i)).join('');
+    $('badges-off').innerHTML = off.map(t => ligneBadge(t, false, 0)).join('');
+    $('badges-n').textContent = mesTitres.length ? `${on.length}/${mesTitres.length}` : '';
+    $('badges-on-vide').hidden = on.length > 0 || !mesTitres.length;
+    $('badges-off-vide').hidden = off.length > 0 || !mesTitres.length;
+}
+
+// Un seul écouteur pour toute la feuille : son contenu est refait à chaque
+// changement, donc rattacher les écouteurs à chaque rendu ne servirait qu'à
+// en oublier un quelque part.
+$('ov-badges').addEventListener('click', (e) => {
+    const bascule = e.target.closest('[data-bascule]');
+    if (bascule) {
+        const id = bascule.dataset.bascule;
+        const actuels = titresAffiches().map(t => t.id);
+        monChoix = actuels.includes(id) ? actuels.filter(x => x !== id) : [...actuels, id];
+        rendreAtelier(); rendreTitres(); enregistrerChoix();
+        return;
+    }
+    const monter = e.target.closest('[data-monter]');
+    if (monter) {
+        const id = monter.dataset.monter;
+        const l = titresAffiches().map(t => t.id);
+        const i = l.indexOf(id);
+        if (i > 0) { [l[i - 1], l[i]] = [l[i], l[i - 1]]; monChoix = l; }
+        rendreAtelier(); rendreTitres(); enregistrerChoix();
+    }
+});
+$('badges-tout').addEventListener('click', () => {
+    // `null` plutôt que la liste complète : un badge gagné demain sera montré
+    // sans qu'il faille repasser par ici.
+    monChoix = null;
+    rendreAtelier(); rendreTitres(); enregistrerChoix();
+});
+$('badges-rien').addEventListener('click', () => {
+    monChoix = [];
+    rendreAtelier(); rendreTitres(); enregistrerChoix();
+});
+
+function ouvrirAtelier() {
+    rendreAtelier();
+    $('ov-badges').hidden = false;
+    if (window.Vues) Vues.suivre('badges');
+}
+function fermerAtelier() {
+    $('ov-badges').hidden = true;
+    if (window.Vues) Vues.suivre('page');
+}
+$('pr-badges-btn').addEventListener('click', ouvrirAtelier);
+$('act-badges').addEventListener('click', ouvrirAtelier);
+$('badges-close').addEventListener('click', fermerAtelier);
+$('ov-badges').addEventListener('click', (e) => { if (e.target === $('ov-badges')) fermerAtelier(); });
+
+// Le geste retour du téléphone ferme la feuille au lieu de quitter la page.
+if (window.Vues) {
+    Vues.suivre('page');
+    Vues.surRetour(() => { $('ov-badges').hidden = true; });
+}
+
+// =====================================================================
+//  LES STATISTIQUES
+// =====================================================================
+// Une seule source : le serveur envoie déjà `jeux`, la liste que la bulle de
+// profil utilise. L'ancienne version recalculait les mêmes chiffres depuis des
+// champs plats (p.motus, p.mf…), et les deux avaient fini par diverger — Petit
+// Bac annonçait « suivi à venir » alors que ses statistiques existaient.
 const TOUS_LES_JEUX = [
     { id: 'motus', nom: 'Motus' }, { id: 'mf', nom: 'Mots Fléchés' },
     { id: 'motjuste', nom: 'Le Mot Juste' }, { id: 'pbac', nom: 'Petit Bac' },
     { id: 'yams', nom: 'Yams' }, { id: 'motusparty', nom: 'Motus Party' },
     { id: 'perudo', nom: 'Perudo' },
 ];
-
-function mmss(s) { return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 
 // Trois chiffres en tête, ceux qu'on regarde en premier.
 function renderChiffres(p) {
@@ -143,7 +351,6 @@ function renderCalendrier(jours) {
 async function loadSummary() {
     const { ok, data } = await api('/api/salon/mystats-summary');
     if (!ok) return;
-    favoriteGameName = data.favoriteGame;
     $('sum-week').textContent = data.weekCount;
     $('sum-fav').textContent = data.favoriteGame || '—';
     $('pr-summary').hidden = false;
@@ -156,19 +363,23 @@ async function loadProfile() {
     profile = data;
     setAvatarBubble($('pr-avatar'), profile.avatarPhoto, profile.avatar);
     $('pr-name').textContent = profile.pseudo;
+    $('pr-topbar-nom').textContent = profile.pseudo;
     const created = profile.created ? new Date(profile.created).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
     const prev = profile.prevLogin ? new Date(profile.prevLogin).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : null;
     $('pr-meta').textContent = 'Membre depuis le ' + created + (prev ? ' · vu la dernière fois le ' + prev : '');
-    // Les titres, juste sous l'identité : c'est ce qu'on montre.
-    const titres = profile.titres || [];
-    $('pr-titres').innerHTML = titres.map((t, i) =>
-        `<button type="button" class="pr-titre ${esc(t.rarete)}" data-i="${i}">${esc(t.emoji)} ${esc(t.nom)}</button>`).join('');
-    $('pr-titres').hidden = !titres.length;
-    $('pr-titres').querySelectorAll('.pr-titre').forEach(b =>
-        b.addEventListener('click', () => expliquerTitre(titres[Number(b.dataset.i)])));
 
+    mesTitres = profile.titres || [];
+    monChoix = Array.isArray(profile.titresAffiches) ? profile.titresAffiches : null;
+    rendreTitres();
+
+    // Tant qu'on n'est pas classé, le bloc « Ma place au Salon » n'a rien à
+    // dire : il affichait un titre suivi de vide. On ne garde alors que le
+    // calendrier, et le titre de section devient le sien.
     const aRang = renderRang(profile);
     const aCal = renderCalendrier(profile.calendrier);
+    $('pr-rank').hidden = !aRang;
+    $('pr-cal-titre').hidden = !aRang;                 // sinon le titre fait doublon
+    $('pr-rank-titre').textContent = aRang ? 'Ma place au Salon' : 'Mon assiduité';
     $('pr-rank-section').hidden = !(aRang || aCal);
     renderChiffres(profile);
     renderJeux(profile);
@@ -231,7 +442,7 @@ $('photo-input').addEventListener('change', async (e) => {
     const file = e.target.files && e.target.files[0];
     e.target.value = '';
     if (!file) return;
-    if (!file.type.startsWith('image/')) { toast('Ce fichier n\u2019est pas une image.'); return; }
+    if (!file.type.startsWith('image/')) { toast('Ce fichier n’est pas une image.'); return; }
     let dataUrl;
     try { dataUrl = await resizePhotoToDataUrl(file); } catch (err) { toast('Impossible de lire cette image.'); return; }
     const { ok, data } = await api('/api/salon/avatar-photo', { photo: dataUrl });
