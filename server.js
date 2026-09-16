@@ -1601,7 +1601,72 @@ app.post('/api/juste/comments', requireAuth, (req, res) => {
 //  PERUDO — jeu temps réel, intégré au monolithe sous /perudo.
 //  Le front est protégé par le login du salon ; /perudo/healthz reste public.
 // ---------------------------------------------------------------------
-const perudoApi = require('./perudo/game')(app, io);
+const perudoApi = require('./perudo/game')(app, io, { get: mfGet, set: mfSet });
+
+// ---------------------------------------------------------------------
+//  REPRISE DES ANCIENS PROFILS PERUDO
+//
+//  Perudo tenait ses propres comptes dans une clé Redis `users` (ou
+//  `perudo_users.json` en développement), séparée des trente-deux comptes
+//  du salon. La réécriture range les statistiques dans le cache commun ;
+//  dix-neuf personnes avaient un historique réel, on ne le jette pas.
+//
+//  Ce qui est repris : parties, victoires, deuxièmes places, parties
+//  contre l'ordinateur, dés perdus, menteurs démasqués, calzas, défis,
+//  bluffs, éliminations, bête noire, séries, faces misées.
+//  Ce qui ne l'est pas : les points de rang, les tournois, la campagne et
+//  les cosmétiques — ils appartiennent aux modes archivés.
+//
+//  ⚠️ Une seule fois, jamais deux : un drapeau en base le garantit, sinon
+//  un redémarrage écraserait les statistiques fraîchement jouées par les
+//  anciennes.
+// ---------------------------------------------------------------------
+const PERUDO_MIGRATION = 'perudo:migration';
+async function reprendreLesProfilsPerudo() {
+    if (mfGet(PERUDO_MIGRATION)) return;
+    let anciens = null;
+    try {
+        if (redis) anciens = await redis.get('users');
+        else if (fs.existsSync('./perudo_users.json')) {
+            anciens = JSON.parse(fs.readFileSync('./perudo_users.json', 'utf-8') || '{}');
+        }
+    } catch (e) { console.log('⚠️  Anciens profils Perudo illisibles :', e.message); }
+
+    if (!anciens || typeof anciens !== 'object') {
+        mfSet(PERUDO_MIGRATION, { faite: Date.now(), repris: 0, ignores: 0, raison: 'rien à reprendre' });
+        return;
+    }
+    let repris = 0; const ignores = [];
+    for (const [pseudo, u] of Object.entries(anciens)) {
+        if (!u || typeof u !== 'object') continue;
+        // Seuls les pseudos qui correspondent à un compte du salon : un profil
+        // Perudo sans compte ici n'a personne à qui appartenir.
+        if (!registeredUsers[pseudo]) { ignores.push(pseudo); continue; }
+        const st = u.stats || {};
+        const f = perudoApi.ficheVierge();
+        f.parties = u.played || 0;
+        f.victoires = u.wins || 0;
+        f.deuxiemes = u.seconds || 0;
+        f.partiesSolo = u.botGames || 0;
+        f.victoiresSolo = u.botWins || 0;
+        f.desPerdus = st.diceLost || 0;
+        f.dudosGagnes = st.dudosWon || 0;
+        f.calzasGagnes = st.calzasWon || 0;
+        f.defisLances = st.challengesMade || 0;
+        f.defisGagnes = st.challengesWon || 0;
+        f.bluffsSurvecus = st.bluffsSurvived || 0;
+        f.eliminations = st.eliminations || 0;
+        f.eliminePar = (st.nemesis && typeof st.nemesis === 'object') ? { ...st.nemesis } : {};
+        f.serie = u.currentStreak || 0;
+        f.meilleureSerie = u.bestStreak || 0;
+        if (Array.isArray(st.bidFaces) && st.bidFaces.length === 7) f.facesMisees = st.bidFaces.slice();
+        if (!f.parties && !f.partiesSolo) continue;          // profil vide : rien à reprendre
+        perudoApi.ecrireFiche(pseudo, f);
+        repris++;
+    }
+    mfSet(PERUDO_MIGRATION, { faite: Date.now(), repris, ignores });
+    console.log(`🎲 Perudo : ${repris} profil(s) repris` + (ignores.length ? `, ${ignores.length} sans compte au salon (${ignores.join(', ')})` : '') + '.');
+}
 app.use('/perudo', requireAuth, express.static(__dirname + '/public/perudo'));
 
 // ---------------------------------------------------------------------
@@ -2259,13 +2324,22 @@ function portraitJoueur(pseudo) {
     }
 
     let perudo = null;
-    try { perudo = perudoApi.users()[pseudo]; } catch (e) {}
-    if (perudo && perudo.played) {
-        ajoute('perudo', 'Perudo', '🎲', perudo.played,
-            (perudo.wins || 0) + ' parties gagnées', [
-                ['Parties', perudo.played], ['Victoires', perudo.wins || 0],
-                ['Points de rang', perudo.rankPoints || 0],
-                ['Série en cours', perudo.currentStreak || 0], ['Record de série', perudo.bestStreak || 0],
+    try { perudo = perudoApi.statsFor(pseudo); } catch (e) {}
+    if (perudo && (perudo.parties || perudo.partiesSolo)) {
+        ajoute('perudo', 'Perudo', '🎲', perudo.parties + (perudo.partiesSolo || 0),
+            perudo.victoires + ' parties gagnées', [
+                ['Parties', perudo.parties || null], ['Victoires', perudo.victoires || null],
+                ['Taux de victoire', perudo.parties ? perudo.tauxVictoire + ' %' : null],
+                ['Deuxièmes places', perudo.deuxiemes || null],
+                ['Contre l\u2019ordinateur', perudo.partiesSolo || null],
+                ['Manches jouées', perudo.manches || null],
+                ['Menteurs démasqués', perudo.dudosGagnes || null],
+                ['Calzas réussis', perudo.calzasGagnes || null],
+                ['Bluffs qui sont passés', perudo.bluffsSurvecus || null],
+                ['Éliminations', perudo.eliminations || null],
+                ['Face préférée', perudo.faceFavorite],
+                ['Meilleure série', perudo.meilleureSerie > 1 ? perudo.meilleureSerie + ' d\u2019affilée' : null],
+                ['Bête noire', perudo.beteNoire ? `${perudo.beteNoire.pseudo} (${perudo.beteNoire.fois}×)` : null],
             ]);
     }
 
@@ -2342,10 +2416,12 @@ function serieDepuisJours(jours) {
 //  laissait aucune trace sur l'accueil ni dans le classement de saison.
 //  Tout ce qui a besoin de parcourir les jeux passe désormais par ici.
 //
-//  Perudo reste à part : il n'a pas de `status`, ignore les parties
-//  contre l'ordinateur et garde son propre hall.
+//  Perudo y figure désormais comme les autres : sa réécriture lui a donné
+//  le même contrat (`status`, `presents`, `creeA`, `limites`), et il n'a
+//  plus de hall séparé.
 // ---------------------------------------------------------------------
 const JEUX_MULTI = [
+    { id: 'perudo', nom: 'Perudo', emoji: '🎲', accent: '#d9a94e', href: '/perudo', api: () => perudoApi },
     { id: 'pbac', nom: 'Petit Bac', emoji: '✏️', accent: '#c2513a', href: '/pbac', api: () => pbacApi },
     { id: 'undercover', nom: 'Infiltré', emoji: '🕵️', accent: '#6f7bb0', href: '/undercover', api: () => undercoverApi },
     { id: 'yams', nom: 'Yams', emoji: '🎯', accent: '#ecca82', href: '/yams', api: () => yamsApi },
@@ -2367,30 +2443,16 @@ function tablesDuJeu(j) {
         href: `${j.href}/?table=${encodeURIComponent(g.id)}`,
     }));
 }
-function tablesPerudo() {
-    try {
-        return (perudoApi.games() || []).filter(g => !g.vsBot).map(g => ({
-            jeu: 'perudo', nom: 'Perudo', emoji: '🎲', accent: '#d9a94e',
-            id: g.id, hote: (g.players[0] || {}).pseudo || '—',
-            joueurs: g.players.filter(p => !p.isBot).map(p => p.pseudo),
-            presents: g.players.filter(p => !p.isBot && p.connected !== false).map(p => p.pseudo),
-            creeA: g.creeA || g.createdAt || 0,
-            statut: g.started ? 'encours' : 'attente',
-            href: '/perudo',           // Perudo garde son propre hall et son identité
-        }));
-    } catch (e) { return []; }
-}
 // Toutes les tables, tous jeux confondus. Une seule fonction : c'est elle
 // que lisent la liste des tables, le pouls et l'historique.
 function toutesLesTables() {
-    return [...JEUX_MULTI.flatMap(tablesDuJeu), ...tablesPerudo()];
+    return JEUX_MULTI.flatMap(tablesDuJeu);
 }
 
 // Les limites de chaque jeu (combien il en faut, combien il en tient),
 // lues sur les modules eux-mêmes plutôt que recopiées : une table peut
 // ainsi annoncer « 3/12 » sans que personne ait à tenir un tableau à jour.
 function limitesDuJeu(id) {
-    if (id === 'perudo') return { min: 2, max: 12 };
     const j = JEUX_MULTI.find(x => x.id === id);
     if (!j) return null;
     try { return j.api().limites || null; } catch (e) { return null; }
@@ -2535,7 +2597,6 @@ app.post('/api/salon/rdv/annuler', requireAuthApi, (req, res) => {
 // Retrouve la présentation d'un jeu (emoji, couleur, lien) à partir de son
 // identifiant, Perudo compris.
 function jeuMulti(id) {
-    if (id === 'perudo') return { id: 'perudo', nom: 'Perudo', emoji: '🎲', accent: '#d9a94e', href: '/perudo' };
     return JEUX_MULTI.find(j => j.id === id) || null;
 }
 
@@ -2749,9 +2810,10 @@ function tousLesTitres(forcer) {
     }
     const points = {};
     for (const l of calculerClassement(mfCache, pseudos, series)) points[l.pseudo] = l.points;
-    let perudo = {};
-    try { perudo = perudoApi.users() || {}; } catch (e) {}
-    _titresCache = attribuerTitres(mfCache, pseudos, series, points, perudo, mfGet(TITRES_MANUELS_KEY) || {});
+    // Perudo range désormais ses statistiques dans le cache commun, comme les
+    // autres jeux : `attribuerTitres` les y trouve tout seul, sans qu'on ait à
+    // lui passer une source à part.
+    _titresCache = attribuerTitres(mfCache, pseudos, series, points, null, mfGet(TITRES_MANUELS_KEY) || {});
     _titresAt = Date.now();
     return _titresCache;
 }
@@ -2860,13 +2922,7 @@ app.get('/api/salon/profile', requireAuthApi, (req, res) => {
     while (mfDays.has(d)) { mfStreak++; d = mfShiftDay(d, -1); }
     // stats perudo
     let perudo = null;
-    try {
-        const pu = perudoApi.users()[pseudo];
-        if (pu) perudo = {
-            wins: pu.wins || 0, played: pu.played || 0, rankPoints: pu.rankPoints || 0,
-            currentStreak: pu.currentStreak || 0, bestStreak: pu.bestStreak || 0,
-        };
-    } catch (e) {}
+    try { perudo = perudoApi.statsFor(pseudo); } catch (e) {}
     // stats motus / le mot juste (même forme de données par utilisateur)
     const motus = dailyGameStats('motus:prog', pseudo, u => kMotusDays(u), u => motusStreak(u));
     const motjuste = dailyGameStats('mj:prog', pseudo, u => kMjDays(u), u => mjStreak(u));
@@ -2949,7 +3005,7 @@ app.get('/api/salon/mystats-summary', requireAuthApi, (req, res) => {
     }
     // "Jeu le plus joué" compare les totaux cumulés de chaque jeu entre eux.
     const totals = [];
-    try { const p = perudoApi.users()[pseudo]; if (p && p.played) totals.push(['Perudo', p.played]); } catch (e) {}
+    try { const p = perudoApi.statsFor(pseudo); const n = p ? p.parties + (p.partiesSolo || 0) : 0; if (n) totals.push(['Perudo', n]); } catch (e) {}
     const mfDays = mfGet(`mf:days:${pseudo}`) || [];
     if (mfDays.length) totals.push(['Mots Fléchés', mfDays.length]);
     const motusDays = mfGet(kMotusDays(pseudo)) || [];
@@ -3220,6 +3276,7 @@ app.use((err, req, res, next) => {
 process.on('unhandledRejection', (e) => console.error('Promesse rejetée :', e && e.message));
 
 const PORT = process.env.PORT || 3000;
-Promise.all([loadUsers(), loadMf()]).then(() => {
+Promise.all([loadUsers(), loadMf()]).then(async () => {
+    await reprendreLesProfilsPerudo();
     server.listen(PORT, () => console.log(`🏛️  Le Salon tourne sur le port ${PORT}`));
 });

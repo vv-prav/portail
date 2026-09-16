@@ -95,13 +95,13 @@ body {
 }
 .ym-die.landed { animation:ymDiceLand .38s cubic-bezier(.3,1.5,.4,1); }
 .ym-die-face { width:100%; height:100%; filter:drop-shadow(0 6px 10px rgba(0,0,0,.45)); }
-.ym-die-face rect { fill:var(--parchment); }
-.ym-die.held .ym-die-face rect { fill:var(--brass-soft); }
-.ym-die-face circle { fill:var(--ink); }
-.ym-die-face.skinned .ym-die-body { fill:none; }
-.ym-die-face.skinned .ym-die-shine { opacity:.18; }
-.ym-die-face .ym-die-shine { fill:#fff; opacity:.25; }
-.ym-die-face.small .ym-die-shine { opacity:.18; }
+/* Le dé est désormais dessiné par `/des.js`, partagé avec le Perudo : les
+   règles qui peignaient ici son corps et ses points ont disparu. Elles
+   étaient même nuisibles — une règle CSS l'emporte sur un attribut, donc
+   `.ym-die-face circle { fill }` écrasait la couleur de points du skin.
+   L'état « gardé » ne passe plus par la couleur du dé mais par un anneau,
+   qui se voit sur les quarante-sept skins et pas seulement sur le clair. */
+.ym-die.held .ym-die-face { box-shadow:0 0 0 3px var(--brass); border-radius:18%; }
 .ym-die-face.small { width:26px; height:26px; filter:none; }
 .ym-die-face.mini { width:20px; height:20px; filter:none; }
 .ym-turn-label { font-weight:700; margin:0; }

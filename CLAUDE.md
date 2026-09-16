@@ -89,14 +89,17 @@ portail/
 ├── motus/                     ← vocabulaire Motus (voir section dédiée)
 ├── motusparty/game.js
 ├── pbac/game.js
-├── perudo/game.js
+├── perudo/game.js             ← réécrit ; l'ancien est dans _archive/
 ├── undercover/game.js
 ├── yams/game.js
 ├── defis/jeu.js               ← les défis : multijoueur sans rendez-vous (aucun socket)
+├── _archive/                  ← code retiré mais gardé exprès (voir son README)
 └── public/
     ├── index.html / app.js / style.css     ← LE SALON (page d'accueil)
     ├── design-system.css / design-system.js ← voir section dédiée
     ├── profile-viewer.js                    ← bulle de profil partagée
+    ├── des.js                               ← LE dé du salon : catalogue, rendu, skin
+    ├── plouf.js                             ← le tirage « qui commence »
     ├── invitation.js                        ← bouton « Inviter » + lien ?table=<id>
     ├── enchainement.js                      ← propose le jeu du jour suivant
     ├── vues.js                              ← le geste retour remonte d'une vue
@@ -133,7 +136,7 @@ Chaque mini-app suit le même schéma : `public/<app>/index.html` + `app.js` + `
 
 | App | Module serveur | Préfixe des événements socket | Notes |
 |---|---|---|---|
-| **Perudo** | `perudo/game.js` | (nombreux, pas de préfixe uniforme) | **Le plus mature et le plus complexe du site** — pas juste un jeu de dés : tournois, mode campagne (run/reliques façon roguelike), voix (WebRTC), spectateurs, cosmétiques, émotes. Sa propre identité visuelle complète (police « Pirata One », palette bois/or), **volontairement exclu du système de design partagé**. |
+| **Perudo** | `perudo/game.js` | `perudo_*` | Réécrit au standard du salon. Voir la section dédiée : les règles de la maison, le panneau unique de réglages, et ce qui est parti à l'archive. |
 | **Petit Bac** | `pbac/game.js` | `pbac_*` | Vote séquentiel ou parallèle, packs de catégories personnalisés, catégorie surprise, podium animé par paliers. |
 | **Infiltré** | `undercover/game.js` | `uc_*` | Mr Blanc, sous-groupes, mode à distance et mode local (un seul téléphone qui tourne). |
 | **Yams** | `yams/game.js` | `yams_*` | **Un joueur absent ne bloque plus la table** : `advanceTurn` ne fait tourner que les joueurs présents (`joueurPresent`), la partie se termine quand tous les présents ont fini, et une déconnexion en pleine main passe le tour sur-le-champ. Minuteur de tour de 90 s (`TOUR_MAX_MS`), réarmé à chaque lancer ; deux expirations d'affilée et le joueur est marqué `parti` (feuille conservée, retour possible à tout moment). Numéro de tour, journal des derniers coups et jauge du bonus 63 côté client. **Chaque case libre affiche ce qu'elle rapporterait** au joueur qui a la main, zéros compris : le serveur envoyait déjà `possible` pour toutes les catégories, il fallait juste le montrer au lieu d'obliger à taper une case pour le découvrir. Code couleur : le laiton désigne ce qui se joue (aperçu en pointillés, meilleur coup en plein), le gris ce qui ne rapporte rien, la couleur du joueur ce qui est acquis, le vert le bonus atteint. Les couleurs de joueur ont été sorties du laiton et du vert, qu'elles imitaient (`#d98a4a` contre `#d9a94e`, `#5aa87a` égal à `--good`), et les sous-totaux ne sont plus en laiton. Une seule rangée est signalée — la meilleure — au lieu de treize animations en boucle simultanées. Skins de dés (47, catalogue repris de Perudo), bête noire, spectateurs, classement/historique/face-à-face. | **La feuille est une vraie grille** : une ligne par case, une colonne par joueur (`--joueurs` posée en JS). **À deux joueurs elle repasse en deux colonnes côte à côte** (classe `.double` sur `#feuille`) — 490 px au lieu de 823, tout tient d'un écran ; au-delà de deux, les cellules n'y entrent plus et on garde une seule colonne pleine largeur. Les icônes de chiffres sont des **dés au trait** de la même famille que les icônes de combinaison — avant, une moitié de la feuille montrait des dés réalistes en parchemin et l'autre des glyphes laiton plats, et le dé calé à 26 px débordait de sa case de 18. **L'aperçu ne désigne pas le meilleur coup** : il annonce ce que chaque case rapporterait, rien de plus, le choix reste au joueur. Les deux colonnes côte à côte d'avant ne laissaient que 160 px aux cellules, qui passaient à la ligne dès **trois** joueurs — 76 px par rangée au lieu de 30. L'en-tête de colonne (avatar, nom, total, cumul de série) remplace le bandeau de scores, qui répétait la même chose. **Aperçus décalés après le roulement des dés** (`masquerApercus`), sinon l'état arrivait avant l'animation et annonçait le résultat. **Égalité = personne ne gagne** (`gagnantsDe`) : l'ancien `winnerOf` donnait la victoire au premier inscrit, et cette fausse victoire entrait dans les stats, le face-à-face et l'historique. **Partie en solo** (`MIN_PLAYERS = 1`), qui ne compte ni victoire ni face-à-face. **Règle du joker** : la case Yams remplie, cinq dés identiques valent la valeur pleine de la case choisie (`scoresPossibles` sert l'aperçu **et** le score noté, ils ne doivent jamais diverger). **Son** en WebAudio synthétisé (aucun fichier, marche hors-ligne, coupable via `yams_son`). **Rappel de tour** : son, vibration et titre d'onglet clignotant. Série de revanches (`g.serie`), record du salon (`recordDuSalon`, cache 30 s), fin de partie avec faits marquants et feuille complète. Statistiques très élargies : une ligne par case (`parCategorie`), moyennes du salon comme point de repère, forces/faiblesses, nuls, séries, solo, face-à-face avec les dernières rencontres. Ces statistiques ressortent **partout** : carte du profil et bulle publique (11 lignes via `portraitJoueur`), « jeu le plus joué » du résumé (solo compris), classement du Salon, et trois titres uniques de plus (`mainchaude` meilleur score, `pluiededes` le plus de Yams, `invaincu` la plus longue série). ⚠️ `statsFor` renvoie désormais `duels` (liste) et non plus `vsOpponent` (objet) : le face-à-face de la bulle de profil lisait l'ancien champ et s'affichait vide.
@@ -254,12 +257,13 @@ Système séparé (avant le design system, mais du même esprit) : `PortailProfi
 
 Le design system porte désormais la **réinitialisation de base** (`box-sizing`, `-webkit-tap-highlight-color`, `::selection`) et une règle `:focus-visible` unique. Elles étaient auparavant recopiées dans 18 fichiers CSS.
 
-⚠️ **Perudo et Voyages ne chargent pas `design-system.css`** : ils gardent leur propre réinitialisation, ne la leur retirez pas — la largeur de tous leurs éléments à padding en dépend.
+⚠️ **Voyages ne charge pas `design-system.css`** : il garde sa propre réinitialisation, ne la lui retirez pas — la largeur de tous ses éléments à padding en dépend. Perudo, lui, a rejoint le système de design lors de sa réécriture.
 
 ✅ Profil et sa sous-page Style — migrés (toasts délégués à `DS.toast()`, popups en `.ds-overlay`/`.ds-card` avec fermeture en ✕, onglets en `.ds-segmented`, grilles de stats en `.ds-stat-grid`).
 ❌ Recettes — pas commencé, et volontairement repoussé : zéro donnée en base, l'app n'a jamais servi.
 ❌ Chance — jamais dans le plan de migration (petite page statique).
-🚫 Perudo et Voyages — **exclusion volontaire et définitive**, pas des oublis. Chacun a sa propre identité visuelle forte qui serait appauvrie par le système commun.
+✅ Perudo — migré lors de sa réécriture, en gardant un accent : police de titre et palette bois/or lui restent propres, tout le reste vient du système commun.
+🚫 Voyages — **exclusion volontaire et définitive**, pas un oubli : son identité visuelle serait appauvrie par le système commun.
 
 ### Méthode de migration établie (à réutiliser pour Recettes)
 
@@ -335,6 +339,46 @@ Le premier tour revenait toujours au joueur d'indice zéro, c'est-à-dire au pre
 Mesuré sur 24 parties de Yams et 15 d'Infiltré : l'annonce colle toujours à l'état réel (`turnPseudo`), et l'hôte ne commence plus que 9 fois sur 24 au lieu de 24.
 
 **Ce qui était déjà en place** et n'a pas eu besoin d'être ajouté : seul l'hôte peut lancer une partie ou une manche (garde serveur `g.host !== socket.data.<x>Pseudo` **et** bouton masqué côté client, dans les cinq jeux), et **l'hôte est transmis** au premier joueur restant quand le créateur quitte un salon d'attente — jamais en cours de partie, où il peut revenir.
+
+## Perudo — la réécriture
+
+13 344 lignes réduites au jeu. L'ancienne version portait, en plus du Perudo, un **système de comptes parallèle** à celui du salon, des tournois, une campagne façon roguelike, la voix WebRTC, une taverne, des émotes et des cosmétiques. Tout cela vit maintenant dans `_archive/perudo-v1/`, qui n'est ni monté ni servi — **son README dit ce qu'il y a à y reprendre et les trois pièges à connaître avant d'y toucher**.
+
+### Les règles sont celles de la maison
+
+⚠️ Ce ne sont pas les règles du Perudo standard, et elles comptent :
+
+- on n'ouvre **jamais** sur les Pacos (les 1) ;
+- passer aux Pacos coûte la **moitié supérieure** de la mise en cours, en revenir coûte le **double** ;
+- une enchère déjà posée dans la manche ne peut pas être rejouée (anti-boucle) ;
+- le palifico se redéclenche **chaque fois** qu'un joueur retombe à un dé — pas une fois par partie — la face se verrouille à la première mise, et les Pacos n'y sont pas jokers.
+
+Elles ont été reprises à l'identique, et **prouvées** identiques : 36 288 combinaisons d'état comparées entre l'ancienne implémentation et la nouvelle, zéro divergence. `_regles` est exporté exprès pour que ce test reste possible.
+
+⚠️ **Le client ne connaît pas les règles.** Le serveur envoie `minParFace` — la plus petite quantité annonçable sur chaque face — et l'interface n'offre que ça. Personne ne connaît ces règles par cœur ; deux implémentations auraient fini par diverger, et c'est le joueur qui l'aurait découvert.
+
+### Ce qui a changé de place
+
+- **L'identité** vient du cookie signé du portail. Plus de `login`/`register` propres à Perudo, plus de clé Redis `users` en service.
+- **Les statistiques** sont dans le cache commun (`perudo:stats:<pseudo>`) et ressortent donc au profil, au résumé, au classement du Salon et aux titres.
+- **Perudo est dans `JEUX_MULTI`** : il apparaît dans le hall commun, dans le pouls et dans `admin:gameHistory` comme les autres. Il n'a plus de hall séparé, et `tablesPerudo()` a disparu.
+- **Un seul panneau de réglages** : dés par joueur, chacun pour soi ou en équipes, palifico, calza, minuteur, nombre et niveau des adversaires de l'ordinateur, taille de la table.
+- **Les bots sont ajoutés au lancement, pas à la création** : on peut ouvrir une table à des gens et compléter au dernier moment s'il ne vient personne.
+
+### La reprise des anciens profils
+
+`reprendreLesProfilsPerudo()` (server.js) lit une seule fois l'ancienne clé `users` et écrit les nouvelles fiches. Sont repris : parties, victoires, deuxièmes places, parties contre l'ordinateur, dés perdus, menteurs démasqués, calzas, défis, bluffs survécus, éliminations, bête noire, séries, faces misées. Ne le sont pas : points de rang, tournois, campagne, cosmétiques — ils appartiennent aux modes archivés.
+
+⚠️ **Un drapeau en base (`perudo:migration`) garantit qu'elle ne tourne qu'une fois** : un second passage écraserait les statistiques fraîchement jouées par les anciennes. Les profils sans compte au salon sont ignorés et listés dans le drapeau.
+
+## Les dés du salon (`public/des.js`)
+
+Le catalogue des 47 skins, la disposition des points et **le dessin d'une face** vivaient dans `public/yams/app.js`. Perudo en avait besoin à son tour.
+
+Un seul fichier désormais, chargé par le Yams, le Perudo et la page « Style des jeux ». **Un skin est celui du joueur, pas celui d'un jeu** : débloqué au Yams, il s'applique au Perudo.
+
+- ⚠️ **La clé de stockage reste `yams_dice_skin`.** La renommer ferait perdre son dé à tous ceux qui en avaient choisi un, pour le seul plaisir d'un nom plus juste.
+- ⚠️ **La couleur des points est posée en style EN LIGNE, pas en attribut.** Le Yams avait une règle `.ym-die-face circle { fill }` : une règle CSS l'emporte sur un attribut, elle écrasait donc la couleur du skin. Cette règle a été retirée, et l'état « gardé » d'un dé passe maintenant par un anneau — visible sur les quarante-sept skins, là où le changement de teinte ne se voyait que sur les clairs.
 
 ## Les défis (`defis/jeu.js`) — le multijoueur sans rendez-vous
 

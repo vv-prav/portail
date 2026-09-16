@@ -39,7 +39,7 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '
 // presque toujours — le cacher était le pire endroit où se tromper.
 const CATALOGUE = [
     { id: 'perudo', nom: 'Perudo', emoji: '🎲', accent: '#d9a94e', href: '/perudo',
-      min: 1, max: 12, solo: 'contre l’ordinateur', duree: 'environ 20 min', direct: true },   // Perudo a son propre hall et son identité : on l'ouvre tel quel
+      min: 1, max: 12, solo: 'contre des bots', duree: 'environ 20 min' },
     { id: 'pbac', nom: 'Petit Bac', emoji: '✏️', accent: '#c2513a', href: '/pbac',
       min: 2, max: 12, duree: 'environ 10 min' },
     { id: 'undercover', nom: 'Infiltré', emoji: '🕵️', accent: '#6f7bb0', href: '/undercover',
