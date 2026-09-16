@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="/design-system.css">
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="is-boot">
+<body class="is-boot" data-jeu="motus">
 
     <div class="boot"><div class="boot-ring"></div></div>
 
@@ -44,16 +44,6 @@
                 <button type="button" class="ds-card-close" id="mt-stats-close" aria-label="Fermer">✕</button>
                 <h2 class="ds-card-title">Statistiques</h2>
                 <div class="ds-stat-grid cols2" id="mt-statsGrid"></div>
-            </div>
-        </div>
-
-        <!-- STYLE -->
-        <div class="ds-overlay" id="mt-style-screen" hidden>
-            <div class="ds-card">
-                <button type="button" class="ds-card-close" id="mt-style-close" aria-label="Fermer">✕</button>
-                <h2 class="ds-card-title">Style des tuiles</h2>
-                <p class="ds-card-text">S'applique tout de suite.</p>
-                <div class="mt-theme-grid" id="mt-themeGrid"></div>
             </div>
         </div>
 
@@ -131,6 +121,8 @@
     <script src="/design-system.js"></script>
     <script src="/profile-viewer.js"></script>
     <script src="/enchainement.js"></script>
+    <script src="/des.js"></script>
+    <script src="/style.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

@@ -34,6 +34,12 @@ function de(n, classe) {
 }
 const nomFace = (f) => (f === 1 ? 'Paco' : String(f));
 
+// Changer de dé depuis le coin de style ne doit pas demander de recharger :
+// la main et les mains révélées se redessinent avec l'état courant.
+if (window.Style) Style.surChangement((id) => {
+    if (id === 'des' && etat) rendreJeu(etat);
+});
+
 // =====================================================================
 //  LE HALL
 // =====================================================================

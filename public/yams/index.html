@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="/design-system.css">
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body data-jeu="yams">
     <div class="ym">
         <header class="ym-head">
             <a class="ds-icon-btn" href="/jouer/" aria-label="Retour à l'espace multijoueurs">←</a>
@@ -26,7 +26,6 @@
         <section class="ym-view" id="v-lobby">
             <button class="ds-btn" id="btn-create">Créer une table</button>
             <button class="ds-btn ghost" id="btn-stats">Mes statistiques</button>
-            <button class="ds-btn ghost" id="btn-skins">🎨 Style des dés</button>
             <button class="ds-btn ghost" id="btn-leaderboard">🏆 Classement &amp; historique</button>
             <p class="ym-list-label" id="lobby-empty-label" hidden>Aucune table ouverte pour l'instant.</p>
             <div class="ym-tables" id="ym-tables"></div>
@@ -39,16 +38,6 @@
                 <h2 class="ds-card-title">Mes statistiques</h2>
                 <div class="ym-stats-corps" id="statsGrid"></div>
                 <p class="ym-stats-nemesis" id="statsNemesis" hidden></p>
-            </div>
-        </div>
-
-        <!-- STYLE DES DÉS -->
-        <div class="ds-overlay" id="v-skins" hidden>
-            <div class="ds-card">
-                <button type="button" class="ds-card-close" id="skins-close" aria-label="Fermer">✕</button>
-                <h2 class="ds-card-title">Style des dés</h2>
-                <p class="ds-card-text">Certains styles se débloquent avec tes victoires ou le nombre de Yams réalisés.</p>
-                <div class="ym-skins-grid" id="skinsGrid"></div>
             </div>
         </div>
 
@@ -146,6 +135,7 @@
     <script src="/invitation.js"></script>
     <script src="/plouf.js"></script>
     <script src="/des.js"></script>
+    <script src="/style.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

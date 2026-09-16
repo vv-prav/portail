@@ -99,6 +99,7 @@ portail/
     ├── design-system.css / design-system.js ← voir section dédiée
     ├── profile-viewer.js                    ← bulle de profil partagée
     ├── des.js                               ← LE dé du salon : catalogue, rendu, skin
+    ├── style.js                             ← LE coin de style : catalogue, rendu, bouton
     ├── plouf.js                             ← le tirage « qui commence »
     ├── invitation.js                        ← bouton « Inviter » + lien ?table=<id>
     ├── enchainement.js                      ← propose le jeu du jour suivant
@@ -119,7 +120,7 @@ portail/
     ├── perudo/
     ├── profil/
     │   ├── index.html / app.js / style.css ← page profil
-    │   └── style/                          ← page "Style des jeux" (dés, tuiles...)
+    │   └── style/                          ← « Mon style » : un hôte du rendu de style.js
     ├── recettes/
     ├── undercover/
     ├── voyages/
@@ -209,7 +210,7 @@ Une petite liste de mots vulgaires est écartée du **tirage** seulement — ils
   - **Suppression d'un compte** : `supprimerDonneesJoueur()` balaie tout le cache — clés propres (dont les pseudos **normalisés** du Yams et du Petit Bac), lignes de classement, index de statistiques, historique des parties, `vsOpponent` des adversaires et titres manuels. L'ancienne version ne nettoyait que les Mots Fléchés.
   - **Fusion de comptes** : déplace les clés de la source vers la cible, conserve ce qui existe déjà chez la cible plutôt que de l'écraser, et **dédoublonne les classements** — sinon la cible y figurait deux fois le même jour.
   - **Restauration** d'une sauvegarde (`/restore`), **mode maintenance** (bloque `requireAuth` sauf pour les administrateurs), **modération des fiches multijoueur** (`/stats/reset`), suppression d'une ligne d'historique, **fréquentation** sur 30 jours avec comptes endormis, journal filtrable côté serveur, alerte quand Redis est absent, et poids des données par famille avec repérage des clés mortes.
-- **Profil** (`/profil`) — voir la section dédiée : trois onglets, et le choix des badges affichés. Sous-page `/profil/style/` qui centralise **tous** les réglages de style personnalisables de tous les jeux (actuellement : thème de tuiles Motus, skin de dés Yams) — **conçue pour être étendue à chaque nouveau jeu personnalisable**, structure en tableau de config en haut du fichier, bien commentée pour ça.
+- **Profil** (`/profil`) — voir la section dédiée : trois onglets, et le choix des badges affichés. Sous-page `/profil/style/` (« Mon style ») : elle ne contient plus ni catalogue ni rendu, c'est un **hôte** du rendu de `public/style.js`. Voir la section « Mon style ».
 
 ## Le système de design partagé
 
@@ -375,10 +376,38 @@ Elles ont été reprises à l'identique, et **prouvées** identiques : 36 288 co
 
 Le catalogue des 47 skins, la disposition des points et **le dessin d'une face** vivaient dans `public/yams/app.js`. Perudo en avait besoin à son tour.
 
-Un seul fichier désormais, chargé par le Yams, le Perudo et la page « Style des jeux ». **Un skin est celui du joueur, pas celui d'un jeu** : débloqué au Yams, il s'applique au Perudo.
+Un seul fichier désormais, chargé partout où un dé se dessine ou se choisit. **Un skin est celui du joueur, pas celui d'un jeu** : débloqué au Yams, il s'applique au Perudo.
 
 - ⚠️ **La clé de stockage reste `yams_dice_skin`.** La renommer ferait perdre son dé à tous ceux qui en avaient choisi un, pour le seul plaisir d'un nom plus juste.
 - ⚠️ **La couleur des points est posée en style EN LIGNE, pas en attribut.** Le Yams avait une règle `.ym-die-face circle { fill }` : une règle CSS l'emporte sur un attribut, elle écrasait donc la couleur du skin. Cette règle a été retirée, et l'état « gardé » d'un dé passe maintenant par un anneau — visible sur les quarante-sept skins, là où le changement de teinte ne se voyait que sur les clairs.
+
+## Mon style (`public/style.js`) — le coin de personnalisation
+
+Il y avait **trois** façons de changer un style, et aucune ne se ressemblait : un bouton « Style des dés » dans le Yams, un bouton « Style des tuiles » dans le Motus, et une page `/profil/style/` qui **recopiait les deux catalogues** pour les afficher une troisième fois. Perudo, lui, n'avait rien — alors qu'il lance exactement les mêmes dés.
+
+Un seul fichier porte maintenant les trois choses qui se dupliquaient :
+
+- **le catalogue** (`REGLAGES`) — la seule liste de ce qui se personnalise dans le salon ;
+- **le rendu** (`rendre()`) — la feuille qui s'ouvre depuis un jeu et la page du profil sont deux **hôtes** du même dessin, pas deux implémentations ;
+- **le bouton** — il s'injecte seul dans le hall du jeu (`#v-lobby`), comme `invitation.js` le fait dans la salle d'attente. Aucune app n'a de HTML à ajouter : il suffit d'un `<body data-jeu="...">` et de la balise `<script src="/style.js">`.
+
+### Ajouter un réglage : une ligne
+
+C'est le geste prévu pour être fréquent, et c'est tout ce qu'il y a à savoir. Une entrée dans `REGLAGES` (`id`, `nom`, `portee`, `cle` de stockage, `defaut`, `genre`, `options()`) et le réglage apparaît **aussitôt** dans « Mon style » au profil, dans le hall de chaque jeu concerné, et s'applique au chargement de toutes les pages qui chargent le fichier. Un réglage qui vaut pour tout le salon prend `portee: 'partout'` et se range dans sa propre section, au-dessus des jeux — la place est faite, elle attend son premier occupant.
+
+Les six jeux multijoueurs chargent déjà `/style.js` et se nomment déjà par `data-jeu`, **y compris ceux qui n'ont encore rien à régler** : c'est ce qui rend la promesse d'une seule ligne vraie.
+
+- ⚠️ **Le bouton n'apparaît que si le jeu a quelque chose à personnaliser** (`bouton()` renvoie `null` sinon), et un réglage dont le catalogue n'est pas chargé sur cette page ne s'affiche pas du tout. Un bouton qui ouvre « rien à régler ici », ou une grille vide sous un titre, se lisent comme une panne.
+- ⚠️ **Un réglage partagé n'apparaît qu'une fois**, dans une section intitulée par sa portée (« 🎲 Yams et Perudo »). La première version le répétait sous chaque jeu concerné : le catalogue des quarante-sept dés s'affichait deux fois de suite dans la page.
+- ⚠️ **Les grilles sont plafonnées à `44vh` et défilent dans leur propre boîte.** Sans ça, les quarante-sept dés poussaient tous les autres réglages hors de portée du pouce — et le bouton « Tout le style du salon » avec eux.
+- **Les verrous comptent les victoires des DEUX jeux.** Un dé appartient au joueur, pas à un jeu (c'est déjà la règle de `des.js`) : `victoires = Yams + Perudo`. Ils sont lus depuis `/api/salon/profile`, et un jeu qui connaît déjà la réponse peut la donner sans attendre le réseau (`Style.etat({victoires, yams})`, appelé par le Yams à chaque `yams_stats`).
+- **Rien ne demande de recharger** : `Style.surChangement(fn)` prévient les jeux, qui redessinent leurs dés sur place.
+
+### Ce que le passage a révélé
+
+⚠️ **Le bouton 🔊 du bandeau du Yams n'avait aucun écouteur** — il ne coupait rien du tout. Il commande maintenant la même clé que le réglage « Les sons du Yams », et les deux se suivent : deux commandes pour un seul réglage, jamais deux états.
+
+Et le thème de tuiles, qui ne valait que pour le Motus du jour, **s'applique aussi au Motus Party** : les deux pages utilisaient déjà les mêmes variables `--correct` / `--present` / `--absent`, seule la page qui les posait manquait.
 
 ## Les défis (`defis/jeu.js`) — le multijoueur sans rendez-vous
 

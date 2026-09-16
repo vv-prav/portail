@@ -4,23 +4,9 @@
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-// Style de tuiles choisi depuis le hub Motus : appliqué au tout premier chargement,
-// avant même le rendu de la grille, pour ne jamais voir un flash de couleur par défaut.
-(function applyTileTheme() {
-    const THEMES = {
-        classique: { correct: '#5aa87a', present: '#c9a24a', absent: '#3a3024' },
-        ocean:     { correct: '#3a9bc9', present: '#5ac9c2', absent: '#1f3a4a' },
-        coucher:   { correct: '#d9793a', present: '#e0a83e', absent: '#4a2a1f' },
-        violet:    { correct: '#8a6bc9', present: '#c98bd9', absent: '#2f2340' },
-    };
-    const id = localStorage.getItem('motus_tile_theme') || 'classique';
-    const t = THEMES[id];
-    if (!t) return;
-    const root = document.documentElement.style;
-    root.setProperty('--correct', t.correct);
-    root.setProperty('--present', t.present);
-    root.setProperty('--absent', t.absent);
-})();
+// Les couleurs de tuiles sont posées par `/style.js`, chargé juste avant ce
+// fichier : le coin de style applique ses réglages au chargement, donc avant
+// tout rendu de grille — c'est ce que faisait la fonction qui était ici.
 
 // ---------- i18n (clé partagée avec tout le portail) ----------
 const I18N = {
@@ -661,32 +647,7 @@ $('mt-stats-btn').addEventListener('click', async () => {
 $('mt-stats-close').addEventListener('click', () => { $('mt-stats-screen').hidden = true; });
 
 // ---------- Style des tuiles ----------
-const TILE_THEMES = {
-    classique: { name: 'Classique', correct: '#5aa87a', present: '#c9a24a', absent: '#3a3024' },
-    ocean:     { name: 'Océan',     correct: '#3a9bc9', present: '#5ac9c2', absent: '#1f3a4a' },
-    coucher:   { name: 'Coucher de soleil', correct: '#d9793a', present: '#e0a83e', absent: '#4a2a1f' },
-    violet:    { name: 'Violet',    correct: '#8a6bc9', present: '#c98bd9', absent: '#2f2340' },
-};
-function renderThemeGrid() {
-    const current = localStorage.getItem('motus_tile_theme') || 'classique';
-    $('mt-themeGrid').innerHTML = Object.entries(TILE_THEMES).map(([id, th]) => `
-        <button type="button" class="mt-theme-card${id === current ? ' active' : ''}" data-id="${id}">
-            <span class="mt-theme-swatches">
-                <span style="background:${th.correct}"></span>
-                <span style="background:${th.present}"></span>
-                <span style="background:${th.absent}"></span>
-            </span>
-            <span class="mt-theme-name">${th.name}</span>
-        </button>
-    `).join('');
-    $('mt-themeGrid').querySelectorAll('.mt-theme-card').forEach(b => b.addEventListener('click', () => {
-        localStorage.setItem('motus_tile_theme', b.dataset.id);
-        const th = TILE_THEMES[b.dataset.id];
-        document.documentElement.style.setProperty('--correct', th.correct);
-        document.documentElement.style.setProperty('--present', th.present);
-        document.documentElement.style.setProperty('--absent', th.absent);
-        renderThemeGrid();
-    }));
-}
-$('mt-style-btn').addEventListener('click', () => { renderThemeGrid(); $('mt-style-screen').hidden = false; });
-$('mt-style-close').addEventListener('click', () => { $('mt-style-screen').hidden = true; });
+// La grille de choix vivait ici, une deuxième dans le Yams, une troisième
+// dans le profil. Elle est maintenant dans `/style.js`, le coin de style
+// commun : un seul catalogue, un seul rendu, un seul geste à apprendre.
+$('mt-style-btn').addEventListener('click', () => Style.ouvrir('motus'));

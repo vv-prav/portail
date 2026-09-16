@@ -19,25 +19,19 @@ function toast(msg) { DS.toast(msg); }
 // Une couleur par joueur, pour se repérer d'un coup d'œil entre le score en
 // haut et ses cases remplies dans la feuille.
 // =====================================================================
-//  STYLES DE DÉS — catalogue repris de Perudo (mêmes couleurs et dégradés),
-//  avec des seuils de déblocage adaptés aux statistiques du Yams plutôt qu'à
-//  la campagne de Perudo qui n'existe pas ici.
+//  LE STYLE DES DÉS N'EST PLUS ICI
+//
+//  Le catalogue et le rendu vivent dans `/des.js` ; le CHOIX, lui, se fait
+//  dans `/style.js`, le coin de style commun à tout le salon. Le Yams
+//  avait sa grille de sélection, le Motus la sienne, le profil une
+//  troisième — et le Perudo, qui lance pourtant les mêmes dés, aucune.
+//  Le bouton « 🎨 Mon style » du hall s'injecte seul, comme « Inviter ».
 // =====================================================================
-// Le catalogue des dés et leur rendu vivent désormais dans `/des.js`, partagé
-// avec le Perudo : un skin débloqué ici s'applique là-bas, et il n'y a plus
-// qu'un seul catalogue à tenir à jour. L'alias local évite de réécrire les
-// quarante usages de ce fichier.
-const DICE_SKINS = (window.Des && Des.catalogue()) || {};
-let myYamsWins = 0, myYamsCount = 0;
-function ownsDiceSkin(id) {
-    const s = DICE_SKINS[id];
-    if (!s) return false;
-    if (typeof s.winsRequired === 'number') return myYamsWins >= s.winsRequired;
-    if (typeof s.yamsRequired === 'number') return myYamsCount >= s.yamsRequired;
-    return true;
-}
-const SKIN_KEY = 'yams_dice_skin';
-let currentSkin = localStorage.getItem(SKIN_KEY) || 'classic';
+// Les dés se redessinent quand le joueur en change sans quitter la page.
+if (window.Style) Style.surChangement((id) => {
+    if (id === 'des' && state) renderDice(state);
+    if (id === 'son-yams') majSon();
+});
 
 const PLAYER_COLORS = ['#9b6fc7', '#5aa8d9', '#3fb6ae', '#d9689b'];
 function playerColor(index) { return PLAYER_COLORS[index % PLAYER_COLORS.length]; }
@@ -218,10 +212,10 @@ function bloc3(paires) {
 function renderStats(data) {
     if (!data) return;
     maFiche = data;
-    myYamsWins = data.gamesWon || 0;
-    myYamsCount = data.totalYams || 0;
     myOpponents = data.opponents || [];
-    if (!$('v-skins').hidden) renderSkinsGrid();
+    // Les verrous des dés se lisent dans le coin de style : on lui donne ce
+    // que le jeu vient d'apprendre plutôt que de le laisser redemander.
+    if (window.Style) Style.etat({ victoires: data.gamesWon || 0, yams: data.totalYams || 0 });
     if (!$('v-leaderboard').hidden) renderH2hSelect();
 
     const bilan = data.gamesPlayed
@@ -288,32 +282,6 @@ function renderLobby(games) {
 }
 $('btn-create').addEventListener('click', () => socket.emit('yams_create'));
 $('btn-stats').addEventListener('click', () => { socket.emit('yams_stats'); $('v-stats').hidden = false; });
-function renderSkinsGrid() {
-    $('skinsGrid').innerHTML = Object.entries(DICE_SKINS).map(([id, skin]) => {
-        const owned = ownsDiceSkin(id);
-        const lockLabel = !owned
-            ? (typeof skin.winsRequired === 'number' ? `🔒 ${skin.winsRequired} victoires` : `🔒 ${skin.yamsRequired} Yams`)
-            : '';
-        return `
-            <button type="button" class="ym-skin-card${id === currentSkin ? ' active' : ''}${!owned ? ' locked' : ''}" data-id="${id}" ${!owned ? 'disabled' : ''}>
-                <span class="ym-skin-preview">${diceFaceSvgFor(skin, id)}</span>
-                <span class="ym-skin-name">${esc(skin.name)}</span>
-                ${lockLabel ? `<span class="ym-skin-lock">${lockLabel}</span>` : ''}
-            </button>`;
-    }).join('');
-    $('skinsGrid').querySelectorAll('.ym-skin-card:not(.locked)').forEach(b => b.addEventListener('click', () => {
-        currentSkin = b.dataset.id;
-        localStorage.setItem(SKIN_KEY, currentSkin);
-        renderSkinsGrid();
-        if (state) renderDice(state);
-    }));
-}
-// L'aperçu d'un skin dans la grille de choix : le même dé que sur la table,
-// simplement figé sur la face 1.
-function diceFaceSvgFor(skin, id) {
-    return Des.face(1, { skin: id, classe: 'ym-die-face' });
-}
-$('btn-skins').addEventListener('click', () => { socket.emit('yams_stats'); renderSkinsGrid(); $('v-skins').hidden = false; });
 
 // ---------- Classement, historique, face à face ----------
 let myOpponents = [];
@@ -415,7 +383,6 @@ $('btn-leaderboard').addEventListener('click', () => {
     socket.emit('yams_stats');
 });
 $('leaderboard-close').addEventListener('click', () => { $('v-leaderboard').hidden = true; });
-$('skins-close').addEventListener('click', () => { $('v-skins').hidden = true; });
 $('stats-close').addEventListener('click', () => { $('v-stats').hidden = true; });
 socket_list_poll();
 function socket_list_poll() {
@@ -461,6 +428,21 @@ let lastTurnPseudo = null, scoreAvatars = {};
 // =====================================================================
 const SON_CLE = 'yams_son';
 let sonActif = localStorage.getItem(SON_CLE) !== '0';
+// ⚠️ Le bouton 🔊 du bandeau n'avait AUCUN écouteur : il ne coupait rien.
+// Il commande maintenant la même clé que le coin de style, et les deux se
+// suivent — deux commandes pour un seul réglage, jamais deux états.
+function majSon() {
+    sonActif = localStorage.getItem(SON_CLE) !== '0';
+    const b = $('ym-son');
+    if (!b) return;
+    b.textContent = sonActif ? '🔊' : '🔇';
+    b.setAttribute('aria-label', sonActif ? 'Couper le son' : 'Remettre le son');
+}
+$('ym-son').addEventListener('click', () => {
+    if (window.Style) Style.poser('son-yams', sonActif ? '0' : '1');
+    else { localStorage.setItem(SON_CLE, sonActif ? '0' : '1'); majSon(); }
+});
+majSon();
 let ctx = null;
 function audio() {
     if (!sonActif) return null;

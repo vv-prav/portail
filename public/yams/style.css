@@ -359,16 +359,6 @@ body {
 .ym-nemesis-word { background:linear-gradient(180deg,#a8e8bc,var(--good)) !important; -webkit-background-clip:text !important;
     background-clip:text !important; text-shadow:0 0 60px rgba(90,168,122,.6) !important; }
 
-/* Sélection du style de dés */
-.ym-skins-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px; max-height:52vh; overflow-y:auto; }
-.ym-skin-card { display:flex; flex-direction:column; align-items:center; gap:6px; padding:10px 6px; border-radius:12px;
-    background:rgba(255,255,255,.03); border:1.5px solid var(--line); font-family:inherit; cursor:pointer; }
-.ym-skin-card.active { border-color:var(--brass); background:rgba(217,169,78,.14); }
-.ym-skin-card.locked { opacity:.45; cursor:default; }
-.ym-skin-preview { width:38px; height:38px; }
-.ym-skin-name { font-size:.62rem; color:var(--parchment); text-align:center; line-height:1.15; }
-.ym-skin-lock { font-size:.56rem; color:var(--muted); text-align:center; }
-
 /* Classement, historique, face à face */
 .ym-lb-pane { max-height:50vh; overflow-y:auto; margin-bottom:16px; }
 .ym-lb-pane[hidden] { display:none; }

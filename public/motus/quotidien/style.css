@@ -204,14 +204,6 @@ body.not-started .mt-tools { opacity:.35; pointer-events:none; }
 @keyframes mtLiveIn { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }
 @keyframes mtLiveOut { to { opacity:0; transform:translateY(-10px); } }
 
-.mt-theme-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-.mt-theme-card { display:flex; flex-direction:column; align-items:center; gap:8px; padding:14px 8px; border-radius:12px;
-    background:rgba(255,255,255,.03); border:1.5px solid var(--line,rgba(217,169,78,.2)); font-family:inherit; cursor:pointer; }
-.mt-theme-card.active { border-color:var(--brass,#d9a94e); background:rgba(217,169,78,.14); }
-.mt-theme-swatches { display:flex; gap:4px; }
-.mt-theme-swatches span { width:16px; height:16px; border-radius:4px; }
-.mt-theme-name { font-size:.72rem; color:var(--parchment); }
-
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.001ms !important; transition-duration:.001ms !important; } }
 /* ---------- Pendant la saisie, sur petit téléphone ----------
    Le clavier se pose par-dessus la page (interactive-widget=overlays-content).
