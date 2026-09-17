@@ -217,7 +217,7 @@ function qualityOk(res, cfg) {
  *        ⚠️ Sans ça, « Tirer une nouvelle grille » ne changeait RIEN : le
  *        tirage ne dépend que de la date et du niveau, donc effacer la clé
  *        redonnait exactement la même grille. C'est le même piège que sur le
- *        Motus et Le Mot Juste — la quatrième fois qu'il se présente.
+ *        et le Motus — la troisième fois qu'il se présente.
  *        À zéro, la graine est identique à l'ancienne : aucune date passée ne
  *        change de grille.
  */

@@ -24,7 +24,7 @@ const I18N = {
         code_sub: "C'est le seul moyen de récupérer ton compte si tu oublies ton mot de passe. Il ne sera plus jamais affiché.",
         forgot_title: "Mot de passe oublié", forgot_sub: "Entre ton nom et le code de récupération noté à l'inscription.",
         forgot_send: "Réinitialiser", cancel: "Annuler",
-        app_perudo_d: "Le jeu de dés des pirates, en ligne.", app_motus_d: "Un mot à deviner en 6 essais.", app_pbac_d: "Une lettre, huit catégories, à plusieurs.", app_uc_d: "Démasque l'infiltré parmi vous.", app_juste_d: "Devine le mot secret à l'intuition.", app_mf_d: "Une nouvelle grille chaque jour.",
+        app_perudo_d: "Le jeu de dés des pirates, en ligne.", app_motus_d: "Un mot à deviner en 6 essais.", app_pbac_d: "Une lettre, huit catégories, à plusieurs.", app_uc_d: "Démasque l'infiltré parmi vous.", app_mf_d: "Une nouvelle grille chaque jour.",
         app_jouer_d: "Créer une table ou rejoindre les autres.",
         app_carnet_d: "Nos sorties et nos recettes.",
         app_recettes_d: "Garde et partage tes recettes.", app_voyages_d: "La rando dans les Monts d'Arrée.", app_admin_d: "Comptes, données et réglages.",
@@ -57,7 +57,7 @@ const I18N = {
         code_sub: "It's the only way to recover your account if you forget your password. It will never be shown again.",
         forgot_title: "Forgot password", forgot_sub: "Enter your name and the recovery code from sign-up.",
         forgot_send: "Reset", cancel: "Cancel",
-        app_perudo_d: "The pirates' dice game, online.", app_motus_d: "Guess the word in 6 tries.", app_pbac_d: "A letter, eight categories, with friends.", app_uc_d: "Unmask the impostor among you.", app_juste_d: "Guess the secret word by feel.", app_mf_d: "A fresh grid every day.",
+        app_perudo_d: "The pirates' dice game, online.", app_motus_d: "Guess the word in 6 tries.", app_pbac_d: "A letter, eight categories, with friends.", app_uc_d: "Unmask the impostor among you.", app_mf_d: "A fresh grid every day.",
         app_jouer_d: "Start a table or join the others.",
         app_carnet_d: "Our outings and our recipes.",
         app_recettes_d: "Keep and share your recipes.", app_voyages_d: "The Monts d'Arrée hiking trip.", app_admin_d: "Accounts, data and settings.",
@@ -90,7 +90,7 @@ const I18N = {
         code_sub: "Es la única forma de recuperar tu cuenta si olvidas tu contraseña. No se mostrará nunca más.",
         forgot_title: "Contraseña olvidada", forgot_sub: "Escribe tu nombre y el código de recuperación.",
         forgot_send: "Restablecer", cancel: "Cancelar",
-        app_perudo_d: "El juego de dados pirata, en línea.", app_motus_d: "Adivina la palabra en 6 intentos.", app_pbac_d: "Una letra, ocho categorías, en grupo.", app_uc_d: "Descubre al infiltrado entre vosotros.", app_juste_d: "Adivina la palabra secreta por intuición.", app_mf_d: "Una cuadrícula nueva cada día.",
+        app_perudo_d: "El juego de dados pirata, en línea.", app_motus_d: "Adivina la palabra en 6 intentos.", app_pbac_d: "Una letra, ocho categorías, en grupo.", app_uc_d: "Descubre al infiltrado entre vosotros.", app_mf_d: "Una cuadrícula nueva cada día.",
         app_jouer_d: "Crea una mesa o únete a los demás.",
         app_carnet_d: "Nuestras salidas y recetas.",
         app_recettes_d: "Guarda y comparte tus recetas.", app_voyages_d: "La ruta por los Monts d'Arrée.", app_admin_d: "Cuentas, datos y ajustes.",
@@ -293,7 +293,7 @@ async function loadPulse() {
 }
 
 // ---------- Le panneau « Aujourd'hui » ----------
-// Motus, Mots Fléchés et Le Mot Juste représentent 90 % de l'activité du salon,
+// Les jeux du jour représentent 90 % de l'activité du salon,
 // mais l'accueil les noyait parmi onze tuiles à égalité avec le reste. Ce panneau
 // répond à la seule question qu'on se pose en arrivant : qu'est-ce qu'il me reste
 // à faire aujourd'hui ? Toutes les données viennent déjà du pouls, rien de neuf
@@ -301,7 +301,6 @@ async function loadPulse() {
 const JEUX_DU_JOUR = [
     { id: 'motus',    nom: 'Motus',        emoji: '🟨', href: '/motus/quotidien/', accent: '#c9a24a' },
     { id: 'mf',       nom: 'Mots Fléchés', emoji: '🧩', href: '/mots-fleches',     accent: '#5aa87a' },
-    { id: 'motjuste', nom: 'Le Mot Juste', emoji: '🧊', href: '/motjuste',         accent: '#6fb8d9' },
     { id: 'chiffres', nom: 'Le compte est bon', emoji: '🔢', href: '/chiffres',    accent: '#c2513a' },
     { id: 'geo',      nom: 'Géographie',   emoji: '🌍', href: '/geo',              accent: '#6f7bb0' },
 ];
@@ -342,7 +341,6 @@ function renderToday(p) {
     const series = [
         (p.motus && p.motus.streak) || 0,
         (p.mf && p.mf.streak) || 0,
-        (p.motjuste && p.motjuste.streak) || 0,
         (p.chiffres && p.chiffres.streak) || 0,
         (p.geo && p.geo.streak) || 0,
     ];

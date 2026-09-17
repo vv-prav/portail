@@ -34,14 +34,13 @@ function norm(s) {
 const PREFIXES_BRUTS = [
     'motus:prog', 'motus:days', 'motus:beststreak',
     'mf:prog', 'mf:days',
-    'mj:prog', 'mj:days',
     'motusparty:stats',
 ];
 // Familles dont le 3ᵉ segment est un pseudo normalisé.
 const PREFIXES_NORMALISES = ['yams:stats', 'pbac:stats'];
 
 // Familles dont la valeur est une liste d'entrées portant un champ `u`.
-const VALEURS_AVEC_U = /^(motus|mf|mj):(board|cmt):/;
+const VALEURS_AVEC_U = /^(motus|mf):(board|cmt):/;
 // Listes d'index : de simples tableaux de pseudos bruts.
 const LISTES_INDEX = new Set(['yams:statsIndex', 'pbac:statsIndex']);
 

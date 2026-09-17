@@ -30,7 +30,6 @@
             <button class="ad-tile" data-tab="perudo" type="button"><span class="ad-tile-emoji">🎲</span><span>Perudo</span></button>
             <button class="ad-tile" data-tab="grids" type="button"><span class="ad-tile-emoji">🧩</span><span>Grilles</span></button>
             <button class="ad-tile" data-tab="motus" type="button"><span class="ad-tile-emoji">🟨</span><span>Motus</span></button>
-            <button class="ad-tile" data-tab="motjuste" type="button"><span class="ad-tile-emoji">🧊</span><span>Le Mot Juste</span></button>
             <button class="ad-tile" data-tab="chiffres" type="button"><span class="ad-tile-emoji">🔢</span><span>Le compte est bon</span></button>
             <button class="ad-tile" data-tab="geo" type="button"><span class="ad-tile-emoji">🌍</span><span>Géographie</span></button>
             <button class="ad-tile" data-tab="dict" type="button"><span class="ad-tile-emoji">📖</span><span>Dictionnaire</span></button>
@@ -160,41 +159,6 @@
                 <p class="card-sub">Aperçu des 7 prochains jours (pas encore figés, ils peuvent encore changer).</p>
                 <button class="ds-btn ghost" id="mt-next" type="button">Afficher l'aperçu</button>
                 <div class="log" id="mt-upcoming"></div>
-            </div>
-        </section>
-
-        <!-- LE MOT JUSTE -->
-        <section class="pane" id="pane-motjuste" hidden>
-            <div class="card">
-                <h2 class="card-title">Difficulté observée (14 jours)</h2>
-                <div class="kv" id="mj-diff"></div>
-            </div>
-            <div class="card">
-                <h2 class="card-title">Mot du jour</h2>
-                <input class="ds-input" id="mj-date" type="date" aria-label="Date du Mot Juste">
-                <div id="mj-word-box"></div>
-                <div id="mj-neighbors-box"></div>
-                <div id="mj-board-box"></div>
-                <button class="mini danger wide" id="mj-regen" type="button">Régénérer ce mot</button>
-            </div>
-            <div class="card">
-                <h2 class="card-title">Discussion du jour</h2>
-                <div class="log" id="mj-cmts"></div>
-            </div>
-            <div class="card">
-                <h2 class="card-title">Mots à venir</h2>
-                <p class="card-sub">Aperçu des 7 prochains jours (pas encore figés).</p>
-                <button class="ds-btn ghost" id="mj-next" type="button">Afficher l'aperçu</button>
-                <div class="log" id="mj-upcoming"></div>
-            </div>
-            <div class="card">
-                <h2 class="card-title">Vocabulaire (<span id="mj-vocab-count">—</span> mots)</h2>
-                <p class="card-sub">Ajoute un mot en indiquant le mot déjà connu dont il est le plus proche — sa position dans l'espace sémantique sera calquée dessus.</p>
-                <input class="ds-input" id="mj-new-word" placeholder="Nouveau mot…" autocapitalize="off" aria-label="Nouveau mot à ajouter">
-                <input class="ds-input" id="mj-new-like" placeholder="Mot déjà connu le plus proche…" autocapitalize="off" aria-label="Mot connu le plus proche">
-                <button class="ds-btn" id="mj-vocab-add" type="button">Ajouter au vocabulaire</button>
-                <input class="ds-input" id="mj-vocab-q" placeholder="Rechercher dans le vocabulaire…" style="margin-top:14px" aria-label="Rechercher dans le vocabulaire">
-                <div class="list" id="mj-vocab-list"></div>
             </div>
         </section>
 

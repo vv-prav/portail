@@ -8,7 +8,7 @@ const { norm: normPseudo } = require('../comptes/renommage');
 
 module.exports = function attachAdmin(app, ctx) {
     const { requireAdmin, currentUser, isAdmin, users, saveUsers,
-            hashPassword, makeRecoveryCode, mf, redis, motus, motjuste, pbac } = ctx;
+            hashPassword, makeRecoveryCode, mf, redis, motus, pbac } = ctx;
 
     // --- Journal des actions (mémoire + persistance légère) ---
     const LOG_KEY = 'mf:adminlog';
@@ -111,7 +111,6 @@ module.exports = function attachAdmin(app, ctx) {
         }
 
         const motusBoard = cache[motus.kBoard(today)] || [];
-        const mjBoard = cache[motjuste.kBoard(today)] || [];
 
         res.json({
             mf: { solvedToday: mfSolvedToday, totalKeys: Object.keys(cache).length },
@@ -121,7 +120,6 @@ module.exports = function attachAdmin(app, ctx) {
             yams: { online: yamsOnline, activeGames: yamsGames, totalGamesPlayed: yamsTotalGamesPlayed },
             motusparty: { online: mpOnline, activeGames: mpGames, totalMatchesPlayed: mpTotalMatchesPlayed },
             motus: { solversToday: motusBoard.length },
-            motjuste: { solversToday: mjBoard.length },
         });
     });
 
@@ -193,8 +191,8 @@ module.exports = function attachAdmin(app, ctx) {
             const pu = ctx.perudo().users()[pseudo];
             if (pu) perudo = { wins: pu.wins || 0, played: pu.played || 0, rankPoints: pu.rankPoints || 0, bestStreak: pu.bestStreak || 0 };
         } catch (e) {}
-        // Motus et Le Mot Juste partagent le même schéma de progression par jour :
-        // on compte directement dans le cache plutôt que de dupliquer motusStreak() ici.
+        // Le Motus range une progression par jour : on compte directement dans le
+        // cache plutôt que de dupliquer motusStreak() ici.
         function dailyStats(prefix) {
             const s = { solved: 0, gaveUp: 0, started: 0, bestTries: null };
             for (const [k, v] of Object.entries(cache)) {
@@ -207,7 +205,6 @@ module.exports = function attachAdmin(app, ctx) {
             return s;
         }
         const motus = dailyStats('motus:prog');
-        const motjuste = dailyStats('mj:prog');
         // ⚠️ Yams et Petit Bac indexent par pseudo NORMALISÉ : lire la clé brute
         // renvoyait toujours vide, donc la fiche n'a jamais montré le Yams.
         const norme = normPseudo(pseudo);
@@ -242,7 +239,7 @@ module.exports = function attachAdmin(app, ctx) {
             hasRecovery: !!u.recoveryHash,
             avatar: u.avatar || '', avatarPhoto: u.avatarPhoto || '',
             motsfleches: { ...mfStats, daysPlayed: days.length },
-            perudo, motus, motjuste, yams, motusparty,
+            perudo, motus, yams, motusparty,
             pbac, undercover, drapeaux, chiffres, geo,
         });
     });
@@ -330,7 +327,7 @@ module.exports = function attachAdmin(app, ctx) {
     // Efface TOUTE trace d'un joueur dans le cache commun.
     //
     // L'ancienne version ne nettoyait que les Mots Fléchés : le compte
-    // disparaissait, mais Motus, Le Mot Juste, Le compte est bon, la
+    // disparaissait, mais Motus, Le compte est bon, la
     // Géographie et les cinq fiches multijoueur restaient en base, tout comme
     // son nom dans les classements des autres jeux et dans le face-à-face de
     // ses adversaires. Une demande de suppression n'était donc pas honorée.
@@ -693,7 +690,7 @@ module.exports = function attachAdmin(app, ctx) {
         // ⚠️ Effacer la clé ne suffisait PAS : le tirage ne dépend que de la
         // date et du niveau, donc la même grille revenait à l'identique. Il
         // faut décaler la graine — c'est exactement le piège déjà corrigé sur
-        // le Motus, Le Mot Juste et les deux jeux du jour récents.
+        // le Motus et les deux jeux du jour récents.
         const ancienne = mf.get(`mf:grid:${date}:${lv}`);
         const avant = ancienne ? (ancienne.wordList || []).join(',') : null;
         let variante = Number(mf.get(`mf:variante:${date}:${lv}`)) || 0;
@@ -906,136 +903,6 @@ module.exports = function attachAdmin(app, ctx) {
     });
 
     // =================================================================
-    //  LE MOT JUSTE
-    // =================================================================
-    G('/motjuste/day', (req, res) => {
-        const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mf.today();
-        const word = motjuste.word(date);
-        const board = (mf.get(motjuste.kBoard(date)) || []).slice().sort((a, b) => a.guesses - b.guesses || a.ts - b.ts);
-        let started = 0, solved = 0;
-        for (const [k, v] of Object.entries(mf.cache())) {
-            if (!k.startsWith('mj:prog:') || !k.endsWith(`:${date}`) || !v) continue;
-            started++; if (v.solved) solved++;
-        }
-        const neighbors = motjuste.engine.nearest(word, 8);
-        res.json({
-            date, today: mf.today(), word,
-            neighbors: neighbors.map(n => ({ m: n.m, score: n.score })),
-            board: board.map(e => ({ u: e.u, guesses: e.guesses, susp: !!e.susp })),
-            started, solved,
-        });
-    });
-
-    G('/motjuste/upcoming', (req, res) => {
-        const today = mf.today();
-        const out = [];
-        for (let i = 1; i <= 7; i++) { const date = mf.shift(today, i); out.push({ date, word: motjuste.wordPreview(date) }); }
-        res.json({ days: out });
-    });
-
-    A('/motjuste/regen', (req, res) => {
-        const date = /^\d{4}-\d{2}-\d{2}$/.test(req.body.date || '') ? req.body.date : mf.today();
-        const ancien = motjuste.word(date);
-        // Le tirage est déterministe sur la date : supprimer la clé et
-        // recalculer redonnait exactement le même mot. Ce bouton effaçait donc
-        // les parties du jour et le classement pour rien. Même correctif que
-        // celui appliqué au Motus.
-        let nouveau = ancien;
-        for (let i = 0; i < 25 && nouveau === ancien; i++) {
-            motjuste.varianteSuivante(date);
-            mf.del(motjuste.kWord(date));
-            nouveau = motjuste.word(date);
-        }
-        if (nouveau === ancien) return res.status(409).json({ error: 'Impossible de tirer un mot différent.' });
-        for (const k of Object.keys(mf.cache())) if (k.startsWith('mj:prog:') && k.endsWith(`:${date}`)) mf.del(k);
-        mf.del(motjuste.kBoard(date));
-        log(currentUser(req), 'mot du Mot Juste régénéré', `${date} : ${ancien} → ${nouveau}`);
-        res.json({ ok: true, ancien, word: nouveau });
-    });
-
-    A('/motjuste/board/remove', (req, res) => {
-        const date = String(req.body.date || mf.today());
-        const pseudo = String(req.body.pseudo || '');
-        const key = motjuste.kBoard(date);
-        mf.set(key, (mf.get(key) || []).filter(e => e.u !== pseudo));
-        log(currentUser(req), 'score Mot Juste supprimé', pseudo, date);
-        res.json({ ok: true });
-    });
-    A('/motjuste/board/flag', (req, res) => {
-        const date = String(req.body.date || mf.today());
-        const pseudo = String(req.body.pseudo || '');
-        const key = motjuste.kBoard(date);
-        mf.set(key, (mf.get(key) || []).map(e => (e.u === pseudo ? { ...e, susp: !e.susp } : e)));
-        log(currentUser(req), 'score Mot Juste marqué', pseudo);
-        res.json({ ok: true });
-    });
-
-    G('/motjuste/comments', (req, res) => {
-        const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mf.today();
-        res.json({ date, comments: mf.get(motjuste.kCmt(date)) || [] });
-    });
-    A('/motjuste/comments/remove', (req, res) => {
-        const date = String(req.body.date || mf.today());
-        const ts = Number(req.body.ts);
-        const key = motjuste.kCmt(date);
-        mf.set(key, (mf.get(key) || []).filter(c => c.ts !== ts));
-        log(currentUser(req), 'message Mot Juste supprimé', String(req.body.u || ''));
-        res.json({ ok: true });
-    });
-
-    // Difficulté observée sur 14 jours
-    G('/motjuste/difficulty', (req, res) => {
-        const today = mf.today();
-        let started = 0, solved = 0;
-        const guessCounts = [];
-        for (let i = 0; i < 14; i++) {
-            const date = mf.shift(today, -i);
-            for (const [k, v] of Object.entries(mf.cache())) {
-                if (!k.startsWith('mj:prog:') || !k.endsWith(`:${date}`) || !v) continue;
-                started++;
-                if (v.solved) { solved++; guessCounts.push((v.guesses || []).length); }
-            }
-        }
-        const avg = guessCounts.length ? Math.round((guessCounts.reduce((a, b) => a + b, 0) / guessCounts.length) * 10) / 10 : 0;
-        res.json({ started, solved, avgGuesses: avg, rate: started ? Math.round(solved / started * 100) : 0 });
-    });
-
-    // --- Vocabulaire : ajout / suppression de mots (persistés à part du fichier de base) ---
-    G('/motjuste/vocab', (req, res) => {
-        const q = String(req.query.q || '').toLowerCase();
-        const all = motjuste.engine.allWords()
-            .filter(w => !q || w.toLowerCase().includes(q))
-            .map(w => ({ m: w, custom: motjuste.engine.isCustom(w) }))
-            .sort((a, b) => a.m.localeCompare(b.m, 'fr'));
-        res.json({ count: motjuste.engine.allWords().length, words: all.slice(0, 200) });
-    });
-    A('/motjuste/vocab/add', (req, res) => {
-        const word = String(req.body.word || '').trim();
-        const like = String(req.body.like || '').trim();
-        if (!word) return res.status(400).json({ error: 'Il manque un mot.' });
-        if (motjuste.engine.hasWord(word)) return res.status(409).json({ error: 'Ce mot existe déjà.' });
-        if (!motjuste.engine.hasWord(like)) return res.status(400).json({ error: 'Choisis un mot déjà connu, le plus proche possible du nouveau.' });
-        const vec = motjuste.engine.vectorLike(like);
-        if (!vec || !motjuste.engine.addCustomWord(word, vec)) return res.status(400).json({ error: 'Ajout impossible.' });
-        const custom = mf.get('mj:custom') || {};
-        custom[motjuste.engine.findWord(word).m] = vec;
-        mf.set('mj:custom', custom);
-        log(currentUser(req), 'mot ajouté au Mot Juste', word, 'proche de ' + like);
-        res.json({ ok: true, count: motjuste.engine.allWords().length });
-    });
-    A('/motjuste/vocab/remove', (req, res) => {
-        const word = String(req.body.word || '').trim();
-        if (!motjuste.engine.isCustom(word)) return res.status(400).json({ error: 'Seuls les mots ajoutés depuis l’administration peuvent être retirés.' });
-        const canonical = motjuste.engine.findWord(word).m;
-        motjuste.engine.removeCustomWord(word);
-        const custom = mf.get('mj:custom') || {};
-        delete custom[canonical];
-        mf.set('mj:custom', custom);
-        log(currentUser(req), 'mot retiré du Mot Juste', word);
-        res.json({ ok: true, count: motjuste.engine.allWords().length });
-    });
-
-    // =================================================================
     //  SYSTÈME
     // =================================================================
     // Sauvegarde complète à télécharger
@@ -1207,8 +1074,9 @@ module.exports = function attachAdmin(app, ctx) {
             .map(([f, n]) => ({ famille: f, cles: n, octets: poids[f] || 0 }));
         // Les clés que plus aucun code ne lit. `mf_data` et `mf_progress`
         // traînent depuis des mois sans que rien ne les signale.
-        const CONNUES = ['mf', 'motus', 'mj', 'rec', 'voyages', 'pbac', 'yams', 'motusparty',
-            'undercover', 'drapeaux', 'chiffres', 'geo', 'admin', 'titres', 'perudo'];
+        const CONNUES = ['mf', 'motus', 'rec', 'voyages', 'pbac', 'yams', 'motusparty',
+            'undercover', 'drapeaux', 'chiffres', 'geo', 'admin', 'titres', 'perudo',
+            'menage'];   // menage:* = les nettoyages faits une seule fois
         const orphelines = cles.filter(k => !CONNUES.includes(k.split(':')[0]))
             .map(k => { let t = 0; try { t = JSON.stringify(cache[k]).length; } catch (e) {} return { cle: k, octets: t }; })
             .sort((a, b) => b.octets - a.octets).slice(0, 20);
@@ -1386,7 +1254,7 @@ module.exports = function attachAdmin(app, ctx) {
         for (const [k, v] of Object.entries(cache)) {
             const seg = k.split(':');
             if (seg[1] !== 'prog' || !v) continue;
-            // La date est en 4ᵉ segment partout : mf/motus/mj/geo/chiffres.
+            // La date est en 4ᵉ segment partout : mf/motus/geo/chiffres.
             const jour = parJour.get(seg[3]);
             if (!jour) continue;
             jour.parties++;

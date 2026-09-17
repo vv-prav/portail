@@ -47,7 +47,7 @@ Cette vérification tourne aussi automatiquement sur GitHub à chaque push sur `
 ## Les apps
 
 **Jeux multijoueurs** (temps réel, Socket.io) : Perudo · Petit Bac · Infiltré · Yams · Motus Party
-**Jeux du jour** (un mot/une grille par jour) : Motus · Mots Fléchés · Le Mot Juste
+**Jeux du jour** (un mot/une grille par jour) : Motus · Mots Fléchés · Le compte est bon · Géographie
 **Autres** : Chance · Recettes · Voyages · Profil · Admin
 
 Chaque app vit dans `public/<app>/` (index.html + app.js + style.css). Les jeux temps réel ont en plus un module serveur `<app>/game.js` à la racine, attaché via `require('./<app>/game')(app, io, deps)`.
@@ -71,7 +71,7 @@ portail/
 ├── users.json             ← repli local (auto, jamais committé)
 ├── CLAUDE.md              ← contexte complet du projet
 ├── admin/routes.js        ← toutes les routes /api/admin/*
-├── motjuste/ motsfleches/ motus/     ← moteurs et vocabulaires des jeux du jour
+├── motsfleches/ motus/               ← moteurs et vocabulaires des jeux du jour
 ├── motusparty/ pbac/ perudo/ undercover/ yams/   ← modules des jeux temps réel
 └── public/
     ├── index.html / app.js / style.css      ← le salon

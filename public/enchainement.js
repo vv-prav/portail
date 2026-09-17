@@ -17,7 +17,6 @@
     const JEUX = [
         { id: 'motus', nom: 'Motus', emoji: '🟨', href: '/motus/quotidien/' },
         { id: 'mf', nom: 'les Mots Fléchés', emoji: '🧩', href: '/mots-fleches' },
-        { id: 'motjuste', nom: 'Le Mot Juste', emoji: '🧊', href: '/motjuste' },
         { id: 'chiffres', nom: 'Le compte est bon', emoji: '🔢', href: '/chiffres' },
         { id: 'geo', nom: 'la Géographie', emoji: '🌍', href: '/geo' },
     ];
@@ -30,7 +29,7 @@
             const m = pouls[id] || {};
             return !!(m.total && m.done >= m.total);
         }
-        const g = pouls[id === 'motjuste' ? 'motjuste' : id] || {};
+        const g = pouls[id] || {};
         return !!(g.done || g.over);
     }
 

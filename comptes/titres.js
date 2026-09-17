@@ -36,8 +36,8 @@ const TITRES = [
       desc: 'Dix jours de jeu au compteur.',
       obtenu: (s) => s.joursTotal >= 10 },
     { id: 'curieux', nom: 'Curieux', emoji: '🧭', rarete: 'commun',
-      desc: 'A essayé les trois jeux du jour.',
-      obtenu: (s) => s.motusJours > 0 && s.mfJours > 0 && s.mjJours > 0 },
+      desc: 'A essayé au moins trois jeux du jour différents.',
+      obtenu: (s) => [s.motusJours, s.mfJours, s.chiffresJours, s.geoJours].filter(n => n > 0).length >= 3 },
     { id: 'causant', nom: 'Causant', emoji: '💬', rarete: 'commun',
       desc: 'Dix messages dans les discussions du jour.',
       obtenu: (s) => s.messages >= 10 },
@@ -60,9 +60,6 @@ const TITRES = [
     { id: 'eclair', nom: "Coup d'éclat", emoji: '⚡', rarete: 'rare',
       desc: 'A trouvé le mot de Motus du premier coup.',
       obtenu: (s) => s.motusMeilleurEssais !== null && s.motusMeilleurEssais <= 1 },
-    { id: 'devin', nom: 'Devin', emoji: '🔮', rarete: 'rare',
-      desc: 'A deviné Le Mot Juste en moins de huit mots.',
-      obtenu: (s) => s.mjMeilleurEssais !== null && s.mjMeilleurEssais < 8 },
     { id: 'veteran', nom: 'Vétéran', emoji: '🎖️', rarete: 'rare',
       desc: 'Dix parties en multijoueur.',
       obtenu: (s) => s.multiParties >= 10 },
@@ -136,10 +133,10 @@ function statsParJoueur(cache, pseudos, series, points) {
     const st = new Map();
     for (const p of pseudos) {
         st.set(p, {
-            joursTotal: 0, motusJours: 0, mfJours: 0, mjJours: 0,
+            joursTotal: 0, motusJours: 0, mfJours: 0,
             motusManches: 0, motusEchecs: 0, motusTotalEssais: 0, motusTrouves: 0,
             motusMeilleurEssais: null, motusMoyenneEssais: null,
-            mjMeilleurEssais: null, mfMeilleurTemps: null,
+            mfMeilleurTemps: null,
             yamsParties: 0, yamsVictoires: 0, yamsMeilleurScore: 0, yamsRealises: 0, yamsSerie: 0,
             drapeauxParties: 0, drapeauxTaux: null, drapeauxSerie: 0, drapeauxRapide: null,
             ucParties: 0, ucVictoires: 0, ucMrBlanc: 0,
@@ -164,7 +161,6 @@ function statsParJoueur(cache, pseudos, series, points) {
             const n = val.length;
             if (seg[0] === 'motus') s.motusJours = n;
             else if (seg[0] === 'mf') s.mfJours = n;
-            else if (seg[0] === 'mj') s.mjJours = n;
             else if (seg[0] === 'chiffres') s.chiffresJours = n;
             else if (seg[0] === 'geo') s.geoJours = n;
             continue;
@@ -193,8 +189,6 @@ function statsParJoueur(cache, pseudos, series, points) {
                     s.motusTrouves++; s.motusTotalEssais += essais;
                     if (s.motusMeilleurEssais === null || essais < s.motusMeilleurEssais) s.motusMeilleurEssais = essais;
                 } else s.motusEchecs++;
-            } else if (seg[0] === 'mj' && val.solved) {
-                if (s.mjMeilleurEssais === null || essais < s.mjMeilleurEssais) s.mjMeilleurEssais = essais;
             } else if (seg[0] === 'mf' && val.solved && val.seconds) {
                 if (s.mfMeilleurTemps === null || val.seconds < s.mfMeilleurTemps) s.mfMeilleurTemps = val.seconds;
             }
@@ -251,10 +245,10 @@ function statsParJoueur(cache, pseudos, series, points) {
     }
 
     for (const s of st.values()) {
-        s.joursTotal = s.motusJours + s.mfJours + s.mjJours;
+        s.joursTotal = s.motusJours + s.mfJours;
         s.motusMoyenneEssais = s.motusTrouves ? Math.round((s.motusTotalEssais / s.motusTrouves) * 100) / 100 : null;
         s.multiParties = s.yamsParties + s.pbacParties + s.mpCourses + s.perudoParties;
-        s.jeuxDifferents = [s.motusJours, s.mfJours, s.mjJours, s.yamsParties, s.pbacParties, s.mpCourses, s.perudoParties,
+        s.jeuxDifferents = [s.motusJours, s.mfJours, s.yamsParties, s.pbacParties, s.mpCourses, s.perudoParties,
             s.drapeauxParties, s.ucParties, s.chiffresJours, s.geoJours, s.defisJoues]
             .filter(n => n > 0).length;
         s.meilleureSerie = Math.max(s.meilleureSerie, s.serie);

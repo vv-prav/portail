@@ -37,7 +37,7 @@ function fmtDur(sec) {
 
 // ---------- Onglets ----------
 function switchTab(tab) {
-    ['home', 'accounts', 'parties', 'perudo', 'grids', 'motus', 'motjuste', 'chiffres', 'geo', 'dict', 'titres', 'sante', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== tab); });
+    ['home', 'accounts', 'parties', 'perudo', 'grids', 'motus', 'chiffres', 'geo', 'dict', 'titres', 'sante', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== tab); });
     document.querySelectorAll('.ad-tile').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
     if (tab === 'home') loadOverview();
     if (tab === 'accounts') { loadAccounts(); loadDemandes(); }
@@ -45,7 +45,6 @@ function switchTab(tab) {
     if (tab === 'perudo') loadPerudo();
     if (tab === 'grids') loadGrids();
     if (tab === 'motus') loadMotus();
-    if (tab === 'motjuste') loadMotJuste();
     if (tab === 'chiffres') loadChiffres();
     if (tab === 'geo') loadGeo();
     if (tab === 'dict') { loadDictStats(); loadDict(); }
@@ -142,7 +141,6 @@ async function loadAppsOverview() {
     const groups = [
         { icon: '🧩', name: 'Mots Fléchés', stats: [[data.mf.solvedToday, 'résolues aujourd\u2019hui']] },
         { icon: '📝', name: 'Motus', stats: [[data.motus.solversToday, 'ont trouvé aujourd\u2019hui']] },
-        { icon: '🔤', name: 'Le Mot Juste', stats: [[data.motjuste.solversToday, 'ont trouvé aujourd\u2019hui']] },
         { icon: '🎲', name: 'Perudo', stats: [[data.perudo.online, 'en ligne'], [data.perudo.activeGames, 'en cours']] },
         { icon: '🍎', name: 'Petit Bac', stats: [[data.pbac.online, 'en ligne'], [data.pbac.totalGamesPlayed, 'jouées au total']] },
         { icon: '🕵️', name: 'Infiltré', stats: [[data.undercover.online, 'en ligne']] },
@@ -251,7 +249,7 @@ async function openAccount(pseudo) {
     if (!ok) return toast(data.error || 'Erreur');
     $('acc-name').innerHTML = `${data.avatarPhoto ? `<img class="acc-avatar-img" src="${data.avatarPhoto}" alt="">` : (data.avatar ? esc(data.avatar) + ' ' : '')}${esc(data.pseudo)}`;
     const mfs = data.motsfleches || {};
-    const mo = data.motus || {}, mj = data.motjuste || {};
+    const mo = data.motus || {};
     const rows = [
         ['Statut', data.admin ? 'Administrateur' : (data.banned ? `Suspendu${data.bannedAt ? ' le ' + fmtDate(data.bannedAt) : ''}` : 'Actif')],
         ['Inscrit le', fmtDate(data.created)],
@@ -261,7 +259,6 @@ async function openAccount(pseudo) {
         ['Meilleur temps (Mots Fléchés)', mfs.best ? Math.floor(mfs.best / 60) + ':' + String(mfs.best % 60).padStart(2, '0') : '—'],
         ['Perudo', data.perudo ? `${data.perudo.wins} victoires / ${data.perudo.played} parties · ${data.perudo.rankPoints} pts` : 'jamais joué'],
         ['Motus', mo.started ? `${mo.solved} résolues · ${mo.gaveUp} ratées · meilleur ${mo.bestTries ?? '—'} essais` : 'jamais joué'],
-        ['Le Mot Juste', mj.started ? `${mj.solved} résolues · ${mj.gaveUp} ratées · meilleur ${mj.bestTries ?? '—'} essais` : 'jamais joué'],
         ['Yams', data.yams ? `${data.yams.gamesWon} victoires / ${data.yams.gamesPlayed} parties · ${data.yams.totalYams} Yams · record ${data.yams.bestScore}` : 'jamais joué'],
         ['Motus Party', data.motusparty ? `${data.motusparty.matchesWon} courses gagnées / ${data.motusparty.matchesPlayed} jouées · ${data.motusparty.wordsFound} mots trouvés` : 'jamais joué'],
     ];
@@ -668,105 +665,6 @@ $('mt-next').addEventListener('click', async () => {
     $('mt-upcoming').innerHTML = days.map(d => `
         <div class="log-row up"><span class="lg-a">${new Date(d.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
         <span class="lg-t">${esc(d.word)} <i class="card-sub" style="font-style:normal">(${d.word.length})</i></span></div>`).join('');
-});
-
-// ---------- Le Mot Juste ----------
-async function loadMotJuste() {
-    const d = await api('/api/admin/motjuste/difficulty');
-    const v = d.data || {};
-    $('mj-diff').innerHTML = `<div class="kv-row"><span>Sur 14 jours</span><b>${v.solved || 0}/${v.started || 0} trouvés (${v.rate || 0}%) · moy ${v.avgGuesses || 0} mots essayés</b></div>`;
-    if (!$('mj-date').value) $('mj-date').value = dateDuSalon();
-    loadMotJusteDay();
-    loadMotJusteVocab();
-}
-$('mj-date').addEventListener('change', loadMotJusteDay);
-
-async function loadMotJusteDay() {
-    const date = $('mj-date').value;
-    const { data } = await api('/api/admin/motjuste/day?date=' + encodeURIComponent(date));
-    if (!data) return;
-    $('mj-word-box').innerHTML = `
-        <div class="kv-row"><span>Mot du jour</span><b>${esc(data.word)}</b></div>
-        <div class="kv-row"><span>Parties</span><b>${data.started} commencées · ${data.solved} trouvées</b></div>`;
-    $('mj-neighbors-box').innerHTML = '<p class="card-sub" style="margin-top:10px">Mots les plus proches (repère admin) :</p>' +
-        (data.neighbors || []).map(n => `<span class="ds-chip" style="display:inline-block;margin:2px">${esc(n.m)} ${n.score > 0 ? '+' : ''}${n.score.toFixed(1)}</span>`).join(' ');
-    $('mj-board-box').innerHTML = (data.board || []).length ? data.board.map((e, i) => `
-        <div class="bd-row${e.susp ? ' susp' : ''}">
-            <span>${i + 1}. ${esc(e.u)}</span><b>${e.guesses} mot${e.guesses > 1 ? 's' : ''}</b>
-            <button class="mini" data-flag="${esc(e.u)}" type="button">${e.susp ? 'Valider' : 'Suspect'}</button>
-            <button class="mini danger" data-del="${esc(e.u)}" type="button">✕</button>
-        </div>`).join('') : '<p class="empty">Aucun score aujourd\u2019hui.</p>';
-    $('mj-board-box').querySelectorAll('[data-flag]').forEach(b => b.addEventListener('click', async () => {
-        await api('/api/admin/motjuste/board/flag', { date, pseudo: b.dataset.flag });
-        loadMotJusteDay();
-    }));
-    $('mj-board-box').querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
-        await api('/api/admin/motjuste/board/remove', { date, pseudo: b.dataset.del });
-        toast('Score supprimé.'); loadMotJusteDay();
-    }));
-    loadMotJusteComments(date);
-}
-
-async function loadMotJusteComments(date) {
-    const { data } = await api('/api/admin/motjuste/comments?date=' + encodeURIComponent(date));
-    const list = (data && data.comments) || [];
-    $('mj-cmts').innerHTML = list.length ? list.map(c => `
-        <div class="log-row"><span class="lg-a">${esc(c.u)}</span><span class="lg-t">${c.t}</span>
-        <button class="mini danger" data-ts="${c.ts}" type="button">✕</button></div>`).join('')
-        : '<p class="empty">Aucun message ce jour-là.</p>';
-    $('mj-cmts').querySelectorAll('[data-ts]').forEach(b => b.addEventListener('click', async () => {
-        await api('/api/admin/motjuste/comments/remove', { date, ts: Number(b.dataset.ts) });
-        toast('Message supprimé.'); loadMotJusteComments(date);
-    }));
-}
-
-$('mj-regen').addEventListener('click', () => {
-    const date = $('mj-date').value;
-    ask('♻️', 'Régénérer le mot ?', 'Un nouveau mot sera tiré. Les parties en cours ce jour-là et le classement seront effacés.', [
-        { label: 'Confirmer', danger: true, run: async () => {
-            await api('/api/admin/motjuste/regen', { date });
-            toast('Mot régénéré.'); loadMotJusteDay();
-        } }]);
-});
-
-$('mj-next').addEventListener('click', async () => {
-    $('mj-upcoming').innerHTML = '<p class="empty">Calcul en cours…</p>';
-    const { data } = await api('/api/admin/motjuste/upcoming');
-    const days = (data && data.days) || [];
-    $('mj-upcoming').innerHTML = days.map(d => `
-        <div class="log-row up"><span class="lg-a">${new Date(d.date + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}</span>
-        <span class="lg-t">${esc(d.word)}</span></div>`).join('');
-});
-
-// Vocabulaire
-let mjVocabT = null;
-$('mj-vocab-q').addEventListener('input', () => { clearTimeout(mjVocabT); mjVocabT = setTimeout(loadMotJusteVocab, 250); });
-async function loadMotJusteVocab() {
-    const q = $('mj-vocab-q').value.trim();
-    const { data } = await api('/api/admin/motjuste/vocab?q=' + encodeURIComponent(q));
-    if (!data) return;
-    $('mj-vocab-count').textContent = data.count;
-    $('mj-vocab-list').innerHTML = (data.words || []).map(w => `
-        <div class="ds-row static">
-            <span class="ds-row-main"><span class="ds-row-name">${esc(w.m)}${w.custom ? ' <i class="badge adm">ajouté</i>' : ''}</span></span>
-            ${w.custom ? `<button class="mini danger" data-rm="${esc(w.m)}" type="button">Retirer</button>` : ''}
-        </div>`).join('') || '<p class="empty">Aucun résultat.</p>';
-    $('mj-vocab-list').querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => {
-        ask('🗑️', 'Retirer ce mot ?', `« ${b.dataset.rm} » ne sera plus reconnu comme mot secret ni comme tentative valide.`, [
-            { label: 'Confirmer', danger: true, run: async () => {
-                const r = await api('/api/admin/motjuste/vocab/remove', { word: b.dataset.rm });
-                toast(r.ok ? 'Mot retiré.' : (r.data.error || 'Erreur')); loadMotJusteVocab();
-            } }]);
-    }));
-}
-$('mj-vocab-add').addEventListener('click', async () => {
-    const word = $('mj-new-word').value.trim();
-    const like = $('mj-new-like').value.trim();
-    if (!word || !like) return toast('Renseigne les deux champs.');
-    const { ok, data } = await api('/api/admin/motjuste/vocab/add', { word, like });
-    if (!ok) return toast(data.error || 'Erreur');
-    $('mj-new-word').value = ''; $('mj-new-like').value = '';
-    toast('Mot ajouté au vocabulaire.'); loadMotJusteVocab();
 });
 
 // ---------- Petit Bac ----------

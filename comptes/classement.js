@@ -69,7 +69,7 @@ function calculerClassement(cache, pseudos, series, saison) {
         if (!val || typeof val !== 'object') continue;
         const seg = cle.split(':');
         if (seg[1] !== 'prog') continue;
-        if (!['motus', 'mf', 'mj', 'chiffres', 'geo'].includes(seg[0])) continue;
+        if (!['motus', 'mf', 'chiffres', 'geo'].includes(seg[0])) continue;
         // La date est en 4ᵉ segment pour toutes les familles : les niveaux et
         // les modes viennent APRÈS (mf:prog:<pseudo>:<date>:<niveau>,
         // geo:prog:<pseudo>:<date>:<mode>), et Le compte est bon s'arrête là

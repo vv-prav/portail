@@ -1,7 +1,7 @@
 // =====================================================================
 //  MOTEUR DES JEUX DU JOUR
 //
-//  Motus, Mots Fléchés et Le Mot Juste sont trois implémentations du même
+//  Motus et les Mots Fléchés sont deux implémentations du même
 //  modèle : un contenu tiré de la date, une progression par joueur, un
 //  classement du jour, une série, des archives. Trente routes pour trois
 //  fois la même chose — c'est le chantier n° 2 du CLAUDE.md.

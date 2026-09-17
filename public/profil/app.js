@@ -263,7 +263,7 @@ if (window.Vues) {
 // Bac annonçait « suivi à venir » alors que ses statistiques existaient.
 const TOUS_LES_JEUX = [
     { id: 'motus', nom: 'Motus' }, { id: 'mf', nom: 'Mots Fléchés' },
-    { id: 'motjuste', nom: 'Le Mot Juste' }, { id: 'pbac', nom: 'Petit Bac' },
+    { id: 'pbac', nom: 'Petit Bac' },
     { id: 'yams', nom: 'Yams' }, { id: 'motusparty', nom: 'Motus Party' },
     { id: 'perudo', nom: 'Perudo' },
 ];
@@ -274,7 +274,6 @@ function renderChiffres(p) {
         (p.motus && p.motus.bestStreak) || 0,
         (p.motus && p.motus.streak) || 0,
         (p.mf && p.mf.streak) || 0,
-        (p.motjuste && p.motjuste.streak) || 0,
     );
     const cases = [
         p.rang ? [p.rang.place + '<sup>e</sup>', 'au classement'] : null,
@@ -333,7 +332,7 @@ function renderRang(p) {
         <div class="pr-rank-pts"><b>${p.totalParties || 0}</b><span>parties tous jeux confondus</span></div>`;
     return true;
 }
-const NOM_JEU = { motus: 'Motus', mf: 'Mots Fléchés', mj: 'Le Mot Juste' };
+const NOM_JEU = { motus: 'Motus', mf: 'Mots Fléchés' };
 function renderCalendrier(jours) {
     if (!Array.isArray(jours) || !jours.length) return false;
     $('pr-cal').innerHTML = jours.map(j => {
