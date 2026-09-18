@@ -27,7 +27,7 @@ async function api(path, body) {
 let P = null;
 let tuiles = [];           // { id, lettre }, dans l'ordre affiché
 let choisies = [];         // les identifiants des tuiles composant le mot
-let mots = [], refuses = [], restantes = 6;
+let mots = [], refuses = [];
 let fini = false, envoi = false;
 let debutA = 0, chronoTimer = null;
 
@@ -54,8 +54,7 @@ function renderMots() {
             <div class="ml-mot${m.length === meilleur ? ' meilleur' : ''}"><b>${esc(m)}</b><span>${m.length} lettres</span></div>`).join('')
         + refuses.map(m => `<div class="ml-mot refuse"><b>${esc(m)}</b><span>inconnu</span></div>`).join('');
     $('ml-restantes').textContent = fini ? ''
-        : `${restantes} proposition${restantes > 1 ? 's' : ''} restante${restantes > 1 ? 's' : ''}`
-          + (meilleur ? ` · ton meilleur : ${meilleur} lettres` : '');
+        : (meilleur ? `Ton meilleur : ${meilleur} lettres sur ${P.max}` : `Un mot de ${P.max} lettres se cache ici`);
     $('ml-terminer').hidden = fini || !mots.length;
 }
 
@@ -83,7 +82,7 @@ async function proposer() {
     envoi = false;
     if (!ok) { DS.toast((data && data.error) || 'Impossible de proposer.'); renderTirage(); return; }
     choisies = [];
-    mots = data.mots || []; restantes = data.restantes;
+    mots = data.mots || [];
     if (!data.accepte) { refuses.push(data.mot); DS.toast(data.raison); }
     else DS.toast(`${data.mot} — ${data.mot.length} lettres ✓`);
     renderTirage(); renderMots();
@@ -187,7 +186,7 @@ $('ml-proposer').addEventListener('click', proposer);
 $('ml-terminer').addEventListener('click', () => {
     DS.confirm({
         emoji: '🔤', title: 'S’arrêter là ?',
-        text: `Ton meilleur mot compte pour la journée. Il te reste ${restantes} proposition${restantes > 1 ? 's' : ''}.`,
+        text: 'Ton meilleur mot compte pour la journée, et le temps s’arrête là.',
         actions: [{ label: 'Je m’arrête', run: terminer }],
     });
 });
@@ -234,10 +233,9 @@ async function charger() {
     const prog = P.progression || null;
     mots = (prog && prog.mots) || [];
     refuses = (prog && prog.refuses) || [];
-    restantes = P.nbPropositions - ((prog && prog.propositions) || 0);
     $('ml-date').textContent = new Date(P.date + 'T12:00:00').toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
     $('ml-archive-chip').hidden = !P.archive;
-    $('ml-start-txt').textContent = `Neuf lettres, et un mot de ${P.max} lettres qui s'y cache. ${P.nbPropositions} propositions pour trouver le plus long.`;
+    $('ml-start-txt').textContent = `Neuf lettres, et un mot de ${P.max} lettres qui s'y cache. Propose autant de mots que tu veux : ton meilleur compte, le temps départage.`;
     const serie = (P.serie && P.serie.encours) || 0;
     if (serie > 1) { $('ml-serie').hidden = false; $('ml-serie').innerHTML = `🔥 <b>${serie}</b>`; }
     document.body.className = 'is-ready';

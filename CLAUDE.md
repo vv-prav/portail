@@ -426,7 +426,7 @@ Point commun des trois : **aucun contenu écrit à la main**. C'est ce qui tue u
 
 - **Le dictionnaire** (`motlong/mots.js`, ~600 Ko, jamais envoyé au navigateur) est **généré** depuis Lexique383 par `scripts/genere-motlong.py`. 69 878 formes de 3 à 9 lettres, pluriels et conjugaisons compris (la règle de l'émission), triées par fréquence. Le salon n'avait aucun mot de plus de 7 lettres : Motus s'arrête là. Lexique383 (26 Mo) n'est **pas** dans le dépôt — la commande pour le retélécharger est en tête du script.
 - **Le tirage part d'un vrai mot de neuf lettres** (823 lemmes courants : noms, adjectifs, infinitifs, fréquence ≥ 3/million) dont on mélange les lettres. Le maximum est donc toujours 9, et la réponse montrée à la fin est un mot qu'on connaît. Neuf lettres au hasard donneraient des tirages dont le mieux possible serait un mot de cinq lettres introuvable.
-- **Six propositions.** Un mot inconnu en coûte une, une lettre hors tirage aucune (c'est une faute de frappe, pas un choix). La limite est ce qui fait de chaque mot une décision — et elle empêche d'interroger le dictionnaire en boucle.
+- **Propositions illimitées**, à la demande de l'utilisateur (il y en avait six). La manche s'arrête quand on trouve le plus long possible ou qu'on décide de s'arrêter ; le classement départage au temps. Conséquence assumée : le serveur dit à volonté si un mot existe.
 - Les tuiles ne sont pas un « clavier à l'écran » au sens de la règle du salon : ce sont les pièces du jeu, comme les plaques du Compte est bon. Le clavier physique marche aussi.
 
 ### Le Sudoku (`sudoku/`)

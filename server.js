@@ -1657,7 +1657,7 @@ app.get('/api/sudoku/classement', requireAuthApi, (req, res) => {
 // =====================================================================
 //  LE MOT LE PLUS LONG  (/motlong)
 //
-//  Neuf lettres tirées de la date, six propositions, le score est la
+//  Neuf lettres tirées de la date, propositions illimitées, le score est la
 //  longueur du plus long mot valable. Le dictionnaire (`motlong/mots.js`,
 //  70 000 formes tirées de Lexique383) ne quitte jamais le serveur : le
 //  navigateur ne reçoit que les neuf lettres, et les meilleurs mots une
@@ -1685,7 +1685,6 @@ function motlongVue(t, prog) {
     const fini = !!(prog && prog.fini);
     return {
         lettres: t.lettres, max: t.max,
-        nbPropositions: motlongJeu.NB_PROPOSITIONS,
         meilleurs: fini ? t.meilleurs : undefined,
     };
 }
@@ -1712,7 +1711,7 @@ app.post('/api/motlong/start', requireAuthApi, (req, res) => {
     res.json({ ok: true, debutA: date === today ? prog.debutA : null });
 });
 
-// Terminer la manche : quand les six propositions sont faites, quand le plus
+// Terminer la manche : quand le plus
 // long mot possible est trouvé, ou quand le joueur s'arrête de lui-même.
 function motlongTerminer(user, date, today, prog) {
     prog.fini = true;
@@ -1730,7 +1729,7 @@ function motlongReponse(user, date, today, prog, extra) {
     const t = motlongDuJour(date);
     return Object.assign({
         ok: true,
-        mots: prog.mots || [], restantes: motlongJeu.NB_PROPOSITIONS - (prog.propositions || 0),
+        mots: prog.mots || [], propositions: prog.propositions || 0,
         fini: !!prog.fini, trouve: !!prog.trouve, meilleur: prog.meilleur || 0, score: prog.score, ms: prog.ms,
         meilleurs: prog.fini ? t.meilleurs : undefined,
         place: prog.fini && date === today ? mMotlong.placeDe(user, date) : null,
@@ -1755,7 +1754,7 @@ app.post('/api/motlong/proposer', requireAuthApi, (req, res) => {
     prog.propositions++;
     if (v.ok) prog.mots.push(v.mot); else prog.refuses.push(v.mot);
     const auMax = v.ok && v.mot.length >= t.max;
-    if (auMax || prog.propositions >= motlongJeu.NB_PROPOSITIONS) motlongTerminer(user, date, today, prog);
+    if (auMax) motlongTerminer(user, date, today, prog);
     mMotlong.enregistrer(user, date, prog);
     res.json(motlongReponse(user, date, today, prog, { accepte: v.ok, mot: v.mot, raison: v.ok ? null : v.raison }));
 });

@@ -12,11 +12,14 @@
 //  au hasard donnerait des tirages où le mieux possible serait un mot de
 //  cinq lettres introuvable — une manche ratée d'avance.
 //
-//  Six propositions. Un mot inconnu en coûte une ; une faute de lettres
-//  (une lettre qui n'est pas dans le tirage) ne coûte rien. La limite
-//  est ce qui fait de chaque mot une décision — et c'est aussi ce qui
-//  empêche d'essayer toutes les combinaisons pour faire parler le
-//  dictionnaire.
+//  Autant de propositions qu'on veut : c'est un choix de l'utilisateur.
+//  La manche s'arrête quand on trouve le plus long mot possible, ou quand
+//  on décide de s'arrêter. Le classement départage au temps, donc
+//  chercher longtemps se paie quand même.
+//
+//  ⚠️ Conséquence assumée : sans limite, le serveur répond à volonté
+//  « ce mot existe / n'existe pas ». Entre gens qui se connaissent, ça ne
+//  vaut pas une règle de plus.
 // =====================================================================
 
 const DICO = require('./mots');
@@ -29,7 +32,6 @@ const CONNUS = new Set(ACCEPTES);
 const RANG = new Map(ACCEPTES.map((m, i) => [m, i]));
 
 const NB_LETTRES = 9;
-const NB_PROPOSITIONS = 6;
 const LONGUEUR_MIN = 3;
 
 function normaliser(s) {
@@ -96,6 +98,6 @@ function verifier(saisie, lettres) {
 
 module.exports = {
     tirage, verifier, meilleursMots, normaliser, tientDans,
-    NB_LETTRES, NB_PROPOSITIONS, LONGUEUR_MIN,
+    NB_LETTRES, LONGUEUR_MIN,
     taille: () => ({ acceptes: ACCEPTES.length, tirables: TIRABLES.length }),
 };
