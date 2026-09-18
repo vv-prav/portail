@@ -122,6 +122,13 @@
     cursor: pointer; box-shadow: 0 6px 16px rgba(217, 169, 78, .25);
     transition: transform .12s ease, box-shadow .12s ease;
 }
+/* ⚠️ `display:block` ci-dessus l'emporte sur l'attribut `hidden` (qui n'est
+   qu'un `display:none` de la feuille du navigateur, la plus faible). Un
+   bouton « caché » restait donc affiché : le « Lancer la partie » réservé à
+   l'hôte apparaissait chez tous les joueurs de six jeux, et « Rejouer »
+   avant la fin de la partie. Vingt et un boutons du salon comptaient sur
+   `hidden` ; cette règle les rend tous honnêtes d'un coup. */
+.ds-btn[hidden], .ds-icon-btn[hidden] { display: none; }
 .ds-btn:active:not(:disabled) { transform: scale(.98); }
 .ds-btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--brass-soft); box-shadow: none; }
 .ds-btn.danger { background: linear-gradient(180deg, #e0836a, var(--bad)); color: #2a0f08; box-shadow: 0 6px 16px rgba(210, 98, 74, .3); }

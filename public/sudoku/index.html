@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <!-- overlays-content : la grille a une taille fixe, rien ne doit la faire
+         rétrécir (même règle que Motus et les Mots Fléchés). -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, interactive-widget=overlays-content">
+    <meta name="theme-color" content="#14100b">
+    <title>Sudoku</title>
+    <link rel="icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="stylesheet" href="/design-system.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="is-boot">
+    <div class="sd">
+        <header class="sd-head">
+            <a class="ds-icon-btn" href="/" aria-label="Retour au salon">←</a>
+            <div class="sd-titles">
+                <h1 class="sd-title">Sudoku</h1>
+                <span class="sd-date" id="sd-date"></span>
+            </div>
+            <span class="sd-chrono" id="sd-chrono" hidden>0:00</span>
+        </header>
+
+        <div class="sd-strip">
+            <span class="chip" id="sd-serie" hidden>🔥 <b>0</b></span>
+            <span class="chip" id="sd-next">🕛 —</span>
+            <span class="chip" id="sd-archive-chip" hidden>📅 Archive</span>
+        </div>
+
+        <!-- L'ÉCRAN D'ENTRÉE : la grille reste cachée tant que le chronomètre
+             ne tourne pas, sinon on pourrait la résoudre avant de commencer. -->
+        <div class="sd-start" id="sd-start">
+            <div class="sd-start-box">
+                <div class="sd-start-emoji">🔲</div>
+                <p class="sd-start-txt">Une grille par jour, la même pour tout le monde. Une seule solution, et elle se trouve sans jamais deviner.</p>
+                <button class="ds-btn" id="sd-start-btn" type="button">Commencer</button>
+            </div>
+        </div>
+
+        <!-- LA GRILLE -->
+        <section class="sd-jeu" id="sd-jeu" hidden>
+            <div class="sd-grille" id="sd-grille" role="grid" aria-label="Grille de sudoku"></div>
+
+            <div class="sd-pave" id="sd-pave"></div>
+
+            <div class="sd-outils">
+                <button type="button" class="sd-outil" id="sd-notes" aria-pressed="false">✏️<span>Notes</span></button>
+                <button type="button" class="sd-outil" id="sd-effacer">⌫<span>Effacer</span></button>
+                <button type="button" class="sd-outil" id="sd-annuler">↶<span>Annuler</span></button>
+                <button type="button" class="sd-outil discret" id="sd-abandon">🏳️<span>Abandonner</span></button>
+            </div>
+        </section>
+    </div>
+
+    <!-- FIN DE GRILLE -->
+    <div class="ds-overlay" id="sd-fin" hidden>
+        <div class="ds-card tall">
+            <button type="button" class="ds-card-close" id="sd-fin-close" aria-label="Fermer">✕</button>
+            <p class="sd-fin-emoji" id="sd-fin-emoji">🎉</p>
+            <h2 class="ds-card-title" id="sd-fin-titre">—</h2>
+            <p class="ds-card-text" id="sd-fin-texte"></p>
+            <button class="ds-btn ghost" id="sd-partage" type="button">Partager mon résultat</button>
+            <div class="sd-board" id="sd-board"></div>
+        </div>
+    </div>
+
+    <script src="/profile-viewer.js"></script>
+    <script src="/design-system.js"></script>
+    <script src="/enchainement.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

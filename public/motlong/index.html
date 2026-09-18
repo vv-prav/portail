@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, interactive-widget=resizes-content">
+    <meta name="theme-color" content="#14100b">
+    <title>Le mot le plus long</title>
+    <link rel="icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="stylesheet" href="/design-system.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="is-boot">
+    <div class="ml">
+        <header class="ml-head">
+            <a class="ds-icon-btn" href="/" aria-label="Retour au salon">←</a>
+            <div class="ml-titles">
+                <h1 class="ml-title">Le mot le plus long</h1>
+                <span class="ml-date" id="ml-date"></span>
+            </div>
+            <span class="ml-chrono" id="ml-chrono" hidden>0:00</span>
+        </header>
+
+        <div class="ml-strip">
+            <span class="chip" id="ml-serie" hidden>🔥 <b>0</b></span>
+            <span class="chip" id="ml-next">🕛 —</span>
+            <span class="chip" id="ml-archive-chip" hidden>📅 Archive</span>
+        </div>
+
+        <!-- L'ÉCRAN D'ENTRÉE : les lettres restent cachées tant que le
+             chronomètre ne tourne pas. -->
+        <div class="ml-start" id="ml-start">
+            <div class="ml-start-box">
+                <div class="ml-start-emoji">🔤</div>
+                <p class="ml-start-txt" id="ml-start-txt">Neuf lettres, et un mot de neuf lettres qui s'y cache. Six propositions pour trouver le plus long.</p>
+                <button class="ds-btn" id="ml-start-btn" type="button">Commencer</button>
+            </div>
+        </div>
+
+        <!-- LA MANCHE -->
+        <section class="ml-jeu" id="ml-jeu" hidden>
+            <!-- Le mot en cours de composition -->
+            <div class="ml-compose" id="ml-compose" aria-live="polite"></div>
+
+            <!-- Les neuf lettres : on touche pour composer. Ce ne sont pas les
+                 touches d'un clavier, ce sont les pièces du jeu, comme les
+                 plaques du Compte est bon. -->
+            <div class="ml-tirage" id="ml-tirage"></div>
+
+            <div class="ml-actions">
+                <button class="ds-btn ghost" id="ml-effacer" type="button" aria-label="Retirer la dernière lettre">⌫</button>
+                <button class="ds-btn ghost" id="ml-melanger" type="button" aria-label="Mélanger les lettres">🔀</button>
+                <button class="ds-btn" id="ml-proposer" type="button" disabled>Proposer</button>
+            </div>
+
+            <p class="ml-restantes" id="ml-restantes"></p>
+            <div class="ml-mots" id="ml-mots"></div>
+            <button class="ds-btn ghost small" id="ml-terminer" type="button" hidden>Je m'arrête là</button>
+        </section>
+    </div>
+
+    <!-- FIN DE MANCHE -->
+    <div class="ds-overlay" id="ml-fin" hidden>
+        <div class="ds-card tall">
+            <button type="button" class="ds-card-close" id="ml-fin-close" aria-label="Fermer">✕</button>
+            <p class="ml-fin-emoji" id="ml-fin-emoji">🔤</p>
+            <h2 class="ds-card-title" id="ml-fin-titre">—</h2>
+            <p class="ds-card-text" id="ml-fin-texte"></p>
+            <div class="ml-solutions" id="ml-solutions"></div>
+            <button class="ds-btn ghost" id="ml-partage" type="button">Partager mon résultat</button>
+            <div class="ml-board" id="ml-board"></div>
+        </div>
+    </div>
+
+    <script src="/profile-viewer.js"></script>
+    <script src="/design-system.js"></script>
+    <script src="/enchainement.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

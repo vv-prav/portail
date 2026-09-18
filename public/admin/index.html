@@ -32,6 +32,8 @@
             <button class="ad-tile" data-tab="motus" type="button"><span class="ad-tile-emoji">🟨</span><span>Motus</span></button>
             <button class="ad-tile" data-tab="chiffres" type="button"><span class="ad-tile-emoji">🔢</span><span>Le compte est bon</span></button>
             <button class="ad-tile" data-tab="geo" type="button"><span class="ad-tile-emoji">🌍</span><span>Géographie</span></button>
+            <button class="ad-tile" data-tab="motlong" type="button"><span class="ad-tile-emoji">🔤</span><span>Mot le plus long</span></button>
+            <button class="ad-tile" data-tab="sudoku" type="button"><span class="ad-tile-emoji">🔲</span><span>Sudoku</span></button>
             <button class="ad-tile" data-tab="dict" type="button"><span class="ad-tile-emoji">📖</span><span>Dictionnaire</span></button>
             <button class="ad-tile" data-tab="titres" type="button"><span class="ad-tile-emoji">🏅</span><span>Titres</span></button>
             <button class="ad-tile" data-tab="sante" type="button"><span class="ad-tile-emoji">💓</span><span>Santé</span></button>
@@ -256,9 +258,31 @@
         <!-- GÉOGRAPHIE -->
         <section class="pane" id="pane-geo" hidden>
             <div class="card">
-                <h2 class="card-title">Les deux modes du jour</h2>
+                <h2 class="card-title">Les trois modes du jour</h2>
                 <input class="ds-input" id="ge-date" type="date" aria-label="Date de la manche">
                 <div id="ge-modes"></div>
+            </div>
+        </section>
+
+        <!-- LE MOT LE PLUS LONG -->
+        <section class="pane" id="pane-motlong" hidden>
+            <div class="card">
+                <h2 class="card-title">Le tirage du jour</h2>
+                <input class="ds-input" id="ml-date" type="date" aria-label="Date du tirage">
+                <div id="ml-box"></div>
+                <div id="ml-board"></div>
+                <button class="mini danger wide" id="ml-regen" type="button">Tirer d'autres lettres</button>
+            </div>
+        </section>
+
+        <!-- LE SUDOKU -->
+        <section class="pane" id="pane-sudoku" hidden>
+            <div class="card">
+                <h2 class="card-title">La grille du jour</h2>
+                <input class="ds-input" id="sd-date" type="date" aria-label="Date de la grille">
+                <div id="sd-box"></div>
+                <div id="sd-board"></div>
+                <button class="mini danger wide" id="sd-regen" type="button">Tirer une autre grille</button>
             </div>
         </section>
 

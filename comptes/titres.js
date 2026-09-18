@@ -37,7 +37,7 @@ const TITRES = [
       obtenu: (s) => s.joursTotal >= 10 },
     { id: 'curieux', nom: 'Curieux', emoji: '🧭', rarete: 'commun',
       desc: 'A essayé au moins trois jeux du jour différents.',
-      obtenu: (s) => [s.motusJours, s.mfJours, s.chiffresJours, s.geoJours].filter(n => n > 0).length >= 3 },
+      obtenu: (s) => [s.motusJours, s.mfJours, s.chiffresJours, s.geoJours, s.sudokuJours, s.motlongJours].filter(n => n > 0).length >= 3 },
     { id: 'causant', nom: 'Causant', emoji: '💬', rarete: 'commun',
       desc: 'Dix messages dans les discussions du jour.',
       obtenu: (s) => s.messages >= 10 },
@@ -112,8 +112,19 @@ const TITRES = [
       desc: 'Le plus de comptes justes au Compte est bon.',
       mesure: (s) => (s.chiffresJustes > 0 ? s.chiffresJustes : null), ordre: 'max' },
     { id: 'globetrotteur', nom: 'Le globe-trotteur', emoji: '🌍', rarete: 'unique',
-      desc: 'Le plus de pays trouvés à la Géographie du jour.',
+      desc: 'Le plus de manches réussies à la Géographie du jour.',
       mesure: (s) => (s.geoTrouves > 0 ? s.geoTrouves : null), ordre: 'max' },
+    // Les trois nouveautés du jour. Des titres RELATIFS, comme recommandé :
+    // pas de seuil à calibrer sur des données qui n'existent pas encore.
+    { id: 'routard', nom: 'Le routard', emoji: '🧭', rarete: 'unique',
+      desc: 'Le plus de voyages faits par le plus court chemin, sans une erreur.',
+      mesure: (s) => (s.voyagesParfaits > 0 ? s.voyagesParfaits : null), ordre: 'max' },
+    { id: 'logicien', nom: 'Le logicien', emoji: '🧩', rarete: 'unique',
+      desc: 'Le meilleur temps jamais réalisé sur le Sudoku du jour.',
+      mesure: (s) => s.sudokuMeilleurTemps, ordre: 'min' },
+    { id: 'lexicographe', nom: 'Le lexicographe', emoji: '📖', rarete: 'unique',
+      desc: 'Le plus de fois le mot le plus long possible trouvé.',
+      mesure: (s) => (s.motlongParfaits > 0 ? s.motlongParfaits : null), ordre: 'max' },
     { id: 'plumebac', nom: 'Plume du Petit Bac', emoji: '✏️', rarete: 'unique',
       desc: 'Meilleure manche jamais jouée au Petit Bac.',
       mesure: (s) => (s.pbacMeilleureManche > 0 ? s.pbacMeilleureManche : null), ordre: 'max' },
@@ -140,7 +151,8 @@ function statsParJoueur(cache, pseudos, series, points) {
             yamsParties: 0, yamsVictoires: 0, yamsMeilleurScore: 0, yamsRealises: 0, yamsSerie: 0,
             drapeauxParties: 0, drapeauxTaux: null, drapeauxSerie: 0, drapeauxRapide: null,
             ucParties: 0, ucVictoires: 0, ucMrBlanc: 0,
-            chiffresJours: 0, chiffresJustes: 0, geoJours: 0, geoTrouves: 0,
+            chiffresJours: 0, chiffresJustes: 0, geoJours: 0, geoTrouves: 0, voyagesParfaits: 0,
+            sudokuJours: 0, sudokuMeilleurTemps: null, motlongJours: 0, motlongParfaits: 0,
             pbacParties: 0, pbacMeilleureManche: 0,
             mpCourses: 0, perudoParties: 0, multiParties: 0,
             defisJoues: 0, defisGagnes: 0,
@@ -163,6 +175,8 @@ function statsParJoueur(cache, pseudos, series, points) {
             else if (seg[0] === 'mf') s.mfJours = n;
             else if (seg[0] === 'chiffres') s.chiffresJours = n;
             else if (seg[0] === 'geo') s.geoJours = n;
+            else if (seg[0] === 'sudoku') s.sudokuJours = n;
+            else if (seg[0] === 'motlong') s.motlongJours = n;
             continue;
         }
         if (seg[0] === 'chiffres' && seg[1] === 'prog' && val && val.fini) {
@@ -170,7 +184,22 @@ function statsParJoueur(cache, pseudos, series, points) {
             continue;
         }
         if (seg[0] === 'geo' && seg[1] === 'prog' && val && val.fini) {
-            const s = st.get(seg[2]); if (s && val.trouve) s.geoTrouves++;
+            const s = st.get(seg[2]); if (!s) continue;
+            if (val.trouve) s.geoTrouves++;
+            if (val.parfait) s.voyagesParfaits++;
+            continue;
+        }
+        if (seg[0] === 'sudoku' && seg[1] === 'prog' && val && val.fini) {
+            const s = st.get(seg[2]);
+            // ⚠️ Un temps sous la minute et demie est suspect (voir
+            // `TEMPS_MINI_MS`, sudoku/jeu.js) : le classement l'écarte déjà,
+            // le titre doit l'écarter aussi, sinon il irait au tricheur.
+            const suspect = val.ms != null && val.ms < 90 * 1000;
+            if (s && val.trouve && val.ms != null && !suspect && (s.sudokuMeilleurTemps === null || val.ms < s.sudokuMeilleurTemps)) s.sudokuMeilleurTemps = val.ms;
+            continue;
+        }
+        if (seg[0] === 'motlong' && seg[1] === 'prog' && val && val.fini) {
+            const s = st.get(seg[2]); if (s && val.trouve) s.motlongParfaits++;
             continue;
         }
         if (famille === 'motus:beststreak' && typeof val === 'number') {
@@ -245,11 +274,13 @@ function statsParJoueur(cache, pseudos, series, points) {
     }
 
     for (const s of st.values()) {
-        s.joursTotal = s.motusJours + s.mfJours;
+        // Tous les jeux du jour comptent : « Nouveau venu » et « Habitué »
+        // ignoraient le Compte est bon et la Géographie.
+        s.joursTotal = s.motusJours + s.mfJours + s.chiffresJours + s.geoJours + s.sudokuJours + s.motlongJours;
         s.motusMoyenneEssais = s.motusTrouves ? Math.round((s.motusTotalEssais / s.motusTrouves) * 100) / 100 : null;
         s.multiParties = s.yamsParties + s.pbacParties + s.mpCourses + s.perudoParties;
         s.jeuxDifferents = [s.motusJours, s.mfJours, s.yamsParties, s.pbacParties, s.mpCourses, s.perudoParties,
-            s.drapeauxParties, s.ucParties, s.chiffresJours, s.geoJours, s.defisJoues]
+            s.drapeauxParties, s.ucParties, s.chiffresJours, s.geoJours, s.sudokuJours, s.motlongJours, s.defisJoues]
             .filter(n => n > 0).length;
         s.meilleureSerie = Math.max(s.meilleureSerie, s.serie);
     }

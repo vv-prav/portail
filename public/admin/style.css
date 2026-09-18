@@ -169,3 +169,6 @@ body {
 .ad-courbe i:hover { opacity:1; }
 .kv-row b.ok { color:var(--good,#5aa87a); }
 .kv-row b.ko { color:var(--bad,#d2624a); }
+
+/* La grille du Sudoku du jour, en petit, pour reconnaître celle qu'un joueur signale. */
+.ad-sudoku { font-family:ui-monospace,Menlo,monospace; font-size:.86rem; line-height:1.5; letter-spacing:.1em; text-align:center; color:var(--brass-soft); margin:8px 0; }

@@ -69,7 +69,7 @@ function calculerClassement(cache, pseudos, series, saison) {
         if (!val || typeof val !== 'object') continue;
         const seg = cle.split(':');
         if (seg[1] !== 'prog') continue;
-        if (!['motus', 'mf', 'chiffres', 'geo'].includes(seg[0])) continue;
+        if (!['motus', 'mf', 'chiffres', 'geo', 'sudoku', 'motlong'].includes(seg[0])) continue;
         // La date est en 4ᵉ segment pour toutes les familles : les niveaux et
         // les modes viennent APRÈS (mf:prog:<pseudo>:<date>:<niveau>,
         // geo:prog:<pseudo>:<date>:<mode>), et Le compte est bon s'arrête là
@@ -77,8 +77,11 @@ function calculerClassement(cache, pseudos, series, saison) {
         if (saison && !(seg[3] || '').startsWith(saison.prefixe)) continue;
         const ligne = parPseudo.get(seg[2]);
         if (!ligne) continue;                       // compte supprimé depuis
+        // Chaque jeu dit à sa façon qu'il est réussi. Géographie, Sudoku et
+        // Mot le plus long partagent `trouve` (pays trouvé, voyage arrivé,
+        // grille résolue, plus long mot possible trouvé).
         const reussi = seg[0] === 'chiffres' ? (val.fini && val.ecart === 0)
-            : (seg[0] === 'geo' ? !!val.trouve : !!val.solved);
+            : (['geo', 'sudoku', 'motlong'].includes(seg[0]) ? !!(val.fini && val.trouve) : !!val.solved);
         // ⚠️ Les Mots Fléchés proposent TROIS grilles par jour, une par
         // difficulté. Comptées séparément, elles rapportaient neuf points par
         // jour quand le Motus en rapporte trois — un choix de difficulté valait

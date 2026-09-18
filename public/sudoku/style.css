@@ -1,0 +1,110 @@
+/* =====================================================================
+   LE SUDOKU DU JOUR — même nuit chaude que le salon. La grille est sur
+   parchemin, comme une page de journal : c'est l'objet qu'on regarde
+   pendant dix minutes, il doit reposer l'œil, pas le laiton qui brille.
+   ===================================================================== */
+:root {
+    --ink:#14100b; --ink-2:#1d1710; --ink-3:#241b12;
+    --brass:#d9a94e; --brass-soft:#ecca82; --parchment:#efe4cf;
+    --muted:#a08f74; --line:rgba(217,169,78,0.20);
+    --good:#5aa87a; --bad:#d2624a;
+    --papier:#f3ead6; --papier-2:#e6d9bb; --encre:#241b12; --encre-joueur:#6a4a16;
+    --trait:#3a2c18; --trait-fin:rgba(58,44,24,.28);
+}
+html,body { margin:0; padding:0; }
+body {
+    min-height:100svh; overflow-x:hidden;
+    font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; color:var(--parchment);
+    background:radial-gradient(130% 70% at 50% -8%, #2b2013 0%, transparent 55%), var(--ink);
+    background-attachment:fixed; -webkit-font-smoothing:antialiased;
+}
+body.is-boot .sd { opacity:0; }
+.sd { opacity:1; transition:opacity .2s; display:flex; flex-direction:column; gap:12px;
+    max-width:520px; margin:0 auto; padding:max(10px,env(safe-area-inset-top)) 12px calc(20px + env(safe-area-inset-bottom)); }
+
+.sd-head { display:flex; align-items:center; gap:10px; }
+.sd-titles { flex:1; min-width:0; }
+.sd-title { margin:0; font-size:1.2rem; font-weight:800;
+    background:linear-gradient(180deg,var(--brass-soft),var(--brass));
+    -webkit-background-clip:text; background-clip:text; color:transparent; }
+.sd-date { font-size:.74rem; color:var(--muted); text-transform:capitalize; }
+.sd-chrono { flex:0 0 auto; font-size:.86rem; font-weight:800; color:var(--brass-soft); font-variant-numeric:tabular-nums; }
+.sd-chrono[hidden] { display:none; }
+
+.sd-strip { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
+.chip { font-size:.74rem; color:var(--muted); background:rgba(0,0,0,.28); border:1px solid var(--line);
+    border-radius:999px; padding:4px 11px; }
+.chip[hidden] { display:none; }
+.chip b { color:var(--brass-soft); }
+
+.sd-start { display:grid; place-items:center; padding:36px 0; }
+.sd-start[hidden] { display:none; }
+.sd-start-box { text-align:center; max-width:320px; }
+.sd-start-emoji { font-size:2.6rem; margin-bottom:10px; }
+.sd-start-txt { font-size:.86rem; color:var(--muted); line-height:1.55; margin:0 0 18px; }
+.sd-jeu[hidden] { display:none; }
+
+/* La grille. Carrée, aussi large que l'écran le permet : sur un petit
+   téléphone chaque case garde près de 36 px, la taille d'un pouce. */
+.sd-grille { display:grid; grid-template-columns:repeat(9,1fr); width:min(100%,460px); aspect-ratio:1;
+    margin:0 auto; background:var(--papier); border:3px solid var(--trait); border-radius:8px; overflow:hidden;
+    box-shadow:0 10px 28px rgba(0,0,0,.45); }
+.sd-case { position:relative; display:grid; place-items:center; padding:0; margin:0; min-width:0;
+    border:0; border-right:1px solid var(--trait-fin); border-bottom:1px solid var(--trait-fin);
+    background:transparent; color:var(--encre-joueur); font-family:inherit;
+    font-size:clamp(1.05rem,5.4vw,1.55rem); font-weight:600; font-variant-numeric:tabular-nums;
+    cursor:pointer; -webkit-user-select:none; user-select:none; }
+.sd-case:nth-child(9n) { border-right:0; }
+.sd-case:nth-last-child(-n+9) { border-bottom:0; }
+.sd-case.bord-d { border-right:2px solid var(--trait); }
+.sd-case.bord-b { border-bottom:2px solid var(--trait); }
+.sd-case.donnee { color:var(--encre); font-weight:800; }
+.sd-case.voisine { background:rgba(217,169,78,.13); }
+.sd-case.meme { background:rgba(217,169,78,.32); }
+.sd-case.choisie { background:var(--brass-soft); }
+/* Un conflit se voit sans rien révéler : deux chiffres identiques qui se
+   regardent, c'est visible à l'œil nu. */
+.sd-case.conflit { color:var(--bad); }
+.sd-case.conflit.donnee { background:rgba(210,98,74,.18); }
+body.sd-fini .sd-case { cursor:default; }
+
+.sd-notes { position:absolute; inset:2px; display:grid; grid-template-columns:repeat(3,1fr); }
+.sd-notes i { display:grid; place-items:center; font-style:normal; font-size:clamp(.46rem,2.2vw,.66rem);
+    font-weight:600; color:#7a6a50; line-height:1; }
+
+/* Le pavé : neuf chiffres sur une rangée, chacun avec ce qu'il en reste. */
+.sd-pave { display:grid; grid-template-columns:repeat(9,1fr); gap:5px; width:min(100%,460px); margin:14px auto 0; }
+.sd-chiffre { position:relative; height:52px; padding:0; border-radius:10px; border:1px solid var(--line);
+    background:rgba(255,255,255,.05); color:var(--brass-soft); font-family:inherit; font-size:1.35rem; font-weight:700;
+    cursor:pointer; transition:transform .1s, background .15s; }
+.sd-chiffre:active { transform:scale(.93); background:rgba(217,169,78,.18); }
+.sd-chiffre small { position:absolute; right:4px; bottom:2px; font-size:.56rem; color:var(--muted); font-weight:600; }
+.sd-chiffre.epuise { opacity:.28; }
+
+.sd-outils { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; width:min(100%,460px); margin:10px auto 0; }
+.sd-outil { display:flex; flex-direction:column; align-items:center; gap:2px; padding:8px 4px; border-radius:10px;
+    border:1px solid var(--line); background:transparent; color:var(--parchment); font-family:inherit; font-size:1.05rem; cursor:pointer; }
+.sd-outil span { font-size:.66rem; color:var(--muted); }
+.sd-outil.on { background:linear-gradient(180deg,var(--brass-soft),var(--brass)); color:var(--ink); border-color:var(--brass); }
+.sd-outil.on span { color:var(--ink); }
+.sd-outil:disabled { opacity:.35; cursor:default; }
+.sd-outil.discret { opacity:.7; }
+
+/* Fin de grille */
+.sd-fin-emoji { text-align:center; font-size:2.6rem; margin:0 0 4px; }
+.sd-board { display:flex; flex-direction:column; gap:3px; margin-top:10px; }
+.sd-board-titre { margin:10px 0 2px; font-size:.64rem; text-transform:uppercase; letter-spacing:.9px;
+    color:var(--brass-soft); font-weight:700; text-align:left; }
+.sd-board-row { display:grid; grid-template-columns:24px 22px 1fr auto; gap:8px; align-items:center;
+    padding:7px 10px; border-radius:9px; background:rgba(255,255,255,.03); border:1px solid transparent;
+    font-family:inherit; color:var(--parchment); cursor:pointer; text-align:left; font-size:.78rem; }
+.sd-board-row.moi { border-color:var(--brass); background:rgba(217,169,78,.1); }
+.sd-b-rang { text-align:center; }
+.sd-b-nom { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sd-b-temps { color:var(--brass-soft); font-weight:700; font-variant-numeric:tabular-nums; }
+
+@media (max-width:350px) {
+    .sd-chiffre { height:46px; font-size:1.15rem; }
+    .sd-pave { gap:3px; }
+}
+@media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.001ms !important; transition-duration:.001ms !important; } }

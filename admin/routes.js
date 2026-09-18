@@ -226,6 +226,8 @@ module.exports = function attachAdmin(app, ctx) {
         };
         const chiffres = compteJour('chiffres:prog', v => v.ecart === 0);
         const geo = compteJour('geo:prog', v => !!v.trouve);
+        const sudoku = compteJour('sudoku:prog', v => !!v.trouve);
+        const motlong = compteJour('motlong:prog', v => !!v.trouve);
         let motusparty = null;
         try { const s = cache[`motusparty:stats:${pseudo}`]; if (s && s.matchesPlayed) motusparty = s; } catch (e) {}
         res.json({
@@ -240,7 +242,7 @@ module.exports = function attachAdmin(app, ctx) {
             avatar: u.avatar || '', avatarPhoto: u.avatarPhoto || '',
             motsfleches: { ...mfStats, daysPlayed: days.length },
             perudo, motus, yams, motusparty,
-            pbac, undercover, drapeaux, chiffres, geo,
+            pbac, undercover, drapeaux, chiffres, geo, sudoku, motlong,
         });
     });
 
@@ -1075,7 +1077,7 @@ module.exports = function attachAdmin(app, ctx) {
         // Les clés que plus aucun code ne lit. `mf_data` et `mf_progress`
         // traînent depuis des mois sans que rien ne les signale.
         const CONNUES = ['mf', 'motus', 'rec', 'voyages', 'pbac', 'yams', 'motusparty',
-            'undercover', 'drapeaux', 'chiffres', 'geo', 'admin', 'titres', 'perudo',
+            'undercover', 'drapeaux', 'chiffres', 'geo', 'sudoku', 'motlong', 'admin', 'titres', 'perudo',
             'menage'];   // menage:* = les nettoyages faits une seule fois
         const orphelines = cles.filter(k => !CONNUES.includes(k.split(':')[0]))
             .map(k => { let t = 0; try { t = JSON.stringify(cache[k]).length; } catch (e) {} return { cle: k, octets: t }; })
@@ -1348,6 +1350,21 @@ module.exports = function attachAdmin(app, ctx) {
         const m = GE().moteur;
         const modes = GE().modes.map(mode => {
             const cible = GE().duJour(mode, date);
+            if (mode === 'voyage') {
+                let joues = 0, arrives = 0, parfaits = 0;
+                for (const [k, v] of Object.entries(mf.cache())) {
+                    if (!k.startsWith('geo:prog:') || !k.endsWith(`:${date}:voyage`) || !v || !v.fini) continue;
+                    joues++; if (v.trouve) arrives++; if (v.parfait) parfaits++;
+                }
+                const nom = (c) => (GE().pays(c) || {}).nom || c;
+                return {
+                    mode, pays: cible.nom, code: cible.code,
+                    drapeau: GE().drapeau(cible.de.code) + ' ➜ ' + GE().drapeau(cible.a.code),
+                    region: 'au plus court : ' + cible.chemin.slice(1, -1).map(nom).join(', '),
+                    joues, trouves: arrives, parfaits, optimal: cible.optimal,
+                    classement: m.classement(`${date}:voyage`).map(e => ({ u: e.u, essais: e.essais, trouve: e.trouve, optimal: e.optimal, erreurs: e.erreurs, ms: e.ms, susp: !!e.susp })),
+                };
+            }
             let joues = 0, trouves = 0, totalEssais = 0;
             for (const [k, v] of Object.entries(mf.cache())) {
                 if (!k.startsWith('geo:prog:') || !k.endsWith(`:${date}:${mode}`) || !v || !v.fini) continue;
@@ -1377,7 +1394,11 @@ module.exports = function attachAdmin(app, ctx) {
         for (const k of Object.keys(mf.cache())) if (k.startsWith('geo:prog:') && k.endsWith(`:${date}:${mode}`)) mf.del(k);
         mf.del(`geo:board:${date}:${mode}`);
         log(currentUser(req), 'pays de la Géographie régénéré', `${date} ${mode} : ${avant.nom} → ${nouveau.nom}`);
-        res.json({ ok: true, pays: nouveau.nom, drapeau: GE().drapeau(nouveau.code) });
+        // Le voyage a deux pays, donc deux drapeaux ; « PT>PL » n'en est pas un.
+        const drapeau = mode === 'voyage'
+            ? GE().drapeau(nouveau.de.code) + ' ➜ ' + GE().drapeau(nouveau.a.code)
+            : GE().drapeau(nouveau.code);
+        res.json({ ok: true, pays: nouveau.nom, drapeau });
     });
 
     A('/geo/board/remove', (req, res) => {
@@ -1396,6 +1417,99 @@ module.exports = function attachAdmin(app, ctx) {
         log(currentUser(req), 'score de Géographie marqué', pseudo);
         res.json({ ok: true });
     });
+
+    // =================================================================
+    //  LE SUDOKU et LE MOT LE PLUS LONG
+    //  Le même panneau que les autres jeux du jour : le contenu, le
+    //  classement, la modération, et un nouveau tirage — qui avance la
+    //  variante, sans quoi le même contenu reviendrait (le piège déjà
+    //  corrigé quatre fois ailleurs).
+    // =================================================================
+    const SD = () => ctx.sudoku, ML = () => ctx.motlong;
+
+    G('/sudoku/day', (req, res) => {
+        const date = dateValide(req.query.date);
+        const g = SD().duJour(date);
+        let joues = 0, resolues = 0, totalMs = 0, avecMs = 0;
+        for (const [k, v] of Object.entries(mf.cache())) {
+            if (!k.startsWith('sudoku:prog:') || !k.endsWith(`:${date}`) || !v || !v.fini) continue;
+            joues++;
+            if (v.trouve) { resolues++; if (v.ms != null) { totalMs += v.ms; avecMs++; } }
+        }
+        res.json({
+            date, today: mf.today(), donnee: g.donnee, indices: g.indices,
+            joues, resolues, tempsMoyen: avecMs ? Math.round(totalMs / avecMs) : null,
+            // `classement()` écarte les lignes marquées suspectes : l'admin
+            // doit, lui, les voir pour pouvoir les rétablir.
+            classement: (mf.get(`sudoku:board:${date}`) || []).slice()
+                .sort((a, b) => (b.score - a.score) || ((a.ms || 0) - (b.ms || 0)))
+                .map(e => ({ u: e.u, trouve: e.trouve !== false, ms: e.ms, susp: !!e.susp })),
+        });
+    });
+    A('/sudoku/regen', (req, res) => {
+        const date = dateValide(req.body.date);
+        const avant = SD().duJour(date);
+        let nouvelle = avant;
+        for (let i = 0; i < 25 && nouvelle.donnee === avant.donnee; i++) {
+            SD().moteur.varianteSuivante(date);
+            mf.del(SD().kGrille(date));
+            nouvelle = SD().duJour(date);
+        }
+        for (const k of Object.keys(mf.cache())) if (k.startsWith('sudoku:prog:') && k.endsWith(`:${date}`)) mf.del(k);
+        mf.del(`sudoku:board:${date}`);
+        log(currentUser(req), 'grille de Sudoku régénérée', date);
+        res.json({ ok: true, indices: nouvelle.indices });
+    });
+
+    G('/motlong/day', (req, res) => {
+        const date = dateValide(req.query.date);
+        const t = ML().duJour(date);
+        let joues = 0, trouves = 0, totalLongueur = 0;
+        for (const [k, v] of Object.entries(mf.cache())) {
+            if (!k.startsWith('motlong:prog:') || !k.endsWith(`:${date}`) || !v || !v.fini) continue;
+            joues++; totalLongueur += v.meilleur || 0; if (v.trouve) trouves++;
+        }
+        res.json({
+            date, today: mf.today(), lettres: t.lettres, max: t.max, meilleurs: t.meilleurs, source: t.source,
+            joues, trouves, longueurMoyenne: joues ? +(totalLongueur / joues).toFixed(1) : null,
+            classement: (mf.get(`motlong:board:${date}`) || []).slice()
+                .sort((a, b) => (b.score - a.score) || ((a.ms || 0) - (b.ms || 0)))
+                .map(e => ({ u: e.u, score: e.score, mot: e.mot, ms: e.ms, susp: !!e.susp })),
+        });
+    });
+    A('/motlong/regen', (req, res) => {
+        const date = dateValide(req.body.date);
+        const avant = ML().duJour(date);
+        let nouveau = avant;
+        for (let i = 0; i < 25 && nouveau.source === avant.source; i++) {
+            ML().moteur.varianteSuivante(date);
+            mf.del(ML().kTirage(date));
+            nouveau = ML().duJour(date);
+        }
+        for (const k of Object.keys(mf.cache())) if (k.startsWith('motlong:prog:') && k.endsWith(`:${date}`)) mf.del(k);
+        mf.del(`motlong:board:${date}`);
+        log(currentUser(req), 'tirage du Mot le plus long régénéré', `${date} : ${avant.source} → ${nouveau.source}`);
+        res.json({ ok: true, lettres: nouveau.lettres, source: nouveau.source });
+    });
+
+    // La modération des deux classements : retirer une ligne, ou la marquer
+    // suspecte (elle disparaît du classement public sans être effacée).
+    for (const app of ['sudoku', 'motlong']) {
+        A(`/${app}/board/remove`, (req, res) => {
+            const date = dateValide(req.body.date), pseudo = String(req.body.pseudo || '');
+            const cle = `${app}:board:${date}`;
+            mf.set(cle, (mf.get(cle) || []).filter(e => e.u !== pseudo));
+            log(currentUser(req), `score ${app} supprimé`, pseudo, date);
+            res.json({ ok: true });
+        });
+        A(`/${app}/board/flag`, (req, res) => {
+            const date = dateValide(req.body.date), pseudo = String(req.body.pseudo || '');
+            const cle = `${app}:board:${date}`;
+            mf.set(cle, (mf.get(cle) || []).map(e => (e.u === pseudo ? { ...e, susp: !e.susp } : e)));
+            log(currentUser(req), `score ${app} marqué`, pseudo);
+            res.json({ ok: true });
+        });
+    }
 
     // =================================================================
     //  TITRES

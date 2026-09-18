@@ -100,7 +100,9 @@ function applyI18n() {
 }
 
 let P = null;
-let level = localStorage.getItem('mf_level') || 'moyen';
+// Une seule grille par jour, toujours difficile : il n'y a plus de niveau à
+// choisir. La valeur est encore envoyée au serveur, qui l'ignore.
+const level = 'difficile';
 let viewDate = null;                 // null = aujourd'hui, sinon archive
 let isArchive = false;
 let values = {}, els = {};
@@ -668,19 +670,10 @@ async function beginGrid() {
 }
 $('mf-start-btn').addEventListener('click', beginGrid);
 
-// ---------- Niveaux ----------
-document.querySelectorAll('.lv').forEach(b => {
-    b.addEventListener('click', () => { if (b.dataset.lv !== level) { level = b.dataset.lv; localStorage.setItem('mf_level', level); load(); } });
-});
-function paintLevels() { document.querySelectorAll('.lv').forEach(b => b.classList.toggle('on', b.dataset.lv === level)); }
+// ---------- Série et prochain tirage ----------
 async function refreshStates() {
     const { data } = await api('/api/mf/states?_=1' + dq());
     if (!data) return;
-    if (data.states) document.querySelectorAll('.lv').forEach(b => {
-        const st = data.states[b.dataset.lv];
-        b.classList.remove('st-encours', 'st-fini', 'st-abandon');
-        if (st && st !== 'neuf') b.classList.add('st-' + st);
-    });
     if (data.streak) $('mf-streak').innerHTML = '🔥 <b>' + data.streak.current + '</b>';
     if (data.nextIn != null) nextIn = data.nextIn;
 }
@@ -716,7 +709,7 @@ $('btn-archive').addEventListener('click', async () => {
     const box = $('arch-list');
     box.innerHTML = ((data && data.days) || []).map(d => {
         const lbl = new Date(d.date + 'T12:00:00').toLocaleDateString(LOCALE, { weekday: 'short', day: 'numeric', month: 'short' });
-        return `<button class="arch-row" data-date="${d.date}"><span>${lbl}</span><em>${d.done}/3</em></button>`;
+        return `<button class="arch-row" data-date="${d.date}"><span>${lbl}</span><em>${d.done ? '✓' : '—'}</em></button>`;
     }).join('') || '<p class="mf-board-empty">' + t('arch_none') + '</p>';
     box.querySelectorAll('.arch-row').forEach(b => b.addEventListener('click', () => {
         viewDate = b.dataset.date; $('mf-archive').hidden = true; load();
@@ -729,7 +722,6 @@ $('arch-today').addEventListener('click', () => { viewDate = null; $('mf-archive
 // ---------- Chargement ----------
 async function load() {
     document.body.className = 'is-boot';
-    paintLevels();
     values = {}; active = null; dir = 'right'; _prevGood = new Set();
     solved = false; gaveUp = false; started = false;
     startedAt = null; penalty = 0; seconds = 0;

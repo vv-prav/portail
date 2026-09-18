@@ -37,7 +37,7 @@ function fmtDur(sec) {
 
 // ---------- Onglets ----------
 function switchTab(tab) {
-    ['home', 'accounts', 'parties', 'perudo', 'grids', 'motus', 'chiffres', 'geo', 'dict', 'titres', 'sante', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== tab); });
+    ['home', 'accounts', 'parties', 'perudo', 'grids', 'motus', 'chiffres', 'geo', 'motlong', 'sudoku', 'dict', 'titres', 'sante', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== tab); });
     document.querySelectorAll('.ad-tile').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
     if (tab === 'home') loadOverview();
     if (tab === 'accounts') { loadAccounts(); loadDemandes(); }
@@ -47,6 +47,8 @@ function switchTab(tab) {
     if (tab === 'motus') loadMotus();
     if (tab === 'chiffres') loadChiffres();
     if (tab === 'geo') loadGeo();
+    if (tab === 'motlong') loadMotlong();
+    if (tab === 'sudoku') loadSudoku();
     if (tab === 'dict') { loadDictStats(); loadDict(); }
     if (tab === 'titres') loadTitres();
     if (tab === 'sante') { loadSante(); loadFrequentation(); }
@@ -261,6 +263,11 @@ async function openAccount(pseudo) {
         ['Motus', mo.started ? `${mo.solved} résolues · ${mo.gaveUp} ratées · meilleur ${mo.bestTries ?? '—'} essais` : 'jamais joué'],
         ['Yams', data.yams ? `${data.yams.gamesWon} victoires / ${data.yams.gamesPlayed} parties · ${data.yams.totalYams} Yams · record ${data.yams.bestScore}` : 'jamais joué'],
         ['Motus Party', data.motusparty ? `${data.motusparty.matchesWon} courses gagnées / ${data.motusparty.matchesPlayed} jouées · ${data.motusparty.wordsFound} mots trouvés` : 'jamais joué'],
+        // Les jeux du jour tenus par le moteur commun : l'API les renvoyait
+        // déjà, la fiche ne les affichait pas.
+        ...[['Le compte est bon', data.chiffres, 'comptes justes'], ['Géographie', data.geo, 'réussies'],
+            ['Le mot le plus long', data.motlong, 'fois le plus long'], ['Sudoku', data.sudoku, 'grilles résolues']]
+            .map(([nom, r, quoi]) => [nom, r ? `${r.joues} jouées · ${r.reussis} ${quoi}` : 'jamais joué']),
     ];
     $('acc-detail').innerHTML = rows.map(([k, v]) => `<div class="kv-row"><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('');
 
@@ -906,16 +913,18 @@ async function loadGeoJour() {
     if (!data) return;
     $('ge-modes').innerHTML = (data.modes || []).map(m => `
         <div class="ad-bloc">
-            <div class="kv-row"><span>${m.mode === 'drapeau' ? '🏳️ Le drapeau' : '🗺️ Le pays'}</span><b>${m.drapeau} ${esc(m.pays)} <i class="card-sub" style="font-style:normal">(${esc(m.region || '')})</i></b></div>
-            <div class="kv-row"><span>Parties</span><b>${m.joues} jouées · ${m.trouves} trouvés${m.essaisMoyens != null ? ' · ' + m.essaisMoyens + ' essais en moyenne' : ''}</b></div>
+            <div class="kv-row"><span>${{ drapeau: '🏳️ Le drapeau', silhouette: '🗺️ Le pays', voyage: '🧭 Le voyage' }[m.mode]}</span><b>${m.drapeau} ${esc(m.pays)} <i class="card-sub" style="font-style:normal">(${esc(m.region || '')})</i></b></div>
+            <div class="kv-row"><span>Parties</span><b>${m.mode === 'voyage'
+                ? `${m.joues} jouées · ${m.trouves} arrivés · ${m.parfaits} parfaits (${m.optimal} pays au plus court)`
+                : `${m.joues} jouées · ${m.trouves} trouvés${m.essaisMoyens != null ? ' · ' + m.essaisMoyens + ' essais en moyenne' : ''}`}</b></div>
             <div data-board="${m.mode}">${(m.classement || []).length ? m.classement.map((e, i) => `
                 <div class="bd-row${e.susp ? ' susp' : ''}">
                     <span>${i + 1}. ${esc(e.u)}</span>
-                    <b>${e.trouve ? e.essais + '/' + data.maxEssais : 'raté'}${e.ms != null ? ' · ' + Math.round(e.ms / 1000) + ' s' : ''}</b>
+                    <b>${!e.trouve ? (m.mode === 'voyage' ? 'perdu' : 'raté') : (m.mode === 'voyage' ? e.essais + ' pas' + (e.erreurs ? ' · ' + e.erreurs + ' err.' : '') : e.essais + '/' + data.maxEssais)}${e.ms != null ? ' · ' + Math.round(e.ms / 1000) + ' s' : ''}</b>
                     <button class="mini" data-flag="${esc(e.u)}" data-mode="${m.mode}" type="button">${e.susp ? 'Valider' : 'Suspect'}</button>
                     <button class="mini danger" data-del="${esc(e.u)}" data-mode="${m.mode}" type="button">✕</button>
                 </div>`).join('') : '<p class="empty">Aucun score ce jour-là.</p>'}</div>
-            <button class="mini danger wide" data-regen="${m.mode}" type="button">Tirer un autre pays</button>
+            <button class="mini danger wide" data-regen="${m.mode}" type="button">${m.mode === 'voyage' ? 'Tirer un autre voyage' : 'Tirer un autre pays'}</button>
         </div>`).join('');
     $('ge-modes').querySelectorAll('[data-flag]').forEach(b => b.addEventListener('click', async () => {
         await api('/api/admin/geo/board/flag', { date, mode: b.dataset.mode, pseudo: b.dataset.flag }); loadGeoJour();
@@ -927,7 +936,7 @@ async function loadGeoJour() {
     $('ge-modes').querySelectorAll('[data-regen]').forEach(b => b.addEventListener('click', () => {
         const mode = b.dataset.regen;
         ask('♻️', 'Tirer un autre pays ?',
-            `Un autre pays sera tiré pour le ${date} (${mode === 'drapeau' ? 'drapeau' : 'silhouette'}). Les parties de ce mode et son classement seront effacés.`, [
+            `Un autre ${mode === 'voyage' ? 'voyage' : 'pays'} sera tiré pour le ${date} (${mode}). Les parties de ce mode et son classement seront effacés.`, [
             { label: 'Tirer un autre pays', danger: true, run: async () => {
                 const { ok, data: d } = await api('/api/admin/geo/regen', { date, mode });
                 if (!ok) return toast((d && d.error) || 'Le tirage a échoué.');
@@ -936,6 +945,92 @@ async function loadGeoJour() {
             } }]);
     }));
 }
+
+// =====================================================================
+//  LE MOT LE PLUS LONG et LE SUDOKU — même forme de panneau que les
+//  autres jeux du jour : le contenu, le classement modérable, un nouveau
+//  tirage. Les lignes marquées suspectes restent visibles ici (et
+//  seulement ici) pour pouvoir être rétablies.
+// =====================================================================
+function boardAdmin(boxId, app, date, liste, detail, recharger) {
+    $(boxId).innerHTML = liste.length
+        ? liste.map((e, i) => `
+            <div class="bd-row${e.susp ? ' susp' : ''}">
+                <span>${i + 1}. ${esc(e.u)}</span>
+                <b>${detail(e)}</b>
+                <button class="mini" data-flag="${esc(e.u)}" type="button">${e.susp ? 'Valider' : 'Suspect'}</button>
+                <button class="mini danger" data-del="${esc(e.u)}" type="button">✕</button>
+            </div>`).join('')
+        : '<p class="empty">Aucun score ce jour-là.</p>';
+    $(boxId).querySelectorAll('[data-flag]').forEach(b => b.addEventListener('click', async () => {
+        await api(`/api/admin/${app}/board/flag`, { date, pseudo: b.dataset.flag }); recharger();
+    }));
+    $(boxId).querySelectorAll('[data-del]').forEach(b => b.addEventListener('click', async () => {
+        await api(`/api/admin/${app}/board/remove`, { date, pseudo: b.dataset.del });
+        toast('Score supprimé.'); recharger();
+    }));
+}
+const minSec = (ms) => (ms != null ? Math.floor(ms / 60000) + ':' + String(Math.round(ms / 1000) % 60).padStart(2, '0') : '—');
+
+async function loadMotlong() {
+    if (!$('ml-date').value) $('ml-date').value = dateDuSalon();
+    loadMotlongJour();
+}
+$('ml-date').addEventListener('change', loadMotlongJour);
+async function loadMotlongJour() {
+    const date = $('ml-date').value;
+    const { data } = await api('/api/admin/motlong/day?date=' + encodeURIComponent(date));
+    if (!data) return;
+    $('ml-box').innerHTML = `
+        <div class="kv-row"><span>Les lettres</span><b>${esc(data.lettres.split('').join(' '))}</b></div>
+        <div class="kv-row"><span>Le plus long</span><b>${data.max} lettres · ${esc((data.meilleurs || []).join(', '))}</b></div>
+        <div class="kv-row"><span>Parties</span><b>${data.joues} jouées · ${data.trouves} au maximum${data.longueurMoyenne != null ? ' · ' + data.longueurMoyenne + ' lettres en moyenne' : ''}</b></div>`;
+    boardAdmin('ml-board', 'motlong', date, data.classement || [],
+        e => `${e.score} lettres${e.mot ? ' · ' + esc(e.mot) : ''} · ${minSec(e.ms)}`, loadMotlongJour);
+}
+$('ml-regen').addEventListener('click', () => {
+    const date = $('ml-date').value;
+    ask('♻️', 'Tirer d’autres lettres ?',
+        `Un autre tirage sera fait pour le ${date}. Les parties de ce jour-là et le classement seront effacés.`, [
+        { label: 'Tirer d’autres lettres', danger: true, run: async () => {
+            const { ok, data } = await api('/api/admin/motlong/regen', { date });
+            if (!ok) return toast((data && data.error) || 'Le tirage a échoué.');
+            toast(`Nouvelles lettres : ${data.lettres}.`);
+            loadMotlongJour();
+        } }]);
+});
+
+async function loadSudoku() {
+    if (!$('sd-date').value) $('sd-date').value = dateDuSalon();
+    loadSudokuJour();
+}
+$('sd-date').addEventListener('change', loadSudokuJour);
+async function loadSudokuJour() {
+    const date = $('sd-date').value;
+    const { data } = await api('/api/admin/sudoku/day?date=' + encodeURIComponent(date));
+    if (!data) return;
+    // La grille elle-même, en petit : de quoi reconnaître une grille qu'un
+    // joueur signale, sans afficher la solution.
+    const lignes = [];
+    for (let r = 0; r < 9; r++) lignes.push(data.donnee.slice(r * 9, r * 9 + 9).replace(/0/g, '·').split('').join(' '));
+    $('sd-box').innerHTML = `
+        <pre class="ad-sudoku">${lignes.join('\n')}</pre>
+        <div class="kv-row"><span>Indices</span><b>${data.indices} chiffres donnés</b></div>
+        <div class="kv-row"><span>Parties</span><b>${data.joues} terminées · ${data.resolues} résolues${data.tempsMoyen != null ? ' · ' + minSec(data.tempsMoyen) + ' en moyenne' : ''}</b></div>`;
+    boardAdmin('sd-board', 'sudoku', date, data.classement || [],
+        e => (e.trouve ? minSec(e.ms) : 'abandon'), loadSudokuJour);
+}
+$('sd-regen').addEventListener('click', () => {
+    const date = $('sd-date').value;
+    ask('♻️', 'Tirer une autre grille ?',
+        `Une autre grille sera tirée pour le ${date}. Les parties de ce jour-là et le classement seront effacés.`, [
+        { label: 'Tirer une autre grille', danger: true, run: async () => {
+            const { ok, data } = await api('/api/admin/sudoku/regen', { date });
+            if (!ok) return toast((data && data.error) || 'Le tirage a échoué.');
+            toast(`Nouvelle grille : ${data.indices} indices.`);
+            loadSudokuJour();
+        } }]);
+});
 
 // =====================================================================
 //  FRÉQUENTATION

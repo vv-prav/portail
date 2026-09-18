@@ -85,6 +85,10 @@ portail/
 ├── comptes/titres.js          ← les titres et badges des joueurs
 ├── admin/routes.js            ← toutes les routes /api/admin/*
 ├── motsfleches/{dict,generator,words,words-extra}.js
+├── motlong/{jeu,mots}.js       ← le Mot le plus long ; mots.js est GÉNÉRÉ
+├── sudoku/jeu.js              ← générateur, solveur, vérification
+├── quotidien/moteur.js        ← le moteur commun des jeux du jour récents
+├── scripts/genere-motlong.py  ← régénère motlong/mots.js depuis Lexique383
 ├── motus/                     ← vocabulaire Motus (voir section dédiée)
 ├── motusparty/game.js
 ├── pbac/game.js
@@ -110,6 +114,8 @@ portail/
     ├── defis/                              ← les défis (Motus + quiz, une seule page)
     ├── chance/
     ├── mots-fleches/
+    ├── motlong/
+    ├── sudoku/
     ├── motus/
     │   ├── index.html + hub.css            ← hub à 2 entrées
     │   ├── party/                          ← Motus Party (multijoueur)
@@ -148,9 +154,11 @@ Chaque mini-app suit le même schéma : `public/<app>/index.html` + `app.js` + `
 | App | Notes |
 |---|---|
 | **Motus** | Restructuré en hub à 2 entrées (`/motus/` → « Motus du jour » et « Motus Party »). Le clavier à l'écran a été **retiré** : saisie exclusivement via le clavier natif du téléphone (input invisible qui suit la case active). Discussion du jour, archives, style des tuiles personnalisable (4 thèmes de couleur). | Le **chronomètre part au clic sur « Commencer »** (`POST /api/motus/start`, une seule fois — recharger ne le relance pas, les archives ne sont pas chronométrées) : à nombre d'essais égal, le classement du jour départage au temps. Les entrées d'avant le chronométrage n'ont pas de `ms` et se rangent après celles qui en ont, sans jamais être perdues.
-| **Mots Fléchés** | Le plus ancien des jeux du jour, sert de référence pour le motif « saisie native ». Grilles générées (`motsfleches/generator.js`), dictionnaire avec niveaux de rareté. Voir la section dédiée : le stock de mots, la limite du générateur, et ce qui a été mesuré. |
+| **Mots Fléchés** | Le plus ancien des jeux du jour, sert de référence pour le motif « saisie native ». **Une seule grille par jour, toujours Difficile** (`MF_NIVEAU`) : il y en avait trois (moyen, difficile, expert). Grilles générées (`motsfleches/generator.js`), dictionnaire avec niveaux de rareté. Voir la section dédiée : le stock de mots, la limite du générateur, et ce qui a été mesuré. |
 | **Le compte est bon** (`/chiffres`) | Six nombres, une cible, les quatre opérations — ni négatif ni fraction. **Aucun contenu à écrire** : la donne est tirée de la date, et un solveur exhaustif (`chiffres/jeu.js`) garantit que la cible est atteignable avant de la proposer. La solution affichée à la fin est la **plus courte**, obtenue par approfondissement progressif : sans ça la mémoïsation laissait passer un chemin qui repassait par 23 850 pour retomber sur 952, juste mais illisible. Le serveur rejoue les étapes au lieu de croire le total annoncé. Le chronomètre part au clic sur « Commencer ». |
-| **Géographie** (`/geo`) | Deux modes dans un seul jeu du jour : **Le pays** (silhouette) et **Le drapeau**. Même mécanique dans les deux — six essais, et chaque proposition donne distance, direction et proximité, ce qui rend un pays méconnu trouvable par triangulation plutôt qu'au hasard, et rend surtout le mode Drapeau jouable. Les drapeaux sont des **emoji** : aucun fichier à servir, aucun droit à vérifier, et un rendu net sur téléphone. Voir la section dédiée pour la base de pays. |
+| **Le mot le plus long** (`/motlong`) | Neuf lettres, six propositions, le score est la longueur du plus long mot valable. Voir la section dédiée. |
+| **Sudoku** (`/sudoku`) | Une grille par jour, solution unique, résoluble sans deviner. Voir la section dédiée. |
+| **Géographie** (`/geo`) | **Trois modes** dans un seul jeu du jour : **Le pays** (silhouette), **Le drapeau**, et **Le voyage** (voir la section dédiée, sa mécanique est différente). Les deux premiers : Même mécanique dans les deux — six essais, et chaque proposition donne distance, direction et proximité, ce qui rend un pays méconnu trouvable par triangulation plutôt qu'au hasard, et rend surtout le mode Drapeau jouable. Les drapeaux sont des **emoji** : aucun fichier à servir, aucun droit à vérifier, et un rendu net sur téléphone. Voir la section dédiée pour la base de pays. |
 
 ### La base des pays (`geo/pays.js`) — comment elle a été faite
 
@@ -220,6 +228,8 @@ Variables de couleur (`--ink`, `--brass`, `--parchment`...), typographie, échel
 ⚠️ **Le piège des overlays** : la règle `.ds-overlay:not([hidden])` rend visible *tout* overlay qui ne porte pas l'attribut `hidden`. Un overlay créé en JS sans `hidden` est donc affiché en permanence — un voile plein écran qui intercepte tous les clics de la page, sans que rien ne le signale. C'est ce qui rendait chaque popup de `DS.confirm` impossible à fermer : `closeConfirm()` ne retirait que la classe `.on`. Tout overlay créé en JS doit naître `hidden` ; `design-system.js` verrouille en plus au chargement ceux qui n'ont ni `hidden` ni `.on`.
 
 ⚠️ **Ne jamais transitionner `visibility`** sur un overlay ni sur quoi que ce soit qui couvre l'écran. Transitionnée, elle reste à `visible` pendant toute la durée de l'animation — et si celle-ci ne tourne pas (onglet en arrière-plan, animation interrompue), l'élément reste peint. Seule l'opacité est animée ; `visibility` bascule immédiatement, ce qui garantit la disparition tout en gardant le fondu à l'ouverture.
+
+⚠️ **`.ds-btn` est en `display:block`, ce qui l'emporte sur l'attribut `hidden`** (un simple `display:none` de la feuille du navigateur, la plus faible). Un bouton « caché » restait donc affiché : le « Lancer la partie » réservé à l'hôte apparaissait chez tous les joueurs de six jeux (le serveur refusait, mais l'écran mentait), et « Rejouer » avant la fin. `.ds-btn[hidden], .ds-icon-btn[hidden] { display:none }` corrige les vingt et un boutons d'un coup. Même piège pour toute classe qui pose un `display` : lui ajouter sa règle `[hidden]`.
 
 ⚠️ **Tout élément qui couvre l'écran sans être interactif prend `pointer-events:none`** : la célébration du Yams ne l'avait pas (contrairement à celle de Motus Party) et avalait les clics pendant ses 3 secondes ; le toast, à z-index 1200 en bas au centre, se posait pile sur le bouton « Lancer les dés ».
 
@@ -406,6 +416,36 @@ Les six jeux multijoueurs chargent déjà `/style.js` et se nomment déjà par `
 
 Et le thème de tuiles, qui ne valait que pour le Motus du jour, **s'applique aussi au Motus Party** : les deux pages utilisaient déjà les mêmes variables `--correct` / `--present` / `--absent`, seule la page qui les posait manquait.
 
+## Les trois jeux du jour de septembre 2026
+
+Ajoutés ensemble : **le Mot le plus long**, **le Sudoku** et **le Voyage** (troisième mode de la Géographie). Les deux premiers reposent sur `quotidien/moteur.js` (graine du jour, progression, classement au score puis au temps, série), comme Le compte est bon. Tous trois sont branchés aux mêmes endroits que les autres jeux du jour — voir la liste « Les statistiques : où elles doivent apparaître ».
+
+Point commun des trois : **aucun contenu écrit à la main**. C'est ce qui tue un jeu du jour (voir les Mots Fléchés, bloqués par les définitions) — ici tout est tiré de données déjà là ou calculé.
+
+### Le Mot le plus long (`motlong/`)
+
+- **Le dictionnaire** (`motlong/mots.js`, ~600 Ko, jamais envoyé au navigateur) est **généré** depuis Lexique383 par `scripts/genere-motlong.py`. 69 878 formes de 3 à 9 lettres, pluriels et conjugaisons compris (la règle de l'émission), triées par fréquence. Le salon n'avait aucun mot de plus de 7 lettres : Motus s'arrête là. Lexique383 (26 Mo) n'est **pas** dans le dépôt — la commande pour le retélécharger est en tête du script.
+- **Le tirage part d'un vrai mot de neuf lettres** (823 lemmes courants : noms, adjectifs, infinitifs, fréquence ≥ 3/million) dont on mélange les lettres. Le maximum est donc toujours 9, et la réponse montrée à la fin est un mot qu'on connaît. Neuf lettres au hasard donneraient des tirages dont le mieux possible serait un mot de cinq lettres introuvable.
+- **Six propositions.** Un mot inconnu en coûte une, une lettre hors tirage aucune (c'est une faute de frappe, pas un choix). La limite est ce qui fait de chaque mot une décision — et elle empêche d'interroger le dictionnaire en boucle.
+- Les tuiles ne sont pas un « clavier à l'écran » au sens de la règle du salon : ce sont les pièces du jeu, comme les plaques du Compte est bon. Le clavier physique marche aussi.
+
+### Le Sudoku (`sudoku/`)
+
+- **Deux garanties vérifiées avant de proposer une grille** : une solution **unique** (sinon deux joueurs également bons finissent avec deux grilles différentes, dont une déclarée fausse), et **résoluble sans deviner**, par les seuls « singletons » — une case qui n'admet plus qu'un chiffre, un chiffre qui n'a plus qu'une place. Indices retirés par paires symétriques. Mesuré sur 40 grilles : 26 à 32 indices, moins de 7 ms à générer.
+- ⚠️ **Pas d'oracle.** Le navigateur signale les conflits *visibles* (deux 7 dans une ligne), jamais les erreurs : il ne connaît pas la solution. Une grille pleine sans conflit est forcément la solution, puisqu'elle est unique — le serveur répond donc « juste » ou « pas encore », jamais quelles cases.
+- Notes au crayon dans le navigateur seulement ; la grille elle-même est sauvegardée côté serveur (reprendre sur un autre téléphone).
+- ⚠️ **Temps suspect** : sous 90 s (`TEMPS_MINI_MS`), la ligne est inscrite mais marquée `susp` — invisible au classement public, visible à l'admin qui tranche. Le titre « Le logicien » applique le même seuil, sinon il irait au tricheur.
+
+### Le Voyage (mode de la Géographie)
+
+Aller d'un pays à un autre en ne passant que par des frontières communes. On arrive en posant le pied dans un voisin de l'arrivée. Trois erreurs (un pays qui ne touche pas celui où l'on est) ou trop de détours, et le voyage s'arrête. Douze points pour le plus court chemin sans erreur, deux de moins par détour ou par erreur.
+
+- ⚠️ **Le graphe est rendu symétrique** : la base déclare une frontière d'un seul côté, et sans ça le chemin le plus court montré à la fin pourrait être interdit au joueur.
+- **Entre 2 et 4 pays à traverser.** À 5, les trajets passaient par des régions où presque personne ne s'oriente (« Myanmar → Monténégro » par la Chine, la Russie, l'Ukraine, la Hongrie et la Croatie).
+- Revenir sur ses pas est permis : c'est ce qui garantit qu'aucun voyage n'est une impasse. Chaque pas compte, y compris ceux en arrière.
+- Rangé sous la même clé que les deux autres modes (`geo:pays:voyage:<date>` = « PT>PL ») : purge, régénération et variante le traitent sans cas à part. `GEO_MODES` est la seule liste des modes — le pouls, le résumé, les résultats du jour et l'admin la parcourent.
+- ⚠️ Ne pas mettre de préposition devant un nom de pays (« au Portugal », « en France », « aux Pays-Bas ») : ça ne se calcule pas proprement. On écrit « Départ : … Arrivée : … ».
+
 ## Les défis (`defis/jeu.js`) — le multijoueur sans rendez-vous
 
 La mécanique des jeux du jour (une manche identique pour tous, un classement, un temps qui départage) appliquée aux jeux qu'on voulait faire ensemble : quelqu'un lance une manche, **tout le monde reçoit exactement la même**, chacun la fait quand il veut dans les 24 h, et on compare. On ne joue pas en même temps, on joue la même chose — et c'est suffisant pour que ça compte.
@@ -442,6 +482,10 @@ Une vraie grille se fabrique dans l'autre sens : on dessine d'abord le motif des
 
 **La conclusion est un ordre de grandeur, pas un bug** : un remplisseur de mots croisés dense a besoin de dizaines de milliers de mots ; nous en avons 1 581, dont 82 de huit lettres. Refaire le générateur ne vaudra le coup qu'après avoir plusieurs milliers de mots **avec leurs définitions** — et écrire des définitions ne s'automatise pas.
 
+### Une seule grille par jour
+
+Il y en avait trois, une par niveau. Elles mangeaient une cinquantaine de mots par jour dans un dictionnaire de 1 581, et le choix du niveau divisait un classement déjà maigre en trois. Il n'en reste qu'une, **toujours Difficile** (`MF_NIVEAU`) : un classement, et trois fois moins de mots consommés, donc moins de répétitions. `MF_LEVELS` reste une liste d'un élément pour que tout ce qui la parcourt (pouls, archives, admin, résumé) marche sans cas particulier, et `mfLevel()` ignore le niveau qu'enverrait un ancien client. Les parties des anciens niveaux restent en base et comptent dans les statistiques.
+
 ### Les défauts corrigés
 
 - ⚠️ **« Tirer une nouvelle grille » ne changeait rien** — troisième fois que ce piège se présente (Motus, puis les deux jeux du jour récents). Le tirage ne dépend que de la date et du niveau : effacer la clé redonne la même grille. Un compteur `mf:variante:<date>:<niveau>` décale la graine, et la route insiste jusqu'à obtenir une grille différente. À zéro, aucune date passée ne bouge. La route **ne touche plus à `mf:hist:<date>`** : il porte les mots des **trois** niveaux du jour, et l'effacer faisait perdre la trace des deux autres.
@@ -465,14 +509,17 @@ Liste à parcourir pour **tout** nouveau jeu :
 |---|---|
 | **Carte du profil** (`portraitJoueur` → `ajoute(...)`, `server.js`) | sert aussi la bulle de profil publique. ⚠️ `if (!parties) return` : passer un compteur à zéro fait disparaître la carte. |
 | **Résumé** (`/api/salon/mystats-summary`) | `totals.push([nom, n])` pour le « jeu le plus joué », et `weekCount` pour un jeu du jour. |
-| **Classement du Salon** (`comptes/classement.js`) | jeu du jour → ajouter le préfixe à la liste `['motus','mf','mj','chiffres','geo']` **et** la façon dont il marque sa réussite (`solved`, `ecart===0`, `trouve`) ; multijoueur → une ligne dans `MULTI`. |
+| **Classement du Salon** (`comptes/classement.js`) | jeu du jour → ajouter le préfixe à la liste `['motus','mf','chiffres','geo','sudoku','motlong']` **et** la façon dont il marque sa réussite (`solved`, `ecart===0`, `trouve`) ; multijoueur → une ligne dans `MULTI`. |
+| **Séries** (`PREFIXES_DU_JOUR`, `server.js`) | jeu du jour seulement. La série du Salon, la place au classement et les titres la lisaient à trois endroits, sur le seul Motus et les Mots Fléchés : c'est maintenant une liste. Le calendrier d'assiduité du profil la parcourt aussi. |
+| **Renommage** (`PREFIXES_BRUTS` et `VALEURS_AVEC_U`, `comptes/renommage.js`) | toutes les familles `<app>:prog`, `<app>:days`, et les classements. ⚠️ Le compte est bon et la Géographie y manquaient : un renommage laissait leurs parties sous l'ancien nom. |
+| **Profil** (`TOUS_LES_JEUX` et `NOM_JEU`, `public/profil/app.js`) | la ligne « Pas encore joué à… » et le calendrier. Six jeux y manquaient. |
 | **Titres** (`comptes/titres.js`) | lire la famille de clés, compter le jeu dans `jeuxDifferents`, et lui donner au moins un titre — sinon on peut y exceller sans que rien ne le montre. Préférer des titres **relatifs** (le meilleur, le plus rapide) : pas de seuil à calibrer sur des données qui n'existent pas encore. |
 | **Résultats du jour** (`/api/salon/resultats-du-jour`) | pour un jeu du jour seulement. |
 | **Admin** (`MODULES_JEUX` dans `admin/routes.js` + `ctx` dans `server.js`) | pour un jeu multijoueur seulement. |
 
 Dernier passage en date : **les défis** ont été branchés sur la carte du profil, le résumé, le classement (saison **et** depuis toujours) et deux titres (`releve`, `lancegants`). Ils n'apparaissent ni dans les résultats du jour (ils ne sont pas quotidiens) ni dans `MODULES_JEUX` (ils n'ont ni socket ni table).
 
-Et pour un jeu du jour, ne pas oublier non plus le panneau « Aujourd'hui » (`JEUX_DU_JOUR` dans `public/app.js` + le pouls), `public/enchainement.js`, et le préchargement du service worker.
+Et pour un jeu du jour, ne pas oublier non plus le panneau « Aujourd'hui » (`JEUX_DU_JOUR` dans `public/app.js` + le pouls), `public/enchainement.js`, le préchargement du service worker, la purge de son contenu daté (`mfPurge`), et son panneau d'admin (tuile, onglet, routes `day`/`regen`/`board`). Dernier passage : le Sudoku, le Mot le plus long et le Voyage, branchés partout ci-dessus.
 
 ## Le classement du Salon
 

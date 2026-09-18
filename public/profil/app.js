@@ -261,11 +261,15 @@ if (window.Vues) {
 // profil utilise. L'ancienne version recalculait les mêmes chiffres depuis des
 // champs plats (p.motus, p.mf…), et les deux avaient fini par diverger — Petit
 // Bac annonçait « suivi à venir » alors que ses statistiques existaient.
+// ⚠️ Liste à tenir à jour à chaque nouveau jeu : c'est elle qui produit la
+// ligne « Pas encore joué à… ». Six jeux y manquaient.
 const TOUS_LES_JEUX = [
     { id: 'motus', nom: 'Motus' }, { id: 'mf', nom: 'Mots Fléchés' },
-    { id: 'pbac', nom: 'Petit Bac' },
+    { id: 'chiffres', nom: 'Le compte est bon' }, { id: 'geo', nom: 'Géographie' },
+    { id: 'motlong', nom: 'Le mot le plus long' }, { id: 'sudoku', nom: 'Sudoku' },
+    { id: 'pbac', nom: 'Petit Bac' }, { id: 'undercover', nom: 'Infiltré' },
     { id: 'yams', nom: 'Yams' }, { id: 'motusparty', nom: 'Motus Party' },
-    { id: 'perudo', nom: 'Perudo' },
+    { id: 'drapeaux', nom: 'Quiz des drapeaux' }, { id: 'perudo', nom: 'Perudo' },
 ];
 
 // Trois chiffres en tête, ceux qu'on regarde en premier.
@@ -332,7 +336,7 @@ function renderRang(p) {
         <div class="pr-rank-pts"><b>${p.totalParties || 0}</b><span>parties tous jeux confondus</span></div>`;
     return true;
 }
-const NOM_JEU = { motus: 'Motus', mf: 'Mots Fléchés' };
+const NOM_JEU = { motus: 'Motus', mf: 'Mots Fléchés', chiffres: 'Le compte est bon', geo: 'Géographie', motlong: 'Le mot le plus long', sudoku: 'Sudoku' };
 function renderCalendrier(jours) {
     if (!Array.isArray(jours) || !jours.length) return false;
     $('pr-cal').innerHTML = jours.map(j => {

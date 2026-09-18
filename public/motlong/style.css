@@ -1,0 +1,100 @@
+/* =====================================================================
+   LE MOT LE PLUS LONG — la moitié « lettres » du Compte est bon. Même
+   nuit chaude, et des tuiles de lettres dans l'esprit des plaques : on
+   doit reconnaître la famille d'un coup d'œil, et la couleur propre
+   (un vert d'eau) le distinguer dans le panneau « Aujourd'hui ».
+   ===================================================================== */
+:root {
+    --ink:#14100b; --ink-2:#1d1710; --ink-3:#241b12;
+    --brass:#d9a94e; --brass-soft:#ecca82; --parchment:#efe4cf;
+    --muted:#a08f74; --line:rgba(217,169,78,0.20);
+    --good:#5aa87a; --bad:#d2624a;
+    --eau:#4f9a8f; --eau-soft:#8ccfc4;
+    --tuile:#f0e2c4; --tuile-encre:#241b12;
+}
+html,body { margin:0; padding:0; }
+body {
+    min-height:100svh; overflow-x:hidden;
+    font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; color:var(--parchment);
+    background:radial-gradient(130% 70% at 50% -8%, #15282a 0%, transparent 55%), var(--ink);
+    background-attachment:fixed; -webkit-font-smoothing:antialiased;
+}
+body.is-boot .ml { opacity:0; }
+.ml { opacity:1; transition:opacity .2s; display:flex; flex-direction:column; gap:12px;
+    max-width:520px; margin:0 auto; padding:max(10px,env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom)); }
+
+.ml-head { display:flex; align-items:center; gap:10px; }
+.ml-titles { flex:1; min-width:0; }
+.ml-title { margin:0; font-size:1.2rem; font-weight:800;
+    background:linear-gradient(180deg,var(--brass-soft),var(--brass));
+    -webkit-background-clip:text; background-clip:text; color:transparent; }
+.ml-date { font-size:.74rem; color:var(--muted); text-transform:capitalize; }
+.ml-chrono { flex:0 0 auto; font-size:.86rem; font-weight:800; color:var(--brass-soft); font-variant-numeric:tabular-nums; }
+.ml-chrono[hidden] { display:none; }
+
+.ml-strip { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
+.chip { font-size:.74rem; color:var(--muted); background:rgba(0,0,0,.28); border:1px solid var(--line);
+    border-radius:999px; padding:4px 11px; }
+.chip[hidden] { display:none; }
+.chip b { color:var(--brass-soft); }
+
+.ml-start { display:grid; place-items:center; padding:36px 0; }
+.ml-start[hidden] { display:none; }
+.ml-start-box { text-align:center; max-width:320px; }
+.ml-start-emoji { font-size:2.6rem; margin-bottom:10px; }
+.ml-start-txt { font-size:.86rem; color:var(--muted); line-height:1.55; margin:0 0 18px; }
+.ml-jeu[hidden] { display:none; }
+
+/* Le mot en cours : neuf cases, pour qu'on voie jusqu'où on peut aller. */
+.ml-compose { display:grid; grid-template-columns:repeat(9,1fr); gap:4px; margin-top:8px; cursor:pointer; }
+.ml-case { aspect-ratio:1; display:grid; place-items:center; border-radius:8px;
+    border:1.5px dashed rgba(140,207,196,.35); font-size:clamp(1rem,5vw,1.4rem); font-weight:900; color:var(--eau-soft); }
+.ml-case.pleine { border-style:solid; border-color:var(--eau); background:rgba(79,154,143,.16); color:var(--parchment); }
+
+/* Les tuiles : cinq par ligne, assez grandes pour le pouce même à 320 px. */
+.ml-tirage { display:flex; flex-wrap:wrap; justify-content:center; gap:7px; margin-top:16px; }
+.ml-tuile { width:calc((100% - 4 * 7px) / 5); max-width:62px; aspect-ratio:1; border-radius:12px; border:0;
+    background:linear-gradient(180deg,#fff8e8,var(--tuile)); color:var(--tuile-encre);
+    font-family:inherit; font-size:1.55rem; font-weight:900; cursor:pointer;
+    box-shadow:0 3px 0 rgba(0,0,0,.35), 0 6px 14px rgba(0,0,0,.3); transition:transform .1s, opacity .15s; }
+.ml-tuile:active { transform:translateY(2px); box-shadow:0 1px 0 rgba(0,0,0,.35); }
+.ml-tuile.prise { opacity:.15; box-shadow:none; }
+.ml-tuile:disabled { cursor:default; }
+
+.ml-actions { display:grid; grid-template-columns:56px 56px 1fr; gap:8px; margin-top:16px; }
+.ml-actions .ds-btn { margin:0; }
+
+.ml-restantes { text-align:center; font-size:.76rem; color:var(--muted); margin:6px 0 0; min-height:1em; }
+.ml-mots { display:flex; flex-direction:column; gap:4px; }
+.ml-mot { display:flex; justify-content:space-between; align-items:baseline; padding:8px 12px; border-radius:10px;
+    background:rgba(255,255,255,.03); border:1px solid var(--line); font-size:.86rem; }
+.ml-mot b { letter-spacing:.08em; }
+.ml-mot span { font-size:.74rem; color:var(--muted); }
+.ml-mot.meilleur { border-color:var(--eau); background:rgba(79,154,143,.12); }
+.ml-mot.meilleur span { color:var(--eau-soft); font-weight:700; }
+.ml-mot.refuse { opacity:.55; }
+.ml-mot.refuse b { text-decoration:line-through; }
+#ml-terminer { align-self:center; margin-top:4px; }
+
+/* Fin de manche */
+.ml-fin-emoji { text-align:center; font-size:2.6rem; margin:0 0 4px; }
+.ml-solutions { display:flex; flex-wrap:wrap; justify-content:center; gap:6px; margin:4px 0 12px; }
+.ml-sol-titre { width:100%; margin:4px 0 0; font-size:.64rem; text-transform:uppercase; letter-spacing:.9px;
+    color:var(--brass-soft); font-weight:700; text-align:center; }
+.ml-sol { padding:5px 11px; border-radius:999px; background:rgba(79,154,143,.14); border:1px solid var(--eau);
+    font-weight:800; letter-spacing:.08em; font-size:.86rem; }
+.ml-sol.trouve { background:var(--eau); color:var(--ink); }
+.ml-board { display:flex; flex-direction:column; gap:3px; margin-top:10px; }
+.ml-board-titre { margin:10px 0 2px; font-size:.64rem; text-transform:uppercase; letter-spacing:.9px;
+    color:var(--brass-soft); font-weight:700; text-align:left; }
+.ml-board-row { display:grid; grid-template-columns:24px 22px 1fr auto auto; gap:8px; align-items:center;
+    padding:7px 10px; border-radius:9px; background:rgba(255,255,255,.03); border:1px solid transparent;
+    font-family:inherit; color:var(--parchment); cursor:pointer; text-align:left; font-size:.78rem; }
+.ml-board-row.moi { border-color:var(--brass); background:rgba(217,169,78,.1); }
+.ml-b-rang { text-align:center; }
+.ml-b-nom { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ml-b-nom i { font-style:normal; color:var(--muted); font-size:.7rem; letter-spacing:.05em; }
+.ml-b-score { color:var(--eau-soft); font-weight:800; font-variant-numeric:tabular-nums; }
+.ml-b-temps { color:var(--muted); font-size:.7rem; font-variant-numeric:tabular-nums; }
+
+@media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.001ms !important; transition-duration:.001ms !important; } }

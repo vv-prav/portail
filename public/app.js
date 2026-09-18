@@ -303,11 +303,13 @@ const JEUX_DU_JOUR = [
     { id: 'mf',       nom: 'Mots Fléchés', emoji: '🧩', href: '/mots-fleches',     accent: '#5aa87a' },
     { id: 'chiffres', nom: 'Le compte est bon', emoji: '🔢', href: '/chiffres',    accent: '#c2513a' },
     { id: 'geo',      nom: 'Géographie',   emoji: '🌍', href: '/geo',              accent: '#6f7bb0' },
+    { id: 'motlong',  nom: 'Le mot le plus long', emoji: '🔤', href: '/motlong',   accent: '#4f9a8f' },
+    { id: 'sudoku',   nom: 'Sudoku',       emoji: '🔲', href: '/sudoku',           accent: '#8a7bc4' },
 ];
 // Ramène chaque jeu à un seul état, quelle que soit la forme de ses données.
 function etatDuJour(id, p) {
     if (id === 'geo') {
-        const g = p.geo || {}, d = g.done || 0, total = g.total || 2;
+        const g = p.geo || {}, d = g.done || 0, total = g.total || 3;
         if (d >= total) return { cle: 'fait', texte: t('today_done') };
         if (d > 0)      return { cle: 'encours', texte: `${d}/${total}` };
         return { cle: 'afaire', texte: t('today_todo') };
@@ -343,6 +345,8 @@ function renderToday(p) {
         (p.mf && p.mf.streak) || 0,
         (p.chiffres && p.chiffres.streak) || 0,
         (p.geo && p.geo.streak) || 0,
+        (p.motlong && p.motlong.streak) || 0,
+        (p.sudoku && p.sudoku.streak) || 0,
     ];
     const meilleure = Math.max(...series);
     const el = $('today-streak');

@@ -1,7 +1,10 @@
 // =====================================================================
-//  GÉOGRAPHIE — le pays mystère et le drapeau mystère
+//  GÉOGRAPHIE — le pays mystère, le drapeau mystère, et le voyage
 //
-//  Deux modes, une seule mécanique : on propose un pays, et chaque
+//  Le voyage a sa propre mécanique (aller d'un pays à un autre de
+//  frontière en frontière), traitée par les branches `VOYAGE` ci-dessous.
+//
+//  Les deux premiers modes partagent une mécanique : on propose un pays, et chaque
 //  proposition renvoie la distance, la direction et une proximité. C'est
 //  ce qui rend un pays méconnu trouvable par triangulation — et c'est
 //  aussi ce qui rend le mode Drapeau jouable, car sans indices un
@@ -32,6 +35,12 @@ let essais = [];
 let fini = false, trouve = false;
 let debutA = 0, chronoTimer = null;
 let curseur = -1;             // la suggestion surlignée au clavier
+// Le voyage : les pas faits et les erreurs commises.
+let pas = [], erreurs = [];
+const VOYAGE = () => MODE === 'voyage';
+const MODES = ['silhouette', 'drapeau', 'voyage'];
+// Le pays où l'on se trouve dans le voyage : le dernier pas, ou le départ.
+const ici = () => (pas.length ? pas[pas.length - 1] : (P && P.depart)) || null;
 
 function laDate() {
     try { return new URLSearchParams(location.search).get('date') || ''; } catch (e) { return ''; }
@@ -47,7 +56,9 @@ function normaliser(s) {
 function chercher(saisie) {
     const n = normaliser(saisie);
     if (!n) return [];
-    const dejaVus = new Set(essais.map(e => e.code));
+    // Au voyage on peut repasser par un pays déjà traversé : seul celui où
+    // l'on se trouve est exclu.
+    const dejaVus = VOYAGE() ? new Set([ici() && ici().code]) : new Set(essais.map(e => e.code));
     const candidats = TOUS.filter(p => !dejaVus.has(p.code));
     const debut = candidats.filter(p => normaliser(p.nom).startsWith(n));
     const dedans = candidats.filter(p => !normaliser(p.nom).startsWith(n) && normaliser(p.nom).includes(n));
@@ -66,8 +77,21 @@ function renderSuggestions() {
 }
 
 // ---------- L'indice du jour ----------
+function carteVoyage(p, role) {
+    return `<div class="gg-bout">
+        ${p.chemin ? `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="${esc(p.chemin)}"/></svg>` : `<span class="gg-bout-drapeau">${p.drapeau}</span>`}
+        <b>${p.drapeau} ${esc(p.nom)}</b><em>${role}</em>
+    </div>`;
+}
 function renderIndice() {
     const box = $('gg-indice');
+    if (VOYAGE()) {
+        box.className = 'gg-indice voyage';
+        box.innerHTML = carteVoyage(P.depart, 'départ')
+            + `<div class="gg-trait"><span>➜</span><small>${P.optimal} pays<br>au plus court</small></div>`
+            + carteVoyage(P.arrivee, 'arrivée');
+        return;
+    }
     if (MODE === 'drapeau') {
         box.className = 'gg-indice drapeau';
         box.innerHTML = `<span class="gg-drapeau">${P.drapeau || ''}</span>`;
@@ -80,7 +104,31 @@ function renderIndice() {
 }
 
 // ---------- Les essais ----------
+function renderVoyage() {
+    const la = ici();
+    // Le fil du voyage : le départ, puis chaque pas avec la distance et la
+    // direction qui restent jusqu'à l'arrivée — c'est la boussole du joueur.
+    const lignes = [`<div class="gg-pas depart"><span class="gg-e-drapeau">${P.depart.drapeau}</span><span class="gg-e-nom">${esc(P.depart.nom)}</span><span class="gg-e-km">départ</span></div>`]
+        .concat(pas.map((e, i) => `
+            <div class="gg-pas${i === pas.length - 1 ? ' ici' : ''}">
+                <span class="gg-e-drapeau">${e.drapeau}</span>
+                <span class="gg-e-nom">${esc(e.nom)}</span>
+                <span class="gg-e-km">${new Intl.NumberFormat(LOCALE).format(e.km)} km ${e.direction}</span>
+            </div>`));
+    if (fini && trouve) lignes.push(`<div class="gg-pas arrivee"><span class="gg-e-drapeau">${P.arrivee.drapeau}</span><span class="gg-e-nom">${esc(P.arrivee.nom)}</span><span class="gg-e-km">arrivée 🎯</span></div>`);
+    $('gg-essais').innerHTML = `<div class="gg-route">${lignes.join('')}</div>`
+        + (erreurs.length ? `<div class="gg-erreurs">${erreurs.map(e =>
+            `<span class="gg-erreur">✗ ${e.drapeau} ${esc(e.nom)}</span>`).join('')}</div>` : '');
+    if (fini) { $('gg-restants').textContent = ''; }
+    else {
+        const resteErr = P.maxErreurs - erreurs.length;
+        const restePas = P.optimal + P.marge - pas.length;
+        $('gg-restants').textContent = `${resteErr} erreur${resteErr > 1 ? 's' : ''} permise${resteErr > 1 ? 's' : ''} · ${restePas} pas au plus`;
+    }
+    $('gg-saisie').placeholder = la ? `Un pays voisin : ${la.nom}…` : 'Un pays…';
+}
 function renderEssais() {
+    if (VOYAGE()) { renderVoyage(); return; }
     $('gg-essais').innerHTML = essais.map(e => `
         <div class="gg-essai${e.juste ? ' juste' : ''}${e.voisin && !e.juste ? ' voisin' : ''}">
             <span class="gg-e-drapeau">${e.drapeau}</span>
@@ -107,6 +155,14 @@ async function proposer(code) {
     curseur = -1;
     const { ok, data } = await api('/api/geo/proposer', { mode: MODE, date: P.date, pays: p.nom });
     if (!ok) { DS.toast((data && data.error) || 'Impossible de proposer.'); return; }
+    if (VOYAGE()) {
+        pas = data.pas || []; erreurs = data.erreurs || [];
+        fini = data.fini; trouve = data.trouve;
+        if (data.erreur) DS.toast(`✗ ${data.erreur.nom} ne touche pas ${data.erreur.depuis}.`);
+        renderVoyage();
+        if (fini) montrerFin(data);
+        return;
+    }
     essais.push(data.essai);
     fini = data.fini; trouve = data.trouve;
     renderEssais();
@@ -135,9 +191,24 @@ setInterval(() => {
 }, 1000);
 
 // ---------- La fin ----------
+function montrerFinVoyage(d) {
+    const chemin = (d.reponse && d.reponse.chemin) || [];
+    const parfait = trouve && pas.length === P.optimal && !erreurs.length;
+    $('gg-fin-emoji').textContent = !trouve ? '🧳' : (parfait ? '🏆' : '🧭');
+    $('gg-fin-titre').textContent = !trouve ? 'Perdu en route'
+        : (parfait ? 'Le chemin le plus court !' : `Arrivé en ${pas.length} pas`);
+    // Le plus court chemin, pays par pays : c'est ce qu'on a envie de voir,
+    // qu'on l'ait trouvé ou non.
+    $('gg-reponse').innerHTML = `<p class="gg-rep-region">Le plus court chemin</p>
+        <div class="gg-chemin">${chemin.map(c => `<span>${c.drapeau} ${esc(c.nom)}</span>`).join('<i>›</i>')}</div>`;
+    $('gg-fin-texte').textContent = trouve
+        ? `${d.score} points${d.ms != null ? ' · ' + formaterTemps(d.ms) : ''} — ${pas.length} pas pour ${P.optimal} au plus court${erreurs.length ? ', ' + erreurs.length + ' erreur' + (erreurs.length > 1 ? 's' : '') : ''}.`
+        : (erreurs.length >= P.maxErreurs ? 'Trois pays qui ne se touchaient pas : le voyage s’arrête là.' : 'Trop de détours : le voyage s’arrête là.');
+}
 function montrerFin(d) {
     fini = true;
     clearInterval(chronoTimer);
+    if (VOYAGE()) { montrerFinVoyage(d); finCommune(d); return; }
     const r = d.reponse || {};
     $('gg-fin-emoji').textContent = trouve ? (essais.length <= 2 ? '🏆' : '🎉') : '🌍';
     $('gg-fin-titre').textContent = trouve
@@ -152,12 +223,16 @@ function montrerFin(d) {
     $('gg-fin-texte').textContent = trouve
         ? `${d.score} points${d.ms != null ? ' · ' + formaterTemps(d.ms) : ''}.`
         : `Six essais, et le compte n'y est pas. Demain, un autre pays.`;
+    finCommune(d);
+}
+const LIBELLE_MODE = { silhouette: '🗺️ Passer au pays', drapeau: '🏳️ Passer au drapeau', voyage: '🧭 Passer au voyage' };
+const modeSuivant = () => MODES[(MODES.indexOf(MODE) + 1) % MODES.length];
+function finCommune(d) {
     renderBoard(d.classement || [], d.place);
-    // Le second mode se propose depuis ici : c'est un seul jeu du jour, il ne
-    // faut pas avoir à revenir au salon pour en faire l'autre moitié.
-    const autre = MODE === 'silhouette' ? 'drapeau' : 'silhouette';
+    // Le mode suivant se propose depuis ici : c'est un seul jeu du jour, il ne
+    // faut pas avoir à revenir au salon pour en faire le reste.
     $('gg-autre').hidden = false;
-    $('gg-autre').textContent = autre === 'drapeau' ? '🏳️ Passer au drapeau' : '🗺️ Passer au pays';
+    $('gg-autre').textContent = LIBELLE_MODE[modeSuivant()];
     $('gg-fin').hidden = false;
     if (!laDate() && window.Enchainement) Enchainement.proposer('geo', $('gg-fin').querySelector('.ds-card'));
 }
@@ -170,7 +245,7 @@ function renderBoard(liste, maPlace) {
                 <span class="gg-b-rang">${medaille[i] || (i + 1)}</span>
                 <span class="ds-avatar xs" data-p="${esc(e.u)}"></span>
                 <span class="gg-b-nom">${esc(e.u)}</span>
-                <span class="gg-b-essais">${e.trouve ? e.essais + '/6' : '✗'}</span>
+                <span class="gg-b-essais">${!e.trouve ? '✗' : (VOYAGE() ? e.essais + ' pas' : e.essais + '/6')}</span>
                 <span class="gg-b-temps">${e.ms != null ? formaterTemps(e.ms) : ''}</span>
             </button>`).join('');
     if (window.PortailProfile) {
@@ -186,6 +261,14 @@ function renderBoard(liste, maPlace) {
 // comme les carrés de Motus racontent la partie sans donner le mot.
 function texteDePartage() {
     const jour = new Date(P.date + 'T12:00:00').toLocaleDateString(LOCALE, { day: 'numeric', month: 'long' });
+    // Le voyage se partage avec son départ et son arrivée — c'est l'énoncé,
+    // pas la réponse — mais jamais avec les pays traversés.
+    if (VOYAGE()) {
+        return `Le voyage — ${jour}\n${P.depart.drapeau} ➜ ${P.arrivee.drapeau}\n`
+            + (trouve ? `🧭 ${pas.length} pas (le plus court : ${P.optimal})` : '🧳 Perdu en route')
+            + (erreurs.length ? ` · ${'❌'.repeat(erreurs.length)}` : '')
+            + `\n${location.origin}/geo`;
+    }
     const titre = MODE === 'drapeau' ? 'Le drapeau mystère' : 'Le pays mystère';
     const lignes = essais.map(e => {
         const pleins = Math.round(e.proximite / 20);
@@ -207,7 +290,7 @@ async function changerDeMode(mode) {
 }
 $('gg-modes').querySelectorAll('button').forEach(b =>
     b.addEventListener('click', () => changerDeMode(b.dataset.mode)));
-$('gg-autre').addEventListener('click', () => changerDeMode(MODE === 'silhouette' ? 'drapeau' : 'silhouette'));
+$('gg-autre').addEventListener('click', () => changerDeMode(modeSuivant()));
 $('gg-fin-close').addEventListener('click', () => { $('gg-fin').hidden = true; });
 $('gg-partage').addEventListener('click', async () => {
     const texte = texteDePartage();
@@ -260,6 +343,8 @@ async function charger() {
     P = data;
     restant = P.nextIn || 0;
     essais = (P.progression && P.progression.essais) || [];
+    pas = (P.progression && P.progression.pas) || [];
+    erreurs = (P.progression && P.progression.erreurs) || [];
     fini = !!(P.progression && P.progression.fini);
     trouve = !!(P.progression && P.progression.trouve);
     debutA = (P.progression && P.progression.debutA) || Date.now();
@@ -269,14 +354,21 @@ async function charger() {
     const serie = (P.serie && P.serie.encours) || 0;
     $('gg-serie').hidden = serie <= 1;
     if (serie > 1) $('gg-serie').innerHTML = `🔥 <b>${serie}</b>`;
-    $('gg-start-emoji').textContent = MODE === 'drapeau' ? '🏳️' : '🗺️';
-    $('gg-start-txt').textContent = MODE === 'drapeau'
-        ? 'Six essais pour reconnaître le drapeau. Chaque proposition te donne la distance et la direction du pays cherché.'
-        : 'Six essais pour reconnaître le pays à sa forme. Chaque proposition te donne la distance et la direction.';
+    $('gg-start-emoji').textContent = { drapeau: '🏳️', silhouette: '🗺️', voyage: '🧭' }[MODE];
+    // ⚠️ Des fonctions, pas des chaînes : un objet littéral évalue TOUTES ses
+    // valeurs, et celle du voyage lit `P.depart`, qui n'existe pas dans les
+    // deux autres modes — la page plantait en mode Pays et Drapeau.
+    $('gg-start-txt').textContent = {
+        drapeau: () => 'Six essais pour reconnaître le drapeau. Chaque proposition te donne la distance et la direction du pays cherché.',
+        silhouette: () => 'Six essais pour reconnaître le pays à sa forme. Chaque proposition te donne la distance et la direction.',
+        // Sans préposition : « au Portugal », « en France », « aux Pays-Bas »
+        // ne se calculent pas proprement, et « à Slovénie » ferait tache.
+        voyage: () => `Départ : ${P.depart.nom}. Arrivée : ${P.arrivee.nom}. Passe de pays en pays par les frontières : chaque pays proposé doit toucher celui où tu es. Le plus court passe par ${P.optimal} pays.`,
+    }[MODE]();
     document.body.className = 'is-ready';
     await chargerListe();
 
-    if (essais.length || fini) {
+    if (essais.length || pas.length || erreurs.length || fini) {
         $('gg-start').hidden = true;
         $('gg-jeu').hidden = false;
         renderIndice(); renderEssais();

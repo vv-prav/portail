@@ -399,7 +399,18 @@ const MF = require('./motsfleches/generator');
 const { planifierRenommage, appliquerPlan } = require('./comptes/renommage');
 const { calculerClassement, BAREME, bornesSaison } = require('./comptes/classement');
 const { TITRES, attribuerTitres } = require('./comptes/titres');
-const MF_LEVELS = ['moyen', 'difficile', 'expert'];
+// ⚠️ UNE seule grille par jour, et toujours difficile. Il y en avait trois
+// (moyen, difficile, expert) : trois grilles mangeaient une cinquantaine de
+// mots par jour dans un dictionnaire de 1 581, et le choix du niveau
+// divisait un classement déjà maigre en trois. Une grille, un classement,
+// et trois fois moins de mots consommés — donc trois fois moins de
+// répétitions. Les parties des anciens niveaux restent en base et comptent
+// toujours dans les statistiques : rien n'est perdu.
+//
+// `MF_LEVELS` reste une liste pour que tout le code qui la parcourt
+// (pouls, archives, admin, résumé) continue de marcher sans cas particulier.
+const MF_NIVEAU = 'difficile';
+const MF_LEVELS = [MF_NIVEAU];
 const MF_MIN_TIME = { moyen: 25, difficile: 40, expert: 60 };   // seuils anti-triche (secondes)
 
 // Le jour bascule à minuit, heure de Paris
@@ -417,7 +428,8 @@ function mfSecondsToMidnight() {
     const g = (t) => Number(parts.find(p => p.type === t).value);
     return 86400 - (g('hour') * 3600 + g('minute') * 60 + g('second'));
 }
-function mfLevel(q) { return MF_LEVELS.includes(q) ? q : 'moyen'; }
+// Le niveau demandé par un ancien client est ignoré : il n'y a plus qu'une grille.
+function mfLevel() { return MF_NIVEAU; }
 function mfFormat(sec) { return Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0'); }
 
 // --- Stockage par CLÉS SÉPARÉES ---------------------------------------
@@ -508,7 +520,11 @@ function mfPurge() {
             if (parts[1] === 'word' || parts[1] === 'variante') { date = parts[2]; limit = limitMotusWord; }
             else if (parts[1] === 'board' || parts[1] === 'cmt') { date = parts[2]; limit = limitMotusShort; }
             else if (parts[1] === 'prog') { date = parts[3]; limit = limitMotusShort; }
-        } else if (parts[0] === 'chiffres' && parts[1] === 'donne') {
+        } else if ((parts[0] === 'chiffres' && parts[1] === 'donne')
+                || (parts[0] === 'sudoku' && parts[1] === 'grille')
+                || (parts[0] === 'motlong' && parts[1] === 'tirage')) {
+            // Le contenu du jour des jeux tirés de la date : gardé aussi
+            // longtemps que les mots du Motus, pour la rotation.
             date = parts[2]; limit = limitMotusWord;
         } else if (parts[0] === 'geo' && parts[1] === 'pays') {
             date = parts[3]; limit = limitMotusWord;      // geo:pays:<mode>:<date>
@@ -1284,9 +1300,48 @@ app.get('/api/chiffres/classement', requireAuthApi, (req, res) => {
 // =====================================================================
 //  GÉOGRAPHIE — deux modes dans un seul jeu du jour
 // =====================================================================
-const GEO_MODES = ['silhouette', 'drapeau'];
+// Trois modes : le pays (silhouette), le drapeau, et le voyage (aller d'un
+// pays à un autre de frontière en frontière). `GEO_MODES` est la seule
+// liste — le pouls, le résumé, les résultats du jour et l'admin la
+// parcourent, aucun ne doit énumérer les modes à la main.
+const GEO_MODES = ['silhouette', 'drapeau', 'voyage'];
+const GEO_NOMS = {
+    silhouette: { nom: 'Le pays mystère', emoji: '🗺️' },
+    drapeau:    { nom: 'Le drapeau mystère', emoji: '🏳️' },
+    voyage:     { nom: 'Le voyage', emoji: '🧭' },
+};
 const kGeoPays = (mode, date) => `geo:pays:${mode}:${date}`;
+
+// Le voyage du jour est rangé sous la même clé que les deux autres modes
+// (`geo:pays:voyage:<date>`, valeur « PT>PL ») : la purge, la régénération
+// par l'admin et le compteur de variante le traitent donc sans cas à part.
+function geoVoyageDuJour(date) {
+    const cle = kGeoPays('voyage', date);
+    let brut = mfGet(cle);
+    if (!brut || !/^[A-Z]{2}>[A-Z]{2}$/.test(brut)) {
+        const recents = [];
+        for (let i = 1; i <= 30; i++) {
+            const c = mfGet(kGeoPays('voyage', mfShiftDay(date, -i)));
+            if (c) recents.push(...String(c).split('>'));
+        }
+        const v = geoJeu.tirerVoyage(mGeo.tirageDuJour(date, 'voyage'), recents);
+        brut = v.de + '>' + v.a;
+        mfSet(cle, brut);
+    }
+    const [de, a] = brut.split('>');
+    const chemin = geoJeu.plusCourtChemin(de, a);
+    const D = geoJeu.parCode.get(de), A = geoJeu.parCode.get(a);
+    return {
+        code: brut, de: D, a: A, chemin, optimal: chemin.length - 2,
+        nom: D.nom + ' → ' + A.nom,
+    };
+}
+// Ce qu'on montre d'un pays dans le voyage : jamais plus que son nom, son
+// drapeau et sa forme.
+const geoCarte = (p) => ({ code: p.code, nom: p.nom, drapeau: geoJeu.drapeau(p.code), chemin: p.chemin || null });
+
 function geoDuJour(mode, date) {
+    if (mode === 'voyage') return geoVoyageDuJour(date);
     const cache = mfGet(kGeoPays(mode, date));
     if (cache && geoJeu.parCode.get(cache)) return geoJeu.parCode.get(cache);
     // On évite les pays sortis récemment dans le même mode.
@@ -1319,6 +1374,19 @@ app.get('/api/geo/today', requireAuthApi, (req, res) => {
     const cible = geoDuJour(mode, date);
     const prog = mfGet(kGeoProg(user, mode, date));
     const fini = !!(prog && prog.fini);
+    if (mode === 'voyage') {
+        return res.json({
+            date, today, mode, archive: date !== today, nextIn: mfSecondsToMidnight(),
+            depart: geoCarte(cible.de), arrivee: geoCarte(cible.a),
+            // Le nombre de pays du plus court chemin est annoncé d'avance :
+            // c'est l'objectif, et le barème se lit par rapport à lui.
+            optimal: cible.optimal,
+            maxErreurs: geoJeu.VOYAGE.MAX_ERREURS, marge: geoJeu.VOYAGE.MARGE,
+            progression: prog || null,
+            reponse: fini ? { chemin: cible.chemin.map(c => geoCarte(geoJeu.parCode.get(c))) } : undefined,
+            serie: mGeo.serie(user),
+        });
+    }
     res.json({
         date, today, mode, archive: date !== today, nextIn: mfSecondsToMidnight(),
         maxEssais: geoJeu.MAX_ESSAIS,
@@ -1352,6 +1420,7 @@ app.post('/api/geo/proposer', requireAuthApi, (req, res) => {
     if (date > today) return res.status(400).json({ error: 'Journée à venir.' });
     const cible = geoDuJour(mode, date);
     const cle = kGeoProg(user, mode, date);
+    if (mode === 'voyage') return geoProposerVoyage(req, res, { user, date, today, cible, cle, saisie: b.pays });
     const prog = mfGet(cle) || { debutA: Date.now(), essais: [], fini: false, trouve: false };
     if (prog.fini) return res.status(400).json({ error: 'Partie déjà terminée.' });
     if (prog.essais.length >= geoJeu.MAX_ESSAIS) return res.status(400).json({ error: 'Plus d’essai disponible.' });
@@ -1383,10 +1452,329 @@ app.post('/api/geo/proposer', requireAuthApi, (req, res) => {
     });
 });
 
+// ---------- Un pas dans le voyage ----------
+// On part du dernier pays atteint (ou du départ). Le pays proposé doit le
+// toucher : sinon c'est une erreur, et à la troisième le voyage s'arrête.
+// Poser le pied dans un voisin de l'arrivée termine le voyage.
+//
+// ⚠️ Revenir sur ses pas est permis : on peut toujours rebrousser chemin,
+// et c'est ce qui garantit qu'aucun voyage n'est une impasse. Chaque pas
+// compte, y compris ceux qui reviennent en arrière — c'est le détour qui
+// coûte, pas l'erreur de direction.
+function geoProposerVoyage(req, res, { user, date, today, cible, cle, saisie }) {
+    const V = geoJeu.VOYAGE;
+    const prog = mfGet(cle) || { debutA: Date.now(), fini: false, trouve: false };
+    prog.pas = prog.pas || [];
+    prog.erreurs = prog.erreurs || [];
+    if (prog.fini) return res.status(400).json({ error: 'Voyage déjà terminé.' });
+
+    const propose = geoJeu.trouverPays(saisie);
+    // Une faute de frappe ne coûte rien : on refuse sans compter.
+    if (!propose) return res.status(400).json({ error: 'Pays inconnu.' });
+    const ici = prog.pas.length ? prog.pas[prog.pas.length - 1].code : cible.de.code;
+    if (propose.code === ici) return res.status(400).json({ error: 'Tu y es déjà.' });
+
+    let erreur = null, etape = null;
+    // Proposer l'arrivée elle-même n'est permis que depuis un voisin — ce qui
+    // n'arrive jamais, puisque le voyage se termine en y entrant. C'est donc
+    // toujours une erreur, et on le dit clairement.
+    if (!geoJeu.sontVoisins(ici, propose.code)) {
+        erreur = { code: propose.code, nom: propose.nom, drapeau: geoJeu.drapeau(propose.code), depuis: geoJeu.parCode.get(ici).nom };
+        prog.erreurs.push(erreur);
+    } else {
+        const e = geoJeu.evaluer(propose.code, cible.a.code);
+        etape = { code: propose.code, nom: propose.nom, drapeau: e.drapeau, km: e.km, direction: e.direction };
+        prog.pas.push(etape);
+    }
+
+    const arrive = !!(etape && geoJeu.sontVoisins(etape.code, cible.a.code));
+    const perdu = !arrive && (prog.erreurs.length >= V.MAX_ERREURS || prog.pas.length >= cible.optimal + V.MARGE);
+    if (arrive || perdu) {
+        prog.fini = true;
+        prog.trouve = arrive;
+        prog.parfait = arrive && prog.pas.length === cible.optimal && !prog.erreurs.length;
+        prog.optimal = cible.optimal;
+        if (date === today) {
+            prog.ms = Math.min(3 * 3600 * 1000, Math.max(0, Date.now() - (prog.debutA || Date.now())));
+            prog.score = geoJeu.scoreVoyage(prog.pas.length, cible.optimal, prog.erreurs.length, arrive);
+            mGeo.noterJourJoue(user, date);
+            mGeo.inscrireAuClassement(user, `${date}:voyage`, prog.score, prog.ms, {
+                essais: prog.pas.length, trouve: arrive, optimal: cible.optimal, erreurs: prog.erreurs.length,
+            });
+        }
+    }
+    mfSet(cle, prog);
+    res.json({
+        ok: true, etape, erreur, pas: prog.pas, erreurs: prog.erreurs,
+        fini: !!prog.fini, trouve: !!prog.trouve, parfait: !!prog.parfait,
+        reponse: prog.fini ? { chemin: cible.chemin.map(c => geoCarte(geoJeu.parCode.get(c))) } : undefined,
+        score: prog.score, ms: prog.ms,
+        place: prog.fini && date === today ? mGeo.placeDe(user, `${date}:voyage`) : null,
+        classement: prog.fini ? mGeo.classement(`${date}:voyage`).slice(0, 15) : undefined,
+        serie: mGeo.serie(user),
+    });
+}
+
 app.get('/api/geo/classement', requireAuthApi, (req, res) => {
     const mode = GEO_MODES.includes(req.query.mode) ? req.query.mode : 'silhouette';
     const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mfTodayId();
     res.json({ classement: mGeo.classement(`${date}:${mode}`).slice(0, 30) });
+});
+
+// =====================================================================
+//  LE SUDOKU DU JOUR  (/sudoku)
+//
+//  Même moteur que Le compte est bon et la Géographie. La grille est
+//  tirée de la date (voir `sudoku/jeu.js` : solution unique, résoluble
+//  sans deviner), et la solution ne quitte le serveur qu'une fois la
+//  grille terminée.
+// =====================================================================
+const sudokuJeu = require('./sudoku/jeu');
+const mSudoku = creerMoteur('sudoku', deuxMoteurs);
+const kSudokuGrille = (date) => `sudoku:grille:${date}`;
+function sudokuDuJour(date) {
+    const cache = mfGet(kSudokuGrille(date));
+    if (cache && cache.donnee) return cache;
+    const g = sudokuJeu.tirage(mSudoku.tirageDuJour(date));
+    mfSet(kSudokuGrille(date), g);
+    return g;
+}
+const dateDemandee = (brut, today) => {
+    let date = /^\d{4}-\d{2}-\d{2}$/.test(brut || '') ? brut : today;
+    if (date > today) date = today;
+    // Pas plus loin que les archives : sans plancher, chaque date inventée
+    // fabriquerait ET stockerait une grille.
+    const plancher = mfShiftDay(today, -ARCHIVE_JOURS);
+    return date < plancher ? plancher : date;
+};
+
+app.use('/sudoku', requireAuth, express.static(__dirname + '/public/sudoku'));
+
+app.get('/api/sudoku/today', requireAuthApi, (req, res) => {
+    const user = currentUser(req), today = mfTodayId();
+    const date = dateDemandee(req.query.date, today);
+    const g = sudokuDuJour(date);
+    const prog = mSudoku.progression(user, date);
+    const fini = !!(prog && prog.fini);
+    res.json({
+        date, today, archive: date !== today, nextIn: mfSecondsToMidnight(),
+        donnee: g.donnee, indices: g.indices,
+        progression: prog,
+        solution: fini ? g.solution : undefined,
+        serie: mSudoku.serie(user),
+    });
+});
+
+app.post('/api/sudoku/start', requireAuthApi, (req, res) => {
+    const user = currentUser(req), today = mfTodayId();
+    const date = dateDemandee((req.body || {}).date, today);
+    const prog = mSudoku.demarrer(user, date);
+    res.json({ ok: true, debutA: date === today ? prog.debutA : null });
+});
+
+// Sauvegarde en cours de partie : reprendre sur un autre téléphone, ou après
+// avoir fermé l'onglet, sans rien perdre. Les notes au crayon restent dans
+// le navigateur — elles ne comptent pour rien.
+app.post('/api/sudoku/sauver', requireAuthApi, (req, res) => {
+    const user = currentUser(req), today = mfTodayId();
+    const b = req.body || {};
+    const date = dateDemandee(b.date, today);
+    const g = sudokuDuJour(date);
+    const prog = mSudoku.progression(user, date) || mSudoku.demarrer(user, date);
+    if (prog.fini) return res.json({ ok: true });
+    prog.cases = sudokuJeu.nettoyer(b.cases, g.donnee);
+    mSudoku.enregistrer(user, date, prog);
+    res.json({ ok: true });
+});
+
+// ⚠️ Pas d'oracle : le serveur dit « juste » ou « pas encore », jamais
+// quelles cases sont fausses. Le navigateur signale déjà les conflits
+// visibles (deux chiffres identiques dans une ligne), ce qui ne révèle rien
+// qu'on ne voie à l'œil. Une grille pleine sans conflit est forcément la
+// solution, puisqu'elle est unique.
+app.post('/api/sudoku/valider', requireAuthApi, (req, res) => {
+    const user = currentUser(req), today = mfTodayId();
+    const b = req.body || {};
+    const date = dateDemandee(b.date, today);
+    const g = sudokuDuJour(date);
+    const prog = mSudoku.progression(user, date) || mSudoku.demarrer(user, date);
+    if (prog.fini) return res.status(400).json({ error: 'Grille déjà terminée.' });
+    const cases = sudokuJeu.nettoyer(b.cases, g.donnee);
+    prog.cases = cases;
+    if (!sudokuJeu.estJuste(cases, g.solution)) {
+        mSudoku.enregistrer(user, date, prog);
+        return res.json({ ok: true, juste: false });
+    }
+    const ms = date === today ? mSudoku.tempsEcoule(prog) : null;
+    prog.fini = true; prog.trouve = true; prog.ms = ms;
+    prog.score = sudokuJeu.SCORE_RESOLU;
+    mSudoku.enregistrer(user, date, prog);
+    if (date === today) {
+        mSudoku.noterJourJoue(user, date);
+        mSudoku.inscrireAuClassement(user, date, prog.score, ms, {
+            trouve: true,
+            // Un temps anormalement court reste inscrit mais marqué, comme aux
+            // Mots Fléchés : l'administration tranche.
+            susp: ms != null && ms < sudokuJeu.TEMPS_MINI_MS,
+        });
+    }
+    res.json({
+        ok: true, juste: true, ms, score: prog.score, solution: g.solution,
+        place: date === today ? mSudoku.placeDe(user, date) : null,
+        classement: mSudoku.classement(date).slice(0, 15),
+        serie: mSudoku.serie(user),
+    });
+});
+
+// Abandonner montre la solution. La journée compte comme jouée — on a passé
+// du temps sur la grille — mais ne rapporte rien.
+app.post('/api/sudoku/abandon', requireAuthApi, (req, res) => {
+    const user = currentUser(req), today = mfTodayId();
+    const date = dateDemandee((req.body || {}).date, today);
+    const g = sudokuDuJour(date);
+    const prog = mSudoku.progression(user, date) || mSudoku.demarrer(user, date);
+    if (!prog.fini) {
+        prog.fini = true; prog.trouve = false; prog.abandon = true; prog.score = 0;
+        prog.ms = date === today ? mSudoku.tempsEcoule(prog) : null;
+        mSudoku.enregistrer(user, date, prog);
+        if (date === today) {
+            mSudoku.noterJourJoue(user, date);
+            mSudoku.inscrireAuClassement(user, date, 0, prog.ms, { trouve: false });
+        }
+    }
+    res.json({
+        ok: true, solution: g.solution,
+        classement: mSudoku.classement(date).slice(0, 15),
+        place: date === today ? mSudoku.placeDe(user, date) : null,
+    });
+});
+
+app.get('/api/sudoku/classement', requireAuthApi, (req, res) => {
+    const date = dateDemandee(req.query.date, mfTodayId());
+    res.json({ classement: mSudoku.classement(date).slice(0, 30) });
+});
+
+// =====================================================================
+//  LE MOT LE PLUS LONG  (/motlong)
+//
+//  Neuf lettres tirées de la date, six propositions, le score est la
+//  longueur du plus long mot valable. Le dictionnaire (`motlong/mots.js`,
+//  70 000 formes tirées de Lexique383) ne quitte jamais le serveur : le
+//  navigateur ne reçoit que les neuf lettres, et les meilleurs mots une
+//  fois la manche terminée.
+// =====================================================================
+const motlongJeu = require('./motlong/jeu');
+const mMotlong = creerMoteur('motlong', deuxMoteurs);
+const kMotlongTirage = (date) => `motlong:tirage:${date}`;
+function motlongDuJour(date) {
+    const cache = mfGet(kMotlongTirage(date));
+    if (cache && cache.lettres) return cache;
+    // Pas le même mot deux fois en deux mois.
+    const recents = [];
+    for (let i = 1; i <= 60; i++) {
+        const t = mfGet(kMotlongTirage(mfShiftDay(date, -i)));
+        if (t && t.source) recents.push(t.source);
+    }
+    const t = motlongJeu.tirage(mMotlong.tirageDuJour(date), recents);
+    mfSet(kMotlongTirage(date), t);
+    return t;
+}
+// Ce qu'on peut dire d'une manche au navigateur : le tirage, ses mots, et
+// les réponses seulement quand elle est terminée.
+function motlongVue(t, prog) {
+    const fini = !!(prog && prog.fini);
+    return {
+        lettres: t.lettres, max: t.max,
+        nbPropositions: motlongJeu.NB_PROPOSITIONS,
+        meilleurs: fini ? t.meilleurs : undefined,
+    };
+}
+
+app.use('/motlong', requireAuth, express.static(__dirname + '/public/motlong'));
+
+app.get('/api/motlong/today', requireAuthApi, (req, res) => {
+    const user = currentUser(req), today = mfTodayId();
+    const date = dateDemandee(req.query.date, today);
+    const t = motlongDuJour(date);
+    const prog = mMotlong.progression(user, date);
+    res.json({
+        date, today, archive: date !== today, nextIn: mfSecondsToMidnight(),
+        ...motlongVue(t, prog),
+        progression: prog,
+        serie: mMotlong.serie(user),
+    });
+});
+
+app.post('/api/motlong/start', requireAuthApi, (req, res) => {
+    const user = currentUser(req), today = mfTodayId();
+    const date = dateDemandee((req.body || {}).date, today);
+    const prog = mMotlong.demarrer(user, date);
+    res.json({ ok: true, debutA: date === today ? prog.debutA : null });
+});
+
+// Terminer la manche : quand les six propositions sont faites, quand le plus
+// long mot possible est trouvé, ou quand le joueur s'arrête de lui-même.
+function motlongTerminer(user, date, today, prog) {
+    prog.fini = true;
+    prog.meilleur = Math.max(0, ...(prog.mots || []).map(m => m.length));
+    prog.score = prog.meilleur;
+    prog.trouve = prog.meilleur > 0 && prog.meilleur >= motlongDuJour(date).max;
+    prog.ms = date === today ? mMotlong.tempsEcoule(prog) : null;
+    if (date === today) {
+        mMotlong.noterJourJoue(user, date);
+        const mot = (prog.mots || []).find(m => m.length === prog.meilleur) || '';
+        mMotlong.inscrireAuClassement(user, date, prog.score, prog.ms, { trouve: prog.trouve, mot });
+    }
+}
+function motlongReponse(user, date, today, prog, extra) {
+    const t = motlongDuJour(date);
+    return Object.assign({
+        ok: true,
+        mots: prog.mots || [], restantes: motlongJeu.NB_PROPOSITIONS - (prog.propositions || 0),
+        fini: !!prog.fini, trouve: !!prog.trouve, meilleur: prog.meilleur || 0, score: prog.score, ms: prog.ms,
+        meilleurs: prog.fini ? t.meilleurs : undefined,
+        place: prog.fini && date === today ? mMotlong.placeDe(user, date) : null,
+        classement: prog.fini ? mMotlong.classement(date).slice(0, 15) : undefined,
+        serie: mMotlong.serie(user),
+    }, extra || {});
+}
+
+app.post('/api/motlong/proposer', requireAuthApi, (req, res) => {
+    const user = currentUser(req), today = mfTodayId();
+    const b = req.body || {};
+    const date = dateDemandee(b.date, today);
+    const t = motlongDuJour(date);
+    const prog = mMotlong.progression(user, date) || mMotlong.demarrer(user, date);
+    if (prog.fini) return res.status(400).json({ error: 'Manche déjà terminée.' });
+    prog.mots = prog.mots || []; prog.refuses = prog.refuses || []; prog.propositions = prog.propositions || 0;
+
+    const v = motlongJeu.verifier(b.mot, t.lettres);
+    // Un mot déjà trouvé ne coûte rien : ce n'est pas une nouvelle tentative.
+    if (v.ok && prog.mots.includes(v.mot)) return res.status(400).json({ error: 'Déjà trouvé.' });
+    if (!v.cout) return res.status(400).json({ error: v.raison });
+    prog.propositions++;
+    if (v.ok) prog.mots.push(v.mot); else prog.refuses.push(v.mot);
+    const auMax = v.ok && v.mot.length >= t.max;
+    if (auMax || prog.propositions >= motlongJeu.NB_PROPOSITIONS) motlongTerminer(user, date, today, prog);
+    mMotlong.enregistrer(user, date, prog);
+    res.json(motlongReponse(user, date, today, prog, { accepte: v.ok, mot: v.mot, raison: v.ok ? null : v.raison }));
+});
+
+app.post('/api/motlong/terminer', requireAuthApi, (req, res) => {
+    const user = currentUser(req), today = mfTodayId();
+    const date = dateDemandee((req.body || {}).date, today);
+    const prog = mMotlong.progression(user, date) || mMotlong.demarrer(user, date);
+    if (!prog.fini) {
+        prog.mots = prog.mots || [];
+        motlongTerminer(user, date, today, prog);
+        mMotlong.enregistrer(user, date, prog);
+    }
+    res.json(motlongReponse(user, date, today, prog));
+});
+
+app.get('/api/motlong/classement', requireAuthApi, (req, res) => {
+    const date = dateDemandee(req.query.date, mfTodayId());
+    res.json({ classement: mMotlong.classement(date).slice(0, 30) });
 });
 
 // ---------------------------------------------------------------------
@@ -1839,10 +2227,12 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
     let pbacOnline = 0;
     try { pbacOnline = pbacApi.online().length; } catch (e) {}
 
-    // Les deux nouveaux jeux du jour. La Géographie compte deux modes, donc
-    // elle se lit comme les Mots Fléchés : une fraction, pas un oui/non.
+    // Les jeux du jour récents. La Géographie compte trois modes, donc elle
+    // se lit comme une fraction, pas un oui/non.
     const chProg = mfGet(`chiffres:prog:${user}:${today}`);
-    const geoFaits = ['silhouette', 'drapeau'].filter(m => {
+    const sdProg = mSudoku.progression(user, today);
+    const mlProg = mMotlong.progression(user, today);
+    const geoFaits = GEO_MODES.filter(m => {
         const g = mfGet(`geo:prog:${user}:${today}:${m}`);
         return !!(g && g.fini);
     }).length;
@@ -1916,9 +2306,23 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
             streak: mChiffres.serie(user).encours,
         },
         geo: {
-            done: geoFaits, total: 2,
-            solvers: mGeo.classement(`${today}:silhouette`).length + mGeo.classement(`${today}:drapeau`).length,
+            done: geoFaits, total: GEO_MODES.length,
+            solvers: GEO_MODES.reduce((n, m) => n + mGeo.classement(`${today}:${m}`).length, 0),
             streak: mGeo.serie(user).encours,
+        },
+        // `done` = réussi, `over` = terminé quelle qu'en soit l'issue : la même
+        // lecture que Motus et Le compte est bon.
+        sudoku: {
+            done: !!(sdProg && sdProg.fini && sdProg.trouve),
+            over: !!(sdProg && sdProg.fini),
+            solvers: mSudoku.classement(today).filter(e => e.trouve !== false).length,
+            streak: mSudoku.serie(user).encours,
+        },
+        motlong: {
+            done: !!(mlProg && mlProg.fini && mlProg.trouve),
+            over: !!(mlProg && mlProg.fini),
+            solvers: mMotlong.classement(today).length,
+            streak: mMotlong.serie(user).encours,
         },
         pbac: { online: pbacOnline, names: pbacNames },
         undercover: { online: undercoverOnlineCount, names: undercoverNames },
@@ -2020,26 +2424,78 @@ function portraitJoueur(pseudo) {
             ]);
     }
 
-    const geo = { parties: 0, trouves: 0, totalEssais: 0, parMode: { silhouette: 0, drapeau: 0 }, meilleurTemps: null };
+    // ⚠️ Le voyage ne se compte pas en « essais » : ses pas n'ont rien à voir
+    // avec les six propositions des deux autres modes. Le mélanger à la
+    // moyenne d'essais la rendrait fausse, il a donc ses propres lignes.
+    const geo = { parties: 0, trouves: 0, totalEssais: 0, trouvesPays: 0, parMode: { silhouette: 0, drapeau: 0, voyage: 0 },
+        voyagesArrives: 0, voyagesParfaits: 0, meilleurTemps: null };
     for (const [k, v] of Object.entries(mfCache)) {
         if (!k.startsWith(`geo:prog:${pseudo}:`) || !v || !v.fini) continue;
         geo.parties++;
-        if (v.trouve) { geo.trouves++; geo.totalEssais += (v.essais || []).length; }
         const mode = k.split(':').pop();
         if (geo.parMode[mode] !== undefined) geo.parMode[mode]++;
-        if (v.trouve && v.ms != null && (geo.meilleurTemps === null || v.ms < geo.meilleurTemps)) geo.meilleurTemps = v.ms;
+        if (v.trouve) geo.trouves++;
+        if (mode === 'voyage') {
+            if (v.trouve) geo.voyagesArrives++;
+            if (v.parfait) geo.voyagesParfaits++;
+        } else if (v.trouve) {
+            geo.trouvesPays++; geo.totalEssais += (v.essais || []).length;
+            if (v.ms != null && (geo.meilleurTemps === null || v.ms < geo.meilleurTemps)) geo.meilleurTemps = v.ms;
+        }
     }
     if (geo.parties) {
         ajoute('geo', 'Géographie', '🌍', geo.parties,
-            geo.trouves + ' pays trouvés', [
+            geo.trouves + ' manches réussies', [
                 ['Manches jouées', geo.parties],
                 ['Série en cours', mGeo.serie(pseudo).encours || null],
-                ['Trouvés', geo.trouves],
                 ['Réussite', Math.round((geo.trouves / geo.parties) * 100) + ' %'],
-                ['Essais en moyenne', geo.trouves ? (geo.totalEssais / geo.trouves).toFixed(1) : null],
+                ['Essais en moyenne', geo.trouvesPays ? (geo.totalEssais / geo.trouvesPays).toFixed(1) : null],
                 ['Silhouettes', geo.parMode.silhouette || null],
                 ['Drapeaux', geo.parMode.drapeau || null],
+                ['Voyages', geo.parMode.voyage ? `${geo.voyagesArrives} arrivés sur ${geo.parMode.voyage}` : null],
+                ['Voyages parfaits', geo.voyagesParfaits || null],
                 ['Meilleur temps', geo.meilleurTemps != null ? Math.round(geo.meilleurTemps / 1000) + ' s' : null],
+            ]);
+    }
+
+    const sd = { parties: 0, resolues: 0, meilleurTemps: null, totalTemps: 0, avecTemps: 0 };
+    for (const [k, v] of Object.entries(mfCache)) {
+        if (!k.startsWith(`sudoku:prog:${pseudo}:`) || !v || !v.fini) continue;
+        sd.parties++;
+        if (!v.trouve) continue;
+        sd.resolues++;
+        if (v.ms != null) {
+            sd.totalTemps += v.ms; sd.avecTemps++;
+            if (sd.meilleurTemps === null || v.ms < sd.meilleurTemps) sd.meilleurTemps = v.ms;
+        }
+    }
+    if (sd.parties) {
+        ajoute('sudoku', 'Sudoku', '🔲', sd.parties,
+            sd.resolues + ' grille' + (sd.resolues > 1 ? 's' : '') + ' résolue' + (sd.resolues > 1 ? 's' : ''), [
+                ['Grilles jouées', sd.parties],
+                ['Série en cours', mSudoku.serie(pseudo).encours || null],
+                ['Résolues', sd.resolues],
+                ['Meilleur temps', mmss(sd.meilleurTemps != null ? Math.round(sd.meilleurTemps / 1000) : null)],
+                ['Temps moyen', mmss(sd.avecTemps ? Math.round(sd.totalTemps / sd.avecTemps / 1000) : null)],
+            ]);
+    }
+
+    const ml = { parties: 0, trouves: 0, totalLongueur: 0, record: 0 };
+    for (const [k, v] of Object.entries(mfCache)) {
+        if (!k.startsWith(`motlong:prog:${pseudo}:`) || !v || !v.fini) continue;
+        ml.parties++;
+        if (v.trouve) ml.trouves++;
+        ml.totalLongueur += v.meilleur || 0;
+        if ((v.meilleur || 0) > ml.record) ml.record = v.meilleur;
+    }
+    if (ml.parties) {
+        ajoute('motlong', 'Le mot le plus long', '🔤', ml.parties,
+            ml.trouves ? ml.trouves + ' fois le plus long possible' : 'record : ' + ml.record + ' lettres', [
+                ['Tirages joués', ml.parties],
+                ['Série en cours', mMotlong.serie(pseudo).encours || null],
+                ['Le plus long possible', ml.trouves ? `${ml.trouves} fois` : null],
+                ['Longueur moyenne', (ml.totalLongueur / ml.parties).toFixed(1) + ' lettres'],
+                ['Record', ml.record ? ml.record + ' lettres' : null],
             ]);
     }
 
@@ -2155,10 +2611,7 @@ function placeAuClassement(pseudo) {
     const pseudos = Object.keys(registeredUsers);
     const series = {};
     for (const p of pseudos) {
-        series[p] = Math.max(
-            serieDepuisJours(mfGet(kMotusDays(p))),
-            serieDepuisJours(mfGet(`mf:days:${p}`)),
-        );
+        series[p] = serieDuSalon(p);
     }
     const lignes = calculerClassement(mfCache, pseudos, series);
     const i = lignes.findIndex(l => l.pseudo === pseudo);
@@ -2169,10 +2622,9 @@ function placeAuClassement(pseudo) {
 // Les données existent déjà telles quelles dans les clés *:days:* — il n'y a
 // rien à calculer, seulement à les rapprocher.
 function calendrierActivite(pseudo, nbJours) {
-    const sources = [
-        ['motus', mfGet(kMotusDays(pseudo)) || []],
-        ['mf', mfGet(`mf:days:${pseudo}`) || []],
-    ];
+    // Tous les jeux du jour, pas seulement les deux premiers : une journée
+    // passée au Sudoku doit se voir dans le calendrier comme une autre.
+    const sources = PREFIXES_DU_JOUR.map(app => [app, mfGet(`${app}:days:${pseudo}`) || []]);
     const parJour = new Map();
     for (const [jeu, jours] of sources) {
         for (const d of jours) {
@@ -2186,6 +2638,17 @@ function calendrierActivite(pseudo, nbJours) {
         out.push({ d, jeux: parJour.get(d) || [] });
     }
     return out;
+}
+
+// La meilleure série en cours d'un joueur, tous jeux du jour confondus.
+// ⚠️ Elle était calculée à trois endroits (place au classement, titres,
+// classement du Salon) sur le seul Motus et les Mots Fléchés : jouer tous les
+// jours au Compte est bon ou à la Géographie n'entretenait aucune série.
+// `PREFIXES_DU_JOUR` est désormais la seule liste — un jeu du jour ajouté
+// demain y prend une ligne, et les trois calculs le voient.
+const PREFIXES_DU_JOUR = ['motus', 'mf', 'chiffres', 'geo', 'sudoku', 'motlong'];
+function serieDuSalon(pseudo) {
+    return Math.max(0, ...PREFIXES_DU_JOUR.map(app => serieDepuisJours(mfGet(`${app}:days:${pseudo}`))));
 }
 
 // Série en cours d'un joueur pour un jeu du jour, à partir de sa liste de jours joués.
@@ -2526,8 +2989,8 @@ app.get('/api/salon/resultats-du-jour', requireAuthApi, (req, res) => {
             : [],
     });
 
-    // Mots Fléchés : une grille par niveau, on prend celle que le joueur a faite.
-    const niveau = mfLevel(req.query.level);
+    // Mots Fléchés : une seule grille par jour.
+    const niveau = MF_NIVEAU;
     const progMf = mfGet(`mf:prog:${user}:${date}:${niveau}`);
     const mfFini = !!(progMf && (progMf.solved || progMf.gaveUp));
     jeux.push({
@@ -2551,22 +3014,44 @@ app.get('/api/salon/resultats-du-jour', requireAuthApi, (req, res) => {
             : [],
     });
 
-    // La Géographie a deux modes : chacun son classement, réunis sous une
-    // seule entrée pour ne pas alourdir le panneau.
-    for (const mode of ['silhouette', 'drapeau']) {
+    // La Géographie a trois modes : chacun son classement.
+    for (const mode of GEO_MODES) {
         const gProg = mfGet(`geo:prog:${user}:${date}:${mode}`);
         const gFini = !!(gProg && gProg.fini);
         const cible = gFini ? geoDuJour(mode, date) : null;
+        const detail = mode === 'voyage'
+            ? (e) => (!e.trouve ? 'perdu' : (e.essais === e.optimal && !e.erreurs ? 'parfait' : e.essais + ' pas'))
+            : (e) => (e.trouve ? e.essais + '/6' : 'raté');
         jeux.push({
-            id: 'geo-' + mode, nom: mode === 'drapeau' ? 'Le drapeau mystère' : 'Le pays mystère',
-            emoji: mode === 'drapeau' ? '🏳️' : '🗺️', accent: '#6f7bb0', href: '/geo',
+            id: 'geo-' + mode, nom: GEO_NOMS[mode].nom, emoji: GEO_NOMS[mode].emoji, accent: '#6f7bb0', href: '/geo',
             joue: gFini,
             mot: cible ? cible.nom : null,
             classement: gFini
-                ? mGeo.classement(`${date}:${mode}`).map(e => ({ pseudo: e.u, detail: e.trouve ? e.essais + '/6' : 'raté' }))
+                ? mGeo.classement(`${date}:${mode}`).map(e => ({ pseudo: e.u, detail: detail(e) }))
                 : [],
         });
     }
+
+    const sdProg = mSudoku.progression(user, date);
+    const sdFini = !!(sdProg && sdProg.fini);
+    jeux.push({
+        id: 'sudoku', nom: 'Sudoku', emoji: '🔲', accent: '#8a7bc4', href: '/sudoku',
+        joue: sdFini, mot: null,
+        classement: sdFini
+            ? mSudoku.classement(date).map(e => ({ pseudo: e.u, detail: e.trouve === false ? 'abandon' : mfFormat(Math.round((e.ms || 0) / 1000)) }))
+            : [],
+    });
+
+    const mlProg = mMotlong.progression(user, date);
+    const mlFini = !!(mlProg && mlProg.fini);
+    jeux.push({
+        id: 'motlong', nom: 'Le mot le plus long', emoji: '🔤', accent: '#4f9a8f', href: '/motlong',
+        joue: mlFini,
+        mot: mlFini ? (motlongDuJour(date).meilleurs || [])[0] || null : null,
+        classement: mlFini
+            ? mMotlong.classement(date).map(e => ({ pseudo: e.u, detail: e.score + ' lettres' }))
+            : [],
+    });
 
     for (const j of jeux) {
         j.maPlace = j.classement.findIndex(e => e.pseudo === user) + 1 || null;
@@ -2592,10 +3077,7 @@ function tousLesTitres(forcer) {
     const pseudos = Object.keys(registeredUsers);
     const series = {};
     for (const p of pseudos) {
-        series[p] = Math.max(
-            serieDepuisJours(mfGet(kMotusDays(p))),
-            serieDepuisJours(mfGet(`mf:days:${p}`)),
-        );
+        series[p] = serieDuSalon(p);
     }
     const points = {};
     for (const l of calculerClassement(mfCache, pseudos, series)) points[l.pseudo] = l.points;
@@ -2644,10 +3126,7 @@ app.get('/api/salon/classement', requireAuthApi, (req, res) => {
     const pseudos = Object.keys(registeredUsers);
     const series = {};
     for (const p of pseudos) {
-        series[p] = Math.max(
-            serieDepuisJours(mfGet(kMotusDays(p))),
-            serieDepuisJours(mfGet(`mf:days:${p}`)),
-        );
+        series[p] = serieDuSalon(p);
     }
     // Par défaut la saison en cours : un classement cumulatif depuis toujours
     // finit par se figer, et on ne rattrape plus le premier. « Depuis toujours »
@@ -2787,7 +3266,9 @@ app.get('/api/salon/mystats-summary', requireAuthApi, (req, res) => {
         for (const lv of MF_LEVELS) { if (mfGet(`mf:prog:${pseudo}:${d}:${lv}`)) weekCount++; }
         // Les deux jeux du jour récents comptent aussi dans la semaine.
         if (mfGet(`chiffres:prog:${pseudo}:${d}`)) weekCount++;
-        for (const mode of ['silhouette', 'drapeau']) { if (mfGet(`geo:prog:${pseudo}:${d}:${mode}`)) weekCount++; }
+        for (const mode of GEO_MODES) { if (mfGet(`geo:prog:${pseudo}:${d}:${mode}`)) weekCount++; }
+        if (mfGet(`sudoku:prog:${pseudo}:${d}`)) weekCount++;
+        if (mfGet(`motlong:prog:${pseudo}:${d}`)) weekCount++;
     }
     // "Jeu le plus joué" compare les totaux cumulés de chaque jeu entre eux.
     const totals = [];
@@ -2810,6 +3291,10 @@ app.get('/api/salon/mystats-summary', requireAuthApi, (req, res) => {
     if (chJours) totals.push(['Le compte est bon', chJours]);
     const geoJours = Object.keys(mfCache).filter(k => k.startsWith(`geo:prog:${pseudo}:`) && mfCache[k] && mfCache[k].fini).length;
     if (geoJours) totals.push(['Géographie', geoJours]);
+    const sdJours = Object.keys(mfCache).filter(k => k.startsWith(`sudoku:prog:${pseudo}:`) && mfCache[k] && mfCache[k].fini).length;
+    if (sdJours) totals.push(['Sudoku', sdJours]);
+    const mlJours = Object.keys(mfCache).filter(k => k.startsWith(`motlong:prog:${pseudo}:`) && mfCache[k] && mfCache[k].fini).length;
+    if (mlJours) totals.push(['Le mot le plus long', mlJours]);
     totals.sort((a, b) => b[1] - a[1]);
     res.json({ weekCount, favoriteGame: totals.length ? totals[0][0] : null });
 });
@@ -2977,7 +3462,10 @@ require('./admin/routes')(app, {
     geo: {
         moteur: mGeo, duJour: geoDuJour, kPays: kGeoPays,
         drapeau: geoJeu.drapeau, modes: GEO_MODES, maxEssais: geoJeu.MAX_ESSAIS,
+        pays: (code) => geoJeu.parCode.get(code),
     },
+    sudoku: { moteur: mSudoku, duJour: sudokuDuJour, kGrille: kSudokuGrille },
+    motlong: { moteur: mMotlong, duJour: motlongDuJour, kTirage: kMotlongTirage },
     motusparty: () => motusPartyApi,
 });
 
