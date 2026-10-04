@@ -2169,11 +2169,17 @@ function departsClassement() {
 // Le classement complet sur une période. Tout passe par ici : la page
 // d'accueil, la place affichée au profil et les points qui nourrissent les
 // titres. Trois calculs séparés finissaient par ne plus dire la même chose.
-function classementDuSalon(periode) {
+// `ignorerLesRemises` recalcule comme si aucune remise à zéro n'avait eu lieu.
+// ⚠️ C'est ce dont les TITRES ont besoin. Ils se nourrissent des points, et
+// deux d'entre eux en dépendent directement (« Centurion », cent points, et
+// « Maître du Salon ») : sans cette option, remettre « depuis le début » à
+// zéro retirerait son badge à tout le monde du jour au lendemain. Une remise à
+// zéro remet le CLASSEMENT à plat, elle n'efface pas ce que les gens ont fait.
+function classementDuSalon(periode, o) {
     return calculerClassement(mfCache, Object.keys(registeredUsers), {
         periode: PERIODES[periode] ? periode : PERIODE_DEFAUT,
         aujourdhui: mfTodayId(),
-        departs: departsClassement(),
+        departs: (o && o.ignorerLesRemises) ? {} : departsClassement(),
     });
 }
 
@@ -2669,9 +2675,11 @@ function tousLesTitres(forcer) {
     }
     // Les titres se jugent sur toute la vie du salon, pas sur la période
     // affichée en ce moment : un titre qui changerait de mains parce qu'on a
-    // cliqué sur « aujourd'hui » ne voudrait rien dire.
+    // cliqué sur « aujourd'hui » ne voudrait rien dire. Et les remises à zéro
+    // sont ignorées — voir `classementDuSalon` : on ne retire pas un badge
+    // gagné parce qu'une nouvelle saison commence.
     const points = {};
-    for (const l of classementDuSalon('toujours')) points[l.pseudo] = l.points;
+    for (const l of classementDuSalon('toujours', { ignorerLesRemises: true })) points[l.pseudo] = l.points;
     // Perudo range désormais ses statistiques dans le cache commun, comme les
     // autres jeux : `attribuerTitres` les y trouve tout seul, sans qu'on ait à
     // lui passer une source à part.

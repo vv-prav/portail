@@ -557,6 +557,8 @@ Deux règles qui évitent les fausses victoires : **un jeu ne compte qu'une fois
 
 `classement:departs` garde **une date de remise à zéro par période**. Remettre le jour à zéro ne touche pas au mois. Une période remise à zéro ne compte plus que ce qui vient **après** cette date, donc à partir du lendemain. ⚠️ **Rien n'est effacé** : le podium part au palmarès (`classement:palmares`), on déplace le point de départ du calcul, et « Rouvrir » fait tout réapparaître. C'est ce qui rend la manœuvre sans danger — et c'est exactement ce qu'il faut pour ouvrir une saison neuve avant un départ en voyage. Onglet **Classement** de l'admin : les quatre périodes, leur contenu détaillé, un bouton par période, et le palmarès.
 
+⚠️ **Une remise à zéro ne remet à zéro QUE les points.** Ne bougent pas : les séries et les flammes (elles se lisent dans `<jeu>:days:<pseudo>`, que rien n'écrit ici), le calendrier d'assiduité, les statistiques de chaque jeu, les classements du jour, et **les titres**. Pour les titres c'est un choix explicite : ils se nourrissent des points, et deux en dépendent (« Centurion », cent points, et « Maître du Salon ») — `classementDuSalon('toujours', { ignorerLesRemises: true })` les calcule donc comme si aucune remise à zéro n'avait eu lieu. Sans ça, ouvrir une nouvelle saison retirerait son badge à tout le monde du jour au lendemain : on remet le classement à plat, on n'efface pas ce que les gens ont fait.
+
 ### Les vainqueurs dans l'historique
 
 ⚠️ **`admin:gameHistory` n'enregistrait que des participations.** Le ramasseur (`pollGameHistory`) comparait la liste des tables toutes les vingt secondes : quand une partie disparaissait, plus personne ne pouvait dire qui l'avait gagnée. Une victoire au Yams ne valait donc rien sur une période.
