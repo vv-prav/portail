@@ -8,7 +8,7 @@ const { norm: normPseudo } = require('../comptes/renommage');
 
 module.exports = function attachAdmin(app, ctx) {
     const { requireAdmin, currentUser, isAdmin, users, saveUsers,
-            hashPassword, makeRecoveryCode, mf, redis, motus, pbac } = ctx;
+            hashPassword, makeRecoveryCode, motDePasseProvisoire, mf, redis, motus, pbac } = ctx;
 
     // --- Journal des actions (mémoire + persistance légère) ---
     const LOG_KEY = 'mf:adminlog';
@@ -274,7 +274,7 @@ module.exports = function attachAdmin(app, ctx) {
         const pseudo = String(req.body.pseudo || '');
         const u = users()[pseudo];
         if (!u) return res.status(404).json({ error: 'Compte introuvable.' });
-        const temp = makeRecoveryCode().slice(0, 9);           // mot de passe temporaire lisible
+        const temp = motDePasseProvisoire();                   // mot de passe temporaire lisible
         u.passwordHash = hashPassword(temp);
         u.sessionEpoch = Date.now();                            // déconnecte les sessions existantes
         // Deux garde-fous, sans lesquels la manœuvre perd son sens : ce mot de
@@ -299,6 +299,13 @@ module.exports = function attachAdmin(app, ctx) {
         const code = makeRecoveryCode();
         u.recoveryHash = hashPassword(code);
         saveUsers(true);
+        // ⚠️ La demande d'aide correspondante est marquée traitée, exactement
+        // comme pour le mot de passe provisoire : c'est l'autre façon de
+        // dépanner quelqu'un, et elle laissait la demande en attente pour
+        // toujours — on la croyait oubliée alors qu'elle était réglée.
+        const liste = (mf.get('comptes:demandes') || []).map(d =>
+            (d.pseudo === pseudo && !d.traitee ? { ...d, traitee: true, traiteeLe: Date.now(), par: currentUser(req) } : d));
+        mf.set('comptes:demandes', liste);
         log(currentUser(req), 'nouveau code', pseudo);
         res.json({ ok: true, recoveryCode: code });
     });

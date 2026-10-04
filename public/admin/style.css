@@ -140,6 +140,15 @@ body {
 .ad-tile.on { color: #2a1c07; background: linear-gradient(165deg, var(--brass-soft), var(--brass)); border-color: transparent;
               box-shadow: 0 6px 16px rgba(217,169,78,.3); }
 .ad-tile:active { transform: scale(.96); }
+/* La pastille des demandes d'aide : la tuile est en colonne, donc la pastille
+   se pose en absolu pour ne pas décaler l'emoji et le libellé. */
+.ad-tile { position: relative; }
+.ad-pastille { position: absolute; top: 6px; right: 8px; min-width: 18px; padding: 1px 5px;
+    border-radius: 9px; background: var(--bad, #c2513a); color: #fff;
+    font-size: .68rem; font-weight: 700; line-height: 1.5; }
+.ad-pastille[hidden] { display: none; }
+/* Une carte qui réclame une action tout de suite, pas une information. */
+.card.urgent { border-color: rgba(194,81,58,.55); box-shadow: 0 0 0 1px rgba(194,81,58,.18); }
 #ask-input { text-align: center; font-weight: 700; letter-spacing: .5px; border-color: rgba(224,122,95,.5); }
 #ask-input[hidden] { display: none; }
 /* Formulaire d'attribution d'un titre. */
@@ -171,3 +180,12 @@ body {
 
 /* Les deux gestes d'une période, côte à côte au bout de sa ligne. */
 .cl-actions { display:flex; gap:6px; flex:0 0 auto; }
+
+/* Une demande d'aide : le message prend toute la largeur, c'est lui qui dit
+   qui est la personne. Les boutons passent dessous. */
+.dem { background:rgba(0,0,0,.22); border:1px solid var(--line); border-radius:12px; padding:10px 12px; }
+.dem + .dem { margin-top:8px; }
+.dem-qui { margin:0 0 4px; font-weight:700; font-size:.9rem; }
+.dem-qui span { font-weight:400; font-size:.72rem; color:var(--muted); }
+.dem-mot { margin:0 0 10px; font-size:.86rem; line-height:1.5; }
+.dem-actions { display:flex; gap:8px; flex-wrap:wrap; }

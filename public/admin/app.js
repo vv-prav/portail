@@ -39,7 +39,7 @@ function fmtDur(sec) {
 function switchTab(tab) {
     ['home', 'accounts', 'parties', 'perudo', 'grids', 'motus', 'chiffres', 'geo', 'motlong', 'sudoku', 'dict', 'titres', 'classement', 'sante', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== tab); });
     document.querySelectorAll('.ad-tile').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
-    if (tab === 'home') loadOverview();
+    if (tab === 'home') { loadOverview(); loadDemandes(); }
     if (tab === 'accounts') { loadAccounts(); loadDemandes(); }
     if (tab === 'parties') loadParties();
     if (tab === 'perudo') loadPerudo();
@@ -319,17 +319,31 @@ async function openAccount(pseudo) {
         { label: 'Confirmer', run: async () => {
             const r = await api('/api/admin/account/password', { pseudo: data.pseudo });
             if (r.ok) {
-                ask('🔑', 'Mot de passe provisoire',
-                    'Transmets-le à la personne. Il n’est valable que 24 heures, et elle devra en choisir un vrai dès sa connexion.',
-                    [], r.data.tempPassword);
+                DS.confirm({
+                    emoji: '🔑', title: 'Mot de passe provisoire',
+                    text: 'Transmets-le à la personne. Il n’est valable que 24 heures, et elle devra en choisir un vrai dès sa connexion.',
+                    code: r.data.tempPassword, cancelLabel: 'Fermer',
+                    actions: [{ label: 'Copier', run: () => navigator.clipboard.writeText(r.data.tempPassword).catch(() => {}) }],
+                });
                 loadDemandes();   // la demande correspondante vient d'être traitée
             }
             else toast(r.data.error || 'Erreur');
         } }]));
+    // C'est le geste du dépannage : on envoie ce code par message perso, et la
+    // personne s'en sert sur « Mot de passe oublié ? » pour choisir elle-même
+    // un nouveau mot de passe. Rien de provisoire à retenir, rien qui expire.
     add('Générer un code de récupération', () => ask('🎫', 'Nouveau code ?', `L'ancien code de ${data.pseudo} sera invalidé.`, [
         { label: 'Confirmer', run: async () => {
             const r = await api('/api/admin/account/recovery', { pseudo: data.pseudo });
-            if (r.ok) ask('🎫', 'Code de récupération', 'À transmettre et à noter.', [], r.data.recoveryCode);
+            if (r.ok) {
+                DS.confirm({
+                    emoji: '🎫', title: 'Code de récupération',
+                    text: `Envoie ce code à ${data.pseudo} par message. Sur l'écran de connexion : « Mot de passe oublié ? », son pseudo, ce code, et il choisit un nouveau mot de passe.`,
+                    code: r.data.recoveryCode, cancelLabel: 'Fermer',
+                    actions: [{ label: 'Copier le code', run: () => navigator.clipboard.writeText(r.data.recoveryCode).catch(() => {}) }],
+                });
+                loadDemandes();   // la demande correspondante vient d'être traitée
+            }
             else toast(r.data.error || 'Erreur');
         } }]));
     add('Renommer', () => {
@@ -953,7 +967,10 @@ $('sys-purge').addEventListener('click', () => ask('🧹', 'Lancer le ménage ?'
         loadOverview();
     } }]));
 
+// Au premier affichage : la vue d'ensemble ET les demandes d'aide. Quelqu'un
+// bloqué dehors doit se voir en ouvrant l'admin, sans changer d'onglet.
 loadOverview();
+loadDemandes();
 // =====================================================================
 //  LE COMPTE EST BON — le panneau qui manquait
 // =====================================================================
@@ -1231,24 +1248,36 @@ $('fus-go').addEventListener('click', () => {
 async function loadDemandes() {
     const { data } = await api('/api/admin/demandes');
     const attente = (data && data.enAttente) || [];
-    $('demandes-carte').hidden = !attente.length;
-    if (!attente.length) return;
-    $('demandes-liste').innerHTML = attente.map(d => `
-        <div class="ds-row static">
-            <span class="ds-row-main">
-                <span class="ds-row-name">${esc(d.pseudo)}</span>
-                <span class="ds-row-sub">${esc(d.message || 'sans message')} · ${new Date(d.ts).toLocaleString('fr-FR')}</span>
-            </span>
-            <button class="mini" data-fiche="${esc(d.pseudo)}" type="button">Ouvrir</button>
-            <button class="mini danger" data-ignorer="${esc(d.pseudo)}" type="button">Ignorer</button>
+
+    // Trois endroits, un seul rendu : la carte de l'onglet Comptes, la même en
+    // tête de la vue d'ensemble, et la pastille sur la tuile. Une demande qu'il
+    // faut penser à aller chercher est une demande qu'on rate.
+    // ⚠️ Pas une `.ds-row` : le message est le contenu, et coincé entre un
+    // pseudo et deux boutons il tombait à un mot par ligne. Il prend donc
+    // toute la largeur, les boutons passent dessous.
+    const lignes = attente.map(d => `
+        <div class="dem">
+            <p class="dem-qui">${esc(d.pseudo)} <span>${new Date(d.ts).toLocaleString('fr-FR')}</span></p>
+            <p class="dem-mot">${d.message ? '« ' + esc(d.message) + ' »' : 'Sans message.'}</p>
+            <div class="dem-actions">
+                <button class="mini" data-fiche="${esc(d.pseudo)}" type="button">Ouvrir sa fiche</button>
+                <button class="mini danger" data-ignorer="${esc(d.pseudo)}" type="button">Ignorer</button>
+            </div>
         </div>`).join('');
-    $('demandes-liste').querySelectorAll('[data-fiche]').forEach(b =>
-        b.addEventListener('click', () => openAccount(b.dataset.fiche)));
-    $('demandes-liste').querySelectorAll('[data-ignorer]').forEach(b =>
-        b.addEventListener('click', async () => {
-            await api('/api/admin/demandes/ignorer', { pseudo: b.dataset.ignorer });
-            toast('Demande écartée.'); loadDemandes();
-        }));
+
+    for (const [carte, liste] of [['demandes-carte', 'demandes-liste'], ['demandes-home', 'demandes-home-liste']]) {
+        $(carte).hidden = !attente.length;
+        $(liste).innerHTML = lignes;
+        $(liste).querySelectorAll('[data-fiche]').forEach(b =>
+            b.addEventListener('click', () => openAccount(b.dataset.fiche)));
+        $(liste).querySelectorAll('[data-ignorer]').forEach(b =>
+            b.addEventListener('click', async () => {
+                await api('/api/admin/demandes/ignorer', { pseudo: b.dataset.ignorer });
+                toast('Demande écartée.'); loadDemandes();
+            }));
+    }
+    $('ad-pastille').hidden = !attente.length;
+    $('ad-pastille').textContent = attente.length || '';
 }
 
-setInterval(() => { if (!$('pane-home').hidden) loadOverview(); }, 30000);
+setInterval(() => { if (!$('pane-home').hidden) { loadOverview(); loadDemandes(); } }, 30000);

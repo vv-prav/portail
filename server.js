@@ -159,16 +159,25 @@ setInterval(() => {                                  // ménage horaire
 }, 3600e3);
 
 // --- Code de récupération (l'utilisateur le note ; on n'en garde que l'empreinte) ---
-function makeRecoveryCode() {
-    const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';       // sans caractères ambigus
-    let out = [];
-    for (let g = 0; g < 4; g++) {
-        let s = '';
-        for (let i = 0; i < 4; i++) s += A[crypto.randomInt(A.length)];
-        out.push(s);
-    }
-    return out.join('-');
+//
+// SIX caractères, et c'est un choix. Les seize d'avant (`AB3K-7PQR-…`) se
+// dictent mal au téléphone et se recopient encore plus mal : un code qu'on
+// renonce à transmettre ne protège rien, il bloque juste la personne.
+//
+// ⚠️ Six caractères dans un alphabet de 32 font un milliard de possibilités —
+// assez SEULEMENT parce que les tentatives sont comptées (voir `recoverKey` et
+// le verrou de `/api/recover`, qui bloque par compte et pas seulement par
+// adresse). Ne jamais raccourcir le code sans ce garde-fou.
+const ALPHABET_CODE = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // sans caractères ambigus
+function tirerDesCaracteres(n) {
+    let s = '';
+    for (let i = 0; i < n; i++) s += ALPHABET_CODE[crypto.randomInt(ALPHABET_CODE.length)];
+    return s;
 }
+function makeRecoveryCode() { return tirerDesCaracteres(6); }
+// Le mot de passe provisoire, lui, reste plus long : il ouvre directement la
+// porte, là où le code ne sert qu'à en choisir un nouveau.
+function motDePasseProvisoire() { return tirerDesCaracteres(9); }
 
 // Échappement HTML (messages du forum, etc.)
 function escapeHtml(str) {
@@ -310,18 +319,25 @@ app.post('/api/login', (req, res) => {
 // --- Récupération de mot de passe avec le code noté à l'inscription ---
 app.post('/api/recover', (req, res) => {
     const pseudo = (req.body.pseudo || '').trim();
-    const code = String(req.body.code || '').trim().toUpperCase();
+    // Les espaces et les tirets sont tolérés : on dicte « A B 3 K 7 P » au
+    // téléphone, et personne ne retape exactement ce qu'il a noté.
+    const code = String(req.body.code || '').replace(/[\s-]/g, '').toUpperCase();
     const newPassword = req.body.newPassword || '';
     const tk = triesKey(req, 'recover:' + pseudo);
-    const wait = loginBlocked(tk);
+    // ⚠️ DEUX verrous, et le second est indispensable depuis que le code ne
+    // fait que six caractères : le premier compte les essais par adresse, le
+    // second par COMPTE. Sans lui, il suffirait de changer d'adresse pour
+    // essayer des codes sans fin.
+    const ck = 'compte|recover:' + pseudo.toLowerCase();
+    const wait = loginBlocked(tk) || loginBlocked(ck);
     if (wait) return res.status(429).json({ error: `Trop de tentatives. Réessaie dans ${wait} min.` });
     if (newPassword.length < MIN_PASSWORD) return res.status(400).json({ error: `Mot de passe trop court (${MIN_PASSWORD} caractères minimum).` });
     const user = registeredUsers[pseudo];
     if (!user || !user.recoveryHash || !verifyPassword(code, user.recoveryHash)) {
-        loginFailed(tk);
+        loginFailed(tk); loginFailed(ck);
         return res.status(401).json({ error: 'Nom ou code de récupération incorrect.' });
     }
-    loginOk(tk);
+    loginOk(tk); loginOk(ck);
     const fresh = makeRecoveryCode();                 // le code servi est aussitôt remplacé
     user.passwordHash = hashPassword(newPassword);
     user.recoveryHash = hashPassword(fresh);
@@ -3019,7 +3035,7 @@ app.use('/admin', requireAdmin, express.static(__dirname + '/public/admin'));
 require('./admin/routes')(app, {
     requireAdmin, currentUser, isAdmin, isRootAdmin, allAdmins, rootAdmins: ROOT_ADMINS,
     users: () => registeredUsers,
-    saveUsers, hashPassword, makeRecoveryCode,
+    saveUsers, hashPassword, makeRecoveryCode, motDePasseProvisoire,
     mf: { get: mfGet, set: mfSet, del: mfDel, cache: () => mfCache, purge: mfPurge, levels: MF_LEVELS, today: mfTodayId, shift: mfShiftDay },
     redis: () => redis,
     perudo: () => perudoApi,

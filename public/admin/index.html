@@ -25,7 +25,7 @@
 
         <nav class="ad-nav" id="ad-nav">
             <button class="ad-tile on" data-tab="home" type="button"><span class="ad-tile-emoji">📊</span><span>Vue d'ensemble</span></button>
-            <button class="ad-tile" data-tab="accounts" type="button"><span class="ad-tile-emoji">👥</span><span>Comptes</span></button>
+            <button class="ad-tile" data-tab="accounts" type="button"><span class="ad-tile-emoji">👥</span><span>Comptes</span><span class="ad-pastille" id="ad-pastille" hidden></span></button>
             <button class="ad-tile" data-tab="parties" type="button"><span class="ad-tile-emoji">🎲</span><span>Parties</span></button>
             <button class="ad-tile" data-tab="perudo" type="button"><span class="ad-tile-emoji">🎲</span><span>Perudo</span></button>
             <button class="ad-tile" data-tab="grids" type="button"><span class="ad-tile-emoji">🧩</span><span>Grilles</span></button>
@@ -43,6 +43,14 @@
 
         <!-- VUE D'ENSEMBLE -->
         <section class="pane" id="pane-home">
+            <!-- Quelqu'un est bloqué dehors : ça passe avant tout le reste.
+                 La carte vivait seulement dans l'onglet Comptes, donc il
+                 fallait penser à aller la chercher. -->
+            <div class="card urgent" id="demandes-home" hidden>
+                <h2 class="card-title">🔒 Quelqu'un n'arrive plus à se connecter</h2>
+                <p class="card-sub">Reconnais la personne, puis ouvre sa fiche et génère-lui un code de récupération : tu le lui envoies par message, elle choisit un nouveau mot de passe toute seule.</p>
+                <div class="list" id="demandes-home-liste"></div>
+            </div>
             <div class="card">
                 <h2 class="card-title">Trouver quelqu'un vite</h2>
                 <p class="card-sub">Cherche à la fois dans les comptes et dans l'historique des parties.</p>
@@ -84,7 +92,7 @@
         <section class="pane" id="pane-accounts" hidden>
             <div class="card" id="demandes-carte" hidden>
                 <h2 class="card-title">Demandes d'aide à la connexion</h2>
-                <p class="card-sub">Quelqu'un a perdu son mot de passe <b>et</b> son code. Reconnais la personne, puis pose-lui un mot de passe provisoire depuis sa fiche : la demande se marquera traitée.</p>
+                <p class="card-sub">Quelqu'un a perdu son mot de passe <b>et</b> son code. Reconnais la personne, puis génère-lui un code de récupération depuis sa fiche et envoie-le-lui par message : la demande se marquera traitée.</p>
                 <div class="list" id="demandes-liste"></div>
             </div>
             <div class="card">
