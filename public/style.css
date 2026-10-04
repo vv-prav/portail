@@ -101,6 +101,24 @@ body.is-hub   .hub   { display: block; }
 .rank-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rank-pts { flex: 0 0 auto; font-weight: 700; color: var(--brass-soft); font-variant-numeric: tabular-nums; }
 .rank-empty { color: var(--muted); font-size: .78rem; text-align: center; margin: 8px 0; }
+/* Ce qui a fait les points, sous le pseudo : un total sans rien derrière est
+   un chiffre tombé du ciel. */
+.rank-detail { display: block; color: var(--muted); font-size: .68rem; font-weight: 400;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank-detail:empty { display: none; }
+.rank-aide { align-self: center; margin-top: 6px; padding: 4px 10px; border: none; background: transparent;
+    color: var(--brass-soft); font-family: inherit; font-size: .76rem; cursor: pointer; }
+.rank-aide:hover { text-decoration: underline; }
+
+/* Le panneau « Comment ça compte ? » */
+.bar-bloc { margin: 14px 0 0; text-align: left; }
+.bar-h { margin: 0 0 6px; font-size: .8rem; color: var(--brass); letter-spacing: .04em; text-transform: uppercase; }
+.bar-liste { margin: 0; padding-left: 18px; color: var(--muted); font-size: .8rem; line-height: 1.55; }
+.bar-tab { width: 100%; border-collapse: collapse; font-size: .78rem; }
+.bar-tab th { text-align: left; font-weight: 600; padding: 5px 8px 5px 0; vertical-align: top; }
+.bar-tab td { padding: 5px 0; color: var(--muted); line-height: 1.45; }
+.bar-tab tr + tr { border-top: 1px solid rgba(255,255,255,.07); }
+.bar-pts { text-align: right; color: var(--brass-soft); font-weight: 700; white-space: nowrap; }
 
 /* ---------- Panneau « Aujourd'hui » ----------
    Les trois jeux du jour font 90 % de l'activité : ils sortent de la grille de

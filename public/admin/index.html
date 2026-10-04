@@ -33,9 +33,10 @@
             <button class="ad-tile" data-tab="chiffres" type="button"><span class="ad-tile-emoji">🔢</span><span>Le compte est bon</span></button>
             <button class="ad-tile" data-tab="geo" type="button"><span class="ad-tile-emoji">🌍</span><span>Géographie</span></button>
             <button class="ad-tile" data-tab="motlong" type="button"><span class="ad-tile-emoji">🔤</span><span>Mot le plus long</span></button>
-            <button class="ad-tile" data-tab="sudoku" type="button"><span class="ad-tile-emoji">🔲</span><span>Sudoku</span></button>
+            <button class="ad-tile" data-tab="sudoku" type="button"><span class="ad-tile-emoji">🧮</span><span>Sudoku</span></button>
             <button class="ad-tile" data-tab="dict" type="button"><span class="ad-tile-emoji">📖</span><span>Dictionnaire</span></button>
             <button class="ad-tile" data-tab="titres" type="button"><span class="ad-tile-emoji">🏅</span><span>Titres</span></button>
+            <button class="ad-tile" data-tab="classement" type="button"><span class="ad-tile-emoji">🏆</span><span>Classement</span></button>
             <button class="ad-tile" data-tab="sante" type="button"><span class="ad-tile-emoji">💓</span><span>Santé</span></button>
             <button class="ad-tile" data-tab="system" type="button"><span class="ad-tile-emoji">⚙️</span><span>Système</span></button>
         </nav>
@@ -241,6 +242,33 @@
                 <p class="card-sub">Qui porte quoi, en ce moment. Les titres uniques changent de mains dès que quelqu'un fait mieux.</p>
                 <button class="ds-btn ghost" id="ti-refresh" type="button">Actualiser</button>
                 <div class="list" id="ti-catalogue" style="margin-top:10px"></div>
+            </div>
+        </section>
+
+        <!-- LE CLASSEMENT — ses périodes, son palmarès, et la remise à zéro.
+             ⚠️ Rien n'est effacé : on déplace la date de départ du calcul.
+             La remettre à vide fait réapparaître tout l'historique. -->
+        <section class="pane" id="pane-classement" hidden>
+            <div class="card">
+                <h2 class="card-title">Le classement, période par période</h2>
+                <p class="card-sub">Le même calcul que celui de l'accueil, avec le détail de ce qui a fait les points.</p>
+                <div class="ds-segmented" id="cl-periode">
+                    <button type="button" data-p="jour">Jour</button>
+                    <button type="button" data-p="semaine">Semaine</button>
+                    <button type="button" data-p="mois">Mois</button>
+                    <button type="button" class="on" data-p="toujours">Total</button>
+                </div>
+                <div class="list" id="cl-liste" style="margin-top:10px"></div>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Réinitialiser les points</h2>
+                <p class="card-sub">Une période à la fois : les quatre sont indépendantes, remettre le jour à zéro ne touche pas au mois. Le podium part au palmarès et tout le monde repart de zéro à partir de demain. <b>Aucune partie n'est effacée</b> : seul le point de départ du calcul bouge, et le rouvrir fait tout réapparaître.</p>
+                <div class="list" id="cl-zeros"></div>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Le palmarès</h2>
+                <p class="card-sub">Les podiums des saisons closes.</p>
+                <div class="list" id="cl-palmares"></div>
             </div>
         </section>
 

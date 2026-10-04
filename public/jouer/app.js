@@ -38,24 +38,24 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '
 // justement la seule chose jouable quand le salon est vide, c'est-à-dire
 // presque toujours — le cacher était le pire endroit où se tromper.
 const CATALOGUE = [
-    { id: 'perudo', nom: 'Perudo', emoji: '🎲', accent: '#d9a94e', href: '/perudo',
+    { id: 'perudo', nom: 'Perudo', emoji: '🏴‍☠️', accent: '#d9a94e', href: '/perudo',
       min: 1, max: 12, solo: 'contre des bots', duree: 'environ 20 min' },
     { id: 'pbac', nom: 'Petit Bac', emoji: '✏️', accent: '#c2513a', href: '/pbac',
       min: 2, max: 12, duree: 'environ 10 min' },
     { id: 'undercover', nom: 'Infiltré', emoji: '🕵️', accent: '#6f7bb0', href: '/undercover',
       min: 3, max: 12, duree: 'environ 10 min' },
-    { id: 'yams', nom: 'Yams', emoji: '🎯', accent: '#ecca82', href: '/yams',
+    { id: 'yams', nom: 'Yams', emoji: '🎲', accent: '#ecca82', href: '/yams',
       min: 1, max: 4, solo: 'contre le tableau', duree: 'environ 15 min' },
     { id: 'motusparty', nom: 'Motus Party', emoji: '🏁', accent: '#d9a94e', href: '/motus/party',
       min: 2, max: 8, duree: 'environ 5 min' },
-    { id: 'drapeaux', nom: 'Quiz des drapeaux', emoji: '🏳️', accent: '#6f7bb0', href: '/drapeaux',
+    { id: 'drapeaux', nom: 'Quiz des drapeaux', emoji: '🚩', accent: '#6f7bb0', href: '/drapeaux',
       min: 1, max: 10, solo: 'contre le chrono', duree: 'environ 5 min' },
 ];
 
 const CATALOGUE_LOCAL = [
     { id: 'uc-local', nom: 'Infiltré', emoji: '🕵️', accent: '#6f7bb0', href: '/undercover/?local=1',
       min: 3, max: 12, duree: 'environ 10 min', direct: true },
-    { id: 'chance', nom: 'Chance', emoji: '🎲', accent: '#c9a24a', href: '/chance',
+    { id: 'chance', nom: 'Chance', emoji: '🍀', accent: '#c9a24a', href: '/chance',
       min: 1, max: 99, duree: 'quelques secondes', direct: true, libre: 'à volonté' },
 ];
 

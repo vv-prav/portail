@@ -22,6 +22,9 @@ module.exports = function attachDrapeaux(app, io, deps) {
 
 const mfGet = deps.get || (() => undefined);
 const mfSet = deps.set || (() => {});
+// Le salon tient l'historique des parties : on l'avertit au moment où
+// les vainqueurs sont connus (voir `noterPartie` dans server.js).
+const noterPartie = deps.noterPartie || (() => {});
 
 const MIN_PLAYERS = 1;      // on peut s'entraîner seul contre le chrono
 const MAX_PLAYERS = 10;
@@ -280,6 +283,13 @@ function finaliserStats(g) {
         }
         enregistrerStats(p.pseudo, s);
     }
+    // L'historique commun du salon, celui que lit le classement.
+    noterPartie({
+        app: 'drapeaux', id: g.id, manche: g.manche || 1, label: 'Quiz des drapeaux',
+        players: g.players.map(p => p.pseudo),
+        winners: (solo || nul) ? [] : gagnants,
+        solo,
+    });
 }
 
 function quitter(socket) {
@@ -405,6 +415,9 @@ io.on('connection', (socket) => {
         if (!g || g.host !== socket.data.drapeauxPseudo || g.status !== 'ended') return;
         g.status = 'lobby';
         g.phase = 'attente';
+        // La revanche garde l'id de la table : c'est le numéro de manche qui
+        // distingue les parties dans l'historique du salon.
+        g.manche = (g.manche || 1) + 1;
         g.qIndex = 0;
         g.questions = [];
         g.players.forEach(p => { p.score = 0; p.reponses = []; p.serie = 0; p.meilleureSerie = 0; });

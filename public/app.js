@@ -32,7 +32,6 @@ const I18N = {
         b_grid_done: "Grille du jour ✓", b_grid_part: "faites aujourd'hui",
         app_ch_d: "Dé, carte ou pièce : tranchez au hasard.",
         b_rec_new: "cette semaine", b_rec_count: "recettes",
-        rank_saison: "Ce mois-ci", rank_toujours: "Depuis toujours",
         rank_title: "Classement du Salon", rank_loading: "Un instant…", rank_empty: "Personne n'a encore marqué de points.", rank_error: "Classement indisponible.",
         today_results: "Les résultats du jour ›", today_results_title: "Les résultats du jour", res_locked: "Termine ta manche pour voir le classement.", res_go: "Y aller ›", res_personne: "Personne n'a encore terminé.",
         today_title: "Aujourd'hui", today_done: "Fait ✓", today_over: "Terminé", today_todo: "À faire", today_streak: "jours d'affilée",
@@ -159,7 +158,7 @@ const JEUX_DU_JOUR = [
     { id: 'chiffres', nom: 'Le compte est bon', emoji: '🔢', href: '/chiffres',    accent: '#c2513a' },
     { id: 'geo',      nom: 'Géographie',   emoji: '🌍', href: '/geo',              accent: '#6f7bb0' },
     { id: 'motlong',  nom: 'Le mot le plus long', emoji: '🔤', href: '/motlong',   accent: '#4f9a8f' },
-    { id: 'sudoku',   nom: 'Sudoku',       emoji: '🔲', href: '/sudoku',           accent: '#8a7bc4' },
+    { id: 'sudoku',   nom: 'Sudoku',       emoji: '🧮', href: '/sudoku',           accent: '#8a7bc4' },
 ];
 // Ramène chaque jeu à un seul état, quelle que soit la forme de ses données.
 function etatDuJour(id, p) {
@@ -264,11 +263,16 @@ $('res-close').addEventListener('click', () => { $('ov-resultats').hidden = true
 // dépli seulement — inutile de peser sur l'arrivée pour une curiosité.
 let classement = null;      // réponse du serveur pour la période affichée
 let classementRendu = false;
-let periode = 'saison';     // par défaut la saison en cours, pas le cumul de toujours
+let periode = 'mois';       // par défaut le mois : assez long pour se remplir, assez court pour se rejouer
 async function chargerClassement() {
     const { ok, data } = await api('/api/salon/classement?periode=' + periode);
     classement = ok ? data : null;
     majMaPlace(classement);
+}
+// « 2026-10-05 » ne se lit pas, « 5 octobre » si.
+function jourEnClair(iso) {
+    const d = new Date(iso + 'T12:00:00Z');
+    return isNaN(d) ? iso : d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', timeZone: 'UTC' });
 }
 async function rendreClassement() {
     const corps = $('rank-liste');
@@ -278,16 +282,29 @@ async function rendreClassement() {
         return;
     }
     if (!data.classement.length) {
-        corps.innerHTML = `<p class="rank-empty">${esc(t('rank_empty'))}</p>`;
+        // Dire depuis quand ça recompte : un classement vide ressemble sinon à
+        // une panne, alors que c'est le premier matin d'une nouvelle saison.
+        corps.innerHTML = `<p class="rank-empty">${data.depart
+            ? 'Tout le monde repart de zéro : les points comptent à partir du ' + esc(jourEnClair(data.depart)) + '.'
+            : esc(t('rank_empty'))}</p>`;
         return;
     }
     const avatars = await PortailProfile.fetchAvatars(data.classement.map(l => l.pseudo));
     corps.innerHTML = data.classement.map((l, i) => {
         const rang = ['🥇', '🥈', '🥉'][i] || (i + 1);
+        // Ce qui a fait les points, en une ligne : sans ça le total est un
+        // chiffre tombé du ciel, et c'est précisément ce qu'on reprochait.
+        const bouts = [];
+        if (l.manches) bouts.push(`${l.manches} manche${l.manches > 1 ? 's' : ''}`);
+        if (l.impeccables) bouts.push(`${l.impeccables} impeccable${l.impeccables > 1 ? 's' : ''}`);
+        if (l.victoires) bouts.push(`${l.victoires} victoire${l.victoires > 1 ? 's' : ''}`);
+        else if (l.parties) bouts.push(`${l.parties} partie${l.parties > 1 ? 's' : ''}`);
+        if (l.chelems) bouts.push(`${l.chelems} grand chelem${l.chelems > 1 ? 's' : ''}`);
+        if (l.serie > 1) bouts.push(`🔥 ${l.serie} j`);
         return `<button type="button" class="rank-row${l.pseudo === data.moi ? ' me' : ''}" data-view="${esc(l.pseudo)}">
             <span class="rank-pos">${rang}</span>
             <span class="ds-avatar xs">${PortailProfile.bubbleHTML(avatars[l.pseudo])}</span>
-            <span class="rank-name">${esc(l.pseudo)}</span>
+            <span class="rank-name">${esc(l.pseudo)}<small class="rank-detail">${esc(bouts.join(' · '))}</small></span>
             <span class="rank-pts">${l.points}</span>
         </button>`;
     }).join('');
@@ -308,6 +325,40 @@ $('rank-periode').querySelectorAll('button').forEach(b => b.addEventListener('cl
     await chargerClassement();
     await rendreClassement();
 }));
+
+// ---------- « Comment ça compte ? » ----------
+// Le barème vient du serveur, où il est généré depuis les mêmes constantes
+// que le calcul : il ne peut pas se désynchroniser du vrai décompte.
+let baremeCharge = false;
+$('rank-aide').addEventListener('click', async () => {
+    $('ov-bareme').hidden = false;
+    if (baremeCharge) return;
+    const corps = $('bareme-corps');
+    corps.innerHTML = '<p class="rank-empty">…</p>';
+    const { ok, data } = await api('/api/salon/bareme');
+    if (!ok) { corps.innerHTML = '<p class="rank-empty">Barème indisponible.</p>'; return; }
+    baremeCharge = true;
+    corps.innerHTML = `
+        <div class="bar-bloc">
+            <h3 class="bar-h">Les jeux du jour</h3>
+            <ul class="bar-liste">${data.resume.map(l => `<li>${esc(l)}</li>`).join('')}</ul>
+            <table class="bar-tab"><tbody>${data.jeux.map(j => `<tr>
+                <th>${j.emoji} ${esc(j.nom)}</th>
+                <td><b>Réussi</b> : ${esc(j.reussi)}<br><b>Impeccable</b> : ${esc(j.impeccable)}</td>
+            </tr>`).join('')}</tbody></table>
+        </div>
+        <div class="bar-bloc">
+            <h3 class="bar-h">Ensemble</h3>
+            <table class="bar-tab"><tbody>${data.autres.map(a => `<tr>
+                <th>${esc(a.quoi)}</th><td class="bar-pts">${a.points} pt${a.points > 1 ? 's' : ''}</td>
+            </tr>`).join('')}</tbody></table>
+        </div>
+        <div class="bar-bloc">
+            <h3 class="bar-h">À savoir</h3>
+            <ul class="bar-liste">${data.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>
+        </div>`;
+});
+$('bareme-close').addEventListener('click', () => { $('ov-bareme').hidden = true; });
 
 $('rank-toggle').addEventListener('click', async () => {
     const corps = $('rank-body'), bouton = $('rank-toggle');

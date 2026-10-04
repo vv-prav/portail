@@ -47,6 +47,9 @@ function salonPseudoFromCookie(cookieHeader) {
 // =====================================================================
 const mfGet = deps.get || (() => undefined);
 const mfSet = deps.set || (() => {});
+// Le salon tient l'historique des parties : on l'avertit au moment où
+// les vainqueurs sont connus (voir `noterPartie` dans server.js).
+const noterPartie = deps.noterPartie || (() => {});
 const kMpStats = (pseudo) => `motusparty:stats:${pseudo}`;
 function loadMpStats(pseudo) {
     const s = mfGet(kMpStats(pseudo));
@@ -274,6 +277,13 @@ io.on('connection', (socket) => {
                 if (winner && p.pseudo === winner.pseudo) stats.matchesWon++;
                 saveMpStats(p.pseudo, stats);
             });
+            // L'historique commun du salon, celui que lit le classement.
+            noterPartie({
+                app: 'motusparty', id: g.id, manche: g.manche || 1, label: 'Motus Party',
+                players: g.players.map(p => p.pseudo),
+                winners: winner ? [winner.pseudo] : [],
+                solo: g.players.length < 2,
+            });
             broadcastState(g);
             broadcastLobby();
             return;
@@ -289,6 +299,9 @@ io.on('connection', (socket) => {
         if (!g || g.host !== socket.data.mpPseudo || g.status !== 'ended') return;
         g.status = 'lobby';
         g.round = 0; g.word = null; g.usedWords = new Set();
+        // La revanche garde l'id de la table : c'est le numéro de manche qui
+        // distingue les parties dans l'historique du salon.
+        g.manche = (g.manche || 1) + 1;
         g.players.forEach(p => { p.score = 0; p.guesses = []; p.solved = false; p.gaveUp = false; p.rank = null; });
         broadcastState(g);
         broadcastLobby();

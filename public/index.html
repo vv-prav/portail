@@ -81,11 +81,16 @@
                     <span class="rank-chevron" aria-hidden="true">›</span>
                 </button>
                 <div class="rank-body" id="rank-body" hidden>
+                    <!-- Quatre périodes : au jour, tout le monde repart à égalité
+                         chaque matin — un cumul seul finit par se figer. -->
                     <div class="ds-segmented rank-periode" id="rank-periode">
-                        <button type="button" class="on" data-p="saison" data-i="rank_saison">Ce mois-ci</button>
-                        <button type="button" data-p="toujours" data-i="rank_toujours">Depuis toujours</button>
+                        <button type="button" data-p="jour">Jour</button>
+                        <button type="button" data-p="semaine">Semaine</button>
+                        <button type="button" class="on" data-p="mois">Mois</button>
+                        <button type="button" data-p="toujours">Total</button>
                     </div>
                     <div class="rank-liste" id="rank-liste"></div>
+                    <button type="button" class="rank-aide" id="rank-aide">Comment ça compte ?</button>
                 </div>
             </section>
 
@@ -107,6 +112,18 @@
             <h2 class="ds-card-title" data-i="today_results_title">Les résultats du jour</h2>
             <p class="ds-card-text" id="res-date"></p>
             <div id="res-corps"></div>
+        </div>
+    </div>
+
+    <!-- COMMENT ÇA COMPTE ? — le barème, en mots. Il est envoyé par le
+         serveur (`/api/salon/bareme`), généré depuis le barème lui-même :
+         une règle du jeu recopiée à la main finit toujours par mentir. -->
+    <div class="ds-overlay" id="ov-bareme" hidden>
+        <div class="ds-card tall">
+            <button type="button" class="ds-card-close" id="bareme-close" aria-label="Fermer">✕</button>
+            <div class="ov-emoji">🧮</div>
+            <h2 class="ds-card-title ov-title">Comment ça compte ?</h2>
+            <div id="bareme-corps"></div>
         </div>
     </div>
 

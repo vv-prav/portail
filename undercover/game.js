@@ -60,6 +60,9 @@ module.exports = function attachUndercover(app, io, requireAuth, deps) {
 // =====================================================================
 const mfGet = (deps && deps.get) || (() => undefined);
 const mfSet = (deps && deps.set) || (() => {});
+// Le salon tient l'historique des parties : on l'avertit au moment où
+// les vainqueurs sont connus (voir `noterPartie` dans server.js).
+const noterPartie = (deps && deps.noterPartie) || (() => {});
 const kUcStats = (pseudo) => `undercover:stats:${pseudo}`;
 const UC_INDEX = 'undercover:statsIndex';
 const ROLES = ['civil', 'undercover', 'mrwhite'];
@@ -106,6 +109,15 @@ function cloturerUc(g) {
         if (p.role === 'mrwhite' && g.winner === 'mrwhite') s.motsDevines++;
         enregistrerUcStats(p.pseudo, s);
     }
+    // L'historique commun du salon, celui que lit le classement. Ici le
+    // vainqueur est un CAMP : les gagnants sont tous ceux dont le rôle gagne.
+    const joueurs = g.players.filter(p => p.role && ROLES.includes(p.role));
+    noterPartie({
+        app: 'undercover', id: g.id, manche: g.manche || 1, label: 'Infiltré',
+        players: joueurs.map(p => p.pseudo),
+        winners: joueurs.filter(p => aGagne(p.role, g.winner)).map(p => p.pseudo),
+        solo: joueurs.length < 2,
+    });
 }
 
 
@@ -433,6 +445,9 @@ io.on('connection', (socket) => {
         if (!g || g.host !== socket.data.ucPseudo || g.status !== 'ended') return;
         g.status = 'lobby';
         g.statsEcrites = false;
+        // La revanche garde l'id de la table : c'est le numéro de manche qui
+        // distingue les parties dans l'historique du salon.
+        g.manche = (g.manche || 1) + 1;
         g.players.forEach(p => { p.alive = true; p.role = null; p.word = null; });
         broadcastState(g);
         broadcastLobby();

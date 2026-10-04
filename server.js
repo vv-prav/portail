@@ -397,7 +397,7 @@ app.get('/api/me', (req, res) => {
 // ---------------------------------------------------------------------
 const MF = require('./motsfleches/generator');
 const { planifierRenommage, appliquerPlan } = require('./comptes/renommage');
-const { calculerClassement, BAREME, bornesSaison } = require('./comptes/classement');
+const { calculerClassement, explications, BAREME, PERIODES } = require('./comptes/classement');
 const { TITRES, attribuerTitres } = require('./comptes/titres');
 // ⚠️ UNE seule grille par jour, et toujours difficile. Il y en avait trois
 // (moyen, difficile, expert) : trois grilles mangeaient une cinquantaine de
@@ -1020,13 +1020,13 @@ app.use('/motus', requireAuth, express.static(__dirname + '/public/motus'));
 app.use('/profil', requireAuth, express.static(__dirname + '/public/profil'));
 const motusPartyApi = require('./motusparty/game')(app, io, {
     motusPool, motusKnown, motusMarks, motusDef: motusDefFor,
-    get: mfGet, set: mfSet,
+    get: mfGet, set: mfSet, noterPartie,
 });
 
 // Le quiz des drapeaux : jusqu'à dix joueurs en simultané. Il réutilise
 // `geo/pays.js` tel quel — aucune donnée nouvelle à créer.
 app.use('/drapeaux', requireAuth, express.static(__dirname + '/public/drapeaux'));
-const drapeauxApi = require('./drapeaux/game')(app, io, { get: mfGet, set: mfSet });
+const drapeauxApi = require('./drapeaux/game')(app, io, { get: mfGet, set: mfSet, noterPartie });
 
 // ---------------------------------------------------------------------
 //  LES DÉFIS — le multijoueur sans rendez-vous
@@ -1146,13 +1146,6 @@ app.get('/api/motus/board', requireAuth, (req, res) => {
     const board = motusBoard(date);
     res.json({ board: board.map(e => ({ u: e.u, tries: e.tries, ms: e.ms })), me: board.findIndex(e => e.u === user) + 1 });
 });
-app.get('/api/motus/state', requireAuth, (req, res) => {
-    const user = currentUser(req);
-    const date = mfTodayId();
-    const p = mfGet(kMotusProg(user, date));
-    const state = !p ? 'neuf' : (p.solved ? 'fini' : (p.gaveUp || (p.guesses || []).length >= MOTUS_TRIES ? 'abandon' : 'encours'));
-    res.json({ state, streak: motusStreak(user), nextIn: mfSecondsToMidnight() });
-});
 app.get('/api/motus/mystats', requireAuth, (req, res) => {
     const user = currentUser(req);
     const stats = dailyGameStats('motus:prog', user, u => kMotusDays(u), u => motusStreak(u));
@@ -1199,590 +1192,56 @@ app.post('/api/motus/comments', requireAuth, (req, res) => {
 });
 
 // =====================================================================
-//  LE COMPTE EST BON  (/chiffres)  et  GÉOGRAPHIE  (/geo)
+//  LES JEUX DU JOUR RÉCENTS — montés depuis leurs propres fichiers
 //
-//  Les deux nouveaux jeux du jour s'appuient sur `quotidien/moteur.js`
-//  plutôt que de recopier une quatrième et une cinquième fois la même
-//  mécanique (contenu daté, progression, classement, série, archives).
-//  Motus et les Mots Fléchés, eux, ne sont pas touchés : les
-//  migrer pendant qu'ils portent 90 % de l'activité serait un risque pris
-//  pour rien. Le moteur montre à quoi ressemblera leur version commune.
+//  Le compte est bon, la Géographie, le Sudoku et le Mot le plus long
+//  s'appuient tous sur `quotidien/moteur.js` (contenu daté, progression,
+//  classement, série, archives) et vivent chacun dans `<jeu>/routes.js`.
+//  Ils tenaient ici même : 580 lignes dans un fichier qui en faisait
+//  3 500. Motus et les Mots Fléchés, eux, ne sont pas touchés — les
+//  réécrire pendant qu'ils portent 90 % de l'activité serait un risque
+//  pris pour rien.
+//
+//  Chaque module rend ce que le reste du salon lui demande (son moteur,
+//  le contenu du jour, ses clés) : le pouls, la carte du profil, les
+//  résultats du jour et l'administration continuent de l'appeler comme
+//  avant.
 // =====================================================================
 const creerMoteur = require('./quotidien/moteur');
-const chiffresJeu = require('./chiffres/jeu');
-const geoJeu = require('./geo/jeu');
-const deuxMoteurs = { get: mfGet, set: mfSet, today: mfTodayId, shift: mfShiftDay };
-const mChiffres = creerMoteur('chiffres', deuxMoteurs);
-const mGeo = creerMoteur('geo', deuxMoteurs);
 
-// ---------- La donne du jour ----------
-// Calculée une fois puis mise en cache, comme le mot du Motus : la journée ne
-// doit jamais changer de contenu sous les pieds de ceux qui jouent.
-const kChiffresDonne = (date) => `chiffres:donne:${date}`;
-function chiffresDonne(date) {
-    const cache = mfGet(kChiffresDonne(date));
-    if (cache) return cache;
-    const donne = chiffresJeu.tirage(mChiffres.tirageDuJour(date));
-    mfSet(kChiffresDonne(date), donne);
-    return donne;
-}
-
-app.use('/chiffres', requireAuth, express.static(__dirname + '/public/chiffres'));
-
-app.get('/api/chiffres/today', requireAuthApi, (req, res) => {
-    const user = currentUser(req), today = mfTodayId();
-    let date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : today;
-    if (date > today) date = today;
-    const donne = chiffresDonne(date);
-    const prog = mChiffres.progression(user, date);
-    const fini = !!(prog && prog.fini);
-    res.json({
-        date, today, archive: date !== today, nextIn: mfSecondsToMidnight(),
-        nombres: donne.nombres, cible: donne.cible,
-        progression: prog,
-        // La solution n'est révélée qu'une fois la manche jouée : la donner
-        // avant reviendrait à publier la réponse dans la page.
-        solution: fini ? donne.solution : undefined,
-        serie: mChiffres.serie(user),
-    });
-});
-
-app.post('/api/chiffres/start', requireAuthApi, (req, res) => {
-    const user = currentUser(req), today = mfTodayId();
-    const date = /^\d{4}-\d{2}-\d{2}$/.test((req.body || {}).date || '') ? req.body.date : today;
-    if (date !== today) return res.json({ ok: true });
-    res.json({ ok: true, debutA: mChiffres.demarrer(user, date).debutA });
-});
-
-// Le serveur ne fait jamais confiance au total annoncé : il rejoue les étapes
-// une à une avec les règles du jeu (ni négatif, ni fraction, chaque nombre une
-// seule fois) et recalcule lui-même le résultat atteint.
-app.post('/api/chiffres/valider', requireAuthApi, (req, res) => {
-    const user = currentUser(req), today = mfTodayId();
-    const b = req.body || {};
-    const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : today;
-    if (date > today) return res.status(400).json({ error: 'Journée à venir.' });
-    const donne = chiffresDonne(date);
-    const prog = mChiffres.progression(user, date) || mChiffres.demarrer(user, date);
-    if (prog.fini) return res.status(400).json({ error: 'Manche déjà jouée.' });
-
-    const etapes = Array.isArray(b.etapes) ? b.etapes.slice(0, 5) : [];
-    const rejeu = chiffresJeu.rejouer(donne.nombres, etapes);
-    if (rejeu.erreur) return res.status(400).json({ error: rejeu.erreur });
-    const atteint = rejeu.dernier;
-    if (atteint === null) return res.status(400).json({ error: 'Aucun résultat.' });
-
-    const ecart = Math.abs(atteint - donne.cible);
-    const ms = date === today ? mChiffres.tempsEcoule(prog) : null;
-    prog.etapes = etapes;
-    prog.atteint = atteint;
-    prog.ecart = ecart;
-    prog.score = chiffresJeu.score(ecart);
-    prog.fini = true;
-    prog.ms = ms;
-    mChiffres.enregistrer(user, date, prog);
-    if (date === today) {
-        mChiffres.noterJourJoue(user, date);
-        mChiffres.inscrireAuClassement(user, date, prog.score, ms, { ecart, atteint });
-    }
-    res.json({
-        ok: true, atteint, ecart, score: prog.score, ms,
-        solution: donne.solution,
-        place: date === today ? mChiffres.placeDe(user, date) : null,
-        classement: mChiffres.classement(date).slice(0, 15),
-        serie: mChiffres.serie(user),
-    });
-});
-
-app.get('/api/chiffres/classement', requireAuthApi, (req, res) => {
-    const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mfTodayId();
-    res.json({ classement: mChiffres.classement(date).slice(0, 30) });
-});
-
-// =====================================================================
-//  GÉOGRAPHIE — deux modes dans un seul jeu du jour
-// =====================================================================
-// Trois modes : le pays (silhouette), le drapeau, et le voyage (aller d'un
-// pays à un autre de frontière en frontière). `GEO_MODES` est la seule
-// liste — le pouls, le résumé, les résultats du jour et l'admin la
-// parcourent, aucun ne doit énumérer les modes à la main.
-const GEO_MODES = ['silhouette', 'drapeau', 'voyage'];
-const GEO_NOMS = {
-    silhouette: { nom: 'Le pays mystère', emoji: '🗺️' },
-    drapeau:    { nom: 'Le drapeau mystère', emoji: '🏳️' },
-    voyage:     { nom: 'Le voyage', emoji: '🧭' },
-};
-const kGeoPays = (mode, date) => `geo:pays:${mode}:${date}`;
-
-// Le voyage du jour est rangé sous la même clé que les deux autres modes
-// (`geo:pays:voyage:<date>`, valeur « PT>PL ») : la purge, la régénération
-// par l'admin et le compteur de variante le traitent donc sans cas à part.
-function geoVoyageDuJour(date) {
-    const cle = kGeoPays('voyage', date);
-    let brut = mfGet(cle);
-    if (!brut || !/^[A-Z]{2}>[A-Z]{2}$/.test(brut)) {
-        const recents = [];
-        for (let i = 1; i <= 30; i++) {
-            const c = mfGet(kGeoPays('voyage', mfShiftDay(date, -i)));
-            if (c) recents.push(...String(c).split('>'));
-        }
-        const v = geoJeu.tirerVoyage(mGeo.tirageDuJour(date, 'voyage'), recents);
-        brut = v.de + '>' + v.a;
-        mfSet(cle, brut);
-    }
-    const [de, a] = brut.split('>');
-    const chemin = geoJeu.plusCourtChemin(de, a);
-    const D = geoJeu.parCode.get(de), A = geoJeu.parCode.get(a);
-    return {
-        code: brut, de: D, a: A, chemin, optimal: chemin.length - 2,
-        nom: D.nom + ' → ' + A.nom,
-    };
-}
-// Ce qu'on montre d'un pays dans le voyage : jamais plus que son nom, son
-// drapeau et sa forme.
-const geoCarte = (p) => ({ code: p.code, nom: p.nom, drapeau: geoJeu.drapeau(p.code), chemin: p.chemin || null });
-
-function geoDuJour(mode, date) {
-    if (mode === 'voyage') return geoVoyageDuJour(date);
-    const cache = mfGet(kGeoPays(mode, date));
-    if (cache && geoJeu.parCode.get(cache)) return geoJeu.parCode.get(cache);
-    // On évite les pays sortis récemment dans le même mode.
-    const recents = [];
-    for (let i = 1; i <= 30; i++) {
-        const c = mfGet(kGeoPays(mode, mfShiftDay(date, -i)));
-        if (c) recents.push(c);
-    }
-    const p = geoJeu.tirerSansRepeter(mode, mGeo.tirageDuJour(date, mode), recents);
-    mfSet(kGeoPays(mode, date), p.code);
-    return p;
-}
-const kGeoProg = (user, mode, date) => `geo:prog:${user}:${date}:${mode}`;
-
-app.use('/geo', requireAuth, express.static(__dirname + '/public/geo'));
-
-// La liste des pays proposables, servie une fois et mise en cache par le
-// navigateur : 211 noms, quelques kilo-octets. Les silhouettes, elles, ne
-// quittent jamais le serveur — les envoyer donnerait la réponse du jour.
-app.get('/api/geo/pays', requireAuthApi, (req, res) => {
-    res.set('Cache-Control', 'private, max-age=86400');
-    res.json({ pays: geoJeu.listeDesNoms() });
-});
-
-app.get('/api/geo/today', requireAuthApi, (req, res) => {
-    const user = currentUser(req), today = mfTodayId();
-    const mode = GEO_MODES.includes(req.query.mode) ? req.query.mode : 'silhouette';
-    let date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : today;
-    if (date > today) date = today;
-    const cible = geoDuJour(mode, date);
-    const prog = mfGet(kGeoProg(user, mode, date));
-    const fini = !!(prog && prog.fini);
-    if (mode === 'voyage') {
-        return res.json({
-            date, today, mode, archive: date !== today, nextIn: mfSecondsToMidnight(),
-            depart: geoCarte(cible.de), arrivee: geoCarte(cible.a),
-            // Le nombre de pays du plus court chemin est annoncé d'avance :
-            // c'est l'objectif, et le barème se lit par rapport à lui.
-            optimal: cible.optimal,
-            maxErreurs: geoJeu.VOYAGE.MAX_ERREURS, marge: geoJeu.VOYAGE.MARGE,
-            progression: prog || null,
-            reponse: fini ? { chemin: cible.chemin.map(c => geoCarte(geoJeu.parCode.get(c))) } : undefined,
-            serie: mGeo.serie(user),
-        });
-    }
-    res.json({
-        date, today, mode, archive: date !== today, nextIn: mfSecondsToMidnight(),
-        maxEssais: geoJeu.MAX_ESSAIS,
-        // L'indice du jour selon le mode : le contour, ou le drapeau.
-        silhouette: mode === 'silhouette' ? cible.chemin : null,
-        drapeau: mode === 'drapeau' ? geoJeu.drapeau(cible.code) : null,
-        progression: prog || null,
-        // La réponse n'est donnée qu'une fois la partie terminée.
-        reponse: fini ? { code: cible.code, nom: cible.nom, drapeau: geoJeu.drapeau(cible.code), region: cible.region, chemin: cible.chemin } : undefined,
-        serie: mGeo.serie(user),
-    });
-});
-
-app.post('/api/geo/start', requireAuthApi, (req, res) => {
-    const user = currentUser(req), today = mfTodayId();
-    const b = req.body || {};
-    const mode = GEO_MODES.includes(b.mode) ? b.mode : 'silhouette';
-    const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : today;
-    if (date !== today) return res.json({ ok: true });
-    const cle = kGeoProg(user, mode, date);
-    const prog = mfGet(cle) || { debutA: 0, essais: [], fini: false, trouve: false };
-    if (!prog.debutA) { prog.debutA = Date.now(); mfSet(cle, prog); }
-    res.json({ ok: true, debutA: prog.debutA });
-});
-
-app.post('/api/geo/proposer', requireAuthApi, (req, res) => {
-    const user = currentUser(req), today = mfTodayId();
-    const b = req.body || {};
-    const mode = GEO_MODES.includes(b.mode) ? b.mode : 'silhouette';
-    const date = /^\d{4}-\d{2}-\d{2}$/.test(b.date || '') ? b.date : today;
-    if (date > today) return res.status(400).json({ error: 'Journée à venir.' });
-    const cible = geoDuJour(mode, date);
-    const cle = kGeoProg(user, mode, date);
-    if (mode === 'voyage') return geoProposerVoyage(req, res, { user, date, today, cible, cle, saisie: b.pays });
-    const prog = mfGet(cle) || { debutA: Date.now(), essais: [], fini: false, trouve: false };
-    if (prog.fini) return res.status(400).json({ error: 'Partie déjà terminée.' });
-    if (prog.essais.length >= geoJeu.MAX_ESSAIS) return res.status(400).json({ error: 'Plus d’essai disponible.' });
-
-    const propose = geoJeu.trouverPays(b.pays);
-    // Une faute de frappe ne doit pas coûter un essai : on refuse le coup au
-    // lieu de le compter.
-    if (!propose) return res.status(400).json({ error: 'Pays inconnu.' });
-    if (prog.essais.some(e => e.code === propose.code)) return res.status(400).json({ error: 'Déjà proposé.' });
-
-    const eval_ = geoJeu.evaluer(propose.code, cible.code);
-    prog.essais.push(eval_);
-    prog.trouve = eval_.juste;
-    prog.fini = eval_.juste || prog.essais.length >= geoJeu.MAX_ESSAIS;
-    if (prog.fini && date === today) {
-        prog.ms = Math.min(3 * 3600 * 1000, Math.max(0, Date.now() - (prog.debutA || Date.now())));
-        prog.score = geoJeu.score(prog.essais.length, prog.trouve);
-        mGeo.noterJourJoue(user, date);
-        mGeo.inscrireAuClassement(user, `${date}:${mode}`, prog.score, prog.ms, { essais: prog.essais.length, trouve: prog.trouve });
-    }
-    mfSet(cle, prog);
-    res.json({
-        ok: true, essai: eval_, restants: geoJeu.MAX_ESSAIS - prog.essais.length, fini: prog.fini, trouve: prog.trouve,
-        reponse: prog.fini ? { code: cible.code, nom: cible.nom, drapeau: geoJeu.drapeau(cible.code), region: cible.region, chemin: cible.chemin } : undefined,
-        score: prog.score, ms: prog.ms,
-        place: prog.fini && date === today ? mGeo.placeDe(user, `${date}:${mode}`) : null,
-        classement: prog.fini ? mGeo.classement(`${date}:${mode}`).slice(0, 15) : undefined,
-        serie: mGeo.serie(user),
-    });
-});
-
-// ---------- Un pas dans le voyage ----------
-// On part du dernier pays atteint (ou du départ). Le pays proposé doit le
-// toucher : sinon c'est une erreur, et à la troisième le voyage s'arrête.
-// Poser le pied dans un voisin de l'arrivée termine le voyage.
-//
-// ⚠️ Revenir sur ses pas est permis : on peut toujours rebrousser chemin,
-// et c'est ce qui garantit qu'aucun voyage n'est une impasse. Chaque pas
-// compte, y compris ceux qui reviennent en arrière — c'est le détour qui
-// coûte, pas l'erreur de direction.
-function geoProposerVoyage(req, res, { user, date, today, cible, cle, saisie }) {
-    const V = geoJeu.VOYAGE;
-    const prog = mfGet(cle) || { debutA: Date.now(), fini: false, trouve: false };
-    prog.pas = prog.pas || [];
-    prog.erreurs = prog.erreurs || [];
-    if (prog.fini) return res.status(400).json({ error: 'Voyage déjà terminé.' });
-
-    const propose = geoJeu.trouverPays(saisie);
-    // Une faute de frappe ne coûte rien : on refuse sans compter.
-    if (!propose) return res.status(400).json({ error: 'Pays inconnu.' });
-    const ici = prog.pas.length ? prog.pas[prog.pas.length - 1].code : cible.de.code;
-    if (propose.code === ici) return res.status(400).json({ error: 'Tu y es déjà.' });
-
-    let erreur = null, etape = null;
-    // Proposer l'arrivée elle-même n'est permis que depuis un voisin — ce qui
-    // n'arrive jamais, puisque le voyage se termine en y entrant. C'est donc
-    // toujours une erreur, et on le dit clairement.
-    if (!geoJeu.sontVoisins(ici, propose.code)) {
-        erreur = { code: propose.code, nom: propose.nom, drapeau: geoJeu.drapeau(propose.code), depuis: geoJeu.parCode.get(ici).nom };
-        prog.erreurs.push(erreur);
-    } else {
-        const e = geoJeu.evaluer(propose.code, cible.a.code);
-        etape = { code: propose.code, nom: propose.nom, drapeau: e.drapeau, km: e.km, direction: e.direction };
-        prog.pas.push(etape);
-    }
-
-    const arrive = !!(etape && geoJeu.sontVoisins(etape.code, cible.a.code));
-    const perdu = !arrive && (prog.erreurs.length >= V.MAX_ERREURS || prog.pas.length >= cible.optimal + V.MARGE);
-    if (arrive || perdu) {
-        prog.fini = true;
-        prog.trouve = arrive;
-        prog.parfait = arrive && prog.pas.length === cible.optimal && !prog.erreurs.length;
-        prog.optimal = cible.optimal;
-        if (date === today) {
-            prog.ms = Math.min(3 * 3600 * 1000, Math.max(0, Date.now() - (prog.debutA || Date.now())));
-            prog.score = geoJeu.scoreVoyage(prog.pas.length, cible.optimal, prog.erreurs.length, arrive);
-            mGeo.noterJourJoue(user, date);
-            mGeo.inscrireAuClassement(user, `${date}:voyage`, prog.score, prog.ms, {
-                essais: prog.pas.length, trouve: arrive, optimal: cible.optimal, erreurs: prog.erreurs.length,
-            });
-        }
-    }
-    mfSet(cle, prog);
-    res.json({
-        ok: true, etape, erreur, pas: prog.pas, erreurs: prog.erreurs,
-        fini: !!prog.fini, trouve: !!prog.trouve, parfait: !!prog.parfait,
-        reponse: prog.fini ? { chemin: cible.chemin.map(c => geoCarte(geoJeu.parCode.get(c))) } : undefined,
-        score: prog.score, ms: prog.ms,
-        place: prog.fini && date === today ? mGeo.placeDe(user, `${date}:voyage`) : null,
-        classement: prog.fini ? mGeo.classement(`${date}:voyage`).slice(0, 15) : undefined,
-        serie: mGeo.serie(user),
-    });
-}
-
-app.get('/api/geo/classement', requireAuthApi, (req, res) => {
-    const mode = GEO_MODES.includes(req.query.mode) ? req.query.mode : 'silhouette';
-    const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mfTodayId();
-    res.json({ classement: mGeo.classement(`${date}:${mode}`).slice(0, 30) });
-});
-
-// =====================================================================
-//  LE SUDOKU DU JOUR  (/sudoku)
-//
-//  Même moteur que Le compte est bon et la Géographie. La grille est
-//  tirée de la date (voir `sudoku/jeu.js` : solution unique, résoluble
-//  sans deviner), et la solution ne quitte le serveur qu'une fois la
-//  grille terminée.
-// =====================================================================
-const sudokuJeu = require('./sudoku/jeu');
-const mSudoku = creerMoteur('sudoku', deuxMoteurs);
-const kSudokuGrille = (date) => `sudoku:grille:${date}`;
-function sudokuDuJour(date) {
-    const cache = mfGet(kSudokuGrille(date));
-    if (cache && cache.donnee) return cache;
-    const g = sudokuJeu.tirage(mSudoku.tirageDuJour(date));
-    mfSet(kSudokuGrille(date), g);
-    return g;
-}
-const dateDemandee = (brut, today) => {
+// La date demandée, bornée : jamais dans le futur, jamais plus loin que
+// les archives — sans ce plancher, chaque date inventée fabriquerait ET
+// stockerait un contenu.
+function dateDemandee(brut, today) {
     let date = /^\d{4}-\d{2}-\d{2}$/.test(brut || '') ? brut : today;
     if (date > today) date = today;
-    // Pas plus loin que les archives : sans plancher, chaque date inventée
-    // fabriquerait ET stockerait une grille.
     const plancher = mfShiftDay(today, -ARCHIVE_JOURS);
     return date < plancher ? plancher : date;
+}
+
+const depsDuJour = {
+    express, requireAuth, requireAuthApi, currentUser,
+    mfGet, mfSet, mfTodayId, mfShiftDay, mfSecondsToMidnight,
+    dateDemandee, racine: __dirname,
+    // Chaque jeu reçoit un moteur déjà relié au cache commun.
+    creerMoteur: (app) => creerMoteur(app, { get: mfGet, set: mfSet, today: mfTodayId, shift: mfShiftDay }),
 };
+const chiffresApi = require('./chiffres/routes')(app, depsDuJour);
+const geoApi = require('./geo/routes')(app, depsDuJour);
+const sudokuApi = require('./sudoku/routes')(app, depsDuJour);
+const motlongApi = require('./motlong/routes')(app, depsDuJour);
 
-app.use('/sudoku', requireAuth, express.static(__dirname + '/public/sudoku'));
-
-app.get('/api/sudoku/today', requireAuthApi, (req, res) => {
-    const user = currentUser(req), today = mfTodayId();
-    const date = dateDemandee(req.query.date, today);
-    const g = sudokuDuJour(date);
-    const prog = mSudoku.progression(user, date);
-    const fini = !!(prog && prog.fini);
-    res.json({
-        date, today, archive: date !== today, nextIn: mfSecondsToMidnight(),
-        donnee: g.donnee, indices: g.indices,
-        progression: prog,
-        solution: fini ? g.solution : undefined,
-        serie: mSudoku.serie(user),
-    });
-});
-
-app.post('/api/sudoku/start', requireAuthApi, (req, res) => {
-    const user = currentUser(req), today = mfTodayId();
-    const date = dateDemandee((req.body || {}).date, today);
-    const prog = mSudoku.demarrer(user, date);
-    res.json({ ok: true, debutA: date === today ? prog.debutA : null });
-});
-
-// Sauvegarde en cours de partie : reprendre sur un autre téléphone, ou après
-// avoir fermé l'onglet, sans rien perdre. Les notes au crayon restent dans
-// le navigateur — elles ne comptent pour rien.
-app.post('/api/sudoku/sauver', requireAuthApi, (req, res) => {
-    const user = currentUser(req), today = mfTodayId();
-    const b = req.body || {};
-    const date = dateDemandee(b.date, today);
-    const g = sudokuDuJour(date);
-    const prog = mSudoku.progression(user, date) || mSudoku.demarrer(user, date);
-    if (prog.fini) return res.json({ ok: true });
-    prog.cases = sudokuJeu.nettoyer(b.cases, g.donnee);
-    mSudoku.enregistrer(user, date, prog);
-    res.json({ ok: true });
-});
-
-// ⚠️ Pas d'oracle : le serveur dit « juste » ou « pas encore », jamais
-// quelles cases sont fausses. Le navigateur signale déjà les conflits
-// visibles (deux chiffres identiques dans une ligne), ce qui ne révèle rien
-// qu'on ne voie à l'œil. Une grille pleine sans conflit est forcément la
-// solution, puisqu'elle est unique.
-app.post('/api/sudoku/valider', requireAuthApi, (req, res) => {
-    const user = currentUser(req), today = mfTodayId();
-    const b = req.body || {};
-    const date = dateDemandee(b.date, today);
-    const g = sudokuDuJour(date);
-    const prog = mSudoku.progression(user, date) || mSudoku.demarrer(user, date);
-    if (prog.fini) return res.status(400).json({ error: 'Grille déjà terminée.' });
-    const cases = sudokuJeu.nettoyer(b.cases, g.donnee);
-    prog.cases = cases;
-    if (!sudokuJeu.estJuste(cases, g.solution)) {
-        mSudoku.enregistrer(user, date, prog);
-        return res.json({ ok: true, juste: false });
-    }
-    const ms = date === today ? mSudoku.tempsEcoule(prog) : null;
-    prog.fini = true; prog.trouve = true; prog.ms = ms;
-    prog.score = sudokuJeu.SCORE_RESOLU;
-    mSudoku.enregistrer(user, date, prog);
-    if (date === today) {
-        mSudoku.noterJourJoue(user, date);
-        mSudoku.inscrireAuClassement(user, date, prog.score, ms, {
-            trouve: true,
-            // Un temps anormalement court reste inscrit mais marqué, comme aux
-            // Mots Fléchés : l'administration tranche.
-            susp: ms != null && ms < sudokuJeu.TEMPS_MINI_MS,
-        });
-    }
-    res.json({
-        ok: true, juste: true, ms, score: prog.score, solution: g.solution,
-        place: date === today ? mSudoku.placeDe(user, date) : null,
-        classement: mSudoku.classement(date).slice(0, 15),
-        serie: mSudoku.serie(user),
-    });
-});
-
-// Abandonner montre la solution. La journée compte comme jouée — on a passé
-// du temps sur la grille — mais ne rapporte rien.
-app.post('/api/sudoku/abandon', requireAuthApi, (req, res) => {
-    const user = currentUser(req), today = mfTodayId();
-    const date = dateDemandee((req.body || {}).date, today);
-    const g = sudokuDuJour(date);
-    const prog = mSudoku.progression(user, date) || mSudoku.demarrer(user, date);
-    if (!prog.fini) {
-        prog.fini = true; prog.trouve = false; prog.abandon = true; prog.score = 0;
-        prog.ms = date === today ? mSudoku.tempsEcoule(prog) : null;
-        mSudoku.enregistrer(user, date, prog);
-        if (date === today) {
-            mSudoku.noterJourJoue(user, date);
-            mSudoku.inscrireAuClassement(user, date, 0, prog.ms, { trouve: false });
-        }
-    }
-    res.json({
-        ok: true, solution: g.solution,
-        classement: mSudoku.classement(date).slice(0, 15),
-        place: date === today ? mSudoku.placeDe(user, date) : null,
-    });
-});
-
-app.get('/api/sudoku/classement', requireAuthApi, (req, res) => {
-    const date = dateDemandee(req.query.date, mfTodayId());
-    res.json({ classement: mSudoku.classement(date).slice(0, 30) });
-});
-
-// =====================================================================
-//  LE MOT LE PLUS LONG  (/motlong)
-//
-//  Neuf lettres tirées de la date, propositions illimitées, le score est la
-//  longueur du plus long mot valable. Le dictionnaire (`motlong/mots.js`,
-//  70 000 formes tirées de Lexique383) ne quitte jamais le serveur : le
-//  navigateur ne reçoit que les neuf lettres, et les meilleurs mots une
-//  fois la manche terminée.
-// =====================================================================
-const motlongJeu = require('./motlong/jeu');
-const mMotlong = creerMoteur('motlong', deuxMoteurs);
-const kMotlongTirage = (date) => `motlong:tirage:${date}`;
-function motlongDuJour(date) {
-    const cache = mfGet(kMotlongTirage(date));
-    if (cache && cache.lettres) return cache;
-    // Pas le même mot deux fois en deux mois.
-    const recents = [];
-    for (let i = 1; i <= 60; i++) {
-        const t = mfGet(kMotlongTirage(mfShiftDay(date, -i)));
-        if (t && t.source) recents.push(t.source);
-    }
-    const t = motlongJeu.tirage(mMotlong.tirageDuJour(date), recents);
-    mfSet(kMotlongTirage(date), t);
-    return t;
-}
-// Ce qu'on peut dire d'une manche au navigateur : le tirage, ses mots, et
-// les réponses seulement quand elle est terminée.
-function motlongVue(t, prog) {
-    const fini = !!(prog && prog.fini);
-    return {
-        lettres: t.lettres, max: t.max,
-        meilleurs: fini ? t.meilleurs : undefined,
-    };
-}
-
-app.use('/motlong', requireAuth, express.static(__dirname + '/public/motlong'));
-
-app.get('/api/motlong/today', requireAuthApi, (req, res) => {
-    const user = currentUser(req), today = mfTodayId();
-    const date = dateDemandee(req.query.date, today);
-    const t = motlongDuJour(date);
-    const prog = mMotlong.progression(user, date);
-    res.json({
-        date, today, archive: date !== today, nextIn: mfSecondsToMidnight(),
-        ...motlongVue(t, prog),
-        progression: prog,
-        serie: mMotlong.serie(user),
-    });
-});
-
-app.post('/api/motlong/start', requireAuthApi, (req, res) => {
-    const user = currentUser(req), today = mfTodayId();
-    const date = dateDemandee((req.body || {}).date, today);
-    const prog = mMotlong.demarrer(user, date);
-    res.json({ ok: true, debutA: date === today ? prog.debutA : null });
-});
-
-// Terminer la manche : quand le plus
-// long mot possible est trouvé, ou quand le joueur s'arrête de lui-même.
-function motlongTerminer(user, date, today, prog) {
-    prog.fini = true;
-    prog.meilleur = Math.max(0, ...(prog.mots || []).map(m => m.length));
-    prog.score = prog.meilleur;
-    prog.trouve = prog.meilleur > 0 && prog.meilleur >= motlongDuJour(date).max;
-    prog.ms = date === today ? mMotlong.tempsEcoule(prog) : null;
-    if (date === today) {
-        mMotlong.noterJourJoue(user, date);
-        const mot = (prog.mots || []).find(m => m.length === prog.meilleur) || '';
-        mMotlong.inscrireAuClassement(user, date, prog.score, prog.ms, { trouve: prog.trouve, mot });
-    }
-}
-function motlongReponse(user, date, today, prog, extra) {
-    const t = motlongDuJour(date);
-    return Object.assign({
-        ok: true,
-        mots: prog.mots || [], propositions: prog.propositions || 0,
-        fini: !!prog.fini, trouve: !!prog.trouve, meilleur: prog.meilleur || 0, score: prog.score, ms: prog.ms,
-        meilleurs: prog.fini ? t.meilleurs : undefined,
-        place: prog.fini && date === today ? mMotlong.placeDe(user, date) : null,
-        classement: prog.fini ? mMotlong.classement(date).slice(0, 15) : undefined,
-        serie: mMotlong.serie(user),
-    }, extra || {});
-}
-
-app.post('/api/motlong/proposer', requireAuthApi, (req, res) => {
-    const user = currentUser(req), today = mfTodayId();
-    const b = req.body || {};
-    const date = dateDemandee(b.date, today);
-    const t = motlongDuJour(date);
-    const prog = mMotlong.progression(user, date) || mMotlong.demarrer(user, date);
-    if (prog.fini) return res.status(400).json({ error: 'Manche déjà terminée.' });
-    prog.mots = prog.mots || []; prog.refuses = prog.refuses || []; prog.propositions = prog.propositions || 0;
-
-    const v = motlongJeu.verifier(b.mot, t.lettres);
-    // Un mot déjà trouvé ne coûte rien : ce n'est pas une nouvelle tentative.
-    if (v.ok && prog.mots.includes(v.mot)) return res.status(400).json({ error: 'Déjà trouvé.' });
-    if (!v.cout) return res.status(400).json({ error: v.raison });
-    prog.propositions++;
-    if (v.ok) prog.mots.push(v.mot); else prog.refuses.push(v.mot);
-    const auMax = v.ok && v.mot.length >= t.max;
-    if (auMax) motlongTerminer(user, date, today, prog);
-    mMotlong.enregistrer(user, date, prog);
-    res.json(motlongReponse(user, date, today, prog, { accepte: v.ok, mot: v.mot, raison: v.ok ? null : v.raison }));
-});
-
-app.post('/api/motlong/terminer', requireAuthApi, (req, res) => {
-    const user = currentUser(req), today = mfTodayId();
-    const date = dateDemandee((req.body || {}).date, today);
-    const prog = mMotlong.progression(user, date) || mMotlong.demarrer(user, date);
-    if (!prog.fini) {
-        prog.mots = prog.mots || [];
-        motlongTerminer(user, date, today, prog);
-        mMotlong.enregistrer(user, date, prog);
-    }
-    res.json(motlongReponse(user, date, today, prog));
-});
-
-app.get('/api/motlong/classement', requireAuthApi, (req, res) => {
-    const date = dateDemandee(req.query.date, mfTodayId());
-    res.json({ classement: mMotlong.classement(date).slice(0, 30) });
-});
+// Les noms dont se sert le reste du fichier, inchangés.
+const mChiffres = chiffresApi.moteur, chiffresDonne = chiffresApi.donne, kChiffresDonne = chiffresApi.kDonne, chiffresJeu = chiffresApi.jeu;
+const mGeo = geoApi.moteur, geoDuJour = geoApi.duJour, kGeoPays = geoApi.kPays, GEO_MODES = geoApi.MODES, GEO_NOMS = geoApi.NOMS, geoJeu = geoApi.jeu;
+const mSudoku = sudokuApi.moteur, sudokuDuJour = sudokuApi.duJour, kSudokuGrille = sudokuApi.kGrille;
+const mMotlong = motlongApi.moteur, motlongDuJour = motlongApi.duJour, kMotlongTirage = motlongApi.kTirage;
 
 // ---------------------------------------------------------------------
 //  PERUDO — jeu temps réel, intégré au monolithe sous /perudo.
 //  Le front est protégé par le login du salon ; /perudo/healthz reste public.
 // ---------------------------------------------------------------------
-const perudoApi = require('./perudo/game')(app, io, { get: mfGet, set: mfSet });
+const perudoApi = require('./perudo/game')(app, io, { get: mfGet, set: mfSet, noterPartie });
 
 // ---------------------------------------------------------------------
 //  REPRISE DES ANCIENS PROFILS PERUDO
@@ -1877,7 +1336,7 @@ function effacerLeMotJuste() {
 // ---------------------------------------------------------------------
 //  PETIT BAC — jeu temps réel multijoueur, intégré sous /pbac.
 // ---------------------------------------------------------------------
-const pbacApi = require('./pbac/game')(app, io, { get: mfGet, set: mfSet });
+const pbacApi = require('./pbac/game')(app, io, { get: mfGet, set: mfSet, noterPartie });
 // L'espace multijoueurs commun : le seul point d'entrée vers les tables.
 app.use('/jouer', requireAuth, express.static(__dirname + '/public/jouer'));
 // Le carnet réunit les sorties et les recettes : deux apps qui ne sont pas des
@@ -1885,24 +1344,81 @@ app.use('/jouer', requireAuth, express.static(__dirname + '/public/jouer'));
 // justifier sa propre tuile.
 app.use('/carnet', requireAuth, express.static(__dirname + '/public/carnet'));
 app.use('/pbac', requireAuth, express.static(__dirname + '/public/pbac'));
-const yamsApi = require('./yams/game')(app, io, { get: mfGet, set: mfSet });
+const yamsApi = require('./yams/game')(app, io, { get: mfGet, set: mfSet, noterPartie });
 app.use('/yams', requireAuth, express.static(__dirname + '/public/yams'));
 
 // ---------------------------------------------------------------------
 //  INFILTRÉ — jeu social de déduction, intégré sous /undercover.
 // ---------------------------------------------------------------------
-const undercoverApi = require('./undercover/game')(app, io, requireAuth, { get: mfGet, set: mfSet });
+const undercoverApi = require('./undercover/game')(app, io, requireAuth, { get: mfGet, set: mfSet, noterPartie });
 app.use('/undercover', requireAuth, express.static(__dirname + '/public/undercover'));
 
 // ---------------------------------------------------------------------
-//  HISTORIQUE DES TABLES — Perudo, Petit Bac, Infiltré, tout confondu.
-//  Aucun des trois moteurs de jeu n'est modifié : on compare simplement
-//  la liste des parties actives à intervalles réguliers, et toute partie
-//  qui disparaît (terminée ou fermée) part dans l'historique persistant.
+//  HISTORIQUE DES TABLES — tous les jeux multijoueurs, tout confondu.
+//
+//  Deux chemins y mènent, et ils ne font pas la même chose :
+//
+//  1. `noterPartie()` — le jeu l'appelle au moment où il CONNAÎT ses
+//     vainqueurs, c'est-à-dire là où il écrit déjà ses statistiques. C'est
+//     le seul moment où l'information existe : une fois la partie close,
+//     la table disparaît et personne ne peut plus dire qui a gagné.
+//     ⚠️ C'est ce qui manquait : l'historique n'enregistrait que des
+//     participations, donc une victoire à plusieurs ne pouvait compter au
+//     classement que « depuis toujours », jamais sur une période.
+//  2. `pollGameHistory()` — le ramasseur. Il compare la liste des tables
+//     actives toutes les vingt secondes et garde trace des parties qui ont
+//     disparu sans passer par la case fin (hôte parti, table fermée).
+//     `partiesNotees` l'empêche de compter deux fois celles du point 1.
 // ---------------------------------------------------------------------
 const GAME_HISTORY_KEY = 'admin:gameHistory';
 const GAME_HISTORY_MAX = 150;
 let knownLiveGames = new Map(); // id -> { app, label, players, seenAt }
+// Deux mémoires, parce que les deux chemins ne comptent pas la même chose :
+// `partiesNotees` empêche d'enregistrer deux fois la MÊME manche (la clé
+// porte son numéro : une revanche garde l'id de la table, c'est une partie
+// de plus), `tablesNotees` dit au ramasseur qu'une table a déjà rendu
+// compte d'elle-même.
+const partiesNotees = new Set();
+const tablesNotees = new Set();
+const PARTIES_NOTEES_MAX = 400;
+function retenir(set, cle) {
+    set.add(cle);
+    if (set.size > PARTIES_NOTEES_MAX) set.delete(set.values().next().value);
+}
+
+function pseudosDe(joueurs) {
+    return (joueurs || []).map(p => (typeof p === 'string' ? p : (p && p.pseudo))).filter(Boolean);
+}
+
+function ajouterAHistorique(ligne) {
+    const history = mfGet(GAME_HISTORY_KEY) || [];
+    history.unshift(ligne);
+    mfSet(GAME_HISTORY_KEY, history.slice(0, GAME_HISTORY_MAX));
+}
+
+/**
+ * Enregistre une partie terminée, avec ses vainqueurs.
+ * Appelée par les modules de jeu ; `winners` est vide en cas d'égalité
+ * (personne ne gagne, même règle qu'au Yams) et `solo` marque une partie
+ * jouée seul ou contre l'ordinateur — elle ne compte pas au classement.
+ */
+function noterPartie(info) {
+    if (!info || !info.app || !info.id) return;
+    const table = info.app + ':' + info.id;
+    const cle = table + '#' + (info.manche || 1);
+    if (partiesNotees.has(cle)) return;
+    retenir(partiesNotees, cle);
+    retenir(tablesNotees, table);
+    const jeu = JEUX_MULTI.find(j => j.id === info.app);
+    ajouterAHistorique({
+        app: info.app,
+        label: info.label || (jeu && jeu.nom) || info.app,
+        players: pseudosDe(info.players),
+        winners: pseudosDe(info.winners),
+        solo: !!info.solo,
+        endedAt: Date.now(),
+    });
+}
 
 function snapshotActiveGames() {
     // `toutesLesTables()` est la seule liste des jeux multijoueurs. Avant, les
@@ -1918,15 +1434,16 @@ function snapshotActiveGames() {
 }
 function pollGameHistory() {
     const current = snapshotActiveGames();
-    const history = mfGet(GAME_HISTORY_KEY) || [];
-    let changed = false;
     for (const [id, info] of knownLiveGames) {
-        if (!current.has(id)) {
-            history.unshift({ app: info.app, label: info.label, players: info.players, endedAt: Date.now() });
-            changed = true;
-        }
+        if (current.has(id)) continue;
+        // Le jeu l'a déjà notée avec ses vainqueurs : ne pas la compter deux fois.
+        if (tablesNotees.has(id)) { tablesNotees.delete(id); continue; }
+        ajouterAHistorique({
+            app: info.app, label: info.label,
+            players: pseudosDe(info.players), winners: [],
+            endedAt: Date.now(),
+        });
     }
-    if (changed) mfSet(GAME_HISTORY_KEY, history.slice(0, GAME_HISTORY_MAX));
     knownLiveGames = current;
 }
 setInterval(pollGameHistory, 20 * 1000);
@@ -2471,7 +1988,7 @@ function portraitJoueur(pseudo) {
         }
     }
     if (sd.parties) {
-        ajoute('sudoku', 'Sudoku', '🔲', sd.parties,
+        ajoute('sudoku', 'Sudoku', '🧮', sd.parties,
             sd.resolues + ' grille' + (sd.resolues > 1 ? 's' : '') + ' résolue' + (sd.resolues > 1 ? 's' : ''), [
                 ['Grilles jouées', sd.parties],
                 ['Série en cours', mSudoku.serie(pseudo).encours || null],
@@ -2530,7 +2047,7 @@ function portraitJoueur(pseudo) {
     let yams = null;
     try { yams = yamsApi.statsFor(pseudo); } catch (e) {}
     if (yams && (yams.gamesPlayed || yams.soloPlayed)) {
-        ajoute('yams', 'Yams', '🎯', yams.gamesPlayed + yams.soloPlayed,
+        ajoute('yams', 'Yams', '🎲', yams.gamesPlayed + yams.soloPlayed,
             yams.gamesWon + ' parties gagnées', [
                 ['Parties', yams.gamesPlayed], ['Victoires', yams.gamesWon],
                 ['Nuls', yams.gamesTied || null],
@@ -2547,7 +2064,7 @@ function portraitJoueur(pseudo) {
     let dr = null;
     try { dr = drapeauxApi.statsFor(pseudo); } catch (e) {}
     if (dr && dr.questions) {
-        ajoute('drapeaux', 'Quiz des drapeaux', '🏳️', dr.parties + (dr.solo || 0),
+        ajoute('drapeaux', 'Quiz des drapeaux', '🚩', dr.parties + (dr.solo || 0),
             dr.victoires + ' parties gagnées', [
                 ['Parties', dr.parties || null], ['Victoires', dr.victoires || null],
                 ['En solo', dr.solo || null],
@@ -2587,7 +2104,7 @@ function portraitJoueur(pseudo) {
     let perudo = null;
     try { perudo = perudoApi.statsFor(pseudo); } catch (e) {}
     if (perudo && (perudo.parties || perudo.partiesSolo)) {
-        ajoute('perudo', 'Perudo', '🎲', perudo.parties + (perudo.partiesSolo || 0),
+        ajoute('perudo', 'Perudo', '🏴‍☠️', perudo.parties + (perudo.partiesSolo || 0),
             perudo.victoires + ' parties gagnées', [
                 ['Parties', perudo.parties || null], ['Victoires', perudo.victoires || null],
                 ['Taux de victoire', perudo.parties ? perudo.tauxVictoire + ' %' : null],
@@ -2609,14 +2126,66 @@ function portraitJoueur(pseudo) {
     return { jeux, total, favori: favori ? favori.nom : null };
 }
 
-// Place au classement du Salon, sans recalculer tout le tableau deux fois.
-function placeAuClassement(pseudo) {
-    const pseudos = Object.keys(registeredUsers);
-    const series = {};
-    for (const p of pseudos) {
-        series[p] = serieDuSalon(p);
+// ---------------------------------------------------------------------
+//  LE CLASSEMENT DU SALON — un seul chemin, quatre périodes
+//
+//  `classement:departs` garde UNE date de remise à zéro PAR PÉRIODE :
+//  remettre les points du jour à zéro ne doit pas effacer le mois, et
+//  « depuis toujours » doit pouvoir repartir à neuf sans toucher au reste.
+//  Rien n'est effacé pour autant : on déplace le point de départ du
+//  calcul, et le remettre à vide fait tout réapparaître. C'est ce qui rend
+//  la manœuvre sans danger.
+// ---------------------------------------------------------------------
+const K_CLASSEMENT_DEPARTS = 'classement:departs';
+const K_CLASSEMENT_PALMARES = 'classement:palmares';
+const PERIODE_DEFAUT = 'mois';
+const estUneDate = (d) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
+
+function departsClassement() {
+    const brut = mfGet(K_CLASSEMENT_DEPARTS);
+    const out = {};
+    for (const id of Object.keys(PERIODES)) {
+        out[id] = brut && estUneDate(brut[id]) ? brut[id] : null;
     }
-    const lignes = calculerClassement(mfCache, pseudos, series);
+    return out;
+}
+
+// Le classement complet sur une période. Tout passe par ici : la page
+// d'accueil, la place affichée au profil et les points qui nourrissent les
+// titres. Trois calculs séparés finissaient par ne plus dire la même chose.
+function classementDuSalon(periode) {
+    return calculerClassement(mfCache, Object.keys(registeredUsers), {
+        periode: PERIODES[periode] ? periode : PERIODE_DEFAUT,
+        aujourdhui: mfTodayId(),
+        departs: departsClassement(),
+    });
+}
+
+// Remettre à zéro UNE période. Rien n'est effacé : on archive le podium de
+// la période qui s'achève, puis on marque sa date de remise à zéro — elle ne
+// compte plus que ce qui vient après aujourd'hui. Les parties d'avant restent
+// en base, et vider cette date les fait réapparaître.
+function remettreLeClassementAZero(periode) {
+    const id = PERIODES[periode] ? periode : 'toujours';
+    const aujourdhui = mfTodayId();
+    const podium = classementDuSalon(id).slice(0, 3)
+        .map(l => ({ pseudo: l.pseudo, points: l.points }));
+    const departs = departsClassement();
+    const palmares = mfGet(K_CLASSEMENT_PALMARES) || [];
+    palmares.unshift({
+        periode: id, nom: PERIODES[id].nom,
+        du: departs[id] || null, au: aujourdhui, podium,
+    });
+    mfSet(K_CLASSEMENT_PALMARES, palmares.slice(0, 40));
+    departs[id] = aujourdhui;
+    mfSet(K_CLASSEMENT_DEPARTS, departs);
+    _titresCache = null;
+    return { periode: id, depart: aujourdhui, podium };
+}
+
+// Place au classement du Salon, sans recalculer tout le tableau deux fois.
+function placeAuClassement(pseudo, periode) {
+    const lignes = classementDuSalon(periode);
     const i = lignes.findIndex(l => l.pseudo === pseudo);
     return i < 0 ? null : { place: i + 1, points: lignes[i].points, total: lignes.length };
 }
@@ -2687,12 +2256,12 @@ function serieDepuisJours(jours) {
 //  plus de hall séparé.
 // ---------------------------------------------------------------------
 const JEUX_MULTI = [
-    { id: 'perudo', nom: 'Perudo', emoji: '🎲', accent: '#d9a94e', href: '/perudo', api: () => perudoApi },
+    { id: 'perudo', nom: 'Perudo', emoji: '🏴‍☠️', accent: '#d9a94e', href: '/perudo', api: () => perudoApi },
     { id: 'pbac', nom: 'Petit Bac', emoji: '✏️', accent: '#c2513a', href: '/pbac', api: () => pbacApi },
     { id: 'undercover', nom: 'Infiltré', emoji: '🕵️', accent: '#6f7bb0', href: '/undercover', api: () => undercoverApi },
-    { id: 'yams', nom: 'Yams', emoji: '🎯', accent: '#ecca82', href: '/yams', api: () => yamsApi },
+    { id: 'yams', nom: 'Yams', emoji: '🎲', accent: '#ecca82', href: '/yams', api: () => yamsApi },
     { id: 'motusparty', nom: 'Motus Party', emoji: '🏁', accent: '#d9a94e', href: '/motus/party', api: () => motusPartyApi },
-    { id: 'drapeaux', nom: 'Quiz des drapeaux', emoji: '🏳️', accent: '#6f7bb0', href: '/drapeaux', api: () => drapeauxApi },
+    { id: 'drapeaux', nom: 'Quiz des drapeaux', emoji: '🚩', accent: '#6f7bb0', href: '/drapeaux', api: () => drapeauxApi },
 ];
 
 // Toutes les tables d'un jeu, quel que soit le jeu, sous une forme unique.
@@ -3038,7 +2607,7 @@ app.get('/api/salon/resultats-du-jour', requireAuthApi, (req, res) => {
     const sdProg = mSudoku.progression(user, date);
     const sdFini = !!(sdProg && sdProg.fini);
     jeux.push({
-        id: 'sudoku', nom: 'Sudoku', emoji: '🔲', accent: '#8a7bc4', href: '/sudoku',
+        id: 'sudoku', nom: 'Sudoku', emoji: '🧮', accent: '#8a7bc4', href: '/sudoku',
         joue: sdFini, mot: null,
         classement: sdFini
             ? mSudoku.classement(date).map(e => ({ pseudo: e.u, detail: e.trouve === false ? 'abandon' : mfFormat(Math.round((e.ms || 0) / 1000)) }))
@@ -3082,8 +2651,11 @@ function tousLesTitres(forcer) {
     for (const p of pseudos) {
         series[p] = serieDuSalon(p);
     }
+    // Les titres se jugent sur toute la vie du salon, pas sur la période
+    // affichée en ce moment : un titre qui changerait de mains parce qu'on a
+    // cliqué sur « aujourd'hui » ne voudrait rien dire.
     const points = {};
-    for (const l of calculerClassement(mfCache, pseudos, series)) points[l.pseudo] = l.points;
+    for (const l of classementDuSalon('toujours')) points[l.pseudo] = l.points;
     // Perudo range désormais ses statistiques dans le cache commun, comme les
     // autres jeux : `attribuerTitres` les y trouve tout seul, sans qu'on ait à
     // lui passer une source à part.
@@ -3126,28 +2698,35 @@ function titresVisiblesDe(pseudo) {
 // Le classement du Salon : un score transversal, recalculé à la demande depuis
 // les clés déjà en base. Rien n'est stocké, donc rien à migrer si le barème change.
 app.get('/api/salon/classement', requireAuthApi, (req, res) => {
-    const pseudos = Object.keys(registeredUsers);
-    const series = {};
-    for (const p of pseudos) {
-        series[p] = serieDuSalon(p);
-    }
-    // Par défaut la saison en cours : un classement cumulatif depuis toujours
-    // finit par se figer, et on ne rattrape plus le premier. « Depuis toujours »
-    // reste consultable.
-    const depuisToujours = String(req.query.periode || '') === 'toujours';
-    const aujourdhui = mfTodayId();
-    const lignes = calculerClassement(mfCache, pseudos, series,
-        depuisToujours ? null : bornesSaison(aujourdhui));
+    // Quatre périodes, et c'est le point de la V2 : un classement cumulatif
+    // finit par se figer et on ne rattrape plus le premier. Au jour, tout le
+    // monde repart à égalité chaque matin.
+    const demande = String(req.query.periode || '');
+    const periode = PERIODES[demande] ? demande : PERIODE_DEFAUT;
+    const lignes = classementDuSalon(periode);
     const moi = currentUser(req);
+    // La série ne rapporte plus de points : elle s'affiche à côté du nom.
+    const dessus = lignes.slice(0, 20).map(l => ({ ...l, serie: serieDuSalon(l.pseudo) }));
     res.json({
-        classement: lignes.slice(0, 20),
+        classement: dessus,
         moi,
         maPlace: lignes.findIndex(l => l.pseudo === moi) + 1 || null,
         total: lignes.length,
-        periode: depuisToujours ? 'toujours' : 'saison',
-        saison: aujourdhui.slice(0, 7),
+        periode,
+        periodes: Object.values(PERIODES).map(p => ({ id: p.id, nom: p.nom })),
+        // La date depuis laquelle CETTE période recompte, si elle a été
+        // remise à zéro : sans elle, un classement vide ressemble à une panne.
+        // On envoie le PREMIER JOUR COMPTÉ, pas la date de la remise à zéro :
+        // « à partir du 5 » se comprend, « le lendemain du 4 » se déchiffre.
+        depart: departsClassement()[periode] ? mfShiftDay(departsClassement()[periode], 1) : null,
         bareme: BAREME,
     });
+});
+
+// Comment les points sont comptés — en mots, et généré depuis le barème
+// lui-même. Une règle du jeu recopiée à la main finit toujours par mentir.
+app.get('/api/salon/bareme', requireAuthApi, (req, res) => {
+    res.json(explications());
 });
 
 // Agrège les stats d'un jeu "mot du jour" à partir de ses clés de progression
@@ -3474,6 +3053,23 @@ require('./admin/routes')(app, {
     // Parties de l'admin lisait chaque module à sa façon, et une exception
     // avalée en silence pouvait lui faire manquer un jeu entier.
     tables: () => toutesLesTables(),
+    // Le classement : sa période de départ, son palmarès, et la remise à zéro.
+    classement: {
+        lire: (periode) => classementDuSalon(periode),
+        periodes: PERIODES,
+        departs: departsClassement,
+        palmares: () => mfGet(K_CLASSEMENT_PALMARES) || [],
+        zero: remettreLeClassementAZero,
+        // Annuler une remise à zéro : la période recompte tout.
+        rouvrir: (periode) => {
+            const departs = departsClassement();
+            if (!PERIODES[periode]) return null;
+            departs[periode] = null;
+            mfSet(K_CLASSEMENT_DEPARTS, departs);
+            _titresCache = null;
+            return departs;
+        },
+    },
 });
 
 

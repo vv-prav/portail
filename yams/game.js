@@ -9,6 +9,9 @@ module.exports = function attachYams(app, io, store) {
 
 const mfGet = store && store.get ? store.get : () => undefined;
 const mfSet = store && store.set ? store.set : () => {};
+// Le salon tient l'historique des parties : on l'avertit au moment où
+// les vainqueurs sont connus (voir `noterPartie` dans server.js).
+const noterPartie = (store && store.noterPartie) || (() => {});
 
 const MAX_PLAYERS = 4;
 const MIN_PLAYERS = 1;
@@ -390,6 +393,15 @@ function recordYamsHistory(g, winner, gagnants) {
     });
     if (list.length > HISTORY_MAX) list.length = HISTORY_MAX;
     mfSet(HISTORY_KEY, list);
+    // Et dans l'historique commun du salon, celui que lit le classement.
+    // ⚠️ `manche` est indispensable : une revanche garde l'id de la table.
+    noterPartie({
+        app: 'yams', id: g.id, manche: g.manche || 1, label: 'Yams',
+        players: g.players.map(p => p.pseudo),
+        // À égalité personne ne gagne : `winner` est déjà null dans ce cas.
+        winners: g.solo || !winner ? [] : [winner],
+        solo: !!g.solo,
+    });
 }
 
 // =====================================================================

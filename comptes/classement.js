@@ -1,186 +1,301 @@
 // =====================================================================
 //  LE CLASSEMENT DU SALON — un score transversal, tous jeux confondus
 //
-//  Chaque app a son propre classement, et aucun ne parle aux autres :
-//  le salon n'est qu'un couloir vers onze jeux séparés. Ce module en
-//  fait un lieu, avec un podium commun.
-//
 //  Il ne stocke RIEN : tout est recalculé à la demande depuis les clés
-//  déjà en base. Pas de nouvelle donnée à maintenir, pas de migration,
-//  et un barème qu'on peut changer sans rien réécrire.
+//  déjà en base. Changer le barème ne demande donc aucune migration, et
+//  une remise à zéro n'efface aucune partie (voir `classement:depart`).
 //
-//  Le barème est volontairement isolé ci-dessous : c'est un choix de
-//  jeu, pas une contrainte technique. Il part de deux idées simples —
-//  jouer rapporte, gagner rapporte plus — et évite de récompenser le
-//  seul acharnement.
+//  ---------------------------------------------------------------
+//  CE QUI A CHANGÉ (V2), ET POURQUOI
+//  ---------------------------------------------------------------
+//  1. **La performance compte.** L'ancien barème ne distinguait que
+//     « réussi » (3 points) de « joué » (1). Un voyage parfait et un pays
+//     trouvé de justesse au sixième essai rapportaient la même chose :
+//     tout le travail de barème fait dans chaque jeu s'évaporait ici.
+//     Une manche vaut maintenant 1, 3 ou 5 points.
+//  2. **Quatre périodes** : le jour, la semaine, le mois, depuis le
+//     début. Un classement mensuel seul se fige au bout de dix jours ;
+//     un classement du jour se rejoue chaque matin.
+//  3. **Tout se calcule sur des événements DATÉS** (progressions du jour,
+//     historique des parties, défis). Les fiches cumulées (`yams:stats`…)
+//     n'entrent plus dans le calcul : sans date, elles interdisaient
+//     autant les périodes courtes qu'une remise à zéro.
+//  4. **La régularité sort des points.** Elle valait 2 points par jour de
+//     série — le poste le plus lourd du barème — et n'a aucun sens dans
+//     un classement du jour. La série reste affichée à côté du nom :
+//     elle se voit, elle ne s'achète pas.
+//
+//  ⚠️ **Une seule table de règles** (`JEUX_DU_JOUR`) sert au calcul ET à
+//  l'explication montrée aux joueurs (`explications()`). C'est
+//  volontaire : une règle du jeu écrite à deux endroits finit toujours
+//  par mentir à l'un des deux.
 // =====================================================================
 
 const BAREME = {
-    // Jeux du jour : un mot trouvé vaut plus qu'une tentative honnête.
-    jourTrouve: 3,
+    // Une manche d'un jeu du jour : jouée, réussie, impeccable.
     jourJoue: 1,
-    // Multijoueur : une victoire vaut une partie gagnée contre de vraies personnes.
-    matchGagne: 5,
-    matchJoue: 1,
-    // Une série récompense la régularité, qui est ce qui fait vivre le salon.
-    parJourDeSerie: 2,
+    jourReussi: 2,
+    jourImpeccable: 2,
+    // Une partie à plusieurs, ou un défi.
+    partieJouee: 1,
+    partieGagnee: 3,
+    // Tous les jeux du jour faits dans la même journée.
+    chelem: 3,
 };
 
-// Même normalisation que Yams et Petit Bac, qui indexent leurs stats ainsi.
+// Ce que « réussi » et « impeccable » veulent dire, jeu par jeu.
+// `v` est la progression du joueur ; `ctx` porte la date, le mode et le
+// cache (Le compte est bon a besoin de la meilleure solution du jour).
+const JEUX_DU_JOUR = [
+    {
+        id: 'motus', nom: 'Motus', emoji: '🟨',
+        reussi: (v) => !!v.solved,
+        impeccable: (v) => !!v.solved && (v.guesses || []).length <= 3,
+        ditReussi: 'le mot trouvé',
+        ditImpeccable: 'trouvé en trois essais ou moins',
+    },
+    {
+        id: 'mf', nom: 'Mots Fléchés', emoji: '🧩',
+        reussi: (v) => !!v.solved,
+        impeccable: (v) => !!v.solved && !(v.hints || 0),
+        ditReussi: 'la grille terminée',
+        ditImpeccable: 'terminée sans aucun indice',
+    },
+    {
+        id: 'chiffres', nom: 'Le compte est bon', emoji: '🔢',
+        reussi: (v) => !!(v.fini && v.ecart === 0),
+        // « Aussi court que la meilleure solution » : le serveur la connaît
+        // déjà, elle est rangée avec la donne du jour.
+        impeccable: (v, ctx) => {
+            if (!(v.fini && v.ecart === 0)) return false;
+            const donne = ctx.cache[`chiffres:donne:${ctx.date}`];
+            const court = donne && Array.isArray(donne.solution) ? donne.solution.length : 0;
+            return !!court && (v.etapes || []).length <= court;
+        },
+        ditReussi: 'le compte juste',
+        ditImpeccable: 'juste, en aussi peu d’opérations que la meilleure solution',
+    },
+    {
+        id: 'geo', nom: 'Géographie', emoji: '🌍',
+        reussi: (v) => !!v.trouve,
+        impeccable: (v, ctx) => (ctx.mode === 'voyage'
+            ? !!v.parfait
+            : !!v.trouve && (v.essais || []).length <= 3),
+        ditReussi: 'le pays trouvé, ou le voyage arrivé',
+        ditImpeccable: 'trouvé en trois essais, ou arrivé par le plus court chemin sans erreur',
+    },
+    {
+        id: 'motlong', nom: 'Le mot le plus long', emoji: '🔤',
+        reussi: (v) => (v.meilleur || 0) >= 6,
+        impeccable: (v) => !!v.trouve,
+        ditReussi: 'un mot d’au moins six lettres',
+        ditImpeccable: 'le mot le plus long possible',
+    },
+    {
+        id: 'sudoku', nom: 'Sudoku', emoji: '🧮',
+        reussi: (v) => !!v.trouve,
+        impeccable: (v) => !!v.trouve && v.ms != null && v.ms < 10 * 60 * 1000,
+        ditReussi: 'la grille résolue',
+        ditImpeccable: 'résolue en moins de dix minutes',
+    },
+];
+const PAR_ID = new Map(JEUX_DU_JOUR.map(j => [j.id, j]));
+
+// Les quatre périodes. `debut(aujourdhui)` renvoie le premier jour compté,
+// au format AAAA-MM-JJ — la même forme que les dates des clés.
+const PERIODES = {
+    jour: { id: 'jour', nom: 'Aujourd’hui', debut: (a) => a },
+    semaine: {
+        id: 'semaine', nom: 'Cette semaine',
+        // La semaine commence le lundi.
+        debut: (a) => {
+            const d = new Date(a + 'T12:00:00Z');
+            d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+            return d.toISOString().slice(0, 10);
+        },
+    },
+    mois: { id: 'mois', nom: 'Ce mois-ci', debut: (a) => a.slice(0, 8) + '01' },
+    toujours: { id: 'toujours', nom: 'Depuis le début', debut: () => '0000-01-01' },
+};
+
+// Le lendemain d'une date, au même format. Sert aux remises à zéro : remettre
+// une période à zéro aujourd'hui veut dire « ne plus compter que ce qui vient
+// après aujourd'hui », donc à partir de demain.
+function lendemain(date) {
+    const d = new Date(date + 'T12:00:00Z');
+    d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString().slice(0, 10);
+}
+
 function norm(s) {
     return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
 }
 
-// Une saison couvre un mois calendaire. Le classement cumulatif depuis toujours
-// finit par se figer — le premier avait 74 points quand le douzième en avait 7,
-// un écart qu'on ne rattrape plus — et un classement qu'on ne peut plus
-// rattraper cesse d'être une raison de jouer.
-function bornesSaison(aaaammjj) {
-    const [a, m] = String(aaaammjj).split('-');
-    return { prefixe: `${a}-${m}`, debut: Date.parse(`${a}-${m}-01T00:00:00Z`) };
-}
-
 /**
- * Calcule le classement.
+ * Calcule le classement sur une période.
  *
- * @param {object} cache   l'objet clé → valeur (mfCache)
+ * @param {object} cache     l'objet clé → valeur (mfCache)
  * @param {string[]} pseudos les comptes à classer
- * @param {object} series  { [pseudo]: nombre } séries en cours, tous jeux du jour
- * @param {object} [saison] { prefixe: 'AAAA-MM', debut: timestamp } — omis = depuis toujours
- * @returns {Array} lignes triées par points décroissants
+ * @param {object} o         { periode, aujourdhui, departs }
+ *        `departs` donne, PAR PÉRIODE, la date de la dernière remise à
+ *        zéro — `{ jour, semaine, mois, toujours }`. Chaque période a la
+ *        sienne : remettre les points du jour à zéro ne doit pas effacer
+ *        le mois, et inversement.
  */
-function calculerClassement(cache, pseudos, series, saison) {
+function calculerClassement(cache, pseudos, o) {
+    const options = o || {};
+    const aujourdhui = options.aujourdhui;
+    const periode = PERIODES[options.periode] || PERIODES.semaine;
+    const departs = options.departs || {};
+    const remise = departs[periode.id];
+    // Le début réel : le plus tard des deux, le début naturel de la période ou
+    // le lendemain de la dernière remise à zéro de cette période.
+    const debut = [periode.debut(aujourdhui), remise ? lendemain(remise) : '0000-01-01'].sort().pop();
+    // Minuit à Paris au plus tôt (UTC+2 l'été) : on préfère inclure une
+    // partie limite plutôt que d'en perdre une.
+    const debutTs = Date.parse(debut + 'T00:00:00Z') - 2 * 3600 * 1000;
+
     const parPseudo = new Map();
     for (const p of pseudos) {
         parPseudo.set(p, {
             pseudo: p, points: 0,
-            jourTrouves: 0, jourJoues: 0,
-            matchsGagnes: 0, matchsJoues: 0,
-            serie: (series && series[p]) || 0,
+            manches: 0, reussites: 0, impeccables: 0,
+            parties: 0, victoires: 0, chelems: 0,
         });
     }
-    // Index normalisé → pseudo, pour retrouver le compte derrière yams:stats:ALIX.
-    const parNorm = new Map();
-    for (const p of pseudos) parNorm.set(norm(p), p);
+    const parNorm = new Map(pseudos.map(p => [norm(p), p]));
 
-    // --- Jeux du jour : une clé de progression par joueur et par date ---
-    const joursMf = new Map();          // "<pseudo>|<date>" → journée de mots fléchés
+    // --- Les jeux du jour ---
+    // `mf:prog:<pseudo>:<date>:<niveau>` et `geo:prog:<pseudo>:<date>:<mode>`
+    // ont un segment de plus ; la date est toujours le quatrième.
+    const jeuxDuJour = new Map();   // "<pseudo>|<date>" → Set des jeux faits
+    const manches = new Map();      // "<pseudo>|<date>|<jeu>" → la manche comptée
     for (const [cle, val] of Object.entries(cache)) {
         if (!val || typeof val !== 'object') continue;
         const seg = cle.split(':');
         if (seg[1] !== 'prog') continue;
-        if (!['motus', 'mf', 'chiffres', 'geo', 'sudoku', 'motlong'].includes(seg[0])) continue;
-        // La date est en 4ᵉ segment pour toutes les familles : les niveaux et
-        // les modes viennent APRÈS (mf:prog:<pseudo>:<date>:<niveau>,
-        // geo:prog:<pseudo>:<date>:<mode>), et Le compte est bon s'arrête là
-        // (chiffres:prog:<pseudo>:<date>).
-        if (saison && !(seg[3] || '').startsWith(saison.prefixe)) continue;
-        const ligne = parPseudo.get(seg[2]);
-        if (!ligne) continue;                       // compte supprimé depuis
-        // Chaque jeu dit à sa façon qu'il est réussi. Géographie, Sudoku et
-        // Mot le plus long partagent `trouve` (pays trouvé, voyage arrivé,
-        // grille résolue, plus long mot possible trouvé).
-        const reussi = seg[0] === 'chiffres' ? (val.fini && val.ecart === 0)
-            : (['geo', 'sudoku', 'motlong'].includes(seg[0]) ? !!(val.fini && val.trouve) : !!val.solved);
-        // ⚠️ Les Mots Fléchés proposent TROIS grilles par jour, une par
-        // difficulté. Comptées séparément, elles rapportaient neuf points par
-        // jour quand le Motus en rapporte trois — un choix de difficulté valait
-        // trois jeux. On met la journée de côté et on la compte une seule fois
-        // plus bas ; les grilles supplémentaires valent une participation.
-        if (seg[0] === 'mf') {
-            const k = seg[2] + '|' + seg[3];
-            const j = joursMf.get(k) || { ligne, trouve: false, total: 0 };
-            j.total++;
-            if (reussi) j.trouve = true;
-            joursMf.set(k, j);
-            continue;
-        }
-        if (reussi) { ligne.jourTrouves++; ligne.points += BAREME.jourTrouve; }
-        else { ligne.jourJoues++; ligne.points += BAREME.jourJoue; }
+        const jeu = PAR_ID.get(seg[0]);
+        if (!jeu) continue;
+        const pseudo = seg[2], date = seg[3], extra = seg[4];
+        if (!date || date < debut || (aujourdhui && date > aujourdhui)) continue;
+        if (!parPseudo.has(pseudo)) continue;        // compte supprimé depuis
+
+        const ctx = { cache, date, pseudo, mode: extra };
+        const impeccable = !!jeu.impeccable(val, ctx);
+        const reussi = impeccable || !!jeu.reussi(val, ctx);
+        const points = BAREME.jourJoue
+            + (reussi ? BAREME.jourReussi : 0)
+            + (impeccable ? BAREME.jourImpeccable : 0);
+
+        // ⚠️ Un jeu ne compte qu'UNE fois par jour, à sa meilleure manche.
+        // La Géographie a trois modes et les Mots Fléchés ont eu trois
+        // niveaux : sans cette règle, les faire tous vaudrait trois jeux.
+        const k = pseudo + '|' + date + '|' + jeu.id;
+        const avant = manches.get(k);
+        if (avant && avant.points >= points) continue;
+        manches.set(k, { pseudo, points, reussi, impeccable });
+
+        const kJour = pseudo + '|' + date;
+        if (!jeuxDuJour.has(kJour)) jeuxDuJour.set(kJour, new Set());
+        jeuxDuJour.get(kJour).add(jeu.id);
+    }
+    for (const m of manches.values()) {
+        const ligne = parPseudo.get(m.pseudo);
+        ligne.points += m.points;
+        ligne.manches++;
+        if (m.reussi) ligne.reussites++;
+        if (m.impeccable) ligne.impeccables++;
     }
 
-    // Une journée de Mots Fléchés vaut une journée, plus une participation par
-    // grille supplémentaire.
-    for (const j of joursMf.values()) {
-        if (j.trouve) { j.ligne.jourTrouves++; j.ligne.points += BAREME.jourTrouve; }
-        else { j.ligne.jourJoues++; j.ligne.points += BAREME.jourJoue; }
-        const extra = Math.max(0, j.total - 1);
-        j.ligne.jourJoues += extra;
-        j.ligne.points += extra * BAREME.jourJoue;
+    // --- Le grand chelem : tous les jeux du jour dans la même journée ---
+    for (const [k, faits] of jeuxDuJour) {
+        if (faits.size < JEUX_DU_JOUR.length) continue;
+        const ligne = parPseudo.get(k.split('|')[0]);
+        if (!ligne) continue;
+        ligne.chelems++;
+        ligne.points += BAREME.chelem;
     }
 
-    // --- Multijoueur ---
-    // En saison, les totaux cumulés (yams:stats, pbac:stats) ne servent à rien :
-    // ils n'ont pas de date. On se rabat sur admin:gameHistory, qui horodate
-    // chaque partie terminée. Limite assumée : cette source n'enregistre pas le
-    // vainqueur, donc une partie compte comme participation, jamais comme
-    // victoire. Les jeux du jour font 90 % des points, l'écart reste marginal.
-    if (saison) {
-        const histo = Array.isArray(cache['admin:gameHistory']) ? cache['admin:gameHistory'] : [];
-        for (const g of histo) {
-            if (!g || !g.endedAt || g.endedAt < saison.debut) continue;
-            for (const p of (g.players || [])) {
-                const ligne = parPseudo.get(p);
-                if (!ligne) continue;
-                ligne.matchsJoues++;
-                ligne.points += BAREME.matchJoue;
+    // --- Les parties à plusieurs ---
+    // `admin:gameHistory` horodate chaque partie terminée et, depuis la V2,
+    // nomme ses vainqueurs : une victoire compte donc dans toutes les
+    // périodes, et plus seulement « depuis toujours ».
+    const histo = Array.isArray(cache['admin:gameHistory']) ? cache['admin:gameHistory'] : [];
+    for (const g of histo) {
+        if (!g || !g.endedAt || g.endedAt < debutTs) continue;
+        // Une partie jouée seul (ou contre l'ordinateur) ne compte pas : sinon
+        // le plus court chemin vers la tête du classement serait d'ouvrir des
+        // tables vides, ce qui est exactement l'inverse du but.
+        if (g.solo) continue;
+        const gagnants = new Set(g.winners || []);
+        for (const brut of (g.players || [])) {
+            const pseudo = typeof brut === 'string' ? brut : (brut && brut.pseudo);
+            const nom = parPseudo.has(pseudo) ? pseudo : parNorm.get(norm(pseudo));
+            const ligne = parPseudo.get(nom);
+            if (!ligne) continue;
+            ligne.parties++;
+            ligne.points += BAREME.partieJouee;
+            if (gagnants.has(pseudo) || gagnants.has(nom)) {
+                ligne.victoires++;
+                ligne.points += BAREME.partieGagnee;
             }
         }
-        // Les défis, eux, sont datés — chaque manche porte son `finiA`. Ils
-        // échappent donc à la limite ci-dessus : on sait quand la manche a été
-        // jouée ET qui l'a remportée, donc une victoire y compte vraiment.
-        // C'est important : la saison est la vue par défaut du classement, et
-        // un défi joué aujourd'hui doit rapporter aujourd'hui.
-        for (const [cle, val] of Object.entries(cache)) {
-            if (!val || typeof val !== 'object') continue;
-            const seg = cle.split(':');
-            if (seg[0] !== 'defi' || seg[1] !== 'prog' || seg.length !== 4) continue;
-            if (!val.fini || !val.finiA || val.finiA < saison.debut) continue;
-            const ligne = parPseudo.get(seg[3]);
-            if (!ligne) continue;
-            const stats = cache[`defi:stats:${seg[3]}`];
-            const gagne = !!(stats && Array.isArray(stats.defisGagnes) && stats.defisGagnes.includes(seg[2]));
-            ligne.matchsJoues++;
-            if (gagne) { ligne.matchsGagnes++; ligne.points += BAREME.matchGagne; }
-            else ligne.points += BAREME.matchJoue;
-        }
-    } else
-    { const MULTI = [
-        { prefixe: 'pbac:stats', normalise: true,  joues: 'gamesPlayed',   gagnes: 'gamesWon' },
-        { prefixe: 'yams:stats', normalise: true,  joues: 'gamesPlayed',   gagnes: 'gamesWon' },
-        { prefixe: 'motusparty:stats', normalise: false, joues: 'matchesPlayed', gagnes: 'matchesWon' },
-        { prefixe: 'drapeaux:stats', normalise: false, joues: 'parties', gagnes: 'victoires' },
-        { prefixe: 'undercover:stats', normalise: false, joues: 'parties', gagnes: 'victoires' },
-        // Les défis : même barème que le reste du multijoueur — une manche
-        // jouée chacun de son côté reste une manche jouée contre les autres.
-        { prefixe: 'defi:stats', normalise: false, joues: 'parties', gagnes: 'victoires' },
-    ];
+    }
+
+    // --- Les défis ---
+    // Chaque manche porte son `finiA`, et le palmarès dit qui l'a remportée.
     for (const [cle, val] of Object.entries(cache)) {
         if (!val || typeof val !== 'object') continue;
-        const famille = cle.split(':').slice(0, 2).join(':');
-        const conf = MULTI.find(m => m.prefixe === famille);
-        if (!conf) continue;
-        const cible = cle.split(':')[2];
-        const pseudo = conf.normalise ? parNorm.get(cible) : cible;
-        const ligne = parPseudo.get(pseudo);
+        const seg = cle.split(':');
+        if (seg[0] !== 'defi' || seg[1] !== 'prog' || seg.length !== 4) continue;
+        if (!val.fini || !val.finiA || val.finiA < debutTs) continue;
+        const ligne = parPseudo.get(seg[3]);
         if (!ligne) continue;
-        const joues = Number(val[conf.joues]) || 0;
-        const gagnes = Number(val[conf.gagnes]) || 0;
-        ligne.matchsJoues += joues;
-        ligne.matchsGagnes += gagnes;
-        // Une victoire ne compte pas deux fois : elle vaut matchGagne, pas
-        // matchGagne + matchJoue.
-        ligne.points += gagnes * BAREME.matchGagne + Math.max(0, joues - gagnes) * BAREME.matchJoue;
-    } }
-
-    // --- Régularité ---
-    for (const ligne of parPseudo.values()) {
-        if (ligne.serie > 1) ligne.points += ligne.serie * BAREME.parJourDeSerie;
+        const stats = cache[`defi:stats:${seg[3]}`];
+        const gagne = !!(stats && Array.isArray(stats.defisGagnes) && stats.defisGagnes.includes(seg[2]));
+        ligne.parties++;
+        ligne.points += BAREME.partieJouee;
+        if (gagne) { ligne.victoires++; ligne.points += BAREME.partieGagnee; }
     }
 
     return [...parPseudo.values()]
         .filter(l => l.points > 0)
-        .sort((a, b) => b.points - a.points || a.pseudo.localeCompare(b.pseudo));
+        .sort((a, b) => b.points - a.points
+            || b.impeccables - a.impeccables
+            || a.pseudo.localeCompare(b.pseudo, 'fr'));
 }
 
-module.exports = { calculerClassement, BAREME, bornesSaison };
+/**
+ * Le barème mis en mots, pour le panneau « Comment ça compte ? ».
+ * Construit depuis les mêmes constantes et la même table que le calcul :
+ * les deux ne peuvent pas diverger.
+ */
+function explications() {
+    const parfait = BAREME.jourJoue + BAREME.jourReussi + BAREME.jourImpeccable;
+    return {
+        resume: [
+            `Jouer une manche : ${BAREME.jourJoue} point.`,
+            `La réussir : ${BAREME.jourReussi} de plus.`,
+            `La jouer impeccablement : encore ${BAREME.jourImpeccable}.`,
+            `Une manche vaut donc ${BAREME.jourJoue}, ${BAREME.jourJoue + BAREME.jourReussi} ou ${parfait} points.`,
+        ],
+        jeux: JEUX_DU_JOUR.map(j => ({
+            emoji: j.emoji, nom: j.nom, reussi: j.ditReussi, impeccable: j.ditImpeccable,
+        })),
+        autres: [
+            { quoi: 'Une partie à plusieurs, jouée', points: BAREME.partieJouee },
+            { quoi: 'Une partie à plusieurs, gagnée', points: BAREME.partieJouee + BAREME.partieGagnee },
+            { quoi: 'Un défi, joué', points: BAREME.partieJouee },
+            { quoi: 'Un défi, remporté', points: BAREME.partieJouee + BAREME.partieGagnee },
+            { quoi: `Les ${JEUX_DU_JOUR.length} jeux du jour dans la même journée`, points: BAREME.chelem },
+        ],
+        notes: [
+            'Un jeu ne compte qu’une fois par jour : faire les trois modes de la Géographie ne vaut pas trois jeux, c’est la meilleure manche qui compte.',
+            'La série de jours ne rapporte aucun point — elle se voit à côté de ton nom, elle ne s’achète pas.',
+            'Une partie jouée seul, ou contre l’ordinateur, ne compte pas : on ne gagne pas contre personne.',
+            'À égalité en tête, personne ne gagne la partie — mais tout le monde l’a jouée.',
+        ],
+    };
+}
+
+module.exports = { calculerClassement, explications, BAREME, PERIODES, JEUX_DU_JOUR };

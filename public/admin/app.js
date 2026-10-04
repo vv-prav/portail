@@ -37,7 +37,7 @@ function fmtDur(sec) {
 
 // ---------- Onglets ----------
 function switchTab(tab) {
-    ['home', 'accounts', 'parties', 'perudo', 'grids', 'motus', 'chiffres', 'geo', 'motlong', 'sudoku', 'dict', 'titres', 'sante', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== tab); });
+    ['home', 'accounts', 'parties', 'perudo', 'grids', 'motus', 'chiffres', 'geo', 'motlong', 'sudoku', 'dict', 'titres', 'classement', 'sante', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== tab); });
     document.querySelectorAll('.ad-tile').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
     if (tab === 'home') loadOverview();
     if (tab === 'accounts') { loadAccounts(); loadDemandes(); }
@@ -51,6 +51,7 @@ function switchTab(tab) {
     if (tab === 'sudoku') loadSudoku();
     if (tab === 'dict') { loadDictStats(); loadDict(); }
     if (tab === 'titres') loadTitres();
+    if (tab === 'classement') loadClassement();
     if (tab === 'sante') { loadSante(); loadFrequentation(); }
     if (tab === 'system') { loadOverview(); loadAdmins(); }
     window.scrollTo(0, 0);
@@ -157,7 +158,8 @@ async function loadAppsOverview() {
             </div>
         </div>`).join('');
 }
-const GAME_LABEL_ICON = { perudo: '🎲', pbac: '🍎', undercover: '🕵️', yams: '🎯', motusparty: '🏁' };
+// Les emojis des jeux, les mêmes que partout ailleurs dans le salon.
+const GAME_LABEL_ICON = { perudo: '🏴‍☠️', pbac: '✏️', undercover: '🕵️', yams: '🎲', motusparty: '🏁', drapeaux: '🚩' };
 async function loadGameHistory() {
     const { data } = await api('/api/admin/game-history');
     const list = (data && data.history) || [];
@@ -170,7 +172,7 @@ async function loadGameHistory() {
     // Une partie faussée (test, bogue) comptait pour toujours au classement
     // de saison : l'historique est sa seule source pour le multijoueur.
     $('ad-game-history').querySelectorAll('[data-retirer]').forEach(b => b.addEventListener('click', () => {
-        ask('🗑️', 'Retirer cette partie ?', 'Elle ne comptera plus au classement de la saison. Les statistiques des joueurs ne bougent pas.', [
+        ask('🗑️', 'Retirer cette partie ?', 'Elle ne comptera plus au classement du Salon. Les statistiques des joueurs ne bougent pas.', [
             { label: 'Retirer', danger: true, run: async () => {
                 const r = await api('/api/admin/historique/supprimer', { endedAt: Number(b.dataset.retirer) });
                 toast(r.ok ? 'Partie retirée.' : ((r.data && r.data.error) || 'Erreur'));
@@ -860,6 +862,82 @@ async function loadTitres() {
         toast('Titre retiré.'); loadTitres();
     }));
 }
+// ---------- Le classement ----------
+// La même fonction de calcul que l'accueil, période par période, avec le
+// détail de ce qui a fait les points : sans lui, un total ne se vérifie pas.
+let clPeriode = 'toujours';
+async function loadClassement() {
+    const { data } = await api('/api/admin/classement?periode=' + clPeriode);
+    if (!data) { $('cl-liste').innerHTML = '<p class="empty">Indisponible.</p>'; return; }
+
+    $('cl-liste').innerHTML = data.lignes.length ? data.lignes.map((l, i) => {
+        const n = (c, un, plus) => c ? `${c} ${c > 1 ? plus : un}` : null;
+        const bouts = [
+            n(l.manches, 'manche', 'manches'),
+            n(l.reussites, 'réussie', 'réussies'),
+            n(l.impeccables, 'impeccable', 'impeccables'),
+            n(l.parties, 'partie', 'parties'),
+            n(l.victoires, 'victoire', 'victoires'),
+            n(l.chelems, 'grand chelem', 'grands chelems'),
+        ].filter(Boolean);
+        return `<div class="ds-row static">
+            <span class="ds-row-main">
+                <span class="ds-row-name">${['🥇','🥈','🥉'][i] || (i + 1) + '.'} ${esc(l.pseudo)}</span>
+                <span class="ds-row-sub">${esc(bouts.join(' · ') || '—')}</span>
+            </span>
+            <b>${l.points}</b>
+        </div>`;
+    }).join('') : '<p class="empty">Personne n’a marqué de points sur cette période.</p>';
+
+    // Une ligne par période, avec sa date de remise à zéro et ses deux
+    // gestes. Les quatre sont indépendantes : c'est le point de la V2.
+    $('cl-zeros').innerHTML = data.periodes.map(p => {
+        const d = (data.departs || {})[p.id];
+        return `<div class="ds-row static">
+            <span class="ds-row-main">
+                <span class="ds-row-name">${esc(p.nom)}</span>
+                <span class="ds-row-sub">${d ? 'remise à zéro le ' + esc(d) + ' — les points comptent à partir du lendemain, et tout ce qui précède reste en base' : 'compte tout depuis le premier jour'}</span>
+            </span>
+            <span class="cl-actions">
+                <button class="mini danger" data-zero="${p.id}" type="button">Remettre à zéro</button>
+                ${d ? `<button class="mini" data-rouvrir="${p.id}" type="button">Rouvrir</button>` : ''}
+            </span>
+        </div>`;
+    }).join('');
+    // ⚠️ On fait retaper le mot : ça change ce que voient tous les joueurs sur
+    // l'accueil. Aucune donnée n'est perdue pour autant — et le message le dit,
+    // sinon personne n'oserait cliquer.
+    $('cl-zeros').querySelectorAll('[data-zero]').forEach(b => b.addEventListener('click', () => {
+        const nom = data.periodes.find(p => p.id === b.dataset.zero).nom;
+        DS.confirm({
+            emoji: '🏆', title: 'Remettre « ' + nom + ' » à zéro ?',
+            text: 'Le podium actuel de cette période part au palmarès et tout le monde repart de zéro à partir de demain. Les trois autres périodes ne bougent pas, et aucune partie n’est effacée.',
+            confirmText: 'ZERO',
+            actions: [{ label: 'Remettre à zéro', danger: true, run: async () => {
+                const { ok, data: r } = await api('/api/admin/classement/zero', { periode: b.dataset.zero });
+                toast(ok ? 'Points remis à zéro — ' + nom + '.' : (r && r.error) || 'Erreur.');
+                loadClassement();
+            } }],
+        });
+    }));
+    $('cl-zeros').querySelectorAll('[data-rouvrir]').forEach(b => b.addEventListener('click', async () => {
+        await api('/api/admin/classement/rouvrir', { periode: b.dataset.rouvrir });
+        toast('Période recomptée depuis le début.');
+        loadClassement();
+    }));
+
+    $('cl-palmares').innerHTML = (data.palmares || []).length ? data.palmares.map(s => `<div class="ds-row static">
+        <span class="ds-row-main">
+            <span class="ds-row-name">${esc(s.nom || 'Classement')} · ${esc(s.du || 'le début')} → ${esc(s.au)}</span>
+            <span class="ds-row-sub">${s.podium.length ? s.podium.map((p, i) => `${['🥇','🥈','🥉'][i]} ${esc(p.pseudo)} (${p.points})`).join(' · ') : 'personne'}</span>
+        </span>
+    </div>`).join('') : '<p class="empty">Aucune remise à zéro pour l’instant.</p>';
+}
+$('cl-periode').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    clPeriode = b.dataset.p;
+    $('cl-periode').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    loadClassement();
+}));
 $('ti-refresh').addEventListener('click', loadTitres);
 $('ti-donner').addEventListener('click', async () => {
     const { ok, data } = await api('/api/admin/titres/attribuer', { pseudo: $('ti-pseudo').value, id: $('ti-titre').value });

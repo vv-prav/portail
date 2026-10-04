@@ -37,6 +37,9 @@ module.exports = function attachPerudo(app, io, store) {
 
 const mfGet = store && store.get ? store.get : () => undefined;
 const mfSet = store && store.set ? store.set : () => {};
+// Le salon tient l'historique des parties : on l'avertit au moment où
+// les vainqueurs sont connus (voir `noterPartie` dans server.js).
+const noterPartie = (store && store.noterPartie) || (() => {});
 
 const MAX_PLAYERS = 12;
 const MIN_PLAYERS = 1;               // seul contre des bots
@@ -472,6 +475,17 @@ function cloturer(g, gagnants) {
     const contreDesBots = g.players.some(p => p.isBot);
     const noms = new Set(gagnants.map(p => p.pseudo));
 
+    // L'historique commun du salon, celui que lit le classement. Une partie
+    // menée seul contre l'ordinateur ne compte pas : on ne gagne pas contre
+    // l'ordinateur, c'est déjà la règle des fiches juste en dessous.
+    const soloContreBots = contreDesBots && humains.length === 1;
+    noterPartie({
+        app: 'perudo', id: g.id, manche: g.partieNum || 1, label: 'Perudo',
+        players: humains.map(p => p.pseudo),
+        winners: soloContreBots ? [] : humains.filter(p => noms.has(p.pseudo)).map(p => p.pseudo),
+        solo: soloContreBots,
+    });
+
     // Une partie contre des bots ne compte ni victoire ni palmarès : on ne
     // gagne pas contre l'ordinateur. Même règle qu'au Yams et au quiz.
     for (const p of humains) {
@@ -763,6 +777,10 @@ io.on('connection', (socket) => {
         g.status = 'lobby';
         g.fin = null; g.revele = null; g.journal = [];
         g.manche = 0; g.statsEcrites = false;
+        // La revanche garde l'id de la table : c'est ce compteur qui distingue
+        // les parties dans l'historique du salon (`g.manche`, lui, compte les
+        // manches d'une même partie).
+        g.partieNum = (g.partieNum || 1) + 1;
         g.players = g.players.filter(p => !p.isBot);
         g.players.forEach(p => { p.dice = g.options.startDice; p._avant = p.dice; p.team = null; });
         diffuser(g);

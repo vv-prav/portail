@@ -3,3 +3,4 @@ users.json
 banned.json
 .env
 .DS_Store
+mf_data.json

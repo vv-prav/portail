@@ -168,3 +168,6 @@ body {
 
 /* La grille du Sudoku du jour, en petit, pour reconnaître celle qu'un joueur signale. */
 .ad-sudoku { font-family:ui-monospace,Menlo,monospace; font-size:.86rem; line-height:1.5; letter-spacing:.1em; text-align:center; color:var(--brass-soft); margin:8px 0; }
+
+/* Les deux gestes d'une période, côte à côte au bout de sa ligne. */
+.cl-actions { display:flex; gap:6px; flex:0 0 auto; }

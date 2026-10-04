@@ -8,7 +8,7 @@ Ce fichier donne à Claude Code tout le contexte nécessaire pour reprendre ce p
 
 - Dépôt : `vv-prav/portail`
 - Déployé sur Render : `https://portail-y56r.onrender.com`
-- Un seul process Node, un seul `server.js` de 1800+ lignes qui monte toutes les routes et attache tous les modules de jeu.
+- Un seul process Node. `server.js` (~3 100 lignes) monte toutes les routes et attache tous les modules de jeu ; les quatre jeux du jour récents ont été sortis dans leur propre `<jeu>/routes.js`.
 
 ## Stack technique
 
@@ -76,7 +76,7 @@ La liste est désormais **inversée** : on charge `redis.keys('*')` moins les de
 
 ```
 portail/
-├── server.js                 ← point d'entrée, ~1800 lignes, monte tout
+├── server.js                 ← point d'entrée, ~3100 lignes, monte tout
 ├── package.json
 ├── users.json                ← généré localement, jamais commité
 ├── scripts/verifie-demarrage.js ← garde-fou : `npm run verifie`
@@ -85,8 +85,10 @@ portail/
 ├── comptes/titres.js          ← les titres et badges des joueurs
 ├── admin/routes.js            ← toutes les routes /api/admin/*
 ├── motsfleches/{dict,generator,words,words-extra}.js
-├── motlong/{jeu,mots}.js       ← le Mot le plus long ; mots.js est GÉNÉRÉ
-├── sudoku/jeu.js              ← générateur, solveur, vérification
+├── motlong/{jeu,mots,routes}.js ← le Mot le plus long ; mots.js est GÉNÉRÉ
+├── sudoku/{jeu,routes}.js     ← générateur, solveur, vérification
+├── chiffres/{jeu,routes}.js   ← Le compte est bon
+├── geo/{jeu,pays,routes}.js   ← la Géographie et ses trois modes
 ├── quotidien/moteur.js        ← le moteur commun des jeux du jour récents
 ├── scripts/genere-motlong.py  ← régénère motlong/mots.js depuis Lexique383
 ├── motus/                     ← vocabulaire Motus (voir section dédiée)
@@ -117,7 +119,6 @@ portail/
     ├── motlong/
     ├── sudoku/
     ├── motus/
-    │   ├── index.html + hub.css            ← hub à 2 entrées
     │   ├── party/                          ← Motus Party (multijoueur)
     │   └── quotidien/                      ← Motus du jour
     ├── pbac/
@@ -290,7 +291,7 @@ Le design system porte désormais la **réinitialisation de base** (`box-sizing`
 
 L'accueil ne porte plus que **2 tuiles** (Jouer ensemble, Le carnet, plus Admin), contre 13 auparavant. Historique de la réduction — l'ancien état à **4 tuiles** était :
 
-- **Les trois jeux du jour n'ont plus de tuile.** Le panneau « Aujourd'hui » est leur seule porte, et le geste quotidien coûte une touche au lieu de trois. `/motus/` (l'ancien hub à deux liens) redirige vers `/motus/quotidien/` — on ne supprime pas, des liens et des favoris pointent dessus.
+- **Les trois jeux du jour n'ont plus de tuile.** Le panneau « Aujourd'hui » est leur seule porte, et le geste quotidien coûte une touche au lieu de trois. `/motus/` (l'ancien hub à deux liens) redirige vers `/motus/quotidien/` — la redirection reste, des liens et des favoris pointent dessus ; ses deux fichiers, eux, ont été supprimés, plus rien ne les servait.
 - **Les cinq jeux multijoueurs partagent `/jouer/`.** Un bouton crée une partie via un catalogue, qui mène au jeu choisi avec `?creer=1` ; le jeu ouvre alors son propre écran de réglages. En dessous, `GET /api/salon/tables` agrège toutes les tables ouvertes, tous jeux confondus — avant, il fallait ouvrir les quatre jeux l'un après l'autre pour savoir si quelqu'un attendait.
 - **Perudo est volontairement traité à part** : il figure au catalogue et dans la liste, mais le clic ouvre son propre hall, avec son identité.
 - **Le retour suit la hiérarchie** : les salles d'attente ramènent à `/jouer/`, les jeux du jour au salon. Et `vues.js` fait remonter le geste retour du téléphone d'une vue au lieu de quitter le site.
@@ -455,7 +456,7 @@ Deux types, choisis parce que ce sont les deux jeux rapides dont le temps réel 
 - ⚠️ **Le contenu ne quitte jamais le serveur en entier** : le mot n'est envoyé qu'à la fin de la manche de celui qui demande, la bonne réponse d'une question qu'après y avoir répondu, et **le classement n'est visible qu'une fois qu'on a joué** — le voir avant donnerait le niveau à battre.
 - ⚠️ **Deux règles pour qu'une victoire en soit une** : à moins de deux participants il n'y a personne à battre (lancer son propre défi et le faire en premier ne vaut pas un palmarès), et à égalité en tête personne ne gagne — la même règle qu'au Yams, pour la même raison. Le vainqueur est **recalculé à chaque clôture** (`recalculerVictoires`) tant que le défi court, plutôt qu'attribué puis rattrapé.
 - Les clés `defi:<id>` / `defi:prog:<id>:<pseudo>` / `defi:joueurs:<id>` ne portent pas de date **dans leur nom** : `mfPurge()` les ramasse d'après le `creeA` de la manche, au bout d'une semaine. ⚠️ Jamais `defi:stats:<pseudo>`.
-- **Classement du Salon** : les défis sont le seul jeu multijoueur qui compte vraiment **en saison**, parce qu'ils sont datés (`finiA`) et qu'on sait qui a gagné — là où `admin:gameHistory` n'enregistre pas le vainqueur. Vu que la saison est la vue par défaut, ça compte.
+- **Classement du Salon** : chaque manche terminée est datée (`finiA`) et le palmarès dit qui l'a remportée, donc un défi compte sur n'importe quelle période. C'était longtemps le seul jeu multijoueur dans ce cas ; depuis que `noterPartie` enregistre les vainqueurs, les six autres comptent pareil.
 
 ## Mots Fléchés — le stock de mots et la limite du générateur
 
@@ -509,7 +510,7 @@ Liste à parcourir pour **tout** nouveau jeu :
 |---|---|
 | **Carte du profil** (`portraitJoueur` → `ajoute(...)`, `server.js`) | sert aussi la bulle de profil publique. ⚠️ `if (!parties) return` : passer un compteur à zéro fait disparaître la carte. |
 | **Résumé** (`/api/salon/mystats-summary`) | `totals.push([nom, n])` pour le « jeu le plus joué », et `weekCount` pour un jeu du jour. |
-| **Classement du Salon** (`comptes/classement.js`) | jeu du jour → ajouter le préfixe à la liste `['motus','mf','chiffres','geo','sudoku','motlong']` **et** la façon dont il marque sa réussite (`solved`, `ecart===0`, `trouve`) ; multijoueur → une ligne dans `MULTI`. |
+| **Classement du Salon** (`comptes/classement.js`) | jeu du jour → une entrée dans `JEUX_DU_JOUR` : son nom, son emoji, ce qui vaut « réussi » et ce qui vaut « impeccable », et les deux phrases qui l'expliquent au joueur. Multijoueur → rien à ajouter ici, mais **appeler `noterPartie`** là où le module écrit ses statistiques, sinon la victoire n'existe nulle part. |
 | **Séries** (`PREFIXES_DU_JOUR`, `server.js`) | jeu du jour seulement. La série du Salon, la place au classement et les titres la lisaient à trois endroits, sur le seul Motus et les Mots Fléchés : c'est maintenant une liste. Le calendrier d'assiduité du profil la parcourt aussi. |
 | **Renommage** (`PREFIXES_BRUTS` et `VALEURS_AVEC_U`, `comptes/renommage.js`) | toutes les familles `<app>:prog`, `<app>:days`, et les classements. ⚠️ Le compte est bon et la Géographie y manquaient : un renommage laissait leurs parties sous l'ancien nom. |
 | **Profil** (`TOUS_LES_JEUX` et `NOM_JEU`, `public/profil/app.js`) | la ligne « Pas encore joué à… » et le calendrier. Six jeux y manquaient. |
@@ -517,13 +518,49 @@ Liste à parcourir pour **tout** nouveau jeu :
 | **Résultats du jour** (`/api/salon/resultats-du-jour`) | pour un jeu du jour seulement. |
 | **Admin** (`MODULES_JEUX` dans `admin/routes.js` + `ctx` dans `server.js`) | pour un jeu multijoueur seulement. |
 
-Dernier passage en date : **les défis** ont été branchés sur la carte du profil, le résumé, le classement (saison **et** depuis toujours) et deux titres (`releve`, `lancegants`). Ils n'apparaissent ni dans les résultats du jour (ils ne sont pas quotidiens) ni dans `MODULES_JEUX` (ils n'ont ni socket ni table).
+Dernier passage en date : **les défis** ont été branchés sur la carte du profil, le résumé, le classement (toutes périodes) et deux titres (`releve`, `lancegants`). Ils n'apparaissent ni dans les résultats du jour (ils ne sont pas quotidiens) ni dans `MODULES_JEUX` (ils n'ont ni socket ni table).
 
 Et pour un jeu du jour, ne pas oublier non plus le panneau « Aujourd'hui » (`JEUX_DU_JOUR` dans `public/app.js` + le pouls), `public/enchainement.js`, le préchargement du service worker, la purge de son contenu daté (`mfPurge`), et son panneau d'admin (tuile, onglet, routes `day`/`regen`/`board`). Dernier passage : le Sudoku, le Mot le plus long et le Voyage, branchés partout ci-dessus.
 
-## Le classement du Salon
+## Le classement du Salon — la V2 des points
 
-`comptes/classement.js` calcule un score transversal à tous les jeux, exposé par `GET /api/salon/classement` et affiché replié en bas de l'accueil. **Il ne stocke rien** : tout est recalculé à la demande depuis les clés existantes, donc changer le barème ne demande aucune migration. La **saison en cours** (mois calendaire) est la vue par défaut ; « depuis toujours » reste consultable. En saison, les jeux du jour se filtrent sur la date de leur clé, et le multijoueur se fonde sur `admin:gameHistory` — qui horodate chaque partie mais **n'enregistre pas le vainqueur**, donc une partie y compte comme participation seulement. Le barème est isolé en haut du fichier — c'est un choix de jeu, pas une contrainte technique.
+`comptes/classement.js` calcule un score transversal à tous les jeux, exposé par `GET /api/salon/classement?periode=…` et affiché replié en bas de l'accueil. **Il ne stocke rien** : tout est recalculé à la demande depuis les clés existantes, donc changer le barème ne demande aucune migration.
+
+### Ce que la V1 comptait mal
+
+- **La performance ne comptait pas.** Un voyage parfait et un pays trouvé de justesse au sixième essai rapportaient tous deux 3 points : tout le travail de barème fait dans chaque jeu s'évaporait au classement.
+- **Une seule période**, la saison (le mois). Un classement cumulatif se fige au bout de dix jours et on ne rattrape plus le premier.
+- **Les parties à plusieurs ne valaient qu'une participation**, parce que `admin:gameHistory` n'enregistrait pas le vainqueur (voir plus bas).
+- **La régularité pesait le plus lourd** du barème (2 points par jour de série) — et n'a aucun sens dans un classement du jour.
+
+### Le barème
+
+| Quoi | Points |
+|---|---|
+| Une manche d'un jeu du jour, jouée | 1 |
+| …réussie | +2 |
+| …impeccable | +2 |
+| Une partie à plusieurs ou un défi, joué | 1 |
+| …gagné | +3 |
+| Les six jeux du jour dans la même journée (grand chelem) | +3 |
+
+Ce que « réussi » et « impeccable » veulent dire est écrit **jeu par jeu dans `JEUX_DU_JOUR`**, en haut du fichier. ⚠️ **Cette table sert au calcul ET à l'explication montrée aux joueurs** (`explications()`, servie par `GET /api/salon/bareme`, affichée par le bouton « Comment ça compte ? » de l'accueil) : une règle du jeu écrite à deux endroits finit toujours par mentir à l'un des deux.
+
+Deux règles qui évitent les fausses victoires : **un jeu ne compte qu'une fois par jour**, à sa meilleure manche (sans quoi les trois modes de la Géographie vaudraient trois jeux), et **une partie jouée seul, ou contre l'ordinateur, ne compte pas** — sinon le plus court chemin vers la tête du classement serait d'ouvrir des tables vides. La série de jours ne rapporte plus rien : elle s'affiche à côté du nom.
+
+### Quatre périodes, et quatre remises à zéro indépendantes
+
+`PERIODES` = jour · semaine (qui commence le lundi) · mois · depuis le début. Tout se calcule sur des **événements datés** (clés `<jeu>:prog:…:<date>`, `admin:gameHistory`, `defi:prog`) : c'est ce qui rend les périodes possibles, et les fiches cumulées (`yams:stats`…) n'entrent donc plus dans le calcul.
+
+`classement:departs` garde **une date de remise à zéro par période**. Remettre le jour à zéro ne touche pas au mois. Une période remise à zéro ne compte plus que ce qui vient **après** cette date, donc à partir du lendemain. ⚠️ **Rien n'est effacé** : le podium part au palmarès (`classement:palmares`), on déplace le point de départ du calcul, et « Rouvrir » fait tout réapparaître. C'est ce qui rend la manœuvre sans danger — et c'est exactement ce qu'il faut pour ouvrir une saison neuve avant un départ en voyage. Onglet **Classement** de l'admin : les quatre périodes, leur contenu détaillé, un bouton par période, et le palmarès.
+
+### Les vainqueurs dans l'historique
+
+⚠️ **`admin:gameHistory` n'enregistrait que des participations.** Le ramasseur (`pollGameHistory`) comparait la liste des tables toutes les vingt secondes : quand une partie disparaissait, plus personne ne pouvait dire qui l'avait gagnée. Une victoire au Yams ne valait donc rien sur une période.
+
+Les six modules appellent désormais **`noterPartie({ app, id, manche, players, winners, solo })`** là où ils écrivent déjà leurs statistiques, c'est-à-dire au seul moment où l'information existe. Le ramasseur reste, pour les tables fermées sans fin de partie.
+
+⚠️ **`manche` est indispensable : une revanche garde l'id de la table.** Sans ce numéro, la seconde partie serait prise pour un doublon de la première et ne compterait pas. Deux mémoires côté serveur : `partiesNotees` (clé `app:id#manche`) empêche de compter deux fois la même manche, `tablesNotees` (clé `app:id`) dit au ramasseur qu'une table a déjà rendu compte d'elle-même. Mesuré sur une vraie partie à deux comptes puis sa revanche : deux parties, un seul vainqueur chacune, aucun doublon.
 
 Piège à connaître si tu ajoutes un jeu au calcul : Yams et Petit Bac indexent leurs stats par pseudo **normalisé** (`yams:stats:ALIX`), Motus Party par pseudo brut. Le module tient une table `norm(pseudo) → pseudo` pour ça.
 
@@ -604,7 +641,8 @@ Utile pour arbitrer les priorités — les intuitions se trompent souvent ici.
 ## Ce qu'il reste à faire
 
 1. **Le pseudo sert d'identifiant** partout (stats, classements, progressions) — c'est la dette structurelle qui bloque le renommage propre, la fusion de comptes et tout classement transversal. Introduire un identifiant interne stable avec le pseudo comme simple libellé d'affichage.
-2. **Les deux anciens jeux du jour sont deux implémentations du même modèle** (contenu par date, progression, classement, discussion, archives) : `/api/mf` 11 routes, `/api/motus` 8. Un moteur les ramènerait à 6-8 routes génériques. **`quotidien/moteur.js` existe désormais** — graine du jour, progression, classement au score puis au temps, série, archives — et sert Le compte est bon et la Géographie. Il n'a volontairement pas été branché sur les deux anciens : les réécrire pendant qu'ils portent 90 % de l'activité serait un risque pris pour rien. Il montre à quoi ressemblera leur version commune le jour où on s'y mettra.
+2. **Les deux anciens jeux du jour sont deux implémentations du même modèle** (contenu par date, progression, classement, discussion, archives) : `/api/mf` 11 routes, `/api/motus` 8. Un moteur les ramènerait à 6-8 routes génériques. **`quotidien/moteur.js` existe désormais** — graine du jour, progression, classement au score puis au temps, série, archives — et sert Le compte est bon, la Géographie, le Sudoku et Le mot le plus long — chacun dans son `<jeu>/routes.js`, sortis de `server.js`. Il n'a volontairement pas été branché sur les deux anciens : les réécrire pendant qu'ils portent 90 % de l'activité serait un risque pris pour rien. Il montre à quoi ressemblera leur version commune le jour où on s'y mettra.
 3. **L'internationalisation est à moitié faite** : 6 apps portent chacune leur propre table `I18N` en fr/en/es, sans fichier partagé, et 8 pages n'ont aucune traduction. Soit un `/i18n.js` commun et on complète, soit on assume le français et on retire le sélecteur de langue.
 4. Migrer **Recettes** — mais seulement si l'app trouve une raison d'être (voir usage réel ci-dessus).
 5. Décider si **Chance** mérite la migration (petite app statique, faible priorité).
+6. **Les photos des Monts d'Arrée sont en WebP** (7,4 Mo → 676 Ko à l'ouverture). Les anciennes PNG/JPG ont été supprimées ; si un jour une photo est ajoutée, la convertir aussi — c'est la seule page du salon qui charge des images lourdes.

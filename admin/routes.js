@@ -952,12 +952,12 @@ module.exports = function attachAdmin(app, ctx) {
     //  C'est le même problème que les quatre halls fusionnés côté joueur.
     // =================================================================
     const MODULES_JEUX = [
-        { id: 'perudo', nom: 'Perudo', emoji: '🎲', api: () => ctx.perudo && ctx.perudo() },
+        { id: 'perudo', nom: 'Perudo', emoji: '🏴‍☠️', api: () => ctx.perudo && ctx.perudo() },
         { id: 'pbac', nom: 'Petit Bac', emoji: '✏️', api: () => PB() },
         { id: 'undercover', nom: 'Infiltré', emoji: '🕵️', api: () => UC() },
-        { id: 'yams', nom: 'Yams', emoji: '🎯', api: () => YM() },
+        { id: 'yams', nom: 'Yams', emoji: '🎲', api: () => YM() },
         { id: 'motusparty', nom: 'Motus Party', emoji: '🏁', api: () => MP() },
-        { id: 'drapeaux', nom: 'Quiz des drapeaux', emoji: '🏳️', api: () => DR() },
+        { id: 'drapeaux', nom: 'Quiz des drapeaux', emoji: '🚩', api: () => DR() },
     ];
 
     G('/parties', (req, res) => {
@@ -1025,6 +1025,7 @@ module.exports = function attachAdmin(app, ctx) {
         // traînent depuis des mois sans que rien ne les signale.
         const CONNUES = ['mf', 'motus', 'rec', 'voyages', 'pbac', 'yams', 'motusparty',
             'undercover', 'drapeaux', 'chiffres', 'geo', 'sudoku', 'motlong', 'admin', 'titres', 'perudo',
+            'defi', 'salon', 'comptes', 'classement',
             'menage'];   // menage:* = les nettoyages faits une seule fois
         const orphelines = cles.filter(k => !CONNUES.includes(k.split(':')[0]))
             .map(k => { let t = 0; try { t = JSON.stringify(cache[k]).length; } catch (e) {} return { cle: k, octets: t }; })
@@ -1148,6 +1149,44 @@ module.exports = function attachAdmin(app, ctx) {
         }
         log(currentUser(req), 'jeu du jour à rejouer', pseudo, `${JEUX_DU_JOUR[jeu]} ${date}`);
         res.json({ ok: true, parties });
+    });
+
+    // =================================================================
+    //  LE CLASSEMENT — ses périodes, son palmarès, et sa remise à zéro
+    //
+    //  ⚠️ « Repartir de zéro » n'EFFACE RIEN : il archive le podium qui
+    //  s'achève et déplace la date de départ du calcul. Remettre cette
+    //  date à vide fait réapparaître tout l'historique — c'est ce qui
+    //  rend la manœuvre sans danger, et c'est la raison de ce choix.
+    // =================================================================
+    G('/classement', (req, res) => {
+        const cl = ctx.classement;
+        const periode = cl.periodes[String(req.query.periode || '')] ? String(req.query.periode) : 'toujours';
+        res.json({
+            periode,
+            departs: cl.departs(),
+            palmares: cl.palmares(),
+            lignes: cl.lire(periode),
+            periodes: Object.values(cl.periodes).map(p => ({ id: p.id, nom: p.nom })),
+        });
+    });
+    // Remettre à zéro UNE période : quotidien, hebdomadaire, mensuel ou tout.
+    // Les quatre sont indépendantes — effacer les points du jour ne touche pas
+    // au mois, sinon le bouton serait un piège.
+    A('/classement/zero', (req, res) => {
+        const periode = String(req.body.periode || '');
+        if (!ctx.classement.periodes[periode]) return res.status(400).json({ error: 'Période inconnue.' });
+        const r = ctx.classement.zero(periode);
+        log(currentUser(req), 'points remis à zéro', ctx.classement.periodes[periode].nom,
+            r.podium.map(p => `${p.pseudo} ${p.points}`).join(', '));
+        res.json({ ok: true, ...r });
+    });
+    A('/classement/rouvrir', (req, res) => {
+        const periode = String(req.body.periode || '');
+        const departs = ctx.classement.rouvrir(periode);
+        if (!departs) return res.status(400).json({ error: 'Période inconnue.' });
+        log(currentUser(req), 'points recomptés', ctx.classement.periodes[periode].nom);
+        res.json({ ok: true, departs });
     });
 
     // L'historique des parties : une ligne fausse y restait pour toujours,

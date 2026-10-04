@@ -332,7 +332,7 @@ function renderRang(p) {
     const medaille = place === 1 ? '🥇' : place === 2 ? '🥈' : place === 3 ? '🥉' : '🏅';
     $('pr-rank').innerHTML = `
         <div class="pr-rank-place"><b>${place}<sup>e</sup></b><span>${medaille} sur ${total} joueurs classés</span></div>
-        <div class="pr-rank-pts"><b>${points}</b><span>points au Salon</span></div>
+        <div class="pr-rank-pts"><b>${points}</b><span>points ce mois-ci</span></div>
         <div class="pr-rank-pts"><b>${p.totalParties || 0}</b><span>parties tous jeux confondus</span></div>`;
     return true;
 }

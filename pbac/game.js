@@ -8,6 +8,9 @@ module.exports = function attachPbac(app, io, store) {
 
 const mfGet = store && store.get ? store.get : () => undefined;
 const mfSet = store && store.set ? store.set : () => {};
+// Le salon tient l'historique des parties : on l'avertit au moment où
+// les vainqueurs sont connus (voir `noterPartie` dans server.js).
+const noterPartie = (store && store.noterPartie) || (() => {});
 const kPacks = (pseudo) => `pbac:packs:${norm(pseudo)}`;
 function sanitizePacks(list) {
     if (!Array.isArray(list)) return [];
@@ -360,6 +363,13 @@ function finalizeGameStats(g) {
         if (p.pseudo === winner) stats.gamesWon++;
         saveStats(p.pseudo, stats);
     }
+    // L'historique commun du salon, celui que lit le classement.
+    noterPartie({
+        app: 'pbac', id: g.id, manche: g.manche || 1, label: 'Petit Bac',
+        players: participants.map(p => p.pseudo),
+        winners: winner ? [winner] : [],
+        solo: participants.length < 2,
+    });
 }
 
 function endRoundToVoting(g) {
@@ -817,6 +827,9 @@ io.on('connection', (socket) => {
         const g = games[socketGame[socket.id]];
         if (!g || g.host !== socket.data.pbacPseudo || g.status !== 'ended') return;
         g.status = 'lobby'; g.round = 0; g.usedLetters = [];
+        // La revanche garde l'id de la table : c'est le numéro de manche qui
+        // distingue les parties dans l'historique du salon.
+        g.manche = (g.manche || 1) + 1;
         for (const p of g.players) g.scores[p.pseudo] = 0;
         broadcastState(g);
         broadcastLobby();
