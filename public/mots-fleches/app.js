@@ -33,63 +33,12 @@ const I18N = {
         lv_moyen: "Moyen", lv_difficile: "Difficile", lv_expert: "Expert",
         live_done: "ont fini", tip_zoom: "Astuce : garde le doigt appuyé sur une définition pour l'agrandir.",
     },
-    en: {
-        start_txt: "The clock starts as soon as you begin — and never stops.",
-        start_btn: "Start", close: "Close", cancel: "Cancel", back_salon: "Back to the lounge",
-        tool_hint: "Hint", tool_erase: "Erase", tool_check: "Check", tool_giveup: "Give up",
-        panel_chat: "Today's chat", panel_arch: "Past grids",
-        share_btn: "Share my result", share_copied: "Result copied ✓",
-        chat_sub: "No spoilers, play fair 🙂", chat_ph: "Your message…", chat_send: "Send",
-        chat_empty: "Nobody has written today yet.",
-        arch_sub: "Replayable, but off the leaderboard.", arch_today: "Back to today", arch_none: "No archives.",
-        clue_start: "Tap “Start” to begin the grid.",
-        clue_resume: "Tap a square to continue.",
-        clue_arch: "Archive grid — off the leaderboard. Tap “Start”.",
-        clue_done: "Grid solved 🎉", clue_revealed: "Answers revealed.",
-        clue_pick: "Pick a square first.",
-        end_title: "Grid solved!", end_revealed: "Answers revealed",
-        end_time: "Your time:", end_arch: "archive grid (off the leaderboard)", end_of: "of",
-        end_streak: "day streak", end_noboard: "No ranking this time — try again tomorrow!",
-        board_title: "Today's leaderboard", board_empty: "Nobody has finished this grid today yet.",
-        erase_title: "Erase", erase_sub: "What do you want to erase?", erase_word: "Current word", erase_all: "The whole grid",
-        hint_title: "Ask for a hint", hint_sub: "The added time counts in your score.",
-        hint_letter: "Reveal this letter (+30 s)", hint_word: "Reveal the whole word (+5 min)",
-        giveup_title: "Give up?", giveup_sub: "Answers will be revealed and you won't appear on the leaderboard.",
-        giveup_yes: "Yes, show the answers",
-        lv_moyen: "Medium", lv_difficile: "Hard", lv_expert: "Expert",
-        live_done: "finished", tip_zoom: "Tip: press and hold a clue to enlarge it.",
-    },
-    es: {
-        start_txt: "El cronómetro arranca en cuanto empiezas — y no se detiene.",
-        start_btn: "Empezar", close: "Cerrar", cancel: "Cancelar", back_salon: "Volver al salón",
-        tool_hint: "Pista", tool_erase: "Borrar", tool_check: "Comprobar", tool_giveup: "Rendirse",
-        panel_chat: "Charla del día", panel_arch: "Cuadrículas pasadas",
-        share_btn: "Compartir mi resultado", share_copied: "Resultado copiado ✓",
-        chat_sub: "Sin spoilers, juega limpio 🙂", chat_ph: "Tu mensaje…", chat_send: "Enviar",
-        chat_empty: "Nadie ha escrito hoy todavía.",
-        arch_sub: "Rejugables, pero fuera de la clasificación.", arch_today: "Volver a hoy", arch_none: "Sin archivos.",
-        clue_start: "Pulsa «Empezar» para lanzar la cuadrícula.",
-        clue_resume: "Toca una casilla para continuar.",
-        clue_arch: "Cuadrícula de archivo — fuera de clasificación. Pulsa «Empezar».",
-        clue_done: "¡Cuadrícula resuelta! 🎉", clue_revealed: "Respuestas reveladas.",
-        clue_pick: "Elige primero una casilla.",
-        end_title: "¡Cuadrícula resuelta!", end_revealed: "Respuestas reveladas",
-        end_time: "Tu tiempo:", end_arch: "cuadrícula de archivo (fuera de clasificación)", end_of: "de",
-        end_streak: "días seguidos", end_noboard: "Sin clasificación esta vez — ¡inténtalo mañana!",
-        board_title: "Clasificación del día", board_empty: "Nadie ha terminado esta cuadrícula hoy.",
-        erase_title: "Borrar", erase_sub: "¿Qué quieres borrar?", erase_word: "La palabra actual", erase_all: "Toda la cuadrícula",
-        hint_title: "Pedir una pista", hint_sub: "El tiempo añadido cuenta en tu puntuación.",
-        hint_letter: "Revelar esta letra (+30 s)", hint_word: "Revelar toda la palabra (+5 min)",
-        giveup_title: "¿Rendirse?", giveup_sub: "Se revelarán las respuestas y no aparecerás en la clasificación.",
-        giveup_yes: "Sí, mostrar las respuestas",
-        lv_moyen: "Medio", lv_difficile: "Difícil", lv_expert: "Experto",
-        live_done: "han terminado", tip_zoom: "Consejo: mantén pulsada una definición para ampliarla.",
-    },
 };
-let LANG = localStorage.getItem('erquy_lang') || 'fr';
-if (!I18N[LANG]) LANG = 'fr';
+// Le salon est en français : le sélecteur de langue promettait l'anglais et
+// l'espagnol, et seules quatre pages sur vingt-deux étaient traduites.
+const LANG = 'fr';
 const t = (k) => (I18N[LANG] && I18N[LANG][k]) || I18N.fr[k] || k;
-const LOCALE = LANG === 'en' ? 'en-GB' : (LANG === 'es' ? 'es-ES' : 'fr-FR');
+const LOCALE = 'fr-FR';
 function applyI18n() {
     // L'attribut lang de la page doit suivre la langue choisie : sinon un lecteur
     // d'écran prononce l'anglais avec la phonétique française, et le navigateur
@@ -474,7 +423,7 @@ async function finish() {
     $('mf-end-title').textContent = t('end_title');
     let sub = t('end_time') + ' ' + fmt((data && data.seconds) || seconds);
     if (data && data.isArchive) sub += ' · ' + t('end_arch');
-    else if (data && data.rank) sub += ' · ' + data.rank + (LANG === 'fr' ? (data.rank === 1 ? 'er' : 'e') : (LANG === 'es' ? 'º' : (data.rank === 1 ? 'st' : data.rank === 2 ? 'nd' : data.rank === 3 ? 'rd' : 'th'))) + ' ' + t('end_of') + ' ' + data.total;
+    else if (data && data.rank) sub += ' · ' + data.rank + (data.rank === 1 ? 'er' : 'e') + ' ' + t('end_of') + ' ' + data.total;
     if (data && data.streak && data.streak.current > 1) sub += ' · 🔥 ' + data.streak.current + ' ' + t('end_streak');
     $('mf-end-sub').textContent = sub;
     renderBoard((data && data.board) || [], $('mf-board'));

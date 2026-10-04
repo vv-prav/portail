@@ -11,7 +11,7 @@ const I18N = {
         entry_hint: "6 caractères minimum. Choisis un mot de passe unique, pas un que tu utilises ailleurs.",
         ph_name: "Ton nom", ph_pass: "Ton mot de passe", ph_newpass: "Nouveau mot de passe",
         btn_enter: "Entrer", btn_register: "Créer un compte", btn_forgot: "Mot de passe oublié ?",
-        hub_welcome: "Bienvenue", hub_foot: "D'autres pièces ouvriront bientôt.",
+        hub_welcome: "Bienvenue",
         err_fill: "Remplis les deux champs.", err_generic: "Une erreur est survenue.",
         prof_tap: "Touche l'avatar pour le changer",
         prof_member: "Membre depuis le", prof_lastvisit: "dernière visite",
@@ -28,8 +28,7 @@ const I18N = {
         app_jouer_d: "Créer une table ou rejoindre les autres.",
         app_carnet_d: "Nos sorties et nos recettes.",
         app_recettes_d: "Garde et partage tes recettes.", app_voyages_d: "La rando dans les Monts d'Arrée.", app_admin_d: "Comptes, données et réglages.",
-        b_open: "Ouvert", b_soon: "Bientôt", b_online: "en ligne", b_nobody_online: "Personne pour l'instant", b_new_grid: "Nouvelle grille !",
-        reorder_start: "Réorganiser", reorder_done: "Terminé", reorder_hint: "Tapez une tuile, puis une deuxième pour échanger leur place.",
+        b_online: "en ligne", b_nobody_online: "Personne pour l'instant", b_new_grid: "Nouvelle grille !",
         b_grid_done: "Grille du jour ✓", b_grid_part: "faites aujourd'hui",
         app_ch_d: "Dé, carte ou pièce : tranchez au hasard.",
         b_rec_new: "cette semaine", b_rec_count: "recettes",
@@ -39,79 +38,14 @@ const I18N = {
         today_title: "Aujourd'hui", today_done: "Fait ✓", today_over: "Terminé", today_todo: "À faire", today_streak: "jours d'affilée",
         b_motus_done: "Trouvé ✓", b_motus_over: "Terminé", b_motus_solvers: "ont trouvé",
     },
-    en: {
-        entry_sub: "A name, a password, and the door opens.",
-        entry_hint: "6 characters minimum. Pick a unique password you don't use elsewhere.",
-        ph_name: "Your name", ph_pass: "Your password", ph_newpass: "New password",
-        btn_enter: "Enter", btn_register: "Create an account", btn_forgot: "Forgot password?",
-        hub_welcome: "Welcome", hub_foot: "More rooms opening soon.",
-        err_fill: "Fill in both fields.", err_generic: "Something went wrong.",
-        prof_tap: "Tap the avatar to change it",
-        prof_member: "Member since", prof_lastvisit: "last visit",
-        sec_mf: "Crosswords", sec_perudo: "Perudo",
-        st_solved: "grids solved", st_best: "best time", st_streak: "day streak", st_days: "days played", st_best_tries: "best score", st_avg_tries: "average tries",
-        st_wins: "wins", st_played: "games", st_points: "points",
-        prof_none: "Not played yet", prof_soon: "No tracking for this game yet.",
-        prof_code: "New recovery code", btn_logout: "Log out",
-        code_title: "Write this code down", code_copy: "Copy code", code_ok: "Got it", code_copied: "Copied ✓",
-        code_sub: "It's the only way to recover your account if you forget your password. It will never be shown again.",
-        forgot_title: "Forgot password", forgot_sub: "Enter your name and the recovery code from sign-up.",
-        forgot_send: "Reset", cancel: "Cancel",
-        app_perudo_d: "The pirates' dice game, online.", app_motus_d: "Guess the word in 6 tries.", app_pbac_d: "A letter, eight categories, with friends.", app_uc_d: "Unmask the impostor among you.", app_mf_d: "A fresh grid every day.",
-        app_jouer_d: "Start a table or join the others.",
-        app_carnet_d: "Our outings and our recipes.",
-        app_recettes_d: "Keep and share your recipes.", app_voyages_d: "The Monts d'Arrée hiking trip.", app_admin_d: "Accounts, data and settings.",
-        b_open: "Open", b_soon: "Soon", b_online: "online", b_nobody_online: "Nobody right now", b_new_grid: "New grid!",
-        reorder_start: "Reorder", reorder_done: "Done", reorder_hint: "Tap a tile, then a second one to swap places.",
-        b_grid_done: "Today's grid ✓", b_grid_part: "done today",
-        app_ch_d: "Dice, card or coin: let chance decide.",
-        b_rec_new: "this week", b_rec_count: "recipes",
-        rank_saison: "This month", rank_toujours: "All time",
-        rank_title: "Lounge leaderboard", rank_loading: "One moment…", rank_empty: "Nobody has scored yet.", rank_error: "Leaderboard unavailable.",
-        today_results: "Today's results ›", today_results_title: "Today's results", res_locked: "Finish your round to see the leaderboard.", res_go: "Go ›", res_personne: "Nobody has finished yet.",
-        today_title: "Today", today_done: "Done ✓", today_over: "Finished", today_todo: "To play", today_streak: "day streak",
-        b_motus_done: "Found ✓", b_motus_over: "Finished", b_motus_solvers: "found it",
-    },
-    es: {
-        entry_sub: "Un nombre, una contraseña, y la puerta se abre.",
-        entry_hint: "Mínimo 6 caracteres. Elige una contraseña única que no uses en otro sitio.",
-        ph_name: "Tu nombre", ph_pass: "Tu contraseña", ph_newpass: "Nueva contraseña",
-        btn_enter: "Entrar", btn_register: "Crear una cuenta", btn_forgot: "¿Contraseña olvidada?",
-        hub_welcome: "Bienvenido", hub_foot: "Pronto abrirán más salas.",
-        err_fill: "Rellena los dos campos.", err_generic: "Ha ocurrido un error.",
-        prof_tap: "Toca el avatar para cambiarlo",
-        prof_member: "Miembro desde el", prof_lastvisit: "última visita",
-        sec_mf: "Crucigramas", sec_perudo: "Perudo",
-        st_solved: "cuadrículas resueltas", st_best: "mejor tiempo", st_streak: "días seguidos", st_days: "días jugados", st_best_tries: "mejor puntuación", st_avg_tries: "intentos promedio",
-        st_wins: "victorias", st_played: "partidas", st_points: "puntos",
-        prof_none: "Aún no has jugado", prof_soon: "Sin seguimiento para este juego todavía.",
-        prof_code: "Nuevo código de recuperación", btn_logout: "Cerrar sesión",
-        code_title: "Apunta este código", code_copy: "Copiar código", code_ok: "Anotado", code_copied: "Copiado ✓",
-        code_sub: "Es la única forma de recuperar tu cuenta si olvidas tu contraseña. No se mostrará nunca más.",
-        forgot_title: "Contraseña olvidada", forgot_sub: "Escribe tu nombre y el código de recuperación.",
-        forgot_send: "Restablecer", cancel: "Cancelar",
-        app_perudo_d: "El juego de dados pirata, en línea.", app_motus_d: "Adivina la palabra en 6 intentos.", app_pbac_d: "Una letra, ocho categorías, en grupo.", app_uc_d: "Descubre al infiltrado entre vosotros.", app_mf_d: "Una cuadrícula nueva cada día.",
-        app_jouer_d: "Crea una mesa o únete a los demás.",
-        app_carnet_d: "Nuestras salidas y recetas.",
-        app_recettes_d: "Guarda y comparte tus recetas.", app_voyages_d: "La ruta por los Monts d'Arrée.", app_admin_d: "Cuentas, datos y ajustes.",
-        b_open: "Abierto", b_soon: "Pronto", b_online: "en línea", b_nobody_online: "Nadie por ahora", b_new_grid: "¡Nueva cuadrícula!",
-        reorder_start: "Reordenar", reorder_done: "Hecho", reorder_hint: "Toca una casilla, luego otra para intercambiarlas.",
-        b_grid_done: "Cuadrícula de hoy ✓", b_grid_part: "hechas hoy",
-        app_ch_d: "Dado, carta o moneda: que decida el azar.",
-        b_rec_new: "esta semana", b_rec_count: "recetas",
-        rank_saison: "Este mes", rank_toujours: "Desde siempre",
-        rank_title: "Clasificación del Salón", rank_loading: "Un momento…", rank_empty: "Nadie ha puntuado todavía.", rank_error: "Clasificación no disponible.",
-        today_results: "Los resultados del día ›", today_results_title: "Los resultados del día", res_locked: "Termina tu ronda para ver la clasificación.", res_go: "Ir ›", res_personne: "Nadie ha terminado todavía.",
-        today_title: "Hoy", today_done: "Hecho ✓", today_over: "Terminado", today_todo: "Por jugar", today_streak: "días seguidos",
-        b_motus_done: "Encontrada ✓", b_motus_over: "Terminado", b_motus_solvers: "lo encontraron",
-    },
 };
-let LANG = localStorage.getItem('erquy_lang') || (navigator.language || 'fr').slice(0, 2);
-if (!I18N[LANG]) LANG = 'fr';
+// Le salon est en français : le sélecteur de langue promettait l'anglais et
+// l'espagnol, et seules quatre pages sur vingt-deux étaient traduites.
+const LANG = 'fr';
 const t = (k) => (I18N[LANG] && I18N[LANG][k]) || I18N.fr[k] || k;
 // Les autres apps définissent leur LOCALE ; le salon ne l'avait jamais fait,
 // faute d'avoir eu une date à afficher jusqu'ici.
-const LOCALE = LANG === 'en' ? 'en-GB' : (LANG === 'es' ? 'es-ES' : 'fr-FR');
+const LOCALE = 'fr-FR';
 function applyI18n() {
     // L'attribut lang de la page doit suivre la langue choisie : sinon un lecteur
     // d'écran prononce l'anglais avec la phonétique française, et le navigateur
@@ -119,13 +53,7 @@ function applyI18n() {
     document.documentElement.lang = LANG;
     document.querySelectorAll('[data-i]').forEach(el => { el.textContent = t(el.dataset.i); });
     document.querySelectorAll('[data-ph]').forEach(el => { el.placeholder = t(el.dataset.ph); });
-    document.querySelectorAll('#lang-row button').forEach(b => b.classList.toggle('on', b.dataset.lang === LANG));
 }
-document.querySelectorAll('#lang-row button').forEach(b => b.addEventListener('click', () => {
-    LANG = b.dataset.lang;
-    localStorage.setItem('erquy_lang', LANG);       // même clé que le Perudo → langue partagée
-    applyI18n(); renderTiles();
-}));
 
 // ---------- Apps (Média retiré) ----------
 // Une seule tuile pour tout le multijoueur : les quatre halls séparés
@@ -158,16 +86,17 @@ async function api(path, body) {
 function setState(state) { document.body.className = 'is-' + state; }
 
 // ---------- Tuiles vivantes ----------
+// Sous le nom d'une tuile : une information, jamais « OUVERT » — toutes les
+// pièces sont ouvertes, le badge ne disait rien. Le carnet annonce ses
+// recettes ; sinon, une ligne dit à quoi sert la pièce.
+// ⚠️ Le compteur de recettes cherchait une tuile « recettes » qui n'existe
+// plus depuis leur réunion dans le carnet : il ne s'affichait jamais.
 function tileBadge(app) {
-    if (app.status !== 'open') return `<span class="tile-badge soon">${t('b_soon')}</span>`;
-    // Les jeux du jour n'ont plus de tuile : leur état vit dans le panneau
-    // « Aujourd'hui », et le multijoueur a sa propre pastille de présence.
-    if (app.id === 'recettes' && pulse && pulse.rec) {
+    if (app.id === 'carnet' && pulse && pulse.rec) {
         if (pulse.rec.fresh > 0) return `<span class="tile-badge new">✨ ${pulse.rec.fresh} ${t('b_rec_new')}</span>`;
         if (pulse.rec.count > 0) return `<span class="tile-badge part">${pulse.rec.count} ${t('b_rec_count')}</span>`;
-        return `<span class="tile-badge open">${t('b_open')}</span>`;
     }
-    return `<span class="tile-badge open">${t('b_open')}</span>`;
+    return `<span class="tile-desc">${esc(t(app.dKey))}</span>`;
 }
 // Une seule tuile multijoueur désormais : elle agrège les joueurs présents
 // dans les cinq jeux, puisqu'ils partagent tous l'espace /jouer/.
@@ -186,95 +115,21 @@ function tileOnlineInfo(a) {
     return `<span class="tile-online"><b>🟢 ${names.length}</b> ${shown}${extra}</span>`;
 }
 function renderTile(a) {
-    const open = a.status === 'open';
-    const sub = open && MULTIPLAYER_APPS.has(a.id) ? tileOnlineInfo(a) : (open ? tileBadge(a) : `<span class="tile-badge soon">${t('b_soon')}</span>`);
-    const inner = `
+    const sub = MULTIPLAYER_APPS.has(a.id) ? tileOnlineInfo(a) : tileBadge(a);
+    return `<a class="tile" data-id="${a.id}" href="${a.href}" style="--accent:${a.accent}">
         <span class="tile-mark">${a.emoji}</span>
         <span class="tile-name">${esc(a.name)}</span>
-        ${sub}`;
-    return open
-        ? `<a class="tile" data-id="${a.id}" href="${a.href}" style="--accent:${a.accent}">${inner}</a>`
-        : `<div class="tile is-soon" data-id="${a.id}" style="--accent:${a.accent}" aria-disabled="true">${inner}</div>`;
+        ${sub}</a>`;
 }
 
-// ---------- Ordre personnalisé des tuiles, sauvegardé sur cet appareil ----------
-const TILE_ORDER_KEY = 'erquy_tile_order';
-// Ordre de préférence par défaut, utilisé tant que personne n'a encore réorganisé les
-// tuiles à la main. Voyages et Recettes restent toujours tout en bas, même après.
-const DEFAULT_PRIORITY = ['jouer'];
-// L'administration ferme toujours la marche : c'est un outil, pas une pièce du
-// salon. Le carnet reprend donc sa place juste après « Jouer ensemble ».
-const ALWAYS_LAST = ['admin'];
-function loadTileOrder(allIds) {
-    let saved = [];
-    try { saved = JSON.parse(localStorage.getItem(TILE_ORDER_KEY) || '[]'); } catch (e) {}
-    let order;
-    if (saved.length) {
-        const known = saved.filter(id => allIds.includes(id));
-        const missing = allIds.filter(id => !known.includes(id));  // nouvelles apps jamais vues : à la fin
-        order = [...known, ...missing];
-    } else {
-        const rest = allIds.filter(id => !DEFAULT_PRIORITY.includes(id) && !ALWAYS_LAST.includes(id));
-        order = [...DEFAULT_PRIORITY.filter(id => allIds.includes(id)), ...rest];
-    }
-    // L'administration : toujours en dernier, qu'un ordre ait été sauvegardé ou non.
-    // On les reprend depuis allIds et non depuis order : `rest` les avait
-    // volontairement écartés, donc les chercher dans order les faisait
-    // disparaître de la grille pour qui n'avait jamais réorganisé ses tuiles.
-    const last = ALWAYS_LAST.filter(id => allIds.includes(id));
-    return [...order.filter(id => !ALWAYS_LAST.includes(id)), ...last];
-}
-function saveTileOrder(order) { localStorage.setItem(TILE_ORDER_KEY, JSON.stringify(order)); }
-
+// ---------- Les tuiles ----------
+// Toujours dans cet ordre : Jouer ensemble, le carnet, puis l'administration.
+// Le mode « Réorganiser » a été retiré : il reste trois tuiles, dont l'admin
+// qui ferme toujours la marche — il n'y avait plus rien à réorganiser.
 function renderTiles() {
     const all = [...GAME_APPS, ...OTHER_APPS, ...(isAdminUser ? [ADMIN_APP] : [])];
-    const byId = Object.fromEntries(all.map(a => [a.id, a]));
-    const order = loadTileOrder(all.map(a => a.id));
-    $('tiles').innerHTML = order.map(id => byId[id]).filter(Boolean).map(renderTile).join('');
-    $('tiles').classList.toggle('tiles-reorder-on', reorderMode);
-    if (reorderMode) wireTileReorder();
+    $('tiles').innerHTML = all.map(renderTile).join('');
 }
-
-// ---------- Mode "Réorganiser" : un appui sélectionne une tuile (elle se
-// détache légèrement), un second appui sur une autre échange leur place. Pas
-// de geste de glissement, donc rien qui puisse entrer en conflit avec le
-// défilement de la page ou le fait de suivre normalement un lien. ----------
-let reorderMode = false;
-let reorderSelected = null;
-function toggleReorderMode(on) {
-    reorderMode = on;
-    reorderSelected = null;
-    $('reorder-toggle').textContent = on ? t('reorder_done') : t('reorder_start');
-    $('reorder-hint').hidden = !on;
-    renderTiles();
-}
-function wireTileReorder() {
-    const host = $('tiles');
-    host.querySelectorAll('.tile').forEach(tile => {
-        tile.addEventListener('click', (e) => {
-            if (!reorderMode) return;
-            e.preventDefault();   // en mode réorganisation, un tap ne doit jamais ouvrir l'app
-            if (reorderSelected === tile.dataset.id) {
-                tile.classList.remove('tile-selected');
-                reorderSelected = null;
-                return;
-            }
-            if (!reorderSelected) {
-                reorderSelected = tile.dataset.id;
-                tile.classList.add('tile-selected');
-                return;
-            }
-            const ids = [...host.querySelectorAll('.tile')].map(t => t.dataset.id);
-            const from = ids.indexOf(reorderSelected), to = ids.indexOf(tile.dataset.id);
-            [ids[from], ids[to]] = [ids[to], ids[from]];
-            saveTileOrder(ids);
-            reorderSelected = null;
-            if (navigator.vibrate) { try { navigator.vibrate(14); } catch (err) {} }
-            renderTiles();
-        });
-    });
-}
-$('reorder-toggle').addEventListener('click', () => toggleReorderMode(!reorderMode));
 
 async function loadPulse() {
     const { ok, data } = await api('/api/salon/pulse');

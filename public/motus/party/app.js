@@ -37,6 +37,7 @@ function connect() {
     socket.on('motusparty_state', onState);
     socket.on('motusparty_finish', onPlayerFinish);
     socket.on('motusparty_stats_result', renderStats);
+    socket.on('motusparty_classement_result', renderClassement);
     socket.on('motusparty_error', (msg) => {
         toast(msg || 'Erreur.');
         if (/inconnu/i.test(msg || '')) { try { secouerLigneActive(); } catch (e) {} }
@@ -69,7 +70,7 @@ function renderLobby(games) {
         <button type="button" class="ds-row" data-id="${g.id}">
             <span class="ds-row-main">
                 <span class="ds-row-name">${esc(g.host)}</span>
-                <span class="ds-row-sub">${g.status === 'playing' ? `🔴 Manche ${g.round}/${g.maxRounds}` : 'En attente'} · ${g.alive}/${g.players} joueurs${g.spectators ? ` · 👀 ${g.spectators}` : ''}</span>
+                <span class="ds-row-sub">${g.status === 'playing' ? `🔴 Manche ${g.round}/${g.maxRounds}` : 'En attente'} · ${DS.placesTable(g)}${g.spectators ? ` · 👀 ${g.spectators}` : ''}</span>
             </span>
             <span class="ds-row-go">${g.status === 'playing' ? 'Regarder ›' : 'Rejoindre ›'}</span>
         </button>
@@ -80,6 +81,20 @@ setInterval(() => { if (socket && socket.connected && !$('v-lobby').hidden) sock
 
 // ---------- Statistiques ----------
 $('btn-stats').addEventListener('click', () => { socket.emit('motusparty_stats'); $('v-stats').hidden = false; });
+// Le classement du salon, rendu par le système de design comme partout.
+$('btn-classement').addEventListener('click', () => {
+    $('classementCorps').innerHTML = '<p class="ds-lb-vide">Chargement…</p>';
+    $('v-classement').hidden = false;
+    socket.emit('motusparty_classement');
+});
+$('classement-close').addEventListener('click', () => { $('v-classement').hidden = true; });
+function renderClassement(lignes) {
+    DS.classement($('classementCorps'), lignes, {
+        moi: myPseudo,
+        detail: l => `${l.parties} course${l.parties > 1 ? 's' : ''} · ${l.mots} mots trouvés`,
+        valeur: l => `${l.victoires} V`,
+    });
+}
 $('stats-close').addEventListener('click', () => { $('v-stats').hidden = true; });
 function renderStats(s) {
     $('statsGrid').innerHTML = [

@@ -73,7 +73,6 @@ body.is-hub   .hub   { display: block; }
 .hub { min-height: 100dvh; animation: rise 0.45s ease both; }
 .hub-inner { max-width: 640px; margin: 0 auto; padding: max(18px, env(safe-area-inset-top)) 18px calc(28px + env(safe-area-inset-bottom)); }
 .hub-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 6px; margin-bottom: 18px; }
-.hub-greet { min-width: 0; }
 .hub-eyebrow { display: block; text-transform: uppercase; letter-spacing: 3px; font-size: 0.66rem; color: var(--muted); margin-bottom: 3px; }
 .hub-name { font-family: 'Fraunces', Georgia, serif; font-weight: 900; font-size: 2rem; margin: 0; color: var(--brass-soft); line-height: 1.05; overflow-wrap: anywhere; }
 /* ---------- Classement du Salon ----------
@@ -145,32 +144,19 @@ body.is-hub   .hub   { display: block; }
     transition: transform 0.14s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
 .tile::before { content: ""; position: absolute; left: 0; top: 0; right: 0; height: 3px; background: var(--accent); opacity: 0.9; }
-.tile:not(.is-soon):hover, .tile:not(.is-soon):focus-visible { transform: translateY(-2px); border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); box-shadow: 0 14px 30px rgba(0,0,0,0.5), 0 0 22px color-mix(in srgb, var(--accent) 20%, transparent); }
-.tile:not(.is-soon):active { transform: translateY(0) scale(0.99); }
-.tile.is-soon { opacity: 0.62; cursor: default; }
 
 /* --- Barre d'outils et mode "Réorganiser" (tap pour échanger deux tuiles) --- */
-.tiles-toolbar { display: flex; justify-content: flex-end; margin: -6px 0 10px; }
-.tiles-reorder-btn { padding: 8px 16px; border-radius: 999px; background: rgba(255,255,255,.05); border: 1px solid var(--line);
-    color: var(--muted); font-family: inherit; font-size: .8rem; font-weight: 700; cursor: pointer; }
-.reorder-hint { text-align: center; font-size: .78rem; color: var(--brass-soft); margin: 0 0 14px; }
-.reorder-hint[hidden] { display: none; }
-.tiles.tiles-reorder-on .tile { animation: tileWobble .28s ease-in-out infinite; cursor: pointer; }
-.tiles.tiles-reorder-on .tile:nth-child(even) { animation-delay: -.14s; }
-@keyframes tileWobble { 0%,100% { transform: rotate(-1.3deg); } 50% { transform: rotate(1.3deg); } }
-.tile.tile-selected { outline: 2px solid var(--accent); outline-offset: 2px; animation: none !important;
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 25%, transparent); }
 
 .tile-mark { flex: 0 0 auto; width: 50px; height: 50px; border-radius: 13px; display: grid; place-items: center; font-size: 1.5rem; background: color-mix(in srgb, var(--accent) 15%, var(--ink)); border: 1px solid color-mix(in srgb, var(--accent) 38%, transparent); }
 .tile-name { font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: 1rem; color: var(--parchment); overflow-wrap: anywhere; }
 .tile-online { font-size: .68rem; color: var(--muted); line-height: 1.35; overflow-wrap: anywhere; }
 .tile-online b { color: #bfe8cd; font-weight: 800; }
 .tile-online.empty { opacity: .55; }
+/* La ligne qui dit à quoi sert une pièce, à la place de l'ancien badge
+   « OUVERT », qui ne disait rien. */
+.tile-desc { font-size: .72rem; color: var(--muted); line-height: 1.3; text-align: center; }
 .tile-badge { font-size: 0.62rem; letter-spacing: 0.6px; text-transform: uppercase; padding: 4px 9px; border-radius: 999px; font-weight: 800; white-space: nowrap; }
-.tile-badge.open { color: #2a1c07; background: var(--accent); }
-.tile-badge.soon { color: var(--muted); border: 1px solid var(--line); }
 
-.hub-foot { text-align: center; color: #6f6350; font-size: 0.78rem; margin: 26px 0 4px; }
 
 /* =====================  ÉCRANS PLUS LARGES  ===================== */
 @media (min-width: 600px) {
@@ -280,12 +266,6 @@ body.is-hub   .hub   { display: block; }
     .ds-card { max-width: 430px; padding: 32px 28px; }
 }
 
-/* ===== Sélecteur de langue (écran d'entrée) ===== */
-.lang-row { display: flex; justify-content: center; gap: 8px; margin-top: 16px; }
-.lang-row button { padding: 7px 14px; border-radius: 999px; background: none; border: 1px solid var(--line);
-                   color: var(--muted); font-size: 0.72rem; font-weight: 700; letter-spacing: 1px;
-                   font-family: inherit; cursor: pointer; }
-.lang-row button.on { color: #2a1c07; background: linear-gradient(180deg, var(--brass-soft), var(--brass)); border-color: transparent; }
 /* Sélecteur de période du classement : la saison par défaut, le cumul en second. */
 .rank-periode { margin-bottom: 8px; }
 .rank-liste { display: flex; flex-direction: column; gap: 4px; }
@@ -313,10 +293,9 @@ body.is-hub   .hub   { display: block; }
    sur un écran de 375 px on les rate. On leur rend de la hauteur, sans toucher
    à la mise en page. */
 @media (max-width: 400px) {
-    .hub-online-chip, .hub-recent-item { min-height: 40px; }
+    .hub-online-chip { min-height: 40px; }
     .today-resultats { padding: 12px 8px; }
-    .tiles-reorder-btn { padding: 11px 14px; }
-    .rank-toggle { padding: 14px; }
+        .rank-toggle { padding: 14px; }
     .rank-row { padding: 10px 12px; }
     .today-item { padding: 13px; }
 }

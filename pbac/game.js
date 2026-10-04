@@ -822,6 +822,17 @@ io.on('connection', (socket) => {
         broadcastLobby();
     });
 
+    // Le classement du salon, comme dans les autres jeux multijoueurs : il
+    // manquait au Petit Bac, qui tenait pourtant déjà l'index de ses joueurs.
+    socket.on('pbac_classement', () => {
+        const lignes = (mfGet(STATS_INDEX_KEY) || []).map(p => {
+            const s = loadStats(p);
+            return { pseudo: p, parties: s.gamesPlayed, victoires: s.gamesWon, points: s.totalPoints, meilleureManche: s.bestRoundScore };
+        }).filter(l => l.parties > 0)
+          .sort((a, b) => b.victoires - a.victoires || b.points - a.points || a.pseudo.localeCompare(b.pseudo, 'fr'));
+        socket.emit('pbac_classement_result', lignes);
+    });
+
     // Mes statistiques, plus un classement de qui est le plus fort sur chaque catégorie,
     // tous joueurs confondus (seulement les catégories jouées par au moins 2 personnes).
     socket.on('pbac_stats', () => {

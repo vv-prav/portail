@@ -271,7 +271,7 @@ function renderLobby(games) {
         <button type="button" class="ds-row" data-id="${g.id}">
             <span class="ds-row-main">
                 <span class="ds-row-name">${esc(g.host)}</span>
-                <span class="ds-row-sub">${g.status === 'playing' ? '🔴 En cours' : 'En attente'} · ${g.alive}/${g.players} joueurs${g.spectators ? ` · 👀 ${g.spectators}` : ''}</span>
+                <span class="ds-row-sub">${g.status === 'playing' ? '🔴 En cours' : 'En attente'} · ${DS.placesTable(g)}${g.spectators ? ` · 👀 ${g.spectators}` : ''}</span>
             </span>
             <span class="ds-row-go">${g.status === 'playing' ? 'Regarder ›' : 'Rejoindre ›'}</span>
         </button>

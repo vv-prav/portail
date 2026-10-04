@@ -84,7 +84,7 @@ function renderLobby(parties) {
         <button type="button" class="ds-row" data-id="${p.id}">
             <span class="ds-row-main">
                 <span class="ds-row-name">${esc(p.host)}</span>
-                <span class="ds-row-sub">${p.status === 'playing' ? `🔴 Question ${p.question}/${p.total}` : 'En attente'} · ${p.alive}/${p.players} joueur${p.players > 1 ? 's' : ''}${p.spectators ? ` · 👀 ${p.spectators}` : ''}</span>
+                <span class="ds-row-sub">${p.status === 'playing' ? `🔴 Question ${p.question}/${p.total}` : 'En attente'} · ${DS.placesTable(p)}${p.spectators ? ` · 👀 ${p.spectators}` : ''}</span>
             </span>
             <span class="ds-row-go">${p.status === 'playing' ? 'Regarder ›' : 'Rejoindre ›'}</span>
         </button>`).join('');

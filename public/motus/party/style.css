@@ -75,7 +75,6 @@ body {
 .mp-tile.absent { background:var(--absent); border-color:var(--absent); color:var(--muted); }
 
 /* Révélation en cascade de la ligne qu'on vient de valider. */
-.mp-tile.reveal { animation:mpFlip .45s ease both; }
 @keyframes mpFlip { 0% { transform:rotateX(0); } 50% { transform:rotateX(90deg); } 100% { transform:rotateX(0); } }
 .mp-row.shake .mp-tile { animation:mpShake .4s; }
 @keyframes mpShake { 0%,100% { transform:translateX(0); } 20% { transform:translateX(-7px); } 40% { transform:translateX(7px); } 60% { transform:translateX(-4px); } 80% { transform:translateX(4px); } }

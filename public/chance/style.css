@@ -1,3 +1,6 @@
+/* Les couleurs des cartes : elles avaient disparu à la migration, et un
+   cœur s'affichait de la même couleur qu'un pique. */
+:root { --card-black:#1d1710; --card-red:#b8322a; }
 /* =====================================================================
    CHANCE — mobile-first, DA du salon (nuit chaude + laiton)
    ===================================================================== */
@@ -32,21 +35,13 @@ body.is-ready .ch { display:flex; }
 .ch-panel { width:100%; display:flex; align-items:center; justify-content:center; }
 .ch-panel[hidden] { display:none !important; }
 
-/* Dé */
-.ch-die { width:130px; height:130px; border-radius:22px; background:linear-gradient(165deg,var(--parchment),#e2d5b3);
-          border:2.5px solid #cdbd8f; box-shadow:0 14px 34px rgba(0,0,0,.5);
-          display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); padding:16px; gap:4px; }
+/* Dé — le dessin vient de /des.js (le dé commun, au skin du joueur). */
+.ch-die { width:130px; height:130px; filter:drop-shadow(0 14px 22px rgba(0,0,0,.5)); }
+.ch-die .ch-de { width:100%; height:100%; display:block; }
+.ch-de-secours { display:grid; place-items:center; width:100%; height:100%; border-radius:22px;
+    background:var(--parchment); color:var(--ink); font-size:3rem; font-weight:900; }
 .ch-die.rolling { animation:chDieRoll .55s ease; }
 @keyframes chDieRoll { 0%,100%{transform:rotate(0);} 25%{transform:rotate(-8deg) scale(1.03);} 75%{transform:rotate(8deg) scale(1.03);} }
-.ch-pip { border-radius:50%; background:var(--card-black); opacity:0; place-self:center; width:20px; height:20px; }
-.ch-die.v1 [data-p="5"], .ch-die.v3 [data-p="5"] { opacity:1; }
-.ch-die.v2 [data-p="3"], .ch-die.v2 [data-p="7"],
-.ch-die.v3 [data-p="3"], .ch-die.v3 [data-p="7"] { opacity:1; }
-.ch-die.v4 [data-p="1"], .ch-die.v4 [data-p="3"], .ch-die.v4 [data-p="7"], .ch-die.v4 [data-p="9"],
-.ch-die.v5 [data-p="1"], .ch-die.v5 [data-p="3"], .ch-die.v5 [data-p="7"], .ch-die.v5 [data-p="9"] { opacity:1; }
-.ch-die.v5 [data-p="5"] { opacity:1; }
-.ch-die.v6 [data-p="1"], .ch-die.v6 [data-p="4"], .ch-die.v6 [data-p="7"],
-.ch-die.v6 [data-p="3"], .ch-die.v6 [data-p="6"], .ch-die.v6 [data-p="9"] { opacity:1; }
 
 /* Carte */
 .ch-card-slot { width:150px; height:210px; }

@@ -33,6 +33,39 @@ let debutA = 0, chronoTimer = null;
 
 const laDate = () => { try { return new URLSearchParams(location.search).get('date') || ''; } catch (e) { return ''; } };
 const suffixeDate = () => (laDate() ? '?date=' + encodeURIComponent(laDate()) : '');
+
+// ---------- D'où viennent les lettres : le jeu du jour, ou un défi ----------
+// Un défi se joue ICI, avec les mêmes tuiles : `?defi=<id>` fait parler la
+// page aux routes des défis plutôt qu'à celles du jeu du jour.
+const DEFI = (() => { try { return new URLSearchParams(location.search).get('defi') || ''; } catch (e) { return ''; } })();
+const cheminDefi = (fin) => '/api/defis/' + encodeURIComponent(DEFI) + (fin || '');
+const avecLignes = (r) => {
+    if (r.data && Array.isArray(r.data.classement)) r.data.classement = r.data.classement.map(l => ({ u: l.pseudo, score: l.score, ms: l.ms }));
+    if (r.data && r.data.classement) {
+        const moi = P && P.defi && P.defi.moiPseudo;
+        const i = r.data.classement.findIndex(l => l.u === moi);
+        r.data.place = i < 0 ? null : i + 1;
+    }
+    return r;
+};
+const SOURCE = DEFI ? {
+    charger: async () => {
+        const { ok, data } = await api(cheminDefi());
+        if (!ok || !data || data.error) return { ok: false };
+        return { ok: true, data: { defi: data, date: 'defi-' + DEFI, archive: false, nextIn: 0, serie: null,
+            lettres: data.lettres, max: data.max, meilleurs: data.meilleurs, progression: data.progression } };
+    },
+    demarrer: () => api(cheminDefi('/commencer'), {}),
+    proposer: async (mot) => avecLignes(await api(cheminDefi('/repondre'), { action: 'proposer', mot })),
+    terminer: async () => avecLignes(await api(cheminDefi('/repondre'), { action: 'terminer' })),
+    classement: async () => (avecLignes(await api(cheminDefi())).data || {}).classement || [],
+} : {
+    charger: () => api('/api/motlong/today' + suffixeDate()),
+    demarrer: () => api('/api/motlong/start', { date: P.date }),
+    proposer: (mot) => api('/api/motlong/proposer', { date: P.date, mot }),
+    terminer: () => api('/api/motlong/terminer', { date: P.date }),
+    classement: async () => { const r = await api('/api/motlong/classement?date=' + encodeURIComponent(P.date)); return (r.data && r.data.classement) || []; },
+};
 const motCompose = () => choisies.map(id => tuiles.find(t => t.id === id).lettre).join('');
 
 // ---------- L'affichage ----------
@@ -78,7 +111,7 @@ async function proposer() {
     const mot = motCompose();
     if (fini || envoi || mot.length < 3) return;
     envoi = true; renderTirage();
-    const { ok, data } = await api('/api/motlong/proposer', { date: P.date, mot });
+    const { ok, data } = await SOURCE.proposer(mot);
     envoi = false;
     if (!ok) { DS.toast((data && data.error) || 'Impossible de proposer.'); renderTirage(); return; }
     choisies = [];
@@ -90,7 +123,7 @@ async function proposer() {
 }
 async function terminer() {
     if (fini) return;
-    const { ok, data } = await api('/api/motlong/terminer', { date: P.date });
+    const { ok, data } = await SOURCE.terminer();
     if (!ok) { DS.toast('Impossible pour l’instant.'); return; }
     montrerFin(data);
 }
@@ -140,12 +173,14 @@ function montrerFin(d) {
         : '';
     renderBoard(d.classement || [], d.place);
     $('ml-fin').hidden = false;
-    if (!laDate() && window.Enchainement) Enchainement.proposer('motlong', $('ml-fin').querySelector('.ds-card'));
+    // Un défi ramène aux défis ; le jeu du jour propose le jeu suivant.
+    if (DEFI) $('ml-retour-defis').hidden = false;
+    else if (!laDate() && window.Enchainement) Enchainement.proposer('motlong', $('ml-fin').querySelector('.ds-card'));
 }
 function renderBoard(liste, maPlace) {
     if (!liste.length) { $('ml-board').innerHTML = ''; return; }
     const medaille = ['🥇', '🥈', '🥉'];
-    $('ml-board').innerHTML = `<p class="ml-board-titre">Le classement du jour</p>`
+    $('ml-board').innerHTML = `<p class="ml-board-titre">${DEFI ? 'Le classement du défi' : 'Le classement du jour'}</p>`
         + liste.map((e, i) => `
             <button type="button" class="ml-board-row${i + 1 === maPlace ? ' moi' : ''}" data-view="${esc(e.u)}">
                 <span class="ml-b-rang">${medaille[i] || (i + 1)}</span>
@@ -165,13 +200,14 @@ function renderBoard(liste, maPlace) {
 // Le partage ne donne jamais un mot : seulement les longueurs, comme les
 // carrés du Motus racontent la partie sans la révéler.
 function texteDePartage() {
-    const jour = new Date(P.date + 'T12:00:00').toLocaleDateString(LOCALE, { day: 'numeric', month: 'long' });
     const pr = P.progression || {};
     const m = pr.meilleur || 0;
-    return `Le mot le plus long — ${jour}\n`
+    const titre = DEFI ? `Défi Mot le plus long de ${P.defi.auteur}`
+        : 'Le mot le plus long — ' + new Date(P.date + 'T12:00:00').toLocaleDateString(LOCALE, { day: 'numeric', month: 'long' });
+    return `${titre}\n`
         + `${'🟩'.repeat(m)}${'⬜'.repeat(Math.max(0, P.max - m))} ${m}/${P.max}`
         + (pr.ms != null ? ` · ${formaterTemps(pr.ms)}` : '')
-        + `\n${location.origin}/motlong`;
+        + `\n${location.origin}${DEFI ? '/defis/' : '/motlong'}`;
 }
 
 // ---------- Les commandes ----------
@@ -186,7 +222,7 @@ $('ml-proposer').addEventListener('click', proposer);
 $('ml-terminer').addEventListener('click', () => {
     DS.confirm({
         emoji: '🔤', title: 'S’arrêter là ?',
-        text: 'Ton meilleur mot compte pour la journée, et le temps s’arrête là.',
+        text: DEFI ? 'Ton meilleur mot compte pour le défi, et le temps s’arrête là.' : 'Ton meilleur mot compte pour la journée, et le temps s’arrête là.',
         actions: [{ label: 'Je m’arrête', run: terminer }],
     });
 });
@@ -219,21 +255,28 @@ function afficherJeu() {
 $('ml-start-btn').addEventListener('click', async () => {
     debutA = Date.now();
     afficherJeu();
-    const { data } = await api('/api/motlong/start', { date: P.date });
+    const { data } = await SOURCE.demarrer();
     if (data && data.debutA) debutA = data.debutA;
     lancerChrono();
 });
 
 async function charger() {
-    const { ok, data } = await api('/api/motlong/today' + suffixeDate());
-    if (!ok) { location.href = '/'; return; }
+    const { ok, data } = await SOURCE.charger();
+    if (!ok) { location.href = DEFI ? '/defis/' : '/'; return; }
     P = data;
     restant = P.nextIn || 0;
     tuiles = P.lettres.split('').map((l, i) => ({ id: 't' + i, lettre: l }));
     const prog = P.progression || null;
     mots = (prog && prog.mots) || [];
     refuses = (prog && prog.refuses) || [];
-    $('ml-date').textContent = new Date(P.date + 'T12:00:00').toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
+    if (DEFI) {
+        // En défi, rien de ce qui parle du jour, et le retour mène aux défis.
+        $('ml-date').textContent = `Défi de ${P.defi.auteur}`;
+        $('ml-next').hidden = true;
+        document.querySelector('.ml-head .ds-icon-btn').href = '/defis/';
+    } else {
+        $('ml-date').textContent = new Date(P.date + 'T12:00:00').toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
+    }
     $('ml-archive-chip').hidden = !P.archive;
     $('ml-start-txt').textContent = `Neuf lettres, et un mot de ${P.max} lettres qui s'y cache. Propose autant de mots que tu veux : ton meilleur compte, le temps départage.`;
     const serie = (P.serie && P.serie.encours) || 0;
@@ -242,8 +285,10 @@ async function charger() {
 
     if (prog && prog.fini) {
         afficherJeu();
-        const { data: cl } = await api('/api/motlong/classement?date=' + encodeURIComponent(P.date));
-        montrerFin({ meilleur: prog.meilleur, trouve: prog.trouve, ms: prog.ms, meilleurs: P.meilleurs, classement: (cl && cl.classement) || [] });
+        const cl = await SOURCE.classement();
+        const moi = P.defi && P.defi.moiPseudo;
+        montrerFin({ meilleur: prog.meilleur, trouve: prog.trouve, ms: prog.ms, meilleurs: P.meilleurs, classement: cl,
+            place: DEFI ? (cl.findIndex(l => l.u === moi) + 1 || null) : null });
     } else if (prog && prog.debutA) {
         debutA = prog.debutA;
         afficherJeu();

@@ -390,19 +390,6 @@ async function loadProfile() {
 }
 loadProfile();
 
-// ---------- Langue ----------
-let LANG = localStorage.getItem('erquy_lang') || 'fr';
-document.documentElement.lang = LANG;   // suit la langue choisie
-document.querySelectorAll('#pr-lang-btns button').forEach(b => {
-    b.classList.toggle('on', b.dataset.lang === LANG);
-    b.addEventListener('click', () => {
-        LANG = b.dataset.lang;
-        localStorage.setItem('erquy_lang', LANG);
-        document.querySelectorAll('#pr-lang-btns button').forEach(x => x.classList.toggle('on', x === b));
-        toast('Langue enregistrée.');
-    });
-});
-
 // ---------- Changer d'avatar ----------
 $('pr-avatar').addEventListener('click', () => {
     $('emoji-grid').innerHTML = (profile.avatars || []).map(a =>

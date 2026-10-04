@@ -1037,6 +1037,8 @@ const defisApi = require('./defis/jeu')(app, requireAuthApi, {
     get: mfGet, set: mfSet,
     utilisateur: currentUser,
     motus: { pool: motusPool, known: motusKnown, marks: motusMarks, essais: MOTUS_TRIES },
+    motlong: require('./motlong/jeu'),
+    sudoku: require('./sudoku/jeu'),
 });
 app.use('/defis', requireAuth, express.static(__dirname + '/public/defis'));
 
@@ -2567,6 +2569,8 @@ function portraitJoueur(pseudo) {
                 ['Points cumulés', df.points || null],
                 ['Dont Motus', parType.motus || null],
                 ['Dont Drapeaux', parType.drapeaux || null],
+                ['Dont Mot le plus long', parType.motlong || null],
+                ['Dont Sudoku', parType.sudoku || null],
             ]);
     }
 
@@ -3466,6 +3470,10 @@ require('./admin/routes')(app, {
     sudoku: { moteur: mSudoku, duJour: sudokuDuJour, kGrille: kSudokuGrille },
     motlong: { moteur: mMotlong, duJour: motlongDuJour, kTirage: kMotlongTirage },
     motusparty: () => motusPartyApi,
+    // Les tables de tous les jeux, sous la forme unique du hall : l'onglet
+    // Parties de l'admin lisait chaque module à sa façon, et une exception
+    // avalée en silence pouvait lui faire manquer un jeu entier.
+    tables: () => toutesLesTables(),
 });
 
 
@@ -3519,7 +3527,28 @@ setInterval(() => {
 }, 2000);
 
 io.on('connection', (socket) => {
-    // Prêt pour Perudo & co. Le salon lui-même n'a pas besoin de temps réel.
+    // ⚠️ LA PRÉSENCE PENDANT UNE PARTIE EN DIRECT
+    // « En ce moment » se fonde sur `lastSeen`, que seules les requêtes HTTP
+    // mettaient à jour. Or une partie de Yams ou de Perudo ne passe que par
+    // le socket : un joueur en pleine partie disparaissait donc de « En ce
+    // moment » au bout de trois minutes et apparaissait dans « Passés
+    // récemment — il y a 3 h », pendant que le hall le voyait bien en ligne.
+    // Un socket ouvert vaut désormais présence, rafraîchie chaque minute.
+    const pseudo = currentUser({ headers: socket.handshake.headers });
+    if (pseudo) {
+        const signaler = () => {
+            const u = registeredUsers[pseudo];
+            if (!u) return;
+            const avant = u.lastSeen || 0;
+            u.lastSeen = Date.now();
+            // Même tempo d'écriture que requireAuthApi : pas une sauvegarde
+            // des comptes par minute et par joueur.
+            if (Date.now() - avant > 5 * 60 * 1000) saveUsers();
+        };
+        signaler();
+        const minuterie = setInterval(signaler, 60 * 1000);
+        socket.on('disconnect', () => { clearInterval(minuterie); signaler(); });
+    }
 
     // Salle Motus : uniquement les personnes réellement sur la page reçoivent
     // les résolutions en direct des autres, jamais tout le portail.
@@ -3544,5 +3573,8 @@ const PORT = process.env.PORT || 3000;
 Promise.all([loadUsers(), loadMf()]).then(async () => {
     await reprendreLesProfilsPerudo();
     effacerLeMotJuste();
+    // L'index de Motus Party n'existait pas : on le complète avec les fiches
+    // déjà en base, pour que le classement montre aussi les parties d'avant.
+    try { motusPartyApi.reconstruireIndex(Object.keys(mfCache)); } catch (e) {}
     server.listen(PORT, () => console.log(`🏛️  Le Salon tourne sur le port ${PORT}`));
 });

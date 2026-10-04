@@ -51,12 +51,12 @@
             <div class="stats" id="ad-stats"></div>
             <div class="card">
                 <h2 class="card-title">Toutes les apps réunies</h2>
-                <p class="card-sub">Vue d'ensemble, en plus des pages détaillées par jeu.</p>
+                <p class="card-sub">Ce qui se passe en ce moment, jeu par jeu.</p>
                 <div class="game-overview-list" id="ad-apps-stats"></div>
             </div>
             <div class="card">
                 <h2 class="card-title">Historique des tables</h2>
-                <p class="card-sub">Perudo, Petit Bac et Infiltré, les dernières parties terminées, les plus récentes en premier.</p>
+                <p class="card-sub">Les dernières parties terminées, tous jeux confondus. La croix retire une partie faussée du classement de la saison.</p>
                 <div class="log" id="ad-game-history"></div>
             </div>
             <div class="card">
@@ -110,8 +110,8 @@
                 <div class="list" id="pd-online"></div>
             </div>
             <div class="card">
-                <h2 class="card-title">Meilleurs joueurs</h2>
-                <p class="card-sub">Touche un joueur pour modifier ses stats et ses cosmétiques.</p>
+                <h2 class="card-title">Classement</h2>
+                <p class="card-sub">Touche un joueur pour voir sa fiche, la corriger ou la remettre à zéro.</p>
                 <div class="list" id="pd-top"></div>
             </div>
         </section>
@@ -213,7 +213,7 @@
         <section class="pane" id="pane-parties" hidden>
             <div class="card">
                 <h2 class="card-title">Tables ouvertes</h2>
-                <p class="card-sub">Tous les jeux réunis. Les quatre onglets qui listaient chacun les siens faisaient exactement la même chose.</p>
+                <p class="card-sub">Toutes les tables ouvertes, tous jeux confondus.</p>
                 <button class="ds-btn ghost" id="parties-refresh" type="button">Actualiser</button>
                 <div class="list" id="parties-list" style="margin-top:10px"></div>
             </div>
@@ -314,7 +314,7 @@
         <section class="pane" id="pane-system" hidden>
             <div class="card">
                 <h2 class="card-title">Sauvegarde</h2>
-                <p class="card-sub">Télécharge toutes les données (comptes + mots fléchés) en JSON. À faire régulièrement.</p>
+                <p class="card-sub">Télécharge toutes les données du salon (comptes, parties, statistiques) en JSON. À faire régulièrement.</p>
                 <a class="ds-btn" href="/api/admin/backup" download>Télécharger la sauvegarde</a>
             </div>
             <div class="card">
@@ -391,23 +391,16 @@
         <div class="ds-card">
             <button type="button" class="ds-card-close" id="pd-close" aria-label="Fermer">✕</button>
             <h2 class="ds-card-title ov-title" id="pd-name">—</h2>
-            <p class="ov-sub">Stats et cosmétiques Perudo.</p>
+            <p class="ov-sub">Statistiques Perudo — seules celles du classement se corrigent.</p>
             <div class="grid2">
                 <label class="fld">Victoires<input class="ds-input" id="pd-wins" type="number" min="0" inputmode="numeric"></label>
                 <label class="fld">Parties<input class="ds-input" id="pd-played" type="number" min="0" inputmode="numeric"></label>
-                <label class="fld">Points<input class="ds-input" id="pd-points" type="number" min="0" inputmode="numeric"></label>
                 <label class="fld">Meilleure série<input class="ds-input" id="pd-streak" type="number" min="0" inputmode="numeric"></label>
             </div>
-            <p class="w-lab">Cosmétiques</p>
-            <div class="grid2">
-                <label class="fld">Avatar<select class="ds-input" id="pd-avatar"></select></label>
-                <label class="fld">Cadre<select class="ds-input" id="pd-frame"></select></label>
-                <label class="fld">Bannière<select class="ds-input" id="pd-banner"></select></label>
-                <label class="fld">Couleur du nom<input class="ds-input" id="pd-color" type="color"></label>
-            </div>
+            <div class="kv" id="pd-detail"></div>
             <div class="entry-err" id="pd-err"></div>
             <button class="ds-btn" id="pd-save" type="button">Enregistrer</button>
-            <button class="ds-btn danger" id="pd-reset" type="button">Réinitialiser le profil</button>
+            <button class="ds-btn danger ghost" id="pd-reset" type="button">Remettre à zéro</button>
         </div>
     </div>
 

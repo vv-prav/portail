@@ -14,10 +14,15 @@
 //  jour — celle qui marche ici — appliquée à ce que les gens veulent
 //  vraiment faire ensemble.
 //
-//  Deux types pour commencer, choisis parce que ce sont les deux jeux
-//  rapides du salon dont le temps réel n'apportait rien :
+//  Quatre types :
 //    • `motus`    — le même mot pour tout le monde, six essais ;
-//    • `drapeaux` — la même série de dix questions, dans le même ordre.
+//    • `drapeaux` — la même série de dix questions, dans le même ordre ;
+//    • `motlong`  — les mêmes neuf lettres (Le mot le plus long) ;
+//    • `sudoku`   — la même grille.
+//  Les deux derniers se jouent dans la VRAIE page du jeu, ouverte en mode
+//  défi (`/sudoku/?defi=<id>`) : recoder ici une grille de Sudoku ou des
+//  tuiles de lettres aurait fait deux interfaces du même jeu. Leur page
+//  parle aux routes de ce fichier au lieu de celles du jeu du jour.
 //
 //  ⚠️ Le contenu ne quitte JAMAIS le serveur en entier : le mot n'est
 //  envoyé qu'à la fin de la manche de celui qui demande, et la bonne
@@ -42,15 +47,21 @@ const kProg = (id, pseudo) => `defi:prog:${id}:${pseudo}`;
 const kJoueurs = (id) => `defi:joueurs:${id}`;
 const kStats = (pseudo) => `defi:stats:${pseudo}`;
 
+// `page` : le type se joue dans la page de son jeu, pas dans celle des défis.
 const TYPES = {
     motus: { nom: 'Motus', emoji: '🟨', accent: '#c9a24a', quoi: 'Le même mot pour tout le monde, six essais.' },
-    drapeaux: { nom: 'Quiz des drapeaux', emoji: '🏳️', accent: '#6f7bb0', quoi: 'Dix questions, les mêmes pour tous.' },
+    drapeaux: { nom: 'Quiz des drapeaux', emoji: '🚩', accent: '#6f7bb0', quoi: 'Dix questions, les mêmes pour tous.' },
+    motlong: { nom: 'Le mot le plus long', emoji: '🔤', accent: '#4f9a8f', quoi: 'Les mêmes neuf lettres pour tout le monde.', page: '/motlong/' },
+    sudoku: { nom: 'Sudoku', emoji: '🧮', accent: '#8a7bc4', quoi: 'La même grille pour tout le monde.', page: '/sudoku/' },
 };
+const SCORE_SUDOKU = 10;
 
 module.exports = function attacherDefis(app, requireAuthApi, deps) {
     const get = deps.get, set = deps.set;
     const utilisateur = deps.utilisateur;          // (req) => pseudo
     const motus = deps.motus;                      // { pool, known, marks, essais }
+    const motlong = deps.motlong;                  // motlong/jeu.js
+    const sudoku = deps.sudoku;                    // sudoku/jeu.js
 
     // ---------- Le stock ----------
     function index() {
@@ -106,6 +117,10 @@ module.exports = function attacherDefis(app, requireAuthApi, deps) {
         if (type === 'drapeaux') {
             return { questions: questions.serie(NB_QUESTIONS, { niveau: 'moyen' }) };
         }
+        // Le même contenu que les jeux du jour, tiré au hasard plutôt que de
+        // la date : un défi n'est pas la grille d'aujourd'hui.
+        if (type === 'motlong' && motlong) return motlong.tirage(Math.random, []);
+        if (type === 'sudoku' && sudoku) return sudoku.tirage(Math.random);
         return null;
     }
 
@@ -125,7 +140,7 @@ module.exports = function attacherDefis(app, requireAuthApi, deps) {
         const cl = classement(d.id);
         const ma = cl.findIndex(l => l.pseudo === moi);
         return {
-            id: d.id, type: d.type, nom: t.nom, emoji: t.emoji, accent: t.accent, quoi: t.quoi,
+            id: d.id, type: d.type, nom: t.nom, emoji: t.emoji, accent: t.accent, quoi: t.quoi, page: t.page || null,
             auteur: d.auteur, creeA: d.creeA, finA: d.creeA + VIE_MS,
             moiPseudo: moi,          // pour que le client sache quelle ligne du classement est la sienne
             joueurs: cl.length, moi: vueJoueur(d, moi),
@@ -173,8 +188,18 @@ module.exports = function attacherDefis(app, requireAuthApi, deps) {
             ...resume(d, moi),
             classement: fini ? classement(d.id) : [],   // voir le classement avant d'avoir joué révélerait le niveau à battre
             longueur: d.type === 'motus' ? d.contenu.mot.length : NB_QUESTIONS,
+            progression: p,
         };
-        if (d.type === 'motus') {
+        if (d.type === 'motlong') {
+            sortie.lettres = d.contenu.lettres;
+            sortie.max = d.contenu.max;
+            // Les meilleurs mots seulement une fois sa manche finie.
+            if (fini) sortie.meilleurs = d.contenu.meilleurs;
+        } else if (d.type === 'sudoku') {
+            sortie.donnee = d.contenu.donnee;
+            sortie.indices = d.contenu.indices;
+            if (fini) sortie.solution = d.contenu.solution;
+        } else if (d.type === 'motus') {
             sortie.essais = (p && p.essais) || [];
             // La première lettre est offerte, comme au Motus du jour.
             sortie.premiere = d.contenu.mot[0];
@@ -200,7 +225,8 @@ module.exports = function attacherDefis(app, requireAuthApi, deps) {
         // Une seule fois : recharger la page ne remet pas le chronomètre à zéro,
         // sinon il suffirait de recharger pour faire un temps parfait.
         if (p && p.debutA) return res.json({ ok: true });
-        p = p || (d.type === 'motus' ? { essais: [] } : { index: 0, reponses: [] });
+        p = p || ({ motus: { essais: [] }, motlong: { mots: [], refuses: [], propositions: 0 },
+                    sudoku: { cases: d.contenu.donnee } }[d.type] || { index: 0, reponses: [] });
         p.debutA = Date.now();
         set(kProg(d.id, moi), p);
         inscrire(d.id, moi);
@@ -261,6 +287,52 @@ module.exports = function attacherDefis(app, requireAuthApi, deps) {
         const p = progDe(d.id, moi);
         if (!p || !p.debutA) return res.status(400).json({ error: 'Commence le défi d’abord.' });
         if (p.fini) return res.status(400).json({ error: 'Tu as déjà joué ce défi.' });
+
+        const b = req.body || {};
+        // ---- Le mot le plus long : autant de propositions qu'on veut ----
+        if (d.type === 'motlong') {
+            const t = d.contenu;
+            const terminerMotlong = () => {
+                const meilleur = Math.max(0, ...(p.mots || []).map(m => m.length));
+                p.meilleur = meilleur;
+                p.trouve = meilleur > 0 && meilleur >= t.max;
+                clore(d, moi, p, meilleur);
+            };
+            if (b.action === 'terminer') {
+                terminerMotlong();
+            } else {
+                const v = motlong.verifier(b.mot, t.lettres);
+                if (v.ok && (p.mots || []).includes(v.mot)) return res.status(400).json({ error: 'Déjà trouvé.' });
+                if (!v.cout) return res.status(400).json({ error: v.raison });
+                p.propositions = (p.propositions || 0) + 1;
+                if (v.ok) p.mots = [...(p.mots || []), v.mot]; else p.refuses = [...(p.refuses || []), v.mot];
+                if (v.ok && v.mot.length >= t.max) terminerMotlong(); else set(kProg(d.id, moi), p);
+                if (!p.fini) return res.json({ ok: true, accepte: v.ok, mot: v.mot, raison: v.ok ? null : v.raison, mots: p.mots, fini: false });
+                return res.json({ ok: true, accepte: v.ok, mot: v.mot, mots: p.mots, fini: true, trouve: p.trouve, meilleur: p.meilleur,
+                    score: p.score, ms: p.ms, meilleurs: t.meilleurs, classement: classement(d.id) });
+            }
+            return res.json({ ok: true, mots: p.mots || [], fini: true, trouve: p.trouve, meilleur: p.meilleur,
+                score: p.score, ms: p.ms, meilleurs: t.meilleurs, classement: classement(d.id) });
+        }
+
+        // ---- Le Sudoku : sauvegarder, valider, abandonner ----
+        if (d.type === 'sudoku') {
+            const g = d.contenu;
+            if (b.action === 'abandon') {
+                p.trouve = false; p.abandon = true;
+                clore(d, moi, p, 0);
+                return res.json({ ok: true, fini: true, trouve: false, solution: g.solution, classement: classement(d.id) });
+            }
+            p.cases = sudoku.nettoyer(b.cases, g.donnee);
+            if (b.action === 'valider' && sudoku.estJuste(p.cases, g.solution)) {
+                p.trouve = true;
+                clore(d, moi, p, SCORE_SUDOKU);
+                return res.json({ ok: true, juste: true, fini: true, ms: p.ms, score: p.score, solution: g.solution, classement: classement(d.id) });
+            }
+            set(kProg(d.id, moi), p);
+            // Comme au jeu du jour : « juste » ou « pas encore », jamais quelles cases.
+            return res.json({ ok: true, juste: false, fini: false });
+        }
 
         if (d.type === 'motus') {
             const mot = String((req.body && req.body.mot) || '').toUpperCase().replace(/[^A-ZÀ-Ÿ]/g, '');

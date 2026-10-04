@@ -35,17 +35,30 @@
         <section class="pb-view" id="v-lobby">
             <button class="ds-btn" id="btn-create">Créer une table</button>
             <button class="ds-btn ghost" id="btn-stats">Mes statistiques</button>
+            <button class="ds-btn ghost" id="btn-classement">🏆 Classement du salon</button>
             <p class="pb-list-label" id="lobby-empty-label" hidden>Aucune table ouverte pour l'instant.</p>
             <div class="pb-tables" id="pb-tables"></div>
         </section>
 
-        <!-- En attente de l'accord de l'hôte pour rejoindre une partie en cours -->
-        <section class="pb-view" id="v-join-pending">
+        <!-- En attente de l'accord de l'hôte pour rejoindre une partie en cours.
+             ⚠️ Née cachée : sans `hidden`, cette vue restait affichée sous la
+             liste des tables chez tout le monde, sablier compris, parce que
+             le chemin normal du hall n'appelle jamais `showView`. -->
+        <section class="pb-view" id="v-join-pending" hidden>
             <div class="pb-wait-box">
                 <div class="boot-ring"></div>
                 <p class="pb-wait-text">En attente de l'accord de <b id="join-pending-host">l'hôte</b>…</p>
             </div>
         </section>
+
+        <!-- Le classement du salon -->
+        <div class="ds-overlay" id="v-classement" hidden>
+            <div class="ds-card tall">
+                <button type="button" class="ds-card-close" id="classement-close" aria-label="Fermer">✕</button>
+                <h2 class="ds-card-title pb-card-title">Classement du salon</h2>
+                <div id="classementCorps"></div>
+            </div>
+        </div>
 
         <!-- Mes statistiques -->
         <div class="ds-overlay" id="v-stats" hidden>

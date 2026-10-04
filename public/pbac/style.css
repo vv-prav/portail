@@ -349,7 +349,6 @@ body.is-ready .pb { display:flex; }
            background:rgba(255,255,255,.035); border:1px solid var(--line); opacity:0; transform:translateY(14px);
            font-size:.9rem; }
 .pod-rank { flex:0 0 auto; width:22px; text-align:center; color:var(--muted); font-weight:800; font-variant-numeric:tabular-nums; }
-.pod-crown-slot { display:none; }
 .pod-pname { flex:1; min-width:0; color:var(--parchment); font-weight:700; overflow-wrap:anywhere; }
 .pod-bubble { border:none; padding:0; margin:0; background:rgba(0,0,0,.3); cursor:pointer; }
 .pod-pscore { flex:0 0 auto; color:var(--muted); font-variant-numeric:tabular-nums; }
@@ -376,7 +375,6 @@ body.is-ready .pb { display:flex; }
 
 /* 1er : le grand moment — couronne, halo, la plus grosse entrée */
 .pod-row.tier-1 { padding:20px 18px; font-size:1.15rem; border-width:2px; }
-.pod-row.tier-1 .pod-crown-slot { display:none; }
 .pod-row.tier-1 svg.pod-crown { width:34px; height:24px; flex:0 0 auto; opacity:0; }
 .pod-row.tier-1.show {
     animation:podRowInBig .68s cubic-bezier(.25,1.1,.3,1.25) forwards;

@@ -75,7 +75,7 @@ module.exports = function attachAdmin(app, ctx) {
         }
 
         let perudoOnline = 0, perudoGames = 0;
-        try { perudoOnline = ctx.perudo().online().length; perudoGames = ctx.perudo().games().filter(g => g.started && !g.vsBot).length; } catch (e) {}
+        try { perudoOnline = ctx.perudo().online().length; perudoGames = ctx.perudo().games().filter(g => g.status === 'playing' && !g.vsBot).length; } catch (e) {}
 
         let pbacOnline = 0, pbacGames = 0, pbacTotalGamesPlayed = 0;
         try {
@@ -188,8 +188,8 @@ module.exports = function attachAdmin(app, ctx) {
         const days = mf.get(`mf:days:${pseudo}`) || [];
         let perudo = null;
         try {
-            const pu = ctx.perudo().users()[pseudo];
-            if (pu) perudo = { wins: pu.wins || 0, played: pu.played || 0, rankPoints: pu.rankPoints || 0, bestStreak: pu.bestStreak || 0 };
+            const f = ctx.perudo().statsFor(pseudo);
+            if (f && (f.parties || f.partiesSolo)) perudo = { victoires: f.victoires || 0, parties: f.parties || 0, solo: f.partiesSolo || 0, meilleureSerie: f.meilleureSerie || 0 };
         } catch (e) {}
         // Le Motus range une progression par jour : on compte directement dans le
         // cache plutôt que de dupliquer motusStreak() ici.
@@ -523,81 +523,55 @@ module.exports = function attachAdmin(app, ctx) {
 
     // =================================================================
     //  PERUDO
+    //  ⚠️ Réécrit après la réécriture du jeu : l'onglet appelait encore
+    //  l'ancien module (`users()`, `achievements()`, `kick()`, les
+    //  cosmétiques), qui n'existe plus — il affichait « Perudo
+    //  indisponible » et la fiche de compte « jamais joué ». Les
+    //  statistiques vivent maintenant dans le cache commun
+    //  (`perudo:stats:<pseudo>`), lues et écrites par le module lui-même.
     // =================================================================
     const P = () => ctx.perudo();
 
     G('/perudo/overview', (req, res) => {
         const api = P();
         if (!api) return res.json({ available: false });
-        const all = Object.values(api.users());
         res.json({
             available: true,
-            accounts: all.length,
             games: api.games(),
-            online: api.online(),
-            achievements: api.achievements(),
-            topPlayers: all.slice().sort((a, b) => (b.rankPoints || 0) - (a.rankPoints || 0)).slice(0, 10)
-                .map(u => ({ pseudo: u.pseudo, rankPoints: u.rankPoints || 0, wins: u.wins || 0, played: u.played || 0 })),
+            online: api.online().map(o => o.pseudo),
+            classement: api.classement().slice(0, 15),
         });
     });
 
     G('/perudo/player', (req, res) => {
         const api = P(); if (!api) return res.status(400).json({ error: 'Perudo indisponible.' });
-        const u = api.users()[String(req.query.pseudo || '')];
-        if (!u) return res.status(404).json({ error: 'Aucun profil Perudo pour ce joueur.' });
-        api.ensure(u);
-        res.json({
-            pseudo: u.pseudo,
-            wins: u.wins || 0, played: u.played || 0, rankPoints: u.rankPoints || 0,
-            currentStreak: u.currentStreak || 0, bestStreak: u.bestStreak || 0,
-            title: u.title || '', achievements: u.achievements || [],
-            avatar: u.avatar || '', frame: u.frame || '', banner: u.banner || '', nameColor: u.nameColor || '',
-            stats: u.stats || {},
-        });
+        const pseudo = String(req.query.pseudo || '');
+        const f = api.statsFor(pseudo);
+        if (!f || !(f.parties || f.partiesSolo)) return res.status(404).json({ error: 'Aucune partie de Perudo pour ce joueur.' });
+        res.json({ pseudo, ...f });
     });
 
+    // Corriger une fiche à la main : les seuls compteurs qui se voient au
+    // classement. Le reste (dudos, calzas, bête noire…) se recalcule en jouant.
     A('/perudo/stats', (req, res) => {
         const api = P(); if (!api) return res.status(400).json({ error: 'Perudo indisponible.' });
-        const u = api.users()[String(req.body.pseudo || '')];
-        if (!u) return res.status(404).json({ error: 'Profil introuvable.' });
-        api.ensure(u);
+        const pseudo = String(req.body.pseudo || '');
+        const f = api.lireFiche(pseudo);
         const num = (v, max) => Math.max(0, Math.min(max, Math.round(Number(v) || 0)));
-        if (req.body.wins !== undefined) u.wins = num(req.body.wins, 1e6);
-        if (req.body.played !== undefined) u.played = num(req.body.played, 1e6);
-        if (req.body.rankPoints !== undefined) u.rankPoints = num(req.body.rankPoints, 1e7);
-        if (req.body.bestStreak !== undefined) u.bestStreak = num(req.body.bestStreak, 1e4);
-        if (u.wins > u.played) u.played = u.wins;
-        api.save(true); api.pushProfile(u.pseudo);
-        log(currentUser(req), 'stats Perudo', u.pseudo);
-        res.json({ ok: true });
-    });
-
-    A('/perudo/cosmetics', (req, res) => {
-        const api = P(); if (!api) return res.status(400).json({ error: 'Perudo indisponible.' });
-        const u = api.users()[String(req.body.pseudo || '')];
-        if (!u) return res.status(404).json({ error: 'Profil introuvable.' });
-        const id = (v) => (typeof v === 'string' && /^[a-z0-9_]{0,20}$/.test(v)) ? v : null;
-        const hex = (v) => (v === '' || /^#[0-9a-fA-F]{6}$/.test(v || '')) ? v : null;
-        for (const k of ['avatar', 'frame', 'banner']) {
-            if (req.body[k] !== undefined) { const v = id(req.body[k]); if (v !== null) u[k] = v; }
-        }
-        if (req.body.nameColor !== undefined) { const v = hex(req.body.nameColor); if (v !== null) u.nameColor = v; }
-        if (req.body.title !== undefined) u.title = String(req.body.title || '').slice(0, 30);
-        api.save(true); api.pushProfile(u.pseudo);
-        log(currentUser(req), 'cosmétiques Perudo', u.pseudo);
+        if (req.body.victoires !== undefined) f.victoires = num(req.body.victoires, 1e6);
+        if (req.body.parties !== undefined) f.parties = num(req.body.parties, 1e6);
+        if (req.body.meilleureSerie !== undefined) f.meilleureSerie = num(req.body.meilleureSerie, 1e4);
+        if (f.victoires > f.parties) f.parties = f.victoires;
+        api.ecrireFiche(pseudo, f);
+        log(currentUser(req), 'stats Perudo corrigées', pseudo);
         res.json({ ok: true });
     });
 
     A('/perudo/reset', (req, res) => {
         const api = P(); if (!api) return res.status(400).json({ error: 'Perudo indisponible.' });
-        const u = api.users()[String(req.body.pseudo || '')];
-        if (!u) return res.status(404).json({ error: 'Profil introuvable.' });
-        u.wins = 0; u.played = 0; u.rankPoints = 0; u.currentStreak = 0; u.bestStreak = 0;
-        u.achievements = []; u.title = '';
-        if (u.stats) for (const k of Object.keys(u.stats)) if (typeof u.stats[k] === 'number') u.stats[k] = 0;
-        if (u.periodic) u.periodic = {};
-        api.save(true); api.pushProfile(u.pseudo);
-        log(currentUser(req), 'RESET Perudo', u.pseudo);
+        const pseudo = String(req.body.pseudo || '');
+        api.ecrireFiche(pseudo, api.ficheVierge());
+        log(currentUser(req), 'RESET Perudo', pseudo);
         res.json({ ok: true });
     });
 
@@ -605,13 +579,6 @@ module.exports = function attachAdmin(app, ctx) {
         const api = P(); if (!api) return res.status(400).json({ error: 'Perudo indisponible.' });
         const ok = api.endGame(String(req.body.id || ''));
         if (ok) log(currentUser(req), 'partie close', String(req.body.id || ''));
-        res.json({ ok });
-    });
-
-    A('/perudo/kick', (req, res) => {
-        const api = P(); if (!api) return res.status(400).json({ error: 'Perudo indisponible.' });
-        const ok = api.kick(String(req.body.sid || ''), req.body.message);
-        if (ok) log(currentUser(req), 'joueur expulsé', String(req.body.pseudo || ''));
         res.json({ ok });
     });
 
@@ -744,15 +711,6 @@ module.exports = function attachAdmin(app, ctx) {
         res.json({ ok: true });
     });
 
-    A('/mf/progress/reset', (req, res) => {
-        const date = String(req.body.date || mf.today());
-        const lv = mf.levels.includes(req.body.level) ? req.body.level : mf.levels[0];
-        const pseudo = String(req.body.pseudo || '');
-        mf.del(`mf:prog:${pseudo}:${date}:${lv}`);
-        log(currentUser(req), 'progression réinitialisée', pseudo, date + ' ' + lv);
-        res.json({ ok: true });
-    });
-
     G('/mf/comments', (req, res) => {
         const date = /^\d{4}-\d{2}-\d{2}$/.test(req.query.date || '') ? req.query.date : mf.today();
         res.json({ date, comments: mf.get(`mf:cmt:${date}`) || [] });
@@ -861,14 +819,6 @@ module.exports = function attachAdmin(app, ctx) {
         const key = motus.kBoard(date);
         mf.set(key, (mf.get(key) || []).map(e => (e.u === pseudo ? { ...e, susp: !e.susp } : e)));
         log(currentUser(req), 'score Motus marqué', pseudo);
-        res.json({ ok: true });
-    });
-
-    A('/motus/progress/reset', (req, res) => {
-        const date = String(req.body.date || mf.today());
-        const pseudo = String(req.body.pseudo || '');
-        mf.del(motus.kProg(pseudo, date));
-        log(currentUser(req), 'progression Motus réinitialisée', pseudo, date);
         res.json({ ok: true });
     });
 
@@ -1011,22 +961,19 @@ module.exports = function attachAdmin(app, ctx) {
     ];
 
     G('/parties', (req, res) => {
-        const tables = [], enLigne = [];
+        const enLigne = [];
+        // Les tables viennent de `toutesLesTables()` (server.js), la même
+        // fonction que le hall `/jouer/` : les deux ne peuvent plus se
+        // contredire. Les présents sont signalés, pour repérer d'un coup d'œil
+        // une partie que tout le monde a quittée.
+        const tables = (ctx.tables ? ctx.tables() : []).map(t => ({
+            jeu: t.jeu, nom: t.nom, emoji: t.emoji, id: t.id, hote: t.hote || '—',
+            joueurs: t.joueurs, presents: t.presents, statut: t.statut,
+        }));
         for (const m of MODULES_JEUX) {
             let api = null;
             try { api = m.api(); } catch (e) { api = null; }
             if (!api) continue;
-            try {
-                for (const g of (api.games() || [])) {
-                    if (g.status === 'ended' || g.vsBot) continue;
-                    // Perudo n'a pas de `status` : il expose `started`.
-                    const statut = g.status ? (g.status === 'lobby' ? 'attente' : 'encours')
-                                            : (g.started ? 'encours' : 'attente');
-                    const joueurs = (g.players || []).map(p => (typeof p === 'string' ? p : p.pseudo)).filter(Boolean);
-                    tables.push({ jeu: m.id, nom: m.nom, emoji: m.emoji, id: g.id,
-                                  hote: g.host || joueurs[0] || '—', joueurs, statut });
-                }
-            } catch (e) {}
             try {
                 for (const p of (api.online() || [])) {
                     const pseudo = typeof p === 'string' ? p : p.pseudo;
@@ -1174,6 +1121,33 @@ module.exports = function attachAdmin(app, ctx) {
         }
         log(currentUser(req), 'statistiques remises à zéro', pseudo, f.nom);
         res.json({ ok: true });
+    });
+
+    // =================================================================
+    //  FAIRE REJOUER UN JEU DU JOUR
+    //  Pour qui a été bloqué par un bogue ou une coupure. Une seule route
+    //  pour les six jeux du jour : il y en avait deux (Motus, Mots Fléchés)
+    //  qui effaçaient la partie mais laissaient la ligne au classement du
+    //  jour — le joueur restait classé sur une partie qui n'existait plus.
+    //  Les clés suivent toutes la même forme : `<jeu>:prog:<pseudo>:<date>`
+    //  (suivi d'un niveau ou d'un mode pour les Mots Fléchés et la
+    //  Géographie), et `<jeu>:board:<date>` (idem).
+    // =================================================================
+    const JEUX_DU_JOUR = { motus: 'Motus', mf: 'Mots Fléchés', chiffres: 'Le compte est bon', geo: 'Géographie', motlong: 'Le mot le plus long', sudoku: 'Sudoku' };
+    A('/jour/reset', (req, res) => {
+        const pseudo = String(req.body.pseudo || ''), jeu = String(req.body.jeu || '');
+        const date = /^\d{4}-\d{2}-\d{2}$/.test(req.body.date || '') ? req.body.date : mf.today();
+        if (!pseudo || !JEUX_DU_JOUR[jeu]) return res.status(400).json({ error: 'Jeu ou joueur manquant.' });
+        const prog = `${jeu}:prog:${pseudo}:${date}`, board = `${jeu}:board:${date}`;
+        let parties = 0;
+        for (const [k, v] of Object.entries(mf.cache())) {
+            if (k === prog || k.startsWith(prog + ':')) { mf.del(k); parties++; continue; }
+            if ((k === board || k.startsWith(board + ':')) && Array.isArray(v) && v.some(e => e && e.u === pseudo)) {
+                mf.set(k, v.filter(e => !e || e.u !== pseudo));
+            }
+        }
+        log(currentUser(req), 'jeu du jour à rejouer', pseudo, `${JEUX_DU_JOUR[jeu]} ${date}`);
+        res.json({ ok: true, parties });
     });
 
     // L'historique des parties : une ligne fausse y restait pour toujours,

@@ -164,8 +164,19 @@ async function loadGameHistory() {
     $('ad-game-history').innerHTML = list.length
         ? list.slice(0, 30).map(g => `<div class="log-row"><span class="lg-a">${GAME_LABEL_ICON[g.app] || ''} ${esc(g.label)}</span>
             <span class="lg-t">${(g.players || []).map(esc).join(', ') || 'personne'}</span>
-            <span class="lg-d">${fmtAgo(g.endedAt)}</span></div>`).join('')
+            <span class="lg-d">${fmtAgo(g.endedAt)}</span>
+            <button class="mini danger" data-retirer="${g.endedAt}" type="button" aria-label="Retirer de l’historique">✕</button></div>`).join('')
         : '<p class="empty">Aucune partie terminée pour l\u2019instant.</p>';
+    // Une partie faussée (test, bogue) comptait pour toujours au classement
+    // de saison : l'historique est sa seule source pour le multijoueur.
+    $('ad-game-history').querySelectorAll('[data-retirer]').forEach(b => b.addEventListener('click', () => {
+        ask('🗑️', 'Retirer cette partie ?', 'Elle ne comptera plus au classement de la saison. Les statistiques des joueurs ne bougent pas.', [
+            { label: 'Retirer', danger: true, run: async () => {
+                const r = await api('/api/admin/historique/supprimer', { endedAt: Number(b.dataset.retirer) });
+                toast(r.ok ? 'Partie retirée.' : ((r.data && r.data.error) || 'Erreur'));
+                loadGameHistory();
+            } }]);
+    }));
 }
 let _logCache = [];
 function renderLog() {
@@ -259,7 +270,7 @@ async function openAccount(pseudo) {
         ['Code de récupération', data.hasRecovery ? 'défini' : 'aucun'],
         ['Mots fléchés', `${mfs.solved || 0} réussies · ${mfs.gaveUp || 0} abandons · ${mfs.daysPlayed || 0} jours`],
         ['Meilleur temps (Mots Fléchés)', mfs.best ? Math.floor(mfs.best / 60) + ':' + String(mfs.best % 60).padStart(2, '0') : '—'],
-        ['Perudo', data.perudo ? `${data.perudo.wins} victoires / ${data.perudo.played} parties · ${data.perudo.rankPoints} pts` : 'jamais joué'],
+        ['Perudo', data.perudo ? `${data.perudo.victoires} victoires / ${data.perudo.parties} parties${data.perudo.solo ? ' · ' + data.perudo.solo + ' contre l’ordinateur' : ''}` : 'jamais joué'],
         ['Motus', mo.started ? `${mo.solved} résolues · ${mo.gaveUp} ratées · meilleur ${mo.bestTries ?? '—'} essais` : 'jamais joué'],
         ['Yams', data.yams ? `${data.yams.gamesWon} victoires / ${data.yams.gamesPlayed} parties · ${data.yams.totalYams} Yams · record ${data.yams.bestScore}` : 'jamais joué'],
         ['Motus Party', data.motusparty ? `${data.motusparty.matchesWon} courses gagnées / ${data.motusparty.matchesPlayed} jouées · ${data.motusparty.wordsFound} mots trouvés` : 'jamais joué'],
@@ -279,10 +290,29 @@ async function openAccount(pseudo) {
         b.addEventListener('click', fn);
         acts.appendChild(b);
     };
-    if (data.perudo) add('Gérer le profil Perudo (stats, cosmétiques)', () => {
+    if (data.perudo) add('Fiche Perudo', () => {
         $('ov-acc').hidden = true;
         openPerudoPlayer(data.pseudo);
     });
+    // Remettre à zéro les statistiques d'un jeu multijoueur : seuls les jeux
+    // où le joueur a une fiche sont proposés (Perudo a sa propre fiche).
+    const fiches = [['yams', 'Yams', data.yams], ['pbac', 'Petit Bac', data.pbac], ['motusparty', 'Motus Party', data.motusparty],
+        ['undercover', 'Infiltré', data.undercover], ['drapeaux', 'Quiz des drapeaux', data.drapeaux]].filter(f => f[2]);
+    if (fiches.length) add('Remettre à zéro des statistiques…', () => ask('🧹', 'Quel jeu ?',
+        `Les statistiques de ${data.pseudo} sur ce jeu seront effacées, et son nom retiré du face-à-face des autres.`,
+        fiches.map(([jeu, nom]) => ({ label: nom, danger: true, run: async () => {
+            const r = await api('/api/admin/stats/reset', { pseudo: data.pseudo, jeu });
+            toast(r.ok ? `Statistiques ${nom} remises à zéro.` : ((r.data && r.data.error) || 'Erreur'));
+            if (r.ok) openAccount(data.pseudo);
+        } }))));
+    // Faire rejouer la partie du jour, pour qui a été bloqué par un bogue.
+    add('Faire rejouer un jeu du jour…', () => ask('🔁', 'Quel jeu du jour ?',
+        `La partie d'aujourd'hui de ${data.pseudo} sera effacée, et sa ligne retirée du classement du jour. Il pourra la rejouer.`,
+        [['motus', 'Motus'], ['mf', 'Mots Fléchés'], ['chiffres', 'Le compte est bon'], ['geo', 'Géographie'], ['motlong', 'Le mot le plus long'], ['sudoku', 'Sudoku']]
+            .map(([jeu, nom]) => ({ label: nom, run: async () => {
+                const r = await api('/api/admin/jour/reset', { pseudo: data.pseudo, jeu });
+                toast(r.ok ? (r.data.parties ? `${nom} : à rejouer.` : `${nom} : pas de partie aujourd'hui.`) : ((r.data && r.data.error) || 'Erreur'));
+            } }))));
     add('Réinitialiser le mot de passe', () => ask('🔑', 'Réinitialiser ?', `Un mot de passe temporaire sera créé pour ${data.pseudo}, qui sera déconnecté.`, [
         { label: 'Confirmer', run: async () => {
             const r = await api('/api/admin/account/password', { pseudo: data.pseudo });
@@ -451,81 +481,74 @@ $('w-restore').addEventListener('click', () => {
 });
 
 // ---------- Perudo ----------
-const PD_AVATARS = ['', 'pirate', 'crane', 'perroquet', 'ancre', 'kraken', 'requin', 'epees', 'boussole', 'couronne', 'rhum', 'navire', 'tresor'];
-const PD_FRAMES = ['', 'or', 'argent', 'bronze', 'os', 'corde', 'emeraude', 'rubis', 'royal'];
-const PD_BANNERS = ['', 'ocean', 'coucher', 'nuit', 'tempete', 'jungle', 'or', 'sang', 'abysse'];
-function fillSelect(id, values, cur) {
-    $(id).innerHTML = values.map(v => `<option value="${v}"${v === cur ? ' selected' : ''}>${v || '— aucun —'}</option>`).join('');
-}
+// Réécrit avec le jeu : plus de points de rang ni de cosmétiques (partis à
+// l'archive), les statistiques sont celles du cache commun.
 let pdEditing = null;
 
 async function loadPerudo() {
     const { data } = await api('/api/admin/perudo/overview');
-    if (!data || !data.available) { $('pd-games').innerHTML = '<p class="empty">Perudo indisponible.</p>'; return; }
-    const g = data.games || [];
+    if (!data || !data.available) { $('pd-games').innerHTML = '<p class="empty">Perudo ne répond pas.</p>'; return; }
+    const g = (data.games || []).filter(x => x.status !== 'ended');
     $('pd-games').innerHTML = g.length ? g.map(x => `
         <div class="ds-row static">
             <span class="ds-row-main">
-                <span class="ds-row-name">${esc(x.id)}${x.vsBot ? ' <i class="badge adm">bot</i>' : ''}${x.isDuo ? ' <i class="badge adm">duo</i>' : ''}</span>
-                <span class="ds-row-sub">${x.started ? 'en cours' : 'en attente'} · ${x.players.map(p => esc(p.pseudo) + (p.isBot ? '🤖' : '') + ' (' + p.dice + ')').join(', ')}</span>
+                <span class="ds-row-name">${esc(x.host)}${x.vsBot ? ' <i class="badge adm">contre l’ordinateur</i>' : ''}</span>
+                <span class="ds-row-sub">${x.status === 'playing' ? 'en cours' : 'en attente'} · ${x.players.map(esc).join(', ')}${x.bots ? ` · ${x.bots} 🤖` : ''}</span>
             </span>
             <button class="mini danger" data-end="${esc(x.id)}" type="button">Clore</button>
         </div>`).join('') : '<p class="empty">Aucune partie en cours.</p>';
     $('pd-games').querySelectorAll('[data-end]').forEach(b => b.addEventListener('click', () => {
-        ask('🛑', 'Clore la partie ?', 'Les joueurs seront renvoyés au lobby.', [
-            { label: 'Confirmer', danger: true, run: async () => { await api('/api/admin/perudo/endgame', { id: b.dataset.end }); toast('Partie close.'); loadPerudo(); } }]);
+        ask('🛑', 'Clore la partie ?', 'Les joueurs seront renvoyés au hall.', [
+            { label: 'Clore', danger: true, run: async () => { await api('/api/admin/perudo/endgame', { id: b.dataset.end }); toast('Partie close.'); loadPerudo(); } }]);
     }));
 
     const on = data.online || [];
-    $('pd-online').innerHTML = on.length ? on.map(o => `
-        <div class="ds-row static">
-            <span class="ds-row-main"><span class="ds-row-name">${esc(o.pseudo)}</span></span>
-            <button class="mini" data-kick="${esc(o.sid)}" data-p="${esc(o.pseudo)}" type="button">Déconnecter</button>
-        </div>`).join('') : '<p class="empty">Personne en ligne.</p>';
-    $('pd-online').querySelectorAll('[data-kick]').forEach(b => b.addEventListener('click', async () => {
-        await api('/api/admin/perudo/kick', { sid: b.dataset.kick, pseudo: b.dataset.p });
-        toast('Joueur déconnecté.'); loadPerudo();
-    }));
+    $('pd-online').innerHTML = on.length
+        ? on.map(p => `<div class="ds-row static"><span class="ds-row-main"><span class="ds-row-name">${esc(p)}</span></span></div>`).join('')
+        : '<p class="empty">Personne à une table.</p>';
 
-    const top = data.topPlayers || [];
+    const top = data.classement || [];
     $('pd-top').innerHTML = top.length ? top.map((u, i) => `
-        <button class="ds-row" data-p="${esc(u.pseudo)}">
+        <button class="ds-row" data-p="${esc(u.pseudo)}" type="button">
             <span class="ds-row-main">
                 <span class="ds-row-name">${i + 1}. ${esc(u.pseudo)}</span>
-                <span class="ds-row-sub">${u.rankPoints} pts · ${u.wins} victoires / ${u.played} parties</span>
+                <span class="ds-row-sub">${u.victoires} victoire${u.victoires > 1 ? 's' : ''} / ${u.parties} partie${u.parties > 1 ? 's' : ''} · ${u.taux} %</span>
             </span><span class="ds-row-go">›</span>
-        </button>`).join('') : '<p class="empty">Aucun joueur.</p>';
+        </button>`).join('') : '<p class="empty">Personne n’a encore joué à plusieurs.</p>';
     $('pd-top').querySelectorAll('.ds-row').forEach(b => b.addEventListener('click', () => openPerudoPlayer(b.dataset.p)));
 }
 
 async function openPerudoPlayer(pseudo) {
     const { ok, data } = await api('/api/admin/perudo/player?pseudo=' + encodeURIComponent(pseudo));
-    if (!ok) return toast(data.error || 'Aucun profil Perudo');
+    if (!ok) return toast(data.error || 'Aucune partie de Perudo.');
     pdEditing = data.pseudo;
     $('pd-name').textContent = data.pseudo;
-    $('pd-wins').value = data.wins; $('pd-played').value = data.played;
-    $('pd-points').value = data.rankPoints; $('pd-streak').value = data.bestStreak;
-    fillSelect('pd-avatar', PD_AVATARS, data.avatar);
-    fillSelect('pd-frame', PD_FRAMES, data.frame);
-    fillSelect('pd-banner', PD_BANNERS, data.banner);
-    $('pd-color').value = data.nameColor || '#d4af37';
+    $('pd-wins').value = data.victoires; $('pd-played').value = data.parties;
+    $('pd-streak').value = data.meilleureSerie;
+    // Ce qui se recalcule en jouant : montré, pas modifiable.
+    $('pd-detail').innerHTML = [
+        ['Contre l’ordinateur', `${data.victoiresSolo || 0} / ${data.partiesSolo || 0}`],
+        ['Deuxièmes places', data.deuxiemes || 0],
+        ['Menteurs démasqués', data.dudosGagnes || 0],
+        ['Calzas réussies', data.calzasGagnes || 0],
+        ['Bluffs passés', data.bluffsSurvecus || 0],
+        ['Bête noire', data.beteNoire ? `${data.beteNoire.pseudo} (${data.beteNoire.fois}×)` : '—'],
+    ].map(([k, v]) => `<div class="kv-row"><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join('');
     $('pd-err').textContent = '';
     $('ov-pd').hidden = false;
 }
 $('pd-close').addEventListener('click', () => { $('ov-pd').hidden = true; });
 $('pd-save').addEventListener('click', async () => {
-    const p = pdEditing;
-    const r1 = await api('/api/admin/perudo/stats', { pseudo: p, wins: $('pd-wins').value, played: $('pd-played').value, rankPoints: $('pd-points').value, bestStreak: $('pd-streak').value });
-    const r2 = await api('/api/admin/perudo/cosmetics', { pseudo: p, avatar: $('pd-avatar').value, frame: $('pd-frame').value, banner: $('pd-banner').value, nameColor: $('pd-color').value });
-    if (!r1.ok || !r2.ok) { $('pd-err').textContent = (r1.data.error || r2.data.error || 'Erreur.'); return; }
-    $('ov-pd').hidden = true; toast('Profil mis à jour.'); loadPerudo();
+    const r = await api('/api/admin/perudo/stats', { pseudo: pdEditing, victoires: $('pd-wins').value, parties: $('pd-played').value, meilleureSerie: $('pd-streak').value });
+    if (!r.ok) { $('pd-err').textContent = (r.data && r.data.error) || 'Erreur.'; return; }
+    $('ov-pd').hidden = true; toast('Fiche corrigée.'); loadPerudo();
 });
 $('pd-reset').addEventListener('click', () => {
     const p = pdEditing;
-    ask('🗑️', 'Réinitialiser ?', `Toutes les stats Perudo de ${p} seront remises à zéro.`, [
-        { label: 'Confirmer', danger: true, run: async () => {
+    ask('🗑️', 'Remettre à zéro ?', `Toutes les statistiques Perudo de ${p} seront effacées.`, [
+        { label: 'Remettre à zéro', danger: true, run: async () => {
             const r = await api('/api/admin/perudo/reset', { pseudo: p });
-            toast(r.ok ? 'Profil réinitialisé.' : 'Erreur');
+            toast(r.ok ? 'Fiche remise à zéro.' : 'Erreur');
             $('ov-pd').hidden = true; loadPerudo();
         } }]);
 });
@@ -719,7 +742,7 @@ async function loadParties() {
             <span class="ds-row-main">
                 <span class="ds-row-name">${t.emoji} ${esc(t.nom)} · ${esc(t.hote)}
                     <i class="badge adm">${t.statut === 'attente' ? 'en attente' : 'en cours'}</i></span>
-                <span class="ds-row-sub">${t.joueurs.map(esc).join(', ') || 'aucun joueur'}</span>
+                <span class="ds-row-sub">${t.joueurs.map(p => esc(p) + ((t.presents || []).includes(p) ? '' : ' (parti)')).join(', ') || 'aucun joueur'}</span>
             </span>
             <button class="mini danger" data-jeu="${esc(t.jeu)}" data-id="${esc(t.id)}" type="button">Fermer</button>
         </div>`).join('') : '<p class="empty">Aucune table ouverte, tous jeux confondus.</p>';

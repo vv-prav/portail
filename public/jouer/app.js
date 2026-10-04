@@ -325,7 +325,7 @@ async function rendre() {
         ? etat.defis.slice(0, 3).map(ligneDefi).join('')
           + `<a class="jo-defis-tout" href="/defis/">Tous les défis ›</a>`
         : `<a class="jo-vide lien" href="/defis/">Aucun défi en cours. Un défi, c’est la même manche
-             pour tout le monde, jouée quand chacun peut — la seule formule qui marche vraiment ici.
+             pour tout le monde, jouée quand chacun peut, dans les vingt-quatre heures.
              <b>En lancer un ›</b></a>`;
 
     // Rendez-vous

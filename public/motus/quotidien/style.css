@@ -77,7 +77,6 @@ body.is-ready .mt { display:flex; }
     100% { transform:rotateX(0deg); }
 }
 /* Petit rebond sur une lettre bien placée, une fois la bascule terminée */
-.mt-tile.bounce { animation:mtBounce .42s ease; }
 @keyframes mtBounce { 0%{transform:translateY(0);} 35%{transform:translateY(-9px);} 100%{transform:translateY(0);} }
 
 /* Victoire : vague dorée qui traverse la ligne gagnante */

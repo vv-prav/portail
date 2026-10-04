@@ -39,6 +39,40 @@ let debutA = 0, chronoTimer = null;
 
 const laDate = () => { try { return new URLSearchParams(location.search).get('date') || ''; } catch (e) { return ''; } };
 const suffixeDate = () => (laDate() ? '?date=' + encodeURIComponent(laDate()) : '');
+
+// ---------- D'où vient la grille : le jeu du jour, ou un défi ----------
+// Un défi Sudoku se joue ICI, dans la même page, et non dans une copie de
+// l'interface recodée pour les défis : `?defi=<id>` fait parler la page aux
+// routes des défis au lieu de celles du jeu du jour. Tout le reste — grille,
+// notes, annulation — est rigoureusement le même.
+const DEFI = (() => { try { return new URLSearchParams(location.search).get('defi') || ''; } catch (e) { return ''; } })();
+const cheminDefi = (fin) => '/api/defis/' + encodeURIComponent(DEFI) + (fin || '');
+const ligneDefi = (l) => ({ u: l.pseudo, score: l.score, ms: l.ms, trouve: l.score > 0 });
+const avecLignes = (r) => { if (r.data && Array.isArray(r.data.classement)) r.data.classement = r.data.classement.map(ligneDefi); return r; };
+const SOURCE = DEFI ? {
+    charger: async () => {
+        const { ok, data } = await api(cheminDefi());
+        if (!ok || !data || data.error) return { ok: false };
+        return { ok: true, data: {
+            defi: data, date: 'defi-' + DEFI, archive: false, nextIn: 0, serie: null,
+            donnee: data.donnee, indices: data.indices, progression: data.progression, solution: data.solution,
+        } };
+    },
+    demarrer: () => api(cheminDefi('/commencer'), {}),
+    sauver: (c) => api(cheminDefi('/repondre'), { action: 'sauver', cases: c }),
+    valider: async (c) => avecLignes(await api(cheminDefi('/repondre'), { action: 'valider', cases: c })),
+    abandon: async () => avecLignes(await api(cheminDefi('/repondre'), { action: 'abandon' })),
+    classement: async () => { const r = await api(cheminDefi()); return ((r.data && r.data.classement) || []).map(ligneDefi); },
+} : {
+    charger: () => api('/api/sudoku/today' + suffixeDate()),
+    demarrer: () => api('/api/sudoku/start', { date: P.date }),
+    sauver: (c) => api('/api/sudoku/sauver', { date: P.date, cases: c }),
+    valider: (c) => api('/api/sudoku/valider', { date: P.date, cases: c }),
+    abandon: () => api('/api/sudoku/abandon', { date: P.date }),
+    classement: async () => { const r = await api('/api/sudoku/classement?date=' + encodeURIComponent(P.date)); return (r.data && r.data.classement) || []; },
+};
+// Sa place dans un défi : le serveur ne la calcule pas, on la lit dans le classement.
+const placeDansDefi = (cl) => { const moi = P && P.defi && P.defi.moiPseudo; const i = (cl || []).findIndex(l => l.u === moi); return i < 0 ? null : i + 1; };
 const LIGNE = (i) => Math.floor(i / 9), COL = (i) => i % 9;
 const CARRE = (i) => Math.floor(LIGNE(i) / 3) * 3 + Math.floor(COL(i) / 3);
 const voit = (i, j) => i !== j && (LIGNE(i) === LIGNE(j) || COL(i) === COL(j) || CARRE(i) === CARRE(j));
@@ -160,7 +194,7 @@ function annuler() {
 let sauverT = null;
 function sauverBientot() {
     clearTimeout(sauverT);
-    sauverT = setTimeout(() => api('/api/sudoku/sauver', { date: P.date, cases: cases.join('') }), 800);
+    sauverT = setTimeout(() => SOURCE.sauver(cases.join('')), 800);
 }
 
 // Dès que la grille est pleine et sans conflit visible, on l'envoie : pas de
@@ -168,11 +202,11 @@ function sauverBientot() {
 async function verifierSiPleine() {
     if (fini || cases.some(v => !v) || conflits().size) return;
     clearTimeout(sauverT);
-    const { ok, data } = await api('/api/sudoku/valider', { date: P.date, cases: cases.join('') });
+    const { ok, data } = await SOURCE.valider(cases.join(''));
     if (!ok) { DS.toast((data && data.error) || 'Impossible de valider.'); return; }
     if (!data.juste) { DS.toast('Quelque chose cloche encore…'); return; }
     P.progression = { ...(P.progression || {}), fini: true, trouve: true, ms: data.ms };
-    montrerFin({ trouve: true, ms: data.ms, classement: data.classement, place: data.place });
+    montrerFin({ trouve: true, ms: data.ms, classement: data.classement, place: DEFI ? placeDansDefi(data.classement) : data.place });
 }
 
 // ---------- Le chronomètre ----------
@@ -208,15 +242,17 @@ function montrerFin(d) {
     $('sd-fin-titre').textContent = d.trouve ? 'Grille résolue !' : 'Grille abandonnée';
     $('sd-fin-texte').textContent = d.trouve
         ? (d.ms != null ? `En ${formaterTemps(d.ms)}.` : 'Grille d’archive, hors classement.')
-        : 'La solution est affichée dans la grille. Demain, une autre.';
+        : (DEFI ? 'La solution est affichée dans la grille.' : 'La solution est affichée dans la grille. Demain, une autre.');
     renderBoard(d.classement || [], d.place);
     $('sd-fin').hidden = false;
-    if (!laDate() && window.Enchainement) Enchainement.proposer('sudoku', $('sd-fin').querySelector('.ds-card'));
+    // Un défi ramène aux défis ; le jeu du jour propose le jeu suivant.
+    if (DEFI) $('sd-retour-defis').hidden = false;
+    else if (!laDate() && window.Enchainement) Enchainement.proposer('sudoku', $('sd-fin').querySelector('.ds-card'));
 }
 function renderBoard(liste, maPlace) {
     if (!liste.length) { $('sd-board').innerHTML = ''; return; }
     const medaille = ['🥇', '🥈', '🥉'];
-    $('sd-board').innerHTML = `<p class="sd-board-titre">Le classement du jour</p>`
+    $('sd-board').innerHTML = `<p class="sd-board-titre">${DEFI ? 'Le classement du défi' : 'Le classement du jour'}</p>`
         + liste.map((e, i) => `
             <button type="button" class="sd-board-row${i + 1 === maPlace ? ' moi' : ''}" data-view="${esc(e.u)}">
                 <span class="sd-b-rang">${e.trouve === false ? '·' : (medaille[i] || (i + 1))}</span>
@@ -233,8 +269,13 @@ function renderBoard(liste, maPlace) {
     }
 }
 function texteDePartage() {
-    const jour = new Date(P.date + 'T12:00:00').toLocaleDateString(LOCALE, { day: 'numeric', month: 'long' });
     const prog = P.progression || {};
+    if (DEFI) {
+        return `Défi Sudoku de ${P.defi.auteur}\n`
+            + (prog.trouve ? `✅ ${prog.ms != null ? formaterTemps(prog.ms) : 'résolu'}` : '🏳️ abandonné')
+            + `\n${location.origin}/defis/`;
+    }
+    const jour = new Date(P.date + 'T12:00:00').toLocaleDateString(LOCALE, { day: 'numeric', month: 'long' });
     return `Sudoku du jour — ${jour}\n`
         + (prog.trouve ? `✅ ${prog.ms != null ? formaterTemps(prog.ms) : 'résolu'}` : '🏳️ abandonné')
         + `\n${location.origin}/sudoku`;
@@ -256,12 +297,13 @@ $('sd-abandon').addEventListener('click', () => {
     if (fini) return;
     DS.confirm({
         emoji: '🏳️', title: 'Abandonner la grille ?',
-        text: 'La solution s’affichera. La journée comptera comme jouée, sans point.',
+        text: DEFI ? 'La solution s’affichera. Le défi comptera comme joué, sans point.'
+                   : 'La solution s’affichera. La journée comptera comme jouée, sans point.',
         actions: [{ label: 'Abandonner', danger: true, run: async () => {
-            const { ok, data } = await api('/api/sudoku/abandon', { date: P.date });
+            const { ok, data } = await SOURCE.abandon();
             if (!ok) return DS.toast('Impossible pour l’instant.');
             P.progression = { ...(P.progression || {}), fini: true, trouve: false };
-            montrerFin({ trouve: false, solution: data.solution, classement: data.classement, place: data.place });
+            montrerFin({ trouve: false, solution: data.solution, classement: data.classement, place: DEFI ? placeDansDefi(data.classement) : data.place });
         } }],
     });
 });
@@ -297,21 +339,30 @@ function afficherJeu() {
 $('sd-start-btn').addEventListener('click', async () => {
     debutA = Date.now();
     afficherJeu();
-    const { data } = await api('/api/sudoku/start', { date: P.date });
+    const { data } = await SOURCE.demarrer();
     if (data && data.debutA) debutA = data.debutA;
     lancerChrono();
 });
 
 async function charger() {
-    const { ok, data } = await api('/api/sudoku/today' + suffixeDate());
-    if (!ok) { location.href = '/'; return; }
+    const { ok, data } = await SOURCE.charger();
+    if (!ok) { location.href = DEFI ? '/defis/' : '/'; return; }
     P = data;
     restant = P.nextIn || 0;
     donnee = P.donnee.split('').map(Number);
     const prog = P.progression || null;
     cases = (prog && prog.cases ? prog.cases : P.donnee).split('').map(Number);
     notes = lireNotes();
-    $('sd-date').textContent = new Date(P.date + 'T12:00:00').toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
+    if (DEFI) {
+        // En défi, rien de ce qui parle du jour : ni date, ni série, ni
+        // prochain tirage. Et le retour ramène à la liste des défis.
+        $('sd-date').textContent = `Défi de ${P.defi.auteur}`;
+        $('sd-next').hidden = true;
+        document.querySelector('.sd-head .ds-icon-btn').href = '/defis/';
+        $('sd-start-txt').textContent = 'La même grille pour tous ceux qui relèvent le défi. Une seule solution, et elle se trouve sans jamais deviner.';
+    } else {
+        $('sd-date').textContent = new Date(P.date + 'T12:00:00').toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });
+    }
     $('sd-archive-chip').hidden = !P.archive;
     const serie = (P.serie && P.serie.encours) || 0;
     if (serie > 1) { $('sd-serie').hidden = false; $('sd-serie').innerHTML = `🔥 <b>${serie}</b>`; }
@@ -319,8 +370,8 @@ async function charger() {
 
     if (prog && prog.fini) {
         afficherJeu();
-        const { data: cl } = await api('/api/sudoku/classement?date=' + encodeURIComponent(P.date));
-        montrerFin({ trouve: !!prog.trouve, ms: prog.ms, solution: P.solution, classement: (cl && cl.classement) || [] });
+        const cl = await SOURCE.classement();
+        montrerFin({ trouve: !!prog.trouve, ms: prog.ms, solution: P.solution, classement: cl, place: DEFI ? placeDansDefi(cl) : null });
     } else if (prog && prog.debutA) {
         // Une grille déjà commencée reprend là où on l'avait laissée, chrono compris.
         debutA = prog.debutA;

@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="/design-system.css">
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="is-boot">
+<body class="is-boot" data-jeu="chance">
     <div class="boot"><div class="boot-ring"></div></div>
 
     <div class="ch" id="ch">
@@ -34,11 +34,9 @@
         <div class="ch-stage">
             <!-- Dé -->
             <div class="ch-panel" id="panel-dice">
-                <div class="ch-die" id="ch-die">
-                    <div class="ch-pip" data-p="1"></div><div class="ch-pip" data-p="2"></div><div class="ch-pip" data-p="3"></div>
-                    <div class="ch-pip" data-p="4"></div><div class="ch-pip" data-p="5"></div><div class="ch-pip" data-p="6"></div>
-                    <div class="ch-pip" data-p="7"></div><div class="ch-pip" data-p="8"></div><div class="ch-pip" data-p="9"></div>
-                </div>
+                <!-- Le dé est dessiné par /des.js : le même qu'au Yams et au
+                     Perudo, avec le skin choisi par le joueur. -->
+                <div class="ch-die" id="ch-die"></div>
             </div>
             <!-- Carte -->
             <div class="ch-panel" id="panel-card" hidden>
@@ -64,10 +62,12 @@
 
         <button class="ch-btn" id="btn-go">Lancer le dé</button>
 
-        <p class="ch-note">Recharge la page si tu doutes de nous — c'est vraiment aléatoire à chaque fois.</p>
+        <p class="ch-note">Vraiment au hasard, à chaque fois.</p>
     </div>
 
     <script src="/design-system.js"></script>
+    <script src="/des.js"></script>
+    <script src="/style.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

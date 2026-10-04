@@ -83,7 +83,7 @@ function ligneDefi(d) {
     const etat = fait
         ? `<b>${d.moi.score} pt${d.moi.score > 1 ? 's' : ''}</b> · ${d.place}<sup>${d.place === 1 ? 'er' : 'e'}</sup> sur ${d.joueurs}`
         : (d.moi.etat === 'encours' ? 'commencé' : `${d.joueurs} ${d.joueurs > 1 ? 'ont' : 'a'} joué`);
-    return `<button type="button" class="df-l${fait ? ' fait' : ''}" data-defi="${esc(d.id)}" style="--acc:${d.accent}">
+    return `<button type="button" class="df-l${fait ? ' fait' : ''}" data-defi="${esc(d.id)}"${d.page ? ` data-page="${esc(d.page)}"` : ''} style="--acc:${d.accent}">
         <span class="df-l-emoji">${d.emoji}</span>
         <span class="df-l-corps">
             <b>${esc(d.nom)} · de ${esc(d.auteur)}</b>
@@ -99,13 +99,18 @@ document.addEventListener('click', async (e) => {
         const { data } = await api('/api/defis', { type: lancer.dataset.lancer });
         if (data && data.error) return DS.toast(data.error);
         DS.toast('Défi lancé ✓');
-        if (data && data.id) ouvrir(data.id);
+        const t = types.find(x => x.id === lancer.dataset.lancer);
+        if (data && data.id) { if (t && t.page) allerJouer(t.page, data.id); else ouvrir(data.id); }
         return;
     }
     const l = e.target.closest('[data-defi]');
-    if (l) ouvrir(l.dataset.defi);
+    if (l) { if (l.dataset.page) allerJouer(l.dataset.page, l.dataset.defi); else ouvrir(l.dataset.defi); }
 });
 $('fin-retour').addEventListener('click', chargerListe);
+
+// Le Sudoku et le Mot le plus long se jouent dans leur propre page, en
+// mode défi : la même interface qu'au jeu du jour, notes et tuiles comprises.
+function allerJouer(page, id) { location.href = page + '?defi=' + encodeURIComponent(id); }
 
 // =====================================================================
 //  OUVRIR UN DÉFI

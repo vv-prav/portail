@@ -78,7 +78,8 @@ function ligneTable(t) {
     const nb = t.players.length + (t.bots || 0);
     const quoi = t.status === 'lobby' ? 'Rejoindre ›' : '👁 Regarder';
     const detail = [
-        `${nb}/${t.options.maxPlayers}`,
+        DS.placesTable({ players: nb, maxPlayers: t.options.maxPlayers, status: t.status,
+                         alive: (t.presents || t.players).length + (t.bots || 0) }),
         `${t.options.startDice} dés`,
         t.options.mode === 'equipes' ? 'en équipes' : null,
         t.bots ? `${t.bots} bot${t.bots > 1 ? 's' : ''}` : null,

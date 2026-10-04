@@ -71,14 +71,6 @@ body {
 .pr-summary-item b { display: block; font-size: 1.5rem; font-weight: 800; color: var(--brass-soft); line-height: 1.2; }
 .pr-summary-item span { font-size: .68rem; color: var(--muted); line-height: 1.3; display: block; margin-top: 3px; }
 
-/* Sélecteur de langue, dans les actions du compte */
-.pr-lang-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-radius: 14px;
-    background: linear-gradient(165deg, rgba(255,255,255,.03), rgba(0,0,0,.15)); border: 1px solid var(--line); }
-.pr-lang-label { font-size: .88rem; }
-.pr-lang-btns { display: flex; gap: 6px; }
-.pr-lang-btns button { padding: 7px 12px; border-radius: 8px; background: transparent; border: 1px solid var(--line);
-    color: var(--muted); font-family: inherit; font-size: .78rem; font-weight: 700; cursor: pointer; }
-.pr-lang-btns button.on { border-color: var(--brass); color: var(--brass-soft); background: rgba(217,169,78,.14); }
 
 /* Onglets de statistiques par jeu */
 

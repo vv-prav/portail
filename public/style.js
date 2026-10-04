@@ -49,6 +49,7 @@
     const JEUX = {
         yams:       { nom: 'Yams', emoji: '🎲' },
         perudo:     { nom: 'Perudo', emoji: '🏴‍☠️' },
+        chance:     { nom: 'Chance', emoji: '🍀' },
         motus:      { nom: 'Motus', emoji: '🟨' },
         pbac:       { nom: 'Petit Bac', emoji: '✏️' },
         undercover: { nom: 'Infiltré', emoji: '🕵️' },
@@ -103,11 +104,11 @@
         {
             id: 'des',
             nom: 'Les dés',
-            portee: ['yams', 'perudo'],
+            portee: ['yams', 'perudo', 'chance'],
             cle: 'yams_dice_skin',            // ⚠️ nom historique, voir des.js
             defaut: 'classic',
             genre: 'grille',
-            aide: 'Ton dé est le même au Yams et au Perudo. Certains se débloquent avec tes victoires ou tes Yams.',
+            aide: 'Ton dé est le même au Yams, au Perudo et à Chance. Certains se débloquent avec tes victoires ou tes Yams.',
             options() {
                 const cat = (window.Des && Des.catalogue()) || {};
                 return Object.entries(cat).map(([id, d]) => ({

@@ -121,6 +121,9 @@
     background: linear-gradient(180deg, var(--brass-soft), var(--brass)); color: #2a1c07;
     cursor: pointer; box-shadow: 0 6px 16px rgba(217, 169, 78, .25);
     transition: transform .12s ease, box-shadow .12s ease;
+    /* Un lien peut porter la classe (« Au tour de… », « Retour aux défis ») :
+       il doit se lire comme un bouton, texte centré. */
+    text-align: center;
 }
 /* ⚠️ `display:block` ci-dessus l'emporte sur l'attribut `hidden` (qui n'est
    qu'un `display:none` de la feuille du navigateur, la plus faible). Un
@@ -260,6 +263,10 @@ a { text-decoration: none; }
 .ds-lb-rank { flex: 0 0 auto; width: 24px; text-align: center; }
 .ds-lb-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ds-lb-value { flex: 0 0 auto; font-weight: 800; color: var(--brass-soft); }
+.ds-lb-detail { display: block; font-style: normal; font-size: .72rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.ds-lb-vide { text-align: center; color: var(--muted); font-size: var(--ds-fs-sm); margin: 10px 0; }
+/* Les lignes d'un classement se touchent : un léger espace entre elles. */
+.ds-lb-row + .ds-lb-row { margin-top: 4px; }
 
 /* ===== CHAMPS ET FORMULAIRES ===== */
 .ds-input {

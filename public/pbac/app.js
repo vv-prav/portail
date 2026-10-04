@@ -80,6 +80,7 @@ function connect() {
     socket.on('pbac_parallel', renderParallel);
     socket.on('pbac_packs', renderPacks);
     socket.on('pbac_stats_result', renderStats);
+    socket.on('pbac_classement_result', renderClassement);
     socket.on('pbac_error', (msg) => {
         toast(msg || 'Erreur.');
         // La table mémorisée n'existe plus (fermée, expirée…) : on efface et on repasse au lobby.
@@ -145,8 +146,8 @@ function renderLobby(games) {
             <span class="ds-row-main">
                 <span class="ds-row-name">Table de ${esc(g.host)}</span>
                 <span class="ds-row-sub">${live
-                    ? `🔴 ${esc(statusText)} · Manche ${g.round}/${g.rounds} · ${g.alive} connecté${g.alive > 1 ? 's' : ''}`
-                    : `${g.players}/${g.maxPlayers} joueurs · ${g.rounds} manches · ${g.duration} s`}</span>
+                    ? `🔴 ${esc(statusText)} · Manche ${g.round}/${g.rounds} · ${DS.placesTable(g)}`
+                    : `${DS.placesTable({ ...g, status: 'lobby' })} · ${g.rounds} manches · ${g.duration} s`}</span>
             </span>
             <span class="ds-row-go">${live ? 'Demander à rejoindre ›' : '›'}</span>
         </button>`;
@@ -166,6 +167,20 @@ $('btn-create').addEventListener('click', () => {
 });
 $('create-cancel').addEventListener('click', () => { $('v-create').hidden = true; });
 $('create-close').addEventListener('click', () => { $('v-create').hidden = true; });
+// Le classement du salon, rendu par le système de design comme partout.
+$('btn-classement').addEventListener('click', () => {
+    $('classementCorps').innerHTML = '<p class="ds-lb-vide">Chargement…</p>';
+    $('v-classement').hidden = false;
+    socket.emit('pbac_classement');
+});
+$('classement-close').addEventListener('click', () => { $('v-classement').hidden = true; });
+function renderClassement(lignes) {
+    DS.classement($('classementCorps'), lignes, {
+        moi: myPseudo,
+        detail: l => `${l.parties} partie${l.parties > 1 ? 's' : ''} · ${l.points} points · meilleure manche ${l.meilleureManche}`,
+        valeur: l => `${l.victoires} V`,
+    });
+}
 $('btn-stats').addEventListener('click', () => {
     socket.emit('pbac_stats');
     $('v-stats').hidden = false;

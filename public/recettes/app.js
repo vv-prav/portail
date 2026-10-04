@@ -29,55 +29,10 @@ const I18N = {
         ask_yes: 'Oui, supprimer', cancel: 'Annuler',
         saved: 'Recette enregistrée ! 🍽️', deleted: 'Recette supprimée.', photo_err: 'Photo illisible, réessaie.',
     },
-    en: {
-        title: 'Recipes', search_ph: 'Search a recipe…',
-        all: 'All', empty: 'No recipe matches.', empty_first: 'The book is empty — add the first recipe! 🍽️',
-        count_one: 'shared recipe', count_many: 'shared recipes',
-        cat_entree: 'Starter', cat_plat: 'Main', cat_dessert: 'Dessert', cat_apero: 'Snacks', cat_boisson: 'Drink',
-        diff_facile: 'Easy', diff_moyen: 'Medium', diff_difficile: 'Hard',
-        tag_vege: '🌱 Veggie', tag_vegan: '🌿 Vegan', 'tag_sans-gluten': '🌾 Gluten-free',
-        tag_rapide: '⚡ Quick', 'tag_sans-cuisson': '❄️ No-cook', tag_epice: '🌶️ Spicy',
-        min: 'min', pers: 'ppl', by: 'by', steps_count: 'steps',
-        form_new: 'New recipe', form_edit: 'Edit recipe',
-        f_title: 'Title', f_title_ph: "Granny's apple pie…",
-        f_cat: 'Category', f_diff: 'Difficulty', f_time: 'Time (min)', f_serv: 'Servings',
-        f_tags: 'Tags', f_photo: 'Photo', f_photo_add: 'Add a photo', f_photo_del: 'Remove photo',
-        f_ing: 'Ingredients', f_ing_add: 'Add an ingredient', f_steps: 'Steps', f_step_add: 'Add a step',
-        f_save: 'Save recipe', f_saving: 'Saving…',
-        ph_ing: 'Ingredient', ph_qty: 'Qty', ph_unit: 'Unit', ph_step: 'Describe this step…',
-        err_title: 'Give your recipe a title.',
-        d_ing: 'Ingredients', d_ing_hint: 'Tap an ingredient to tick it while cooking.',
-        d_steps: 'Method', edit: '✏️ Edit', del: '🗑️ Delete',
-        ask_del: 'Delete this recipe?', ask_del_sub: 'It will disappear for everyone.',
-        ask_yes: 'Yes, delete', cancel: 'Cancel',
-        saved: 'Recipe saved! 🍽️', deleted: 'Recipe deleted.', photo_err: 'Unreadable photo, try again.',
-    },
-    es: {
-        title: 'Recetas', search_ph: 'Buscar una receta…',
-        all: 'Todas', empty: 'Ninguna receta coincide.', empty_first: '¡El cuaderno está vacío — añade la primera receta! 🍽️',
-        count_one: 'receta compartida', count_many: 'recetas compartidas',
-        cat_entree: 'Entrante', cat_plat: 'Plato', cat_dessert: 'Postre', cat_apero: 'Aperitivo', cat_boisson: 'Bebida',
-        diff_facile: 'Fácil', diff_moyen: 'Medio', diff_difficile: 'Difícil',
-        tag_vege: '🌱 Vegetariano', tag_vegan: '🌿 Vegano', 'tag_sans-gluten': '🌾 Sin gluten',
-        tag_rapide: '⚡ Rápido', 'tag_sans-cuisson': '❄️ Sin cocción', tag_epice: '🌶️ Picante',
-        min: 'min', pers: 'pers.', by: 'de', steps_count: 'pasos',
-        form_new: 'Nueva receta', form_edit: 'Editar receta',
-        f_title: 'Título', f_title_ph: 'Tarta de manzana de la abuela…',
-        f_cat: 'Categoría', f_diff: 'Dificultad', f_time: 'Tiempo (min)', f_serv: 'Personas',
-        f_tags: 'Etiquetas', f_photo: 'Foto', f_photo_add: 'Añadir una foto', f_photo_del: 'Quitar la foto',
-        f_ing: 'Ingredientes', f_ing_add: 'Añadir un ingrediente', f_steps: 'Pasos', f_step_add: 'Añadir un paso',
-        f_save: 'Guardar la receta', f_saving: 'Guardando…',
-        ph_ing: 'Ingrediente', ph_qty: 'Cant.', ph_unit: 'Unidad', ph_step: 'Describe este paso…',
-        err_title: 'Dale un título a tu receta.',
-        d_ing: 'Ingredientes', d_ing_hint: 'Toca un ingrediente para marcarlo mientras cocinas.',
-        d_steps: 'Preparación', edit: '✏️ Editar', del: '🗑️ Eliminar',
-        ask_del: '¿Eliminar esta receta?', ask_del_sub: 'Desaparecerá para todos.',
-        ask_yes: 'Sí, eliminar', cancel: 'Cancelar',
-        saved: '¡Receta guardada! 🍽️', deleted: 'Receta eliminada.', photo_err: 'Foto ilegible, inténtalo de nuevo.',
-    },
 };
-let LANG = localStorage.getItem('erquy_lang') || 'fr';
-if (!I18N[LANG]) LANG = 'fr';
+// Le salon est en français : le sélecteur de langue promettait l'anglais et
+// l'espagnol, et seules quatre pages sur vingt-deux étaient traduites.
+const LANG = 'fr';
 const t = (k) => (I18N[LANG] && I18N[LANG][k]) || I18N.fr[k] || k;
 function applyI18n() {
     // L'attribut lang de la page doit suivre la langue choisie : sinon un lecteur

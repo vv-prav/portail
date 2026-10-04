@@ -40,6 +40,10 @@ const PREFIXES_BRUTS = [
     'chiffres:prog', 'chiffres:days', 'geo:prog', 'geo:days',
     'sudoku:prog', 'sudoku:days', 'motlong:prog', 'motlong:days',
     'motusparty:stats',
+    // ⚠️ Les fiches des jeux multijoueurs arrivés après ce module : un joueur
+    // renommé perdait ses statistiques du Quiz, de l'Infiltré, du Perudo et
+    // des défis.
+    'drapeaux:stats', 'undercover:stats', 'perudo:stats', 'defi:stats',
 ];
 // Familles dont le 3ᵉ segment est un pseudo normalisé.
 const PREFIXES_NORMALISES = ['yams:stats', 'pbac:stats'];
@@ -47,7 +51,10 @@ const PREFIXES_NORMALISES = ['yams:stats', 'pbac:stats'];
 // Familles dont la valeur est une liste d'entrées portant un champ `u`.
 const VALEURS_AVEC_U = /^(motus|mf|chiffres|geo|sudoku|motlong):(board|cmt):/;
 // Listes d'index : de simples tableaux de pseudos bruts.
-const LISTES_INDEX = new Set(['yams:statsIndex', 'pbac:statsIndex']);
+// ⚠️ Tous les index, pas seulement ceux du Yams et du Petit Bac : un joueur
+// renommé disparaissait des classements du Quiz, de l'Infiltré, du Perudo.
+const LISTES_INDEX = new Set(['yams:statsIndex', 'pbac:statsIndex', 'drapeaux:statsIndex',
+    'undercover:statsIndex', 'perudo:statsIndex', 'motusparty:statsIndex']);
 
 /**
  * Calcule — sans rien appliquer — tout ce qu'un renommage impliquerait.

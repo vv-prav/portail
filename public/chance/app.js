@@ -42,6 +42,16 @@ function lockDuring(ms, fn) {
     setTimeout(() => { rolling = false; $('btn-go').disabled = false; }, ms);
 }
 
+// ---------- Dé ----------
+// ⚠️ Le dé dessinait ses points avec une couleur (`--card-black`) disparue
+// lors de la migration vers le système de design : il restait une case vide
+// pendant que « Résultat : 6 » s'écrivait dessous. Il passe maintenant par
+// `/des.js`, le dé commun du salon — et porte le skin du joueur.
+let faceActuelle = 1;
+function dessinerDe(n) {
+    faceActuelle = n;
+    $('ch-die').innerHTML = window.Des ? Des.face(n, { classe: 'ch-de' }) : `<span class="ch-de-secours">${n}</span>`;
+}
 function rollDice() {
     const die = $('ch-die');
     die.classList.remove('rolling'); void die.offsetWidth;
@@ -49,16 +59,21 @@ function rollDice() {
     $('ch-result').textContent = '\u00a0';
     let ticks = 0;
     const spin = setInterval(() => {
-        die.className = 'ch-die rolling v' + (1 + Math.floor(Math.random() * 6));
+        dessinerDe(1 + Math.floor(Math.random() * 6));
         ticks++;
         if (ticks > 7) {
             clearInterval(spin);
             const final = 1 + Math.floor(Math.random() * 6);
-            die.className = 'ch-die v' + final;
+            dessinerDe(final);
             $('ch-result').textContent = `Résultat : ${final}`;
         }
     }, 70);
 }
+// Le bouton « Mon style », sous le bouton de tirage : Chance n'a pas de hall
+// où il se poserait tout seul.
+if (window.Style) Style.bouton('chance', $('ch'));
+// Changer de dé dans « Mon style » se voit tout de suite.
+if (window.Style) Style.surChangement((id) => { if (id === 'des') dessinerDe(faceActuelle); });
 
 function drawCard() {
     if (deckIndex >= deck.length) { deck = buildDeck(); deckIndex = 0; }
@@ -98,4 +113,4 @@ $('btn-go').addEventListener('click', () => {
 // ---------- Démarrage ----------
 document.body.className = 'is-ready';
 deck = buildDeck();
-$('ch-die').className = 'ch-die v1';
+dessinerDe(1);

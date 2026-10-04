@@ -33,6 +33,7 @@
                 <button class="ds-btn" id="btn-create">Créer une course</button>
             </div>
             <button class="ds-btn ghost" id="btn-stats">Mes statistiques</button>
+            <button class="ds-btn ghost" id="btn-classement">🏆 Classement du salon</button>
             <p class="mp-list-label" id="lobby-empty-label" hidden>Aucune course ouverte pour l'instant.</p>
             <div class="mp-tables" id="mp-tables"></div>
         </section>
@@ -103,6 +104,15 @@
         <div class="mp-celebration-inner">
             <p class="mp-celebration-word" id="mpCelebrationWord">🏆</p>
             <p class="mp-celebration-who" id="mpCelebrationWho">—</p>
+        </div>
+    </div>
+
+    <!-- LE CLASSEMENT DU SALON -->
+    <div class="ds-overlay" id="v-classement" hidden>
+        <div class="ds-card tall">
+            <button type="button" class="ds-card-close" id="classement-close" aria-label="Fermer">✕</button>
+            <h2 class="ds-card-title">Classement du salon</h2>
+            <div id="classementCorps"></div>
         </div>
     </div>
 

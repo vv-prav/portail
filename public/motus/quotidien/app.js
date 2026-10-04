@@ -35,61 +35,12 @@ const I18N = {
         live_done: "ont trouvé", tries_left: "essais restants",
         arch_solved: "trouvé", arch_lost: "raté", arch_untried: "pas tenté",
     },
-    en: {
-        start_txt: "A word to guess in 6 tries — the first letter is free.", start_btn: "Start",
-        share_btn: "Share my result", share_copied: "Result copied ✓",
-        close: "Close", cancel: "Cancel", back_salon: "Back to the lounge",
-        tool_erase: "Erase", tool_valid: "Submit", tool_giveup: "Give up",
-        panel_chat: "Today's chat", panel_arch: "Past words",
-        chat_sub: "No spoilers, play fair 🙂", chat_ph: "Your message…", chat_send: "Send",
-        chat_locked: "Finish today's round to open the chat — no spoilers.",
-        chat_empty: "Nobody has written today yet.",
-        arch_sub: "Replayable, but off the leaderboard.", arch_today: "Back to today", arch_none: "No archives.",
-        clue_start: "Guess the word in 6 tries. The first letter is free.",
-        clue_playing: "Your turn — the first letter is already in place.",
-        clue_arch: "Archive word — off the leaderboard.",
-        clue_done: "Found it! 🎉", clue_lost: "The word was…", clue_gaveup: "You gave up this round.",
-        err_incomplete: "Complete the word before submitting.", err_generic: "Something went wrong.",
-        end_title_win: "Found it!", end_title_lost: "Lost…", end_title_giveup: "Given up",
-        end_tries: "in", end_try_one: "try", end_try_many: "tries",
-        end_rank: "of", end_streak: "day streak", end_best_streak: "personal best", end_noboard: "Try again tomorrow!",
-        board_title: "Today's leaderboard", board_empty: "Nobody has found the word today yet.",
-        giveup_title: "Give up?", giveup_sub: "The word will be revealed and you won't appear on the leaderboard.",
-        giveup_yes: "Yes, reveal the word",
-        erase_title: "Erase the row?", erase_sub: "You start again from the first letter.", erase_yes: "Erase",
-        live_done: "found it", tries_left: "tries left",
-        arch_solved: "found", arch_lost: "missed", arch_untried: "not tried",
-    },
-    es: {
-        start_txt: "Una palabra que adivinar en 6 intentos — la primera letra es gratis.", start_btn: "Empezar",
-        share_btn: "Compartir mi resultado", share_copied: "Resultado copiado ✓",
-        close: "Cerrar", cancel: "Cancelar", back_salon: "Volver al salón",
-        tool_erase: "Borrar", tool_valid: "Validar", tool_giveup: "Rendirse",
-        panel_chat: "Charla del día", panel_arch: "Palabras anteriores",
-        chat_sub: "Sin spoilers, juega limpio 🙂", chat_ph: "Tu mensaje…", chat_send: "Enviar",
-        chat_locked: "Termina la ronda de hoy para abrir la charla — sin spoilers.",
-        chat_empty: "Nadie ha escrito hoy todavía.",
-        arch_sub: "Rejugables, pero fuera de la clasificación.", arch_today: "Volver a hoy", arch_none: "Sin archivos.",
-        clue_start: "Adivina la palabra en 6 intentos. La primera letra es gratis.",
-        clue_playing: "Tu turno — la primera letra ya está puesta.",
-        clue_arch: "Palabra de archivo — fuera de clasificación.",
-        clue_done: "¡Encontrada! 🎉", clue_lost: "La palabra era…", clue_gaveup: "Has abandonado esta ronda.",
-        err_incomplete: "Completa la palabra antes de validar.", err_generic: "Ha ocurrido un error.",
-        end_title_win: "¡Encontrada!", end_title_lost: "Perdida…", end_title_giveup: "Abandonada",
-        end_tries: "en", end_try_one: "intento", end_try_many: "intentos",
-        end_rank: "de", end_streak: "días seguidos", end_best_streak: "récord personal", end_noboard: "¡Inténtalo mañana!",
-        board_title: "Clasificación del día", board_empty: "Nadie ha encontrado la palabra hoy todavía.",
-        giveup_title: "¿Rendirse?", giveup_sub: "La palabra se revelará y no aparecerás en la clasificación.",
-        giveup_yes: "Sí, revelar la palabra",
-        erase_title: "¿Borrar la fila?", erase_sub: "Vuelves a empezar desde la primera letra.", erase_yes: "Borrar",
-        live_done: "la encontraron", tries_left: "intentos restantes",
-        arch_solved: "encontrada", arch_lost: "fallada", arch_untried: "no probada",
-    },
 };
-let LANG = localStorage.getItem('erquy_lang') || 'fr';
-if (!I18N[LANG]) LANG = 'fr';
+// Le salon est en français : le sélecteur de langue promettait l'anglais et
+// l'espagnol, et seules quatre pages sur vingt-deux étaient traduites.
+const LANG = 'fr';
 const t = (k) => (I18N[LANG] && I18N[LANG][k]) || I18N.fr[k] || k;
-const LOCALE = LANG === 'en' ? 'en-GB' : (LANG === 'es' ? 'es-ES' : 'fr-FR');
+const LOCALE = 'fr-FR';
 function applyI18n() {
     // L'attribut lang de la page doit suivre la langue choisie : sinon un lecteur
     // d'écran prononce l'anglais avec la phonétique française, et le navigateur

@@ -131,5 +131,46 @@
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', verrouillerOverlaysOublies);
     else verrouillerOverlaysOublies();
 
-    window.DS = { toast, confirm, closeConfirm, avatarHTML, esc };
+    // ---------- Les places d'une table ----------
+    // ⚠️ Chaque hall comptait ses joueurs à sa façon : « 1/1 joueurs » au Yams
+    // voulait dire « 1 présent sur 1 inscrit » et se lisait « table pleine »,
+    // « 2/12 » ailleurs voulait dire « 2 sur 12 places ». Personne ne rejoint
+    // une table qui a l'air complète. Une seule formulation pour tous :
+    //   en attente → « 2 joueurs · 2 places libres » (ou « complet ») ;
+    //   en cours   → « 3 joueurs · 1 absent ».
+    function placesTable(t) {
+        const n = (t && t.players) || 0;
+        const joueurs = n + ' joueur' + (n > 1 ? 's' : '');
+        if (t && t.status && t.status !== 'lobby') {
+            const absents = t.alive != null ? Math.max(0, n - t.alive) : 0;
+            return joueurs + (absents ? ` · ${absents} absent${absents > 1 ? 's' : ''}` : '');
+        }
+        if (t && t.maxPlayers) {
+            const libres = Math.max(0, t.maxPlayers - n);
+            return joueurs + ' · ' + (libres ? `${libres} place${libres > 1 ? 's' : ''} libre${libres > 1 ? 's' : ''}` : 'complet');
+        }
+        return joueurs;
+    }
+
+    // ---------- Un classement ----------
+    // Le rendu commun des classements de salon (`.ds-lb-row`) : une ligne par
+    // joueur, la médaille, le détail, la valeur, et un toucher qui ouvre la
+    // bulle de profil. `detail(l)` et `valeur(l)` disent quoi montrer.
+    function classement(el, lignes, o) {
+        o = o || {};
+        if (!el) return;
+        if (!lignes || !lignes.length) { el.innerHTML = `<p class="ds-lb-vide">${esc(o.vide || 'Personne n’a encore joué.')}</p>`; return; }
+        const medaille = ['🥇', '🥈', '🥉'];
+        el.innerHTML = lignes.map((l, i) => `
+            <button type="button" class="ds-lb-row${l.pseudo === o.moi ? ' me' : ''}" data-pseudo="${esc(l.pseudo)}">
+                <span class="ds-lb-rank">${medaille[i] || (i + 1)}</span>
+                <span class="ds-lb-name">${esc(l.pseudo)}${o.detail ? `<em class="ds-lb-detail">${esc(o.detail(l))}</em>` : ''}</span>
+                <span class="ds-lb-value">${esc(o.valeur ? o.valeur(l) : '')}</span>
+            </button>`).join('');
+        el.querySelectorAll('[data-pseudo]').forEach(b => b.addEventListener('click', () => {
+            if (window.PortailProfile) PortailProfile.open(b.dataset.pseudo);
+        }));
+    }
+
+    window.DS = { toast, confirm, closeConfirm, avatarHTML, esc, placesTable, classement };
 })();

@@ -52,7 +52,29 @@ function loadMpStats(pseudo) {
     const s = mfGet(kMpStats(pseudo));
     return s && typeof s === 'object' ? { matchesPlayed: 0, matchesWon: 0, wordsFound: 0, wordsMissed: 0, bestRank: null, ...s } : { matchesPlayed: 0, matchesWon: 0, wordsFound: 0, wordsMissed: 0, bestRank: null };
 }
-function saveMpStats(pseudo, stats) { mfSet(kMpStats(pseudo), stats); }
+// L'index des joueurs, pour le classement. Motus Party n'en avait pas : il
+// ne pouvait donc pas classer ses joueurs, faute de savoir qui avait joué.
+const INDEX_MP = 'motusparty:statsIndex';
+function saveMpStats(pseudo, stats) {
+    mfSet(kMpStats(pseudo), stats);
+    const idx = mfGet(INDEX_MP) || [];
+    if (!idx.includes(pseudo)) mfSet(INDEX_MP, [...idx, pseudo]);
+}
+// Les parties jouées avant l'index : server.js lui passe les clés existantes
+// au démarrage. Sans effet si l'index est déjà complet.
+function reconstruireIndex(cles) {
+    const idx = new Set(mfGet(INDEX_MP) || []);
+    const avant = idx.size;
+    for (const k of cles || []) if (k.startsWith('motusparty:stats:')) idx.add(k.slice('motusparty:stats:'.length));
+    if (idx.size !== avant) mfSet(INDEX_MP, [...idx]);
+}
+function classementMp() {
+    return (mfGet(INDEX_MP) || []).map(p => {
+        const s = loadMpStats(p);
+        return { pseudo: p, parties: s.matchesPlayed, victoires: s.matchesWon, mots: s.wordsFound, meilleurePlace: s.bestRank };
+    }).filter(l => l.parties > 0)
+      .sort((a, b) => b.victoires - a.victoires || b.mots - a.mots || a.pseudo.localeCompare(b.pseudo, 'fr'));
+}
 
 const games = {};
 const socketGame = {};
@@ -274,6 +296,10 @@ io.on('connection', (socket) => {
 
     socket.on('motusparty_leave', () => leaveCurrent(socket));
 
+    socket.on('motusparty_classement', () => {
+        socket.emit('motusparty_classement_result', classementMp());
+    });
+
     socket.on('motusparty_stats', () => {
         const pseudo = socket.data.mpPseudo;
         if (!pseudo) return;
@@ -295,6 +321,7 @@ io.on('connection', (socket) => {
 });
 
 return {
+    reconstruireIndex,
     online: () => [...new Set(Object.values(games).flatMap(g => g.players.filter(p => p.connected).map(p => p.pseudo)))],
     games: () => Object.values(games).map(g => ({
         id: g.id, host: g.host, status: g.status, creeA: g.creeA || 0,

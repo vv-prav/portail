@@ -107,7 +107,7 @@ function renderLobby(games) {
         <button class="ds-row" data-id="${g.id}">
             <span class="ds-row-main">
                 <span class="ds-row-name">Table de ${esc(g.host)}</span>
-                <span class="ds-row-sub">${g.players}/${g.maxPlayers} joueurs</span>
+                <span class="ds-row-sub">${DS.placesTable({ ...g, status: 'lobby' })}</span>
             </span>
             <span class="ds-row-go">›</span>
         </button>`).join('');
