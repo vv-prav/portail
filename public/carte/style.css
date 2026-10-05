@@ -1,0 +1,127 @@
+/* =====================================================================
+   LA CARTE — le monde en laiton sur nuit chaude
+   La carte est le sujet : elle prend toute la largeur, les pays montrés
+   gardent leur couleur, et la rose des vents passe par-dessus.
+   ===================================================================== */
+:root {
+    --ink:#14100b; --ink-2:#1d1710; --ink-3:#241b12;
+    --brass:#d9a94e; --brass-soft:#ecca82; --parchment:#efe4cf;
+    --muted:#a08f74; --line:rgba(217,169,78,0.20);
+    --good:#5aa87a; --tiede:#c9a24a; --bad:#d2624a;
+}
+html,body { margin:0; padding:0; }
+body {
+    min-height:100svh; overflow-x:hidden;
+    font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; color:var(--parchment);
+    background:radial-gradient(130% 70% at 50% -8%, #17262a 0%, transparent 55%), var(--ink);
+    background-attachment:fixed; -webkit-font-smoothing:antialiased;
+}
+body.is-boot .ct { opacity:0; }
+.ct { opacity:1; transition:opacity .2s; display:flex; flex-direction:column; gap:12px;
+    max-width:620px; margin:0 auto; padding:max(10px,env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom)); }
+
+.ct-head { display:flex; align-items:center; gap:10px; }
+.ct-titles { flex:1; min-width:0; }
+.ct-title { margin:0; font-size:1.2rem; font-weight:800;
+    background:linear-gradient(180deg,var(--brass-soft),var(--brass));
+    -webkit-background-clip:text; background-clip:text; color:transparent; }
+.ct-date { font-size:.74rem; color:var(--muted); text-transform:capitalize; }
+.ct-chrono { flex:0 0 auto; font-size:.86rem; font-weight:800; color:var(--brass-soft); font-variant-numeric:tabular-nums; }
+.ct-chrono[hidden] { display:none; }
+
+.ct-strip { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
+.chip { font-size:.74rem; color:var(--muted); background:rgba(0,0,0,.28); border:1px solid var(--line);
+    border-radius:999px; padding:4px 11px; }
+.chip[hidden] { display:none; }
+.chip b { color:var(--brass-soft); }
+
+.ct-start { display:grid; place-items:center; padding:28px 0; }
+.ct-start[hidden] { display:none; }
+.ct-start-box { text-align:center; max-width:340px; }
+.ct-start-emoji { font-size:2.8rem; margin-bottom:10px; }
+.ct-start-txt { font-size:.86rem; color:var(--muted); line-height:1.55; margin:0 0 10px; }
+.ct-start-txt b { color:var(--parchment); }
+.ct-start-astuce { font-size:.8rem; line-height:1.5; margin:0 0 18px; padding:9px 12px;
+    border-radius:10px; background:rgba(217,169,78,.1); border:1px solid var(--line); }
+
+.ct-jeu[hidden] { display:none; }
+/* La consigne : c'est l'énoncé du jour, il doit se lire sans chercher. */
+.ct-consigne { margin:0; text-align:center; font-size:.9rem; color:var(--muted); }
+.ct-consigne b { display:block; font-size:1.5rem; font-weight:800; color:var(--brass-soft); line-height:1.3; }
+
+/* ---------- La carte ---------- */
+.ct-carte-box { border-radius:14px; overflow:hidden; background:rgba(0,0,0,.25);
+    border:1px solid var(--line); }
+#ct-svg { display:block; width:100%; height:auto; touch-action:manipulation; }
+#ct-pays path { fill:#2b2318; stroke:rgba(217,169,78,.35); stroke-width:.4;
+    transition:fill .25s; cursor:pointer; }
+/* Le pays visé, pas encore validé : il s'allume, et c'est ce qui dit au
+   joueur ce qu'il s'apprête à montrer. */
+#ct-pays path.vise { fill:var(--brass); stroke:var(--brass-soft); stroke-width:.8; }
+#ct-pays path.rate { fill:#5a3a30; }
+#ct-pays path.trouve, #ct-pays path.reponse { fill:var(--good); stroke:#8fd0a8; stroke-width:.8; }
+/* ⚠️ Les marques ne reçoivent pas les clics : elles sont posées SUR les
+   pays, et sans ça elles bloqueraient le prochain geste à cet endroit. */
+#ct-marques { pointer-events:none; }
+.ct-marque circle { fill:rgba(20,16,11,.82); stroke:var(--brass); stroke-width:1; }
+.ct-marque .ct-m-fleche { fill:var(--brass-soft); }
+.ct-marque .ct-m-ico { fill:var(--good); font-size:9px; text-anchor:middle; font-weight:700; }
+.ct-marque.juste circle { stroke:var(--good); }
+
+/* ---------- Viser puis valider ---------- */
+.ct-vise { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:12px;
+    background:rgba(217,169,78,.12); border:1px solid var(--line); }
+.ct-vise[hidden] { display:none; }
+.ct-vise-nom { flex:1; min-width:0; font-weight:800; font-size:.95rem;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ct-restants { text-align:center; font-size:.74rem; color:var(--muted); margin:0; min-height:1em; }
+
+/* ---------- Les essais, en liste ---------- */
+.ct-essais { display:flex; flex-direction:column; gap:5px; }
+.ct-essai { display:flex; align-items:center; gap:10px; padding:7px 11px; border-radius:10px;
+    background:rgba(0,0,0,.22); border:1px solid var(--line); font-size:.84rem; }
+.ct-essai.juste { border-color:var(--good); background:rgba(90,168,122,.12); }
+.ct-e-nom { flex:1; min-width:0; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ct-e-cap { flex:0 0 auto; font-size:.74rem; font-weight:700; color:var(--brass-soft); white-space:nowrap; }
+.ct-e-cap i { font-style:normal; margin-right:5px; }
+
+/* ---------- La rose des vents ----------
+   ⚠️ L'état sûr est l'état VISIBLE : le voile n'a pas d'animation d'entrée
+   sur son opacité, seule la carte monte. Une transition partant d'une
+   opacité nulle ne progresse pas tant que la page n'est pas peinte — et on
+   se retrouverait avec un bloqueur plein écran invisible. Même leçon que
+   plouf.js. */
+.ct-rose { position:fixed; inset:0; z-index:1100; display:grid; place-items:center;
+    background:rgba(10,8,5,.82); backdrop-filter:blur(3px); }
+.ct-rose[hidden] { display:none; }
+.ct-rose-carte { text-align:center; animation:ctRose .3s ease both; }
+@keyframes ctRose { from { transform:scale(.94); } }
+.ct-rose-svg { width:min(62vw,230px); height:auto; }
+.ct-rose-fond { fill:rgba(20,16,11,.9); stroke:var(--brass); stroke-width:1.5; }
+.ct-rose-grads line { stroke:rgba(217,169,78,.45); stroke-width:.8; }
+.ct-rose-grads line.gros { stroke:var(--brass); stroke-width:1.6; }
+.ct-rose-n { fill:var(--brass); font-size:9px; font-weight:800; text-anchor:middle; }
+.ct-rose-aiguille { transform-origin:50px 50px; }
+.ct-rose-aiguille polygon { fill:var(--bad); }
+.ct-rose-aiguille polygon.queue { fill:rgba(239,228,207,.55); }
+.ct-rose-axe { fill:var(--brass-soft); }
+.ct-rose-mot { margin:12px 0 0; font-size:1.5rem; font-weight:800; color:var(--brass-soft); letter-spacing:1px; }
+.ct-rose-depuis { margin:2px 0 0; font-size:.8rem; color:var(--muted); }
+
+/* ---------- La fin ---------- */
+.ct-fin-emoji { font-size:2.4rem; margin:0 0 4px; text-align:center; }
+.ct-reponse { display:grid; place-items:center; gap:2px; margin:6px 0 10px; }
+.ct-rep-nom { margin:0; font-size:1.3rem; font-weight:800; color:var(--brass-soft); }
+.ct-rep-region { margin:0; font-size:.76rem; color:var(--muted); }
+
+.ct-board { display:flex; flex-direction:column; gap:3px; margin-top:10px; }
+.ct-board-titre { margin:10px 0 2px; font-size:.64rem; text-transform:uppercase; letter-spacing:.9px;
+    color:var(--muted); text-align:center; }
+.ct-board-row { display:grid; grid-template-columns:24px 22px 1fr auto auto; gap:8px; align-items:center;
+    width:100%; padding:7px 10px; border-radius:10px; background:rgba(0,0,0,.22);
+    border:1px solid transparent; color:inherit; font-family:inherit; font-size:.8rem; cursor:pointer; text-align:left; }
+.ct-board-row.moi { border-color:var(--brass); background:rgba(217,169,78,.1); }
+.ct-b-rang { text-align:center; }
+.ct-b-nom { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ct-b-essais { color:var(--brass-soft); font-weight:800; font-variant-numeric:tabular-nums; }
+.ct-b-temps { color:var(--muted); font-size:.7rem; font-variant-numeric:tabular-nums; }

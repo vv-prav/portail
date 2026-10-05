@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, interactive-widget=overlays-content">
+    <meta name="theme-color" content="#14100b">
+    <title>La carte</title>
+    <link rel="icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="stylesheet" href="/design-system.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="is-boot">
+    <div class="ct">
+        <header class="ct-head">
+            <a class="ds-icon-btn" href="/" aria-label="Retour au salon">←</a>
+            <div class="ct-titles">
+                <h1 class="ct-title">La carte</h1>
+                <span class="ct-date" id="ct-date"></span>
+            </div>
+            <span class="ct-chrono" id="ct-chrono" hidden>0:00</span>
+        </header>
+
+        <div class="ct-strip">
+            <span class="chip" id="ct-serie" hidden>🔥 <b>0</b></span>
+            <span class="chip" id="ct-next">🕛 —</span>
+            <span class="chip" id="ct-archive-chip" hidden>📅 Archive</span>
+        </div>
+
+        <!-- L'ÉCRAN D'ENTRÉE -->
+        <div class="ct-start" id="ct-start">
+            <div class="ct-start-box">
+                <div class="ct-start-emoji">🗺️</div>
+                <p class="ct-start-txt">Un pays à montrer sur la carte, en six essais. Chaque erreur ne te donne qu'une chose : <b>la direction</b> du pays cherché.</p>
+                <p class="ct-start-astuce">Deux directions suffisent à le cerner : c'est à l'intersection des deux caps qu'il se trouve.</p>
+                <button class="ds-btn" id="ct-start-btn" type="button">Commencer</button>
+            </div>
+        </div>
+
+        <!-- LA MANCHE -->
+        <section class="ct-jeu" id="ct-jeu" hidden>
+            <p class="ct-consigne">Montre <b id="ct-cherche">—</b></p>
+
+            <!-- La carte. Le SVG est construit par app.js depuis monde.js. -->
+            <div class="ct-carte-box" id="ct-carte-box"></div>
+
+            <!-- Le pays visé et sa confirmation. ⚠️ Deux temps : viser puis
+                 valider. Un doigt qui glisse ne doit pas coûter un essai. -->
+            <div class="ct-vise" id="ct-vise" hidden>
+                <span class="ct-vise-nom" id="ct-vise-nom">—</span>
+                <button class="ds-btn small" id="ct-valider" type="button">C'est là</button>
+            </div>
+            <p class="ct-restants" id="ct-restants"></p>
+
+            <div class="ct-essais" id="ct-essais"></div>
+        </section>
+    </div>
+
+    <!-- LA ROSE DES VENTS — l'aiguille tourne et s'arrête sur le cap. -->
+    <div class="ct-rose" id="ct-rose" hidden aria-hidden="true">
+        <div class="ct-rose-carte">
+            <svg class="ct-rose-svg" viewBox="0 0 100 100" aria-hidden="true">
+                <circle class="ct-rose-fond" cx="50" cy="50" r="46"/>
+                <g class="ct-rose-grads" id="ct-rose-grads"></g>
+                <g class="ct-rose-aiguille" id="ct-rose-aiguille">
+                    <polygon points="50,10 56,52 50,46 44,52"/>
+                    <polygon class="queue" points="50,90 44,48 50,54 56,48"/>
+                </g>
+                <circle class="ct-rose-axe" cx="50" cy="50" r="4"/>
+            </svg>
+            <p class="ct-rose-mot" id="ct-rose-mot">—</p>
+            <p class="ct-rose-depuis" id="ct-rose-depuis">—</p>
+        </div>
+    </div>
+
+    <!-- FIN DE MANCHE -->
+    <div class="ds-overlay" id="ct-fin" hidden>
+        <div class="ds-card tall">
+            <button type="button" class="ds-card-close" id="ct-fin-close" aria-label="Fermer">✕</button>
+            <p class="ct-fin-emoji" id="ct-fin-emoji">🎉</p>
+            <h2 class="ds-card-title" id="ct-fin-titre">—</h2>
+            <div class="ct-reponse" id="ct-reponse"></div>
+            <p class="ds-card-text" id="ct-fin-texte"></p>
+            <button class="ds-btn ghost" id="ct-partage" type="button">Partager mon résultat</button>
+            <div class="ct-board" id="ct-board"></div>
+        </div>
+    </div>
+
+    <script src="monde.js"></script>
+    <script src="/profile-viewer.js"></script>
+    <script src="/design-system.js"></script>
+    <script src="/enchainement.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

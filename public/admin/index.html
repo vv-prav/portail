@@ -35,6 +35,7 @@
             <button class="ad-tile" data-tab="motlong" type="button"><span class="ad-tile-emoji">🔤</span><span>Mot le plus long</span></button>
             <button class="ad-tile" data-tab="sudoku" type="button"><span class="ad-tile-emoji">🧮</span><span>Sudoku</span></button>
             <button class="ad-tile" data-tab="capitales" type="button"><span class="ad-tile-emoji">🏙️</span><span>Capitales</span></button>
+            <button class="ad-tile" data-tab="carte" type="button"><span class="ad-tile-emoji">🗺️</span><span>La carte</span></button>
             <button class="ad-tile" data-tab="dict" type="button"><span class="ad-tile-emoji">📖</span><span>Dictionnaire</span></button>
             <button class="ad-tile" data-tab="titres" type="button"><span class="ad-tile-emoji">🏅</span><span>Titres</span></button>
             <button class="ad-tile" data-tab="classement" type="button"><span class="ad-tile-emoji">🏆</span><span>Classement</span></button>
@@ -330,6 +331,16 @@
                 <div id="cap-box"></div>
                 <div id="cap-board"></div>
                 <button class="mini danger wide" id="cap-regen" type="button">Tirer une autre capitale</button>
+            </div>
+        </section>
+
+        <section class="pane" id="pane-carte" hidden>
+            <div class="card">
+                <h2 class="card-title">Le pays du jour</h2>
+                <input class="ds-input" id="car-date" type="date" aria-label="Date du pays">
+                <div id="car-box"></div>
+                <div id="car-board"></div>
+                <button class="mini danger wide" id="car-regen" type="button">Tirer un autre pays</button>
             </div>
         </section>
 

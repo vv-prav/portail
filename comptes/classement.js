@@ -99,6 +99,13 @@ const JEUX_DU_JOUR = [
         ditImpeccable: 'trouvée en trois essais ou moins',
     },
     {
+        id: 'carte', nom: 'La carte', emoji: '🗺️',
+        reussi: (v) => !!v.trouve,
+        impeccable: (v) => !!v.trouve && (v.essais || []).length <= 2,
+        ditReussi: 'le pays situé sur la carte',
+        ditImpeccable: 'situé en deux essais ou moins',
+    },
+    {
         id: 'sudoku', nom: 'Sudoku', emoji: '🧮',
         reussi: (v) => !!v.trouve,
         impeccable: (v) => !!v.trouve && v.ms != null && v.ms < 10 * 60 * 1000,

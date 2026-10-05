@@ -39,7 +39,7 @@ const PREFIXES_BRUTS = [
     // Géographie sous l'ancien nom.
     'chiffres:prog', 'chiffres:days', 'geo:prog', 'geo:days',
     'sudoku:prog', 'sudoku:days', 'motlong:prog', 'motlong:days',
-    'capitales:prog', 'capitales:days',
+    'capitales:prog', 'capitales:days', 'carte:prog', 'carte:days',
     'motusparty:stats',
     // ⚠️ Les fiches des jeux multijoueurs arrivés après ce module : un joueur
     // renommé perdait ses statistiques du Quiz, de l'Infiltré, du Perudo et
@@ -50,7 +50,7 @@ const PREFIXES_BRUTS = [
 const PREFIXES_NORMALISES = ['yams:stats', 'pbac:stats'];
 
 // Familles dont la valeur est une liste d'entrées portant un champ `u`.
-const VALEURS_AVEC_U = /^(motus|mf|chiffres|geo|sudoku|motlong|capitales):(board|cmt):/;
+const VALEURS_AVEC_U = /^(motus|mf|chiffres|geo|sudoku|motlong|capitales|carte):(board|cmt):/;
 // Listes d'index : de simples tableaux de pseudos bruts.
 // ⚠️ Tous les index, pas seulement ceux du Yams et du Petit Bac : un joueur
 // renommé disparaissait des classements du Quiz, de l'Infiltré, du Perudo.

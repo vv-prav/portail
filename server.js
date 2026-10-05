@@ -539,7 +539,8 @@ function mfPurge() {
         } else if ((parts[0] === 'chiffres' && parts[1] === 'donne')
                 || (parts[0] === 'sudoku' && parts[1] === 'grille')
                 || (parts[0] === 'motlong' && parts[1] === 'tirage')
-                || (parts[0] === 'capitales' && parts[1] === 'ville')) {
+                || (parts[0] === 'capitales' && parts[1] === 'ville')
+                || (parts[0] === 'carte' && parts[1] === 'pays')) {
             // Le contenu du jour des jeux tirés de la date : gardé aussi
             // longtemps que les mots du Motus, pour la rotation.
             date = parts[2]; limit = limitMotusWord;
@@ -1248,6 +1249,7 @@ const geoApi = require('./geo/routes')(app, depsDuJour);
 const sudokuApi = require('./sudoku/routes')(app, depsDuJour);
 const motlongApi = require('./motlong/routes')(app, depsDuJour);
 const capitalesApi = require('./capitales/routes')(app, depsDuJour);
+const carteApi = require('./carte/routes')(app, depsDuJour);
 
 // Les noms dont se sert le reste du fichier, inchangés.
 const mChiffres = chiffresApi.moteur, chiffresDonne = chiffresApi.donne, kChiffresDonne = chiffresApi.kDonne, chiffresJeu = chiffresApi.jeu;
@@ -1255,6 +1257,7 @@ const mGeo = geoApi.moteur, geoDuJour = geoApi.duJour, kGeoPays = geoApi.kPays, 
 const mSudoku = sudokuApi.moteur, sudokuDuJour = sudokuApi.duJour, kSudokuGrille = sudokuApi.kGrille;
 const mMotlong = motlongApi.moteur, motlongDuJour = motlongApi.duJour, kMotlongTirage = motlongApi.kTirage;
 const mCapitales = capitalesApi.moteur, capitaleDuJour = capitalesApi.duJour, kCapitaleVille = capitalesApi.kVille, capJeu = capitalesApi.jeu;
+const mCarte = carteApi.moteur, cartePaysDuJour = carteApi.duJour, kCartePays = carteApi.kPays, carteJeu = carteApi.jeu;
 
 // ---------------------------------------------------------------------
 //  PERUDO — jeu temps réel, intégré au monolithe sous /perudo.
@@ -1770,6 +1773,7 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
     const sdProg = mSudoku.progression(user, today);
     const mlProg = mMotlong.progression(user, today);
     const cpProg = mCapitales.progression(user, today);
+    const caProg = mCarte.progression(user, today);
     // ⚠️ Les trois modes séparément, pas seulement leur compte : le salon en
     // fait trois cartes distinctes, parce que ce sont trois manches distinctes
     // avec chacune son classement. « 1/3 » ne disait pas laquelle restait.
@@ -1873,6 +1877,12 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
             over: !!(cpProg && cpProg.fini),
             solvers: mCapitales.classement(today).filter(e => e.trouve).length,
             streak: mCapitales.serie(user).encours,
+        },
+        carte: {
+            done: !!(caProg && caProg.fini && caProg.trouve),
+            over: !!(caProg && caProg.fini),
+            solvers: mCarte.classement(today).filter(e => e.trouve).length,
+            streak: mCarte.serie(user).encours,
         },
         pbac: { online: pbacOnline, names: pbacNames },
         undercover: { online: undercoverOnlineCount, names: undercoverNames },
@@ -2073,6 +2083,32 @@ function portraitJoueur(pseudo) {
                 ['Meilleure manche', cp.meilleur ? cp.meilleur + ' essai' + (cp.meilleur > 1 ? 's' : '') : null],
                 ['Meilleur temps', mmss(cp.meilleurTemps != null ? Math.round(cp.meilleurTemps / 1000) : null)],
                 ['Série en cours', mCapitales.serie(pseudo).encours || null],
+            ]);
+    }
+
+    // La carte : montrer un pays du doigt, ce n'est pas le même talent que
+    // le nommer — la fiche le dit à part de la Géographie.
+    const ca = { parties: 0, trouves: 0, totalEssais: 0, meilleur: null, premierCoup: 0 };
+    for (const [k, v] of Object.entries(mfCache)) {
+        if (!k.startsWith(`carte:prog:${pseudo}:`) || !v || !v.fini) continue;
+        ca.parties++;
+        if (v.trouve) {
+            ca.trouves++;
+            const n = (v.essais || []).length;
+            ca.totalEssais += n;
+            if (n === 1) ca.premierCoup++;
+            if (ca.meilleur === null || n < ca.meilleur) ca.meilleur = n;
+        }
+    }
+    if (ca.parties) {
+        ajoute('carte', 'La carte', '🗺️', ca.parties,
+            ca.trouves + ' pays situé' + (ca.trouves > 1 ? 's' : ''), [
+                ['Manches jouées', ca.parties],
+                ['Pays situés', ca.trouves || null],
+                ['Réussite', ca.parties ? Math.round(ca.trouves / ca.parties * 100) + ' %' : null],
+                ['Essais moyens', ca.trouves ? (ca.totalEssais / ca.trouves).toFixed(1) : null],
+                ['Du premier coup', ca.premierCoup || null],
+                ['Série en cours', mCarte.serie(pseudo).encours || null],
             ]);
     }
 
@@ -2307,7 +2343,7 @@ function calendrierActivite(pseudo, nbJours) {
 // jours au Compte est bon ou à la Géographie n'entretenait aucune série.
 // `PREFIXES_DU_JOUR` est désormais la seule liste — un jeu du jour ajouté
 // demain y prend une ligne, et les trois calculs le voient.
-const PREFIXES_DU_JOUR = ['motus', 'mf', 'chiffres', 'geo', 'sudoku', 'motlong', 'capitales'];
+const PREFIXES_DU_JOUR = ['motus', 'mf', 'chiffres', 'geo', 'sudoku', 'motlong', 'capitales', 'carte'];
 function serieDuSalon(pseudo) {
     return Math.max(0, ...PREFIXES_DU_JOUR.map(app => serieDepuisJours(mfGet(`${app}:days:${pseudo}`))));
 }
@@ -2726,6 +2762,17 @@ app.get('/api/salon/resultats-du-jour', requireAuthApi, (req, res) => {
             : [],
     });
 
+    const caProgJour = mCarte.progression(user, date);
+    const caFini = !!(caProgJour && caProgJour.fini);
+    jeux.push({
+        id: 'carte', nom: 'La carte', emoji: '🗺️', accent: '#4f9a8f', href: '/carte',
+        joue: caFini,
+        mot: caFini ? cartePaysDuJour(date).nom : null,
+        classement: caFini
+            ? mCarte.classement(date).map(e => ({ pseudo: e.u, detail: e.trouve ? e.essais + '/6' : 'non situé' }))
+            : [],
+    });
+
     for (const j of jeux) {
         j.maPlace = j.classement.findIndex(e => e.pseudo === user) + 1 || null;
         j.classement = j.classement.slice(0, 12);
@@ -2955,6 +3002,7 @@ app.get('/api/salon/mystats-summary', requireAuthApi, (req, res) => {
         if (mfGet(`sudoku:prog:${pseudo}:${d}`)) weekCount++;
         if (mfGet(`motlong:prog:${pseudo}:${d}`)) weekCount++;
         if (mfGet(`capitales:prog:${pseudo}:${d}`)) weekCount++;
+        if (mfGet(`carte:prog:${pseudo}:${d}`)) weekCount++;
     }
     // "Jeu le plus joué" compare les totaux cumulés de chaque jeu entre eux.
     const totals = [];
@@ -2983,6 +3031,8 @@ app.get('/api/salon/mystats-summary', requireAuthApi, (req, res) => {
     if (mlJours) totals.push(['Le mot le plus long', mlJours]);
     const cpJours = Object.keys(mfCache).filter(k => k.startsWith(`capitales:prog:${pseudo}:`) && mfCache[k] && mfCache[k].fini).length;
     if (cpJours) totals.push(['Les capitales', cpJours]);
+    const caJours = Object.keys(mfCache).filter(k => k.startsWith(`carte:prog:${pseudo}:`) && mfCache[k] && mfCache[k].fini).length;
+    if (caJours) totals.push(['La carte', caJours]);
     totals.sort((a, b) => b[1] - a[1]);
     res.json({ weekCount, favoriteGame: totals.length ? totals[0][0] : null });
 });
@@ -3155,6 +3205,7 @@ require('./admin/routes')(app, {
     sudoku: { moteur: mSudoku, duJour: sudokuDuJour, kGrille: kSudokuGrille },
     motlong: { moteur: mMotlong, duJour: motlongDuJour, kTirage: kMotlongTirage },
     capitales: { moteur: mCapitales, duJour: capitaleDuJour, kVille: kCapitaleVille, jeu: capJeu },
+    carte: { moteur: mCarte, duJour: cartePaysDuJour, kPays: kCartePays, jeu: carteJeu },
     motusparty: () => motusPartyApi,
     // Les tables de tous les jeux, sous la forme unique du hall : l'onglet
     // Parties de l'admin lisait chaque module à sa façon, et une exception

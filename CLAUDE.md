@@ -92,6 +92,8 @@ portail/
 ├── sudoku/{jeu,routes}.js     ← générateur, solveur, vérification
 ├── chiffres/{jeu,routes}.js   ← Le compte est bon
 ├── capitales/{jeu,villes,routes}.js ← Les capitales ; villes.js est GÉNÉRÉ
+├── carte/{jeu,centres,routes}.js ← La carte ; centres.js est GÉNÉRÉ
+├── scripts/genere-carte.js    ← régénère la carte du monde et ses centres
 ├── scripts/genere-capitales.js ← régénère capitales/villes.js depuis Wikidata
 ├── geo/{jeu,pays,routes}.js   ← la Géographie et ses trois modes
 ├── quotidien/moteur.js        ← le moteur commun des jeux du jour récents
@@ -164,8 +166,27 @@ Chaque mini-app suit le même schéma : `public/<app>/index.html` + `app.js` + `
 | **Le compte est bon** (`/chiffres`) | Six nombres, une cible, les quatre opérations — ni négatif ni fraction. **Aucun contenu à écrire** : la donne est tirée de la date, et un solveur exhaustif (`chiffres/jeu.js`) garantit que la cible est atteignable avant de la proposer. La solution affichée à la fin est la **plus courte**, obtenue par approfondissement progressif : sans ça la mémoïsation laissait passer un chemin qui repassait par 23 850 pour retomber sur 952, juste mais illisible. Le serveur rejoue les étapes au lieu de croire le total annoncé. Le chronomètre part au clic sur « Commencer ». |
 | **Le mot le plus long** (`/motlong`) | Neuf lettres, six propositions, le score est la longueur du plus long mot valable. Voir la section dédiée. |
 | **Sudoku** (`/sudoku`) | Une grille par jour, solution unique, résoluble sans deviner. Voir la section dédiée. |
+| **La carte** (`/carte`) | Un pays à montrer du doigt sur une carte du monde, en six essais. Une erreur ne donne **que la direction** — une rose des vents qui s'arrête sur le cap. Voir la section dédiée. |
 | **Les capitales** (`/capitales`) | Deviner la capitale du jour en six essais. Chaque proposition donne cinq comparaisons — devise, langue, distance, direction, population — en vert/orange/rouge. Voir la section dédiée. |
 | **Géographie** (`/geo`) | **Trois modes** dans un seul jeu du jour : **Le pays** (silhouette), **Le drapeau**, et **Le voyage** (voir la section dédiée, sa mécanique est différente). Les deux premiers : Même mécanique dans les deux — six essais, et chaque proposition donne distance, direction et proximité, ce qui rend un pays méconnu trouvable par triangulation plutôt qu'au hasard, et rend surtout le mode Drapeau jouable. Les drapeaux sont des **emoji** : aucun fichier à servir, aucun droit à vérifier, et un rendu net sur téléphone. Voir la section dédiée pour la base de pays. |
+
+### La carte (`carte/`) — montrer un pays du doigt
+
+Un nom est donné, on le cherche sur une carte du monde. Une erreur ne renvoie **que la direction**, montrée par une rose des vents dont l'aiguille tourne et s'arrête sur le cap. Pas de distance : deux relèvements se croisent sur la réponse, ce qui fait un puzzle plutôt qu'un chaud-froid.
+
+⚠️ **Ce jeu ne ressemble au mode « Le pays » de la Géographie qu'en surface.** Là-bas on écrit un nom et on reçoit une distance ; ici on montre un endroit et on reçoit un cap. L'un teste ce qu'on sait **nommer**, l'autre ce qu'on sait **situer** — et ce n'est pas le même talent.
+
+**Trois décisions d'interface, toutes prises sur des mesures :**
+
+1. ⚠️ **On vise le centre le plus proche du doigt, jamais l'intérieur du tracé.** Mesuré : sur un écran de 375 px, carte entière affichée, **2 pays sur 211** atteignent la cible tactile de 44 × 44 px. La France fait 9 px de côté, la Belgique 2, le Rwanda 2. Tester si le doigt est *dans* le pays rendrait la moitié du monde impossible à désigner. Vérifié après coup : un doigt posé à côté de la Belgique sélectionne bien la Belgique.
+2. **Viser, puis valider.** Le pays visé s'allume et son nom s'affiche ; un second geste confirme. Sans ça, un doigt qui glisse coûterait un essai sur six.
+3. **La carte garde la mémoire** : chaque pays montré reste coloré avec sa flèche dessus. C'est ce qui permet de trianguler, et c'est tout le jeu puisqu'il n'y a pas de distance.
+
+⚠️⚠️ **Le cap est calculé SUR LA CARTE, pas sur le globe**, et c'est la décision la moins intuitive du jeu. Le cap orthodromique — le vrai, celui d'une boussole — répond « NORD » pour aller de la France aux Samoa, puisque le plus court chemin passe par le pôle. C'est exact, et c'était inutilisable : le joueur a une carte plate sous les yeux et les Samoa sont tout à l'ouest. La première version faisait exactement cette erreur, et la flèche envoyait vers l'Arctique. L'angle se mesure donc entre les deux pays **dans le repère de la carte** (`carte/centres.js`, généré avec elle). Conséquence assumée : « Japon → États-Unis » dit OUEST, parce que c'est à gauche sur cette carte.
+
+**Les données** : `public/carte/monde.js` (151 Ko, ~48 Ko compressés) est le **seul fichier de données du salon envoyé au navigateur** — le jeu consiste à montrer la carte, elle ne peut pas rester sur le serveur. Généré par `scripts/genere-carte.js` depuis Natural Earth 1:50m, en projection **Natural Earth** : ni Mercator (le Groenland y ferait la taille de l'Afrique, on cliquerait sur un mensonge), ni une équivalente brute (les pôles y sont étirés au point qu'on ne reconnaît plus rien). Simplification 0,1 et coordonnées arrondies au dixième de pixel : 1 079 Ko → 151 Ko sans perte visible.
+
+⚠️ **Le centre d'un pays vient de `geo/pays.js`, pas du centroïde de son tracé.** Le tracé inclut les morceaux lointains : le centroïde de la France tombe dans l'Atlantique à cause de la Guyane, celui des États-Unis part vers l'Alaska. C'est le piège déjà réglé une fois pour `geo/pays.js` — on reprend son résultat au lieu de le redécouvrir. Constaté en testant : un doigt posé sur la France sélectionnait l'Espagne.
 
 ### Les capitales (`capitales/`) — le jeu, et d'où viennent ses données
 
@@ -545,7 +566,7 @@ Liste à parcourir pour **tout** nouveau jeu :
 
 Dernier passage en date : **les défis** ont été branchés sur la carte du profil, le résumé, le classement (toutes périodes) et deux titres (`releve`, `lancegants`). Ils n'apparaissent ni dans les résultats du jour (ils ne sont pas quotidiens) ni dans `MODULES_JEUX` (ils n'ont ni socket ni table).
 
-Et pour un jeu du jour, ne pas oublier non plus le panneau « Aujourd'hui » (`JEUX_DU_JOUR` dans `public/app.js` + le pouls), `public/enchainement.js`, le préchargement du service worker, la purge de son contenu daté (`mfPurge`), et son panneau d'admin (tuile, onglet, routes `day`/`regen`/`board`). Dernier passage : **Les capitales**, branchées aux neuf endroits ci-dessus, plus le panneau « Aujourd'hui », l'enchaînement, le préchargement du service worker, `mfPurge` et son onglet d'admin (contenu du jour, statistiques observées, modération du classement, régénération).
+Et pour un jeu du jour, ne pas oublier non plus le panneau « Aujourd'hui » (`JEUX_DU_JOUR` dans `public/app.js` + le pouls), `public/enchainement.js`, le préchargement du service worker, la purge de son contenu daté (`mfPurge`), et son panneau d'admin (tuile, onglet, routes `day`/`regen`/`board`). Dernier passage : **Les capitales** puis **La carte**, branchées aux neuf endroits ci-dessus, plus le panneau « Aujourd'hui », l'enchaînement, le préchargement du service worker, `mfPurge` et son onglet d'admin (contenu du jour, statistiques observées, modération du classement, régénération).
 
 ## Le classement du Salon — la V2 des points
 

@@ -37,7 +37,7 @@ function fmtDur(sec) {
 
 // ---------- Onglets ----------
 function switchTab(tab) {
-    ['home', 'accounts', 'parties', 'perudo', 'grids', 'motus', 'chiffres', 'geo', 'motlong', 'sudoku', 'dict', 'titres', 'capitales', 'classement', 'sante', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== tab); });
+    ['home', 'accounts', 'parties', 'perudo', 'grids', 'motus', 'chiffres', 'geo', 'motlong', 'sudoku', 'dict', 'titres', 'capitales', 'carte', 'classement', 'sante', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== tab); });
     document.querySelectorAll('.ad-tile').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
     if (tab === 'home') { loadOverview(); loadDemandes(); }
     if (tab === 'accounts') { loadAccounts(); loadDemandes(); }
@@ -50,6 +50,7 @@ function switchTab(tab) {
     if (tab === 'motlong') loadMotlong();
     if (tab === 'sudoku') loadSudoku();
     if (tab === 'capitales') loadCapitales();
+    if (tab === 'carte') loadCarte();
     if (tab === 'dict') { loadDictStats(); loadDict(); }
     if (tab === 'titres') loadTitres();
     if (tab === 'classement') loadClassement();
@@ -1176,6 +1177,37 @@ $('sd-regen').addEventListener('click', () => {
             if (!ok) return toast((data && data.error) || 'Le tirage a échoué.');
             toast(`Nouvelle grille : ${data.indices} indices.`);
             loadSudokuJour();
+        } }]);
+});
+
+// =====================================================================
+//  LA CARTE
+// =====================================================================
+async function loadCarte() {
+    if (!$('car-date').value) $('car-date').value = dateDuSalon();
+    loadCarteJour();
+}
+$('car-date').addEventListener('change', loadCarteJour);
+async function loadCarteJour() {
+    const date = $('car-date').value;
+    const { data } = await api('/api/admin/carte/day?date=' + encodeURIComponent(date));
+    if (!data) return;
+    $('car-box').innerHTML = `
+        <div class="kv-row"><span>Pays à situer</span><b>${esc(data.pays)}</b></div>
+        <div class="kv-row"><span>Région</span><b>${esc(data.region || '—')}</b></div>
+        <div class="kv-row"><span>Manches</span><b>${data.joues} terminées · ${data.trouves} situées${data.essaisMoyens != null ? ' · ' + data.essaisMoyens + ' essais en moyenne' : ''}</b></div>`;
+    boardAdmin('car-board', 'carte', date, data.classement || [],
+        e => (e.trouve ? e.essais + '/6 · ' + minSec(e.ms) : 'non situé'), loadCarteJour);
+}
+$('car-regen').addEventListener('click', () => {
+    const date = $('car-date').value;
+    ask('♻️', 'Tirer un autre pays ?',
+        `Un autre pays sera tiré pour le ${date}. Les manches de ce jour-là et le classement seront effacés.`, [
+        { label: 'Tirer un autre pays', danger: true, run: async () => {
+            const { ok, data } = await api('/api/admin/carte/regen', { date });
+            if (!ok) return toast((data && data.error) || 'Le tirage a échoué.');
+            toast(`Nouveau pays : ${data.pays}.`);
+            loadCarteJour();
         } }]);
 });
 

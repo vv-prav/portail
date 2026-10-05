@@ -38,7 +38,7 @@ const TITRES = [
     { id: 'curieux', nom: 'Curieux', emoji: '🧭', rarete: 'commun',
       desc: 'A essayé au moins trois jeux du jour différents.',
       obtenu: (s) => [s.motusJours, s.mfJours, s.chiffresJours, s.geoJours, s.sudokuJours, s.motlongJours,
-                      s.capitalesJours].filter(n => n > 0).length >= 3 },
+                      s.capitalesJours, s.carteJours].filter(n => n > 0).length >= 3 },
     { id: 'causant', nom: 'Causant', emoji: '💬', rarete: 'commun',
       desc: 'Dix messages dans les discussions du jour.',
       obtenu: (s) => s.messages >= 10 },
@@ -123,6 +123,9 @@ const TITRES = [
     { id: 'logicien', nom: 'Le logicien', emoji: '🧩', rarete: 'unique',
       desc: 'Le meilleur temps jamais réalisé sur le Sudoku du jour.',
       mesure: (s) => s.sudokuMeilleurTemps, ordre: 'min' },
+    { id: 'cartographe', nom: 'Le cartographe', emoji: '🗺️', rarete: 'unique',
+      desc: 'Le plus de pays situés du premier coup sur la carte.',
+      mesure: (s) => (s.carteDuPremierCoup > 0 ? s.carteDuPremierCoup : null), ordre: 'max' },
     { id: 'cosmopolite', nom: 'Le cosmopolite', emoji: '🏙️', rarete: 'unique',
       desc: 'Le plus de capitales trouvées en deux essais ou moins.',
       mesure: (s) => (s.capitalesEclairs > 0 ? s.capitalesEclairs : null), ordre: 'max' },
@@ -158,6 +161,7 @@ function statsParJoueur(cache, pseudos, series, points) {
             chiffresJours: 0, chiffresJustes: 0, geoJours: 0, geoTrouves: 0, voyagesParfaits: 0,
             sudokuJours: 0, sudokuMeilleurTemps: null, motlongJours: 0, motlongParfaits: 0,
             capitalesJours: 0, capitalesEclairs: 0, capitalesMeilleur: null,
+            carteJours: 0, carteDuPremierCoup: 0,
             pbacParties: 0, pbacMeilleureManche: 0,
             mpCourses: 0, perudoParties: 0, multiParties: 0,
             defisJoues: 0, defisGagnes: 0,
@@ -183,6 +187,7 @@ function statsParJoueur(cache, pseudos, series, points) {
             else if (seg[0] === 'sudoku') s.sudokuJours = n;
             else if (seg[0] === 'motlong') s.motlongJours = n;
             else if (seg[0] === 'capitales') s.capitalesJours = n;
+            else if (seg[0] === 'carte') s.carteJours = n;
             continue;
         }
         if (seg[0] === 'chiffres' && seg[1] === 'prog' && val && val.fini) {
@@ -206,6 +211,13 @@ function statsParJoueur(cache, pseudos, series, points) {
         }
         if (seg[0] === 'motlong' && seg[1] === 'prog' && val && val.fini) {
             const s = st.get(seg[2]); if (s && val.trouve) s.motlongParfaits++;
+            continue;
+        }
+        if (seg[0] === 'carte' && seg[1] === 'prog' && val && val.fini) {
+            const s = st.get(seg[2]);
+            // Situer un pays du PREMIER coup, sans aucune direction pour
+            // s'orienter : c'est qu'on savait, pas qu'on a cherché.
+            if (s && val.trouve && (val.essais || []).length === 1) s.carteDuPremierCoup++;
             continue;
         }
         if (seg[0] === 'capitales' && seg[1] === 'prog' && val && val.fini) {
@@ -293,12 +305,12 @@ function statsParJoueur(cache, pseudos, series, points) {
     for (const s of st.values()) {
         // Tous les jeux du jour comptent : « Nouveau venu » et « Habitué »
         // ignoraient le Compte est bon et la Géographie.
-        s.joursTotal = s.motusJours + s.mfJours + s.chiffresJours + s.geoJours + s.sudokuJours + s.motlongJours + s.capitalesJours;
+        s.joursTotal = s.motusJours + s.mfJours + s.chiffresJours + s.geoJours + s.sudokuJours + s.motlongJours + s.capitalesJours + s.carteJours;
         s.motusMoyenneEssais = s.motusTrouves ? Math.round((s.motusTotalEssais / s.motusTrouves) * 100) / 100 : null;
         s.multiParties = s.yamsParties + s.pbacParties + s.mpCourses + s.perudoParties;
         s.jeuxDifferents = [s.motusJours, s.mfJours, s.yamsParties, s.pbacParties, s.mpCourses, s.perudoParties,
             s.drapeauxParties, s.ucParties, s.chiffresJours, s.geoJours, s.sudokuJours, s.motlongJours,
-            s.capitalesJours, s.defisJoues]
+            s.capitalesJours, s.carteJours, s.defisJoues]
             .filter(n => n > 0).length;
         s.meilleureSerie = Math.max(s.meilleureSerie, s.serie);
     }

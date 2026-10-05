@@ -267,7 +267,7 @@ const TOUS_LES_JEUX = [
     { id: 'motus', nom: 'Motus' }, { id: 'mf', nom: 'Mots Fléchés' },
     { id: 'chiffres', nom: 'Le compte est bon' }, { id: 'geo', nom: 'Géographie' },
     { id: 'motlong', nom: 'Le mot le plus long' }, { id: 'sudoku', nom: 'Sudoku' },
-    { id: 'capitales', nom: 'Les capitales' },
+    { id: 'capitales', nom: 'Les capitales' }, { id: 'carte', nom: 'La carte' },
     { id: 'pbac', nom: 'Petit Bac' }, { id: 'undercover', nom: 'Infiltré' },
     { id: 'yams', nom: 'Yams' }, { id: 'motusparty', nom: 'Motus Party' },
     { id: 'drapeaux', nom: 'Quiz des drapeaux' }, { id: 'perudo', nom: 'Perudo' },
@@ -337,7 +337,7 @@ function renderRang(p) {
         <div class="pr-rank-pts"><b>${p.totalParties || 0}</b><span>parties tous jeux confondus</span></div>`;
     return true;
 }
-const NOM_JEU = { motus: 'Motus', mf: 'Mots Fléchés', chiffres: 'Le compte est bon', geo: 'Géographie', motlong: 'Le mot le plus long', sudoku: 'Sudoku', capitales: 'Les capitales' };
+const NOM_JEU = { motus: 'Motus', mf: 'Mots Fléchés', chiffres: 'Le compte est bon', geo: 'Géographie', motlong: 'Le mot le plus long', sudoku: 'Sudoku', capitales: 'Les capitales', carte: 'La carte' };
 function renderCalendrier(jours) {
     if (!Array.isArray(jours) || !jours.length) return false;
     $('pr-cal').innerHTML = jours.map(j => {
