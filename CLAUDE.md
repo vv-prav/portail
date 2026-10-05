@@ -92,6 +92,9 @@ portail/
 ├── sudoku/{jeu,routes}.js     ← générateur, solveur, vérification
 ├── chiffres/{jeu,routes}.js   ← Le compte est bon
 ├── capitales/{jeu,villes,routes}.js ← Les capitales ; villes.js est GÉNÉRÉ
+├── apprendre/routes.js       ← l'entraînement à la géographie
+├── geo/{savoir,exercices,regions}.js ← le modèle, les exercices, les leçons
+├── scripts/genere-regions.js  ← régénère geo/regions.js
 ├── chrono/{jeu,routes}.js     ← Le chrono : le temps à l'estime
 ├── geo/{commun,fiche,atlas,reservation}.js ← le socle des cinq jeux de géographie
 ├── carte/{jeu,centres,routes}.js ← La carte ; centres.js est GÉNÉRÉ
@@ -173,6 +176,31 @@ Chaque mini-app suit le même schéma : `public/<app>/index.html` + `app.js` + `
 | **La carte** (`/carte`) | Un pays à montrer du doigt sur une carte du monde, en six essais. Une erreur ne donne **que la direction** — une rose des vents qui s'arrête sur le cap. Voir la section dédiée. |
 | **Les capitales** (`/capitales`) | Deviner la capitale du jour en six essais. Chaque proposition donne cinq comparaisons — devise, langue, distance, direction, population — en vert/orange/rouge. Voir la section dédiée. |
 | **Géographie** (`/geo`) | **Trois modes** dans un seul jeu du jour : **Le pays** (silhouette), **Le drapeau**, et **Le voyage** (voir la section dédiée, sa mécanique est différente). Les deux premiers : Même mécanique dans les deux — six essais, et chaque proposition donne distance, direction et proximité, ce qui rend un pays méconnu trouvable par triangulation plutôt qu'au hasard, et rend surtout le mode Drapeau jouable. Les drapeaux sont des **emoji** : aucun fichier à servir, aucun droit à vérifier, et un rendu net sur téléphone. Voir la section dédiée pour la base de pays. |
+
+### Apprendre la géographie (`/apprendre`) — l'entraînement
+
+Cinq des onze jeux du jour sont de la géographie. Ils mettent à l'épreuve ; ils n'apprennent rien. Cette page est l'autre moitié.
+
+⚠️ **AUCUN point, AUCUN classement, AUCUNE série à tenir, aucune limite.** Ce n'est pas une coquetterie : dès qu'il y a un classement, on cesse de se tromper — et on cesse d'apprendre. Les cinq jeux sont l'épreuve, ceci est l'entraînement. C'est aussi pourquoi l'apprentissage est une **tuile** et non une carte du panneau « Aujourd'hui » : là-bas, il deviendrait une obligation de plus.
+
+**Les cinq ponts d'un même savoir.** On ne « sait » pas un pays, on sait des ponts entre cinq formes : *le nom ↔ la silhouette ↔ le drapeau ↔ la position ↔ la capitale*. Chaque jeu du jour n'en teste qu'un (Le pays fait silhouette → nom, La carte nom → position). `geo/exercices.js` les entraîne tous les cinq, et c'est ce qui relie les jeux au lieu de les juxtaposer. ⚠️ Comme au quiz des drapeaux, **ce sont les mauvaises réponses qui font l'exercice** : les leurres viennent d'abord des pays **voisins**, puis de la même sous-région.
+
+**Le moteur : la répétition espacée** (`geo/savoir.js`). Un niveau par pays et par joueur — *jamais vu · découvert · reconnu · su · solide · acquis* — et un délai qui double : 1, 3, 7, 16, 40 jours. C'est le seul mécanisme dont on sache qu'il fait apprendre durablement ; sans lui, 194 pays sous 5 formes font près de mille associations et on abandonne à la troisième semaine.
+
+- ⚠️ **Un échec ne remet pas à zéro**, il redescend d'un cran — on n'oublie pas tout d'un coup. Mais il ne laisse jamais au-dessus de « reconnu » : un pays qu'on ne sait plus se cacherait derrière un vieux niveau acquis.
+- ⚠️⚠️ **Et jamais en dessous de « découvert ».** Un pays raté doit entrer dans les révisions. Laissé à zéro — « jamais vu » — il n'y entrait pas, et **les erreurs ne revenaient donc jamais**, ce qui vidait tout le mécanisme de son sens. C'est précisément ce qu'on veut revoir.
+
+**Le pont avec les jeux du jour, et il va dans les deux sens.** `savoir.nourrir()` relit les progressions des cinq jeux à chaque ouverture : trouvé en deux coups, le pays monte ; raté, il revient demain. **Jouer suffit à apprendre, le joueur n'a rien à déclarer.** Et ⚠️ **les pays proposés à tort comptent aussi** — ce sont les confusions réelles du joueur, pas une liste théorique. Une manche de drapeau ratée en six essais nourrit sept pays d'un coup.
+
+**Les trois portes, et pas une de plus** : *Réviser* (ce qui est dû aujourd'hui — la principale), *Découvrir une région*, *Au hasard*. Dans une leçon de région, ⚠️ on commence par ce qu'on ne sait PAS : revoir d'abord ce qu'on maîtrise, c'est perdre la moitié de la séance.
+
+**Les rangs** — Curieux, Explorateur, Voyageur, Navigateur, Globe-trotteur, Géographe, Maître du monde, Atlas vivant — ne donnent aucun avantage et n'entrent dans aucun classement. Ils disent où on en est, et c'est déjà beaucoup quand l'objectif est à 194.
+
+⚠️ **La fiche du pays s'affiche à CHAQUE réponse, juste ou fausse.** C'est le moment où l'on regarde vraiment ; la cacher quand on a bon serait manquer la moitié des occasions d'apprendre.
+
+⚠️ La séance en cours est rangée côté serveur (`geo:seance:<pseudo>`) **avec les bonnes réponses** : le navigateur ne reçoit que des énoncés.
+
+**`geo/regions.js`** est la seule donnée que tout ceci ajoute : `geo/pays.js` ne connaît que cinq régions, dont une Afrique à 54 pays, et personne n'apprend 54 pays d'un coup. Les 24 sous-régions de la norme M49 font de 2 à 17 pays — la taille d'une leçon. Régénérable par `scripts/genere-regions.js`.
 
 ### Le chrono (`chrono/`) — arrêter un chronomètre qu'on ne voit pas
 

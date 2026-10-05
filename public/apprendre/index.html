@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, interactive-widget=overlays-content">
+    <meta name="theme-color" content="#14100b">
+    <title>Apprendre la géographie</title>
+    <link rel="icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="stylesheet" href="/design-system.css">
+    <link rel="stylesheet" href="/geo-commun.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="is-boot">
+    <div class="ap">
+        <header class="ap-head">
+            <a class="ds-icon-btn" href="/" aria-label="Retour au salon">←</a>
+            <div class="ap-titles">
+                <h1 class="ap-title">Apprendre</h1>
+                <span class="ap-sous">La géographie, pays par pays</span>
+            </div>
+        </header>
+
+        <!-- L'ACCUEIL : où j'en suis, et les trois portes -->
+        <section class="ap-accueil" id="ap-accueil">
+            <!-- Le rang. ⚠️ Il ne donne aucun avantage et n'entre dans aucun
+                 classement : il dit où on en est, et c'est déjà beaucoup
+                 quand l'objectif est à cent quatre-vingt-quatorze. -->
+            <div class="ap-rang" id="ap-rang"></div>
+
+            <div class="ap-portes" id="ap-portes"></div>
+
+            <h2 class="ap-section">Ma carte du monde</h2>
+            <div class="ap-atlas" id="ap-atlas"></div>
+            <p class="ap-legende">
+                <i class="n1"></i>découvert <i class="n2"></i>reconnu
+                <i class="n3"></i>su <i class="n4"></i>solide <i class="n5"></i>acquis
+            </p>
+
+            <h2 class="ap-section">Les régions</h2>
+            <div class="ap-regions" id="ap-regions"></div>
+        </section>
+
+        <!-- UNE SÉANCE -->
+        <section class="ap-seance" id="ap-seance" hidden>
+            <div class="ap-s-tete">
+                <button type="button" class="ds-icon-btn small" id="ap-quitter" aria-label="Arrêter la séance">✕</button>
+                <span class="ap-s-titre" id="ap-s-titre">—</span>
+                <span class="ap-s-compte" id="ap-s-compte">1/10</span>
+            </div>
+            <div class="ap-jauge"><i id="ap-jauge-barre"></i></div>
+
+            <p class="ap-consigne" id="ap-consigne">—</p>
+            <div class="ap-enonce" id="ap-enonce"></div>
+            <div class="ap-choix" id="ap-choix"></div>
+
+            <!-- La correction, et la fiche du pays : c'est le moment où l'on
+                 apprend vraiment, qu'on ait eu bon ou non. -->
+            <div class="ap-correction" id="ap-correction" hidden>
+                <p class="ap-verdict" id="ap-verdict"></p>
+                <div id="ap-fiche"></div>
+                <button class="ds-btn" id="ap-suivant" type="button">Continuer</button>
+            </div>
+        </section>
+    </div>
+
+    <!-- FIN DE SÉANCE -->
+    <div class="ds-overlay" id="ap-fin" hidden>
+        <div class="ds-card tall">
+            <button type="button" class="ds-card-close" id="ap-fin-close" aria-label="Fermer">✕</button>
+            <p class="ap-fin-emoji" id="ap-fin-emoji">🎓</p>
+            <h2 class="ds-card-title" id="ap-fin-titre">—</h2>
+            <p class="ap-fin-score" id="ap-fin-score"></p>
+            <div class="ap-fin-rang" id="ap-fin-rang"></div>
+            <button class="ds-btn" id="ap-encore" type="button">Encore une séance</button>
+            <button class="ds-btn ghost" id="ap-retour" type="button">Revenir à l'accueil</button>
+        </div>
+    </div>
+
+    <script src="/carte/monde.js"></script>
+    <script src="/profile-viewer.js"></script>
+    <script src="/design-system.js"></script>
+    <script src="/geo-commun.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

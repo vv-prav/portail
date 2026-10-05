@@ -1242,6 +1242,9 @@ const depsDuJour = {
     express, requireAuth, requireAuthApi, currentUser,
     mfGet, mfSet, mfTodayId, mfShiftDay, mfSecondsToMidnight,
     dateDemandee, racine: __dirname,
+    // L'apprentissage relit les progressions de tous les jeux de géographie
+    // pour tenir son modèle à jour : il lui faut le cache entier.
+    cache: () => mfCache,
     // Chaque jeu reçoit un moteur déjà relié au cache commun.
     creerMoteur: (app) => creerMoteur(app, { get: mfGet, set: mfSet, today: mfTodayId, shift: mfShiftDay }),
 };
@@ -1252,6 +1255,7 @@ const motlongApi = require('./motlong/routes')(app, depsDuJour);
 const capitalesApi = require('./capitales/routes')(app, depsDuJour);
 const carteApi = require('./carte/routes')(app, depsDuJour);
 const chronoApi = require('./chrono/routes')(app, depsDuJour);
+const apprendreApi = require('./apprendre/routes')(app, depsDuJour);
 
 // Les noms dont se sert le reste du fichier, inchangés.
 const mChiffres = chiffresApi.moteur, chiffresDonne = chiffresApi.donne, kChiffresDonne = chiffresApi.kDonne, chiffresJeu = chiffresApi.jeu;

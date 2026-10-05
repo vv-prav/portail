@@ -31,6 +31,7 @@ const I18N = {
         b_online: "en ligne", b_nobody_online: "Personne pour l'instant", b_new_grid: "Nouvelle grille !",
         b_grid_done: "Grille du jour ✓", b_grid_part: "faites aujourd'hui",
         app_ch_d: "Dé, carte ou pièce : tranchez au hasard.",
+        app_apprendre_d: "La géographie, pays par pays, à ton rythme.",
         b_rec_new: "cette semaine", b_rec_count: "recettes",
         rank_title: "Classement du Salon", rank_loading: "Un instant…", rank_empty: "Personne n'a encore marqué de points.", rank_error: "Classement indisponible.",
         today_results: "Les résultats du jour ›", today_results_title: "Les résultats du jour", res_locked: "Termine ta manche pour voir le classement.", res_go: "Y aller ›", res_personne: "Personne n'a encore terminé.",
@@ -67,6 +68,11 @@ const GAME_APPS = [
 // part, c'est un jeu de société. Il n'a donc plus de tuile ici.
 const OTHER_APPS = [
     { id: 'carnet', name: 'Le carnet', dKey: 'app_carnet_d', emoji: '📔', href: '/carnet', accent: '#8b6ba8', status: 'open' },
+    // ⚠️ L'apprentissage est une TUILE, pas un jeu du jour. Dans le panneau
+    // « Aujourd'hui », il deviendrait une obligation de plus ; ici c'est une
+    // porte qu'on pousse quand on veut, ce qui est la seule façon de
+    // s'entraîner sans se forcer.
+    { id: 'apprendre', name: 'Apprendre', dKey: 'app_apprendre_d', emoji: '🎓', href: '/apprendre', accent: '#4f9a8f', status: 'open' },
 ];
 const ADMIN_APP = { id: 'admin', name: 'Administration', dKey: 'app_admin_d', emoji: '🛡️', href: '/admin', accent: '#c96f6f', status: 'open' };
 let isAdminUser = false;

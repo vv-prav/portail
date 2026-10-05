@@ -41,6 +41,8 @@ const PREFIXES_BRUTS = [
     'sudoku:prog', 'sudoku:days', 'motlong:prog', 'motlong:days',
     'capitales:prog', 'capitales:days', 'carte:prog', 'carte:days',
     'chrono:prog', 'chrono:days',
+    // Ce qu'un joueur SAIT de la géographie, et sa séance en cours.
+    'geo:savoir', 'geo:seance',
     'motusparty:stats',
     // ⚠️ Les fiches des jeux multijoueurs arrivés après ce module : un joueur
     // renommé perdait ses statistiques du Quiz, de l'Infiltré, du Perudo et
