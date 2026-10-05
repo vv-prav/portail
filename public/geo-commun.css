@@ -82,3 +82,14 @@
     background:rgba(20,16,11,.86); color:var(--brass-soft); font-size:1.05rem; font-weight:700;
     font-family:inherit; cursor:pointer; line-height:1; }
 .geo-carte-zoom button:active { transform:scale(.94); }
+
+/* ---------- Mon atlas ----------
+   Un pays trouvé s'allume de la couleur du jeu par lequel on l'a trouvé :
+   la carte raconte alors comment on a appris le monde, pas seulement
+   combien de pays on sait. */
+.geo-carte-pays path.atlas { stroke-width:.5; }
+.geo-carte-pays path.par-pays { fill:#c9a24a; stroke:#e0bd6a; }
+.geo-carte-pays path.par-drapeau { fill:#6f7bb0; stroke:#9aa5d4; }
+.geo-carte-pays path.par-voyage { fill:#4f9a8f; stroke:#78c0b4; }
+.geo-carte-pays path.par-capitales { fill:#c98a4a; stroke:#e5ac74; }
+.geo-carte-pays path.par-carte { fill:#5aa87a; stroke:#8fd0a8; }

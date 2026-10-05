@@ -413,7 +413,7 @@ app.get('/api/me', (req, res) => {
 // ---------------------------------------------------------------------
 const MF = require('./motsfleches/generator');
 const { planifierRenommage, appliquerPlan } = require('./comptes/renommage');
-const { calculerClassement, explications, BAREME, PERIODES } = require('./comptes/classement');
+const { calculerClassement, classementFamille, explications, BAREME, PERIODES } = require('./comptes/classement');
 const { TITRES, attribuerTitres } = require('./comptes/titres');
 // ⚠️ UNE seule grille par jour, et toujours difficile. Il y en avait trois
 // (moyen, difficile, expert) : trois grilles mangeaient une cinquantaine de
@@ -2853,7 +2853,10 @@ app.get('/api/salon/classement', requireAuthApi, (req, res) => {
     // monde repart à égalité chaque matin.
     const demande = String(req.query.periode || '');
     const periode = PERIODES[demande] ? demande : PERIODE_DEFAUT;
-    const lignes = classementDuSalon(periode);
+    // `?famille=geo` : le classement de la géographie seule, qui pèse cinq
+    // des dix jeux du jour. Mêmes points, mêmes périodes — filtrés.
+    const famille = String(req.query.famille || '') === 'geo';
+    const lignes = famille ? classementFamille(classementDuSalon(periode)) : classementDuSalon(periode);
     const moi = currentUser(req);
     // La série ne rapporte plus de points : elle s'affiche à côté du nom.
     const dessus = lignes.slice(0, 20).map(l => ({ ...l, serie: serieDuSalon(l.pseudo) }));
@@ -2863,6 +2866,7 @@ app.get('/api/salon/classement', requireAuthApi, (req, res) => {
         maPlace: lignes.findIndex(l => l.pseudo === moi) + 1 || null,
         total: lignes.length,
         periode,
+        famille: famille ? 'geo' : null,
         periodes: Object.values(PERIODES).map(p => ({ id: p.id, nom: p.nom })),
         // La date depuis laquelle CETTE période recompte, si elle a été
         // remise à zéro : sans elle, un classement vide ressemble à une panne.
@@ -2875,6 +2879,18 @@ app.get('/api/salon/classement', requireAuthApi, (req, res) => {
 
 // Comment les points sont comptés — en mots, et généré depuis le barème
 // lui-même. Une règle du jeu recopiée à la main finit toujours par mentir.
+// Mon atlas : les pays trouvés, tous jeux de géographie confondus. Servi à
+// part du profil, parce que la page ne le charge que si on ouvre l'onglet —
+// et parce qu'il parcourt tout le cache une fois.
+const { atlas: calculerAtlas } = require('./geo/atlas');
+app.get('/api/salon/atlas', requireAuthApi, (req, res) => {
+    const demande = String(req.query.pseudo || '').trim();
+    // On peut regarder l'atlas de quelqu'un d'autre : c'est public comme les
+    // classements, et c'est ce qui donne envie de le remplir.
+    const pseudo = (demande && registeredUsers[demande]) ? demande : currentUser(req);
+    res.json({ pseudo, ...calculerAtlas(mfCache, pseudo) });
+});
+
 app.get('/api/salon/bareme', requireAuthApi, (req, res) => {
     res.json(explications());
 });

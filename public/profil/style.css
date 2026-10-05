@@ -281,3 +281,10 @@ body {
    même largeur. */
 .pb-monter[disabled] { opacity: .25; cursor: default; }
 .pb-monter.fantome { border-color: transparent; background: transparent; pointer-events: none; }
+
+/* Mon atlas : la carte du monde coloriée des pays trouvés. */
+.pr-atlas { margin:8px 0 6px; }
+.pr-atlas-compte { margin:0; font-size:.9rem; color:var(--muted); }
+.pr-atlas-compte b { font-size:1.4rem; color:var(--brass-soft); font-weight:800; }
+.pr-atlas-compte span { font-size:.78rem; }
+.pr-atlas-manquants { margin:4px 0 0; font-size:.74rem; color:var(--muted); line-height:1.5; }

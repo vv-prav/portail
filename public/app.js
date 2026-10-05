@@ -275,8 +275,9 @@ $('res-close').addEventListener('click', () => { $('ov-resultats').hidden = true
 let classement = null;      // réponse du serveur pour la période affichée
 let classementRendu = false;
 let periode = 'mois';       // par défaut le mois : assez long pour se remplir, assez court pour se rejouer
+let famille = '';           // '' = tous les jeux, 'geo' = la géographie seule
 async function chargerClassement() {
-    const { ok, data } = await api('/api/salon/classement?periode=' + periode);
+    const { ok, data } = await api('/api/salon/classement?periode=' + periode + (famille ? '&famille=' + famille : ''));
     classement = ok ? data : null;
     majMaPlace(classement);
 }
@@ -328,6 +329,14 @@ function majMaPlace(data) {
 }
 // Changer de période recharge et réaffiche : le classement d'un mois et celui
 // de toujours n'ont pas les mêmes gagnants, c'est tout l'intérêt.
+$('rank-famille').querySelectorAll('button').forEach(b => b.addEventListener('click', async () => {
+    if ((b.dataset.f || '') === famille) return;
+    famille = b.dataset.f || '';
+    $('rank-famille').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    $('rank-liste').innerHTML = `<p class="rank-empty">${esc(t('rank_loading'))}</p>`;
+    await chargerClassement();
+    await rendreClassement();
+}));
 $('rank-periode').querySelectorAll('button').forEach(b => b.addEventListener('click', async () => {
     if (b.dataset.p === periode) return;
     periode = b.dataset.p;

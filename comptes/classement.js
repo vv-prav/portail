@@ -76,7 +76,7 @@ const JEUX_DU_JOUR = [
         ditImpeccable: 'juste, en aussi peu d’opérations que la meilleure solution',
     },
     {
-        id: 'geo', nom: 'Géographie', emoji: '🌍',
+        id: 'geo', nom: 'Géographie', emoji: '🌍', famille: 'geo',
         reussi: (v) => !!v.trouve,
         impeccable: (v, ctx) => (ctx.mode === 'voyage'
             ? !!v.parfait
@@ -92,14 +92,14 @@ const JEUX_DU_JOUR = [
         ditImpeccable: 'le mot le plus long possible',
     },
     {
-        id: 'capitales', nom: 'Les capitales', emoji: '🏙️',
+        id: 'capitales', nom: 'Les capitales', emoji: '🏙️', famille: 'geo',
         reussi: (v) => !!v.trouve,
         impeccable: (v) => !!v.trouve && (v.essais || []).length <= 3,
         ditReussi: 'la capitale trouvée',
         ditImpeccable: 'trouvée en trois essais ou moins',
     },
     {
-        id: 'carte', nom: 'La carte', emoji: '🗺️',
+        id: 'carte', nom: 'La carte', emoji: '🗺️', famille: 'geo',
         reussi: (v) => !!v.trouve,
         impeccable: (v) => !!v.trouve && (v.essais || []).length <= 2,
         ditReussi: 'le pays situé sur la carte',
@@ -175,6 +175,9 @@ function calculerClassement(cache, pseudos, o) {
             pseudo: p, points: 0,
             manches: 0, reussites: 0, impeccables: 0,
             parties: 0, victoires: 0, chelems: 0,
+            // Les points gagnés en géographie, comptés à part : cinq jeux du
+            // salon en sont, c'est devenu une discipline à soi seule.
+            geoPoints: 0, geoManches: 0,
         });
     }
     const parNorm = new Map(pseudos.map(p => [norm(p), p]));
@@ -207,7 +210,7 @@ function calculerClassement(cache, pseudos, o) {
         const k = pseudo + '|' + date + '|' + jeu.id;
         const avant = manches.get(k);
         if (avant && avant.points >= points) continue;
-        manches.set(k, { pseudo, points, reussi, impeccable });
+        manches.set(k, { pseudo, points, reussi, impeccable, famille: jeu.famille });
 
         const kJour = pseudo + '|' + date;
         if (!jeuxDuJour.has(kJour)) jeuxDuJour.set(kJour, new Set());
@@ -219,6 +222,7 @@ function calculerClassement(cache, pseudos, o) {
         ligne.manches++;
         if (m.reussi) ligne.reussites++;
         if (m.impeccable) ligne.impeccables++;
+        if (m.famille === 'geo') { ligne.geoPoints += m.points; ligne.geoManches++; }
     }
 
     // --- Le grand chelem : tous les jeux du jour dans la même journée ---
@@ -280,6 +284,24 @@ function calculerClassement(cache, pseudos, o) {
 }
 
 /**
+ * Le classement d'une FAMILLE de jeux — aujourd'hui la géographie, qui pèse
+ * cinq des dix jeux du jour. Même calcul, mêmes périodes : on ne garde que
+ * les points gagnés dans la famille, et on retrie dessus.
+ *
+ * ⚠️ Pas un second barème : exactement les mêmes points, filtrés. Deux
+ * barèmes pour un même salon, et personne ne saurait plus ce que vaut une
+ * manche.
+ */
+function classementFamille(lignes) {
+    return lignes
+        .filter(l => l.geoPoints > 0)
+        .map(l => ({ ...l, points: l.geoPoints, manches: l.geoManches }))
+        .sort((a, b) => b.points - a.points
+            || b.impeccables - a.impeccables
+            || a.pseudo.localeCompare(b.pseudo, 'fr'));
+}
+
+/**
  * Le barème mis en mots, pour le panneau « Comment ça compte ? ».
  * Construit depuis les mêmes constantes et la même table que le calcul :
  * les deux ne peuvent pas diverger.
@@ -312,4 +334,4 @@ function explications() {
     };
 }
 
-module.exports = { calculerClassement, explications, BAREME, PERIODES, JEUX_DU_JOUR };
+module.exports = { calculerClassement, classementFamille, explications, BAREME, PERIODES, JEUX_DU_JOUR };

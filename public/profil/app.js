@@ -388,6 +388,31 @@ async function loadProfile() {
     renderChiffres(profile);
     renderJeux(profile);
     loadSummary();
+    chargerAtlas();
+}
+
+// ---------- Mon atlas ----------
+// La carte du monde est déjà chargée pour La carte et le Voyage, et les cinq
+// jeux de géographie laissaient déjà la trace de chaque pays trouvé : il n'y
+// avait qu'à les rapprocher. Les pays s'allument de la couleur du jeu par
+// lequel on les a trouvés.
+const TEINTE_JEU = { pays: 'par-pays', drapeau: 'par-drapeau', voyage: 'par-voyage',
+                     capitales: 'par-capitales', carte: 'par-carte' };
+async function chargerAtlas() {
+    if (!window.Geo || !window.MONDE) return;
+    const { ok, data } = await api('/api/salon/atlas');
+    if (!ok || !data || !data.combien) return;        // un atlas vide ne dit rien
+    $('pr-atlas-section').hidden = false;
+    const part = Math.round(data.combien / data.total * 100);
+    $('pr-atlas-compte').innerHTML = `<b>${data.combien}</b> / ${data.total} pays <span>· ${part} % du monde</span>`;
+    const carte = Geo.carte($('pr-atlas'), {});
+    for (const [code, jeu] of Object.entries(data.pays || {})) {
+        carte.marquer(code, 'atlas');
+        carte.marquer(code, TEINTE_JEU[jeu] || 'par-carte');
+    }
+    $('pr-atlas-manquants').textContent = (data.manquants || []).length
+        ? 'Jamais trouvés : ' + data.manquants.join(', ') + '…'
+        : '';
 }
 loadProfile();
 

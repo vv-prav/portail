@@ -8,6 +8,7 @@
     <link rel="icon" href="/icon-192.png">
     <link rel="apple-touch-icon" href="/icon-192.png">
     <link rel="stylesheet" href="/design-system.css">
+    <link rel="stylesheet" href="/geo-commun.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -58,6 +59,16 @@
                 <p class="pr-cal-title" id="pr-cal-titre">Mon assiduité</p>
                 <div class="pr-cal" id="pr-cal" aria-label="Calendrier d'activité des dix-sept dernières semaines"></div>
                 <p class="pr-cal-legend"><span>moins</span><i class="n0"></i><i class="n1"></i><i class="n2"></i><i class="n3"></i><span>plus</span></p>
+            </section>
+
+            <!-- MON ATLAS — les pays trouvés, tous jeux de géographie
+                 confondus. Rien de nouveau n'est stocké : les cinq jeux
+                 laissaient déjà la trace, elle n'était nulle part montrée. -->
+            <section class="pr-section" id="pr-atlas-section" hidden>
+                <h2 class="pr-section-title">Mon atlas</h2>
+                <p class="pr-atlas-compte" id="pr-atlas-compte">—</p>
+                <div class="pr-atlas" id="pr-atlas"></div>
+                <p class="pr-atlas-manquants" id="pr-atlas-manquants"></p>
             </section>
 
             <section class="pr-section">
@@ -223,6 +234,9 @@
     </div>
 
     <script src="/design-system.js"></script>
+    <!-- La carte du monde et le socle de géographie, pour l'atlas. -->
+    <script src="/carte/monde.js"></script>
+    <script src="/geo-commun.js"></script>
     <script src="/vues.js"></script>
     <script src="app.js"></script>
 </body>
