@@ -152,20 +152,26 @@ async function loadPulse() {
 // répond à la seule question qu'on se pose en arrivant : qu'est-ce qu'il me reste
 // à faire aujourd'hui ? Toutes les données viennent déjà du pouls, rien de neuf
 // n'est calculé côté serveur.
+// ⚠️ La Géographie compte pour TROIS cartes, une par mode. Ce sont trois
+// manches distinctes, avec chacune sa donne et son classement : la carte
+// unique affichait « 1/3 » sans jamais dire laquelle restait à faire.
 const JEUX_DU_JOUR = [
     { id: 'motus',    nom: 'Motus',        emoji: '🟨', href: '/motus/quotidien/', accent: '#c9a24a' },
     { id: 'mf',       nom: 'Mots Fléchés', emoji: '🧩', href: '/mots-fleches',     accent: '#5aa87a' },
     { id: 'chiffres', nom: 'Le compte est bon', emoji: '🔢', href: '/chiffres',    accent: '#c2513a' },
-    { id: 'geo',      nom: 'Géographie',   emoji: '🌍', href: '/geo',              accent: '#6f7bb0' },
+    { id: 'geo:silhouette', nom: 'Le pays',    emoji: '🗺️', href: '/geo?mode=silhouette', accent: '#6f7bb0' },
+    { id: 'geo:drapeau',    nom: 'Le drapeau', emoji: '🏳️', href: '/geo?mode=drapeau',    accent: '#6f7bb0' },
+    { id: 'geo:voyage',     nom: 'Le voyage',  emoji: '🧭', href: '/geo?mode=voyage',     accent: '#6f7bb0' },
     { id: 'motlong',  nom: 'Le mot le plus long', emoji: '🔤', href: '/motlong',   accent: '#4f9a8f' },
     { id: 'sudoku',   nom: 'Sudoku',       emoji: '🧮', href: '/sudoku',           accent: '#8a7bc4' },
 ];
 // Ramène chaque jeu à un seul état, quelle que soit la forme de ses données.
 function etatDuJour(id, p) {
-    if (id === 'geo') {
-        const g = p.geo || {}, d = g.done || 0, total = g.total || 3;
-        if (d >= total) return { cle: 'fait', texte: t('today_done') };
-        if (d > 0)      return { cle: 'encours', texte: `${d}/${total}` };
+    // Un mode de la Géographie : son propre état, pas celui des trois réunis.
+    if (id.startsWith('geo:')) {
+        const m = ((p.geo && p.geo.modes) || {})[id.slice(4)] || {};
+        if (m.done) return { cle: 'fait', texte: t('today_done') };
+        if (m.over) return { cle: 'fini', texte: t('today_over') };
         return { cle: 'afaire', texte: t('today_todo') };
     }
     if (id === 'mf') {
@@ -182,15 +188,16 @@ function etatDuJour(id, p) {
 function renderToday(p) {
     const box = $('today'), liste = $('today-list');
     if (!box || !liste) return;
-    const lignes = JEUX_DU_JOUR.map(j => {
+    // Des cartes, trois par rangée : à huit jeux, la liste en colonne occupait
+    // tout l'écran avant qu'on ait vu quoi que ce soit d'autre.
+    liste.innerHTML = JEUX_DU_JOUR.map(j => {
         const e = etatDuJour(j.id, p);
-        return `<a class="today-item ${e.cle}" href="${j.href}" style="--accent:${j.accent}">
+        return `<a class="today-card ${e.cle}" href="${j.href}" style="--accent:${j.accent}">
             <span class="today-mark">${j.emoji}</span>
             <span class="today-name">${esc(j.nom)}</span>
             <span class="today-state">${esc(e.texte)}</span>
         </a>`;
-    });
-    liste.innerHTML = lignes.join('');
+    }).join('');
 
     // La plus longue série en cours, tous jeux du jour confondus : c'est elle qui
     // donne envie de revenir demain.

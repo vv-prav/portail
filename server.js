@@ -1766,10 +1766,15 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
     const chProg = mfGet(`chiffres:prog:${user}:${today}`);
     const sdProg = mSudoku.progression(user, today);
     const mlProg = mMotlong.progression(user, today);
-    const geoFaits = GEO_MODES.filter(m => {
+    // ⚠️ Les trois modes séparément, pas seulement leur compte : le salon en
+    // fait trois cartes distinctes, parce que ce sont trois manches distinctes
+    // avec chacune son classement. « 1/3 » ne disait pas laquelle restait.
+    const geoParMode = {};
+    for (const m of GEO_MODES) {
         const g = mfGet(`geo:prog:${user}:${today}:${m}`);
-        return !!(g && g.fini);
-    }).length;
+        geoParMode[m] = { done: !!(g && g.fini && g.trouve), over: !!(g && g.fini) };
+    }
+    const geoFaits = GEO_MODES.filter(m => geoParMode[m].over).length;
 
     // Les vrais prénoms connectés par jeu, pour les tuiles du salon ("qui est
     // connecté" plutôt qu'un simple nombre). Undercover réutilise le même schéma.
@@ -1841,6 +1846,7 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
         },
         geo: {
             done: geoFaits, total: GEO_MODES.length,
+            modes: geoParMode, noms: GEO_NOMS,
             solvers: GEO_MODES.reduce((n, m) => n + mGeo.classement(`${today}:${m}`).length, 0),
             streak: mGeo.serie(user).encours,
         },

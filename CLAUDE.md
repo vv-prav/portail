@@ -294,10 +294,14 @@ Le design system porte désormais la **réinitialisation de base** (`box-sizing`
 
 L'accueil ne porte plus que **2 tuiles** (Jouer ensemble, Le carnet, plus Admin), contre 13 auparavant. Historique de la réduction — l'ancien état à **4 tuiles** était :
 
-- **Les trois jeux du jour n'ont plus de tuile.** Le panneau « Aujourd'hui » est leur seule porte, et le geste quotidien coûte une touche au lieu de trois. `/motus/` (l'ancien hub à deux liens) redirige vers `/motus/quotidien/` — la redirection reste, des liens et des favoris pointent dessus ; ses deux fichiers, eux, ont été supprimés, plus rien ne les servait.
+- **Les jeux du jour n'ont plus de tuile.** Le panneau « Aujourd'hui » est leur seule porte, et le geste quotidien coûte une touche au lieu de trois. `/motus/` (l'ancien hub à deux liens) redirige vers `/motus/quotidien/` — la redirection reste, des liens et des favoris pointent dessus ; ses deux fichiers, eux, ont été supprimés, plus rien ne les servait.
 - **Les cinq jeux multijoueurs partagent `/jouer/`.** Un bouton crée une partie via un catalogue, qui mène au jeu choisi avec `?creer=1` ; le jeu ouvre alors son propre écran de réglages. En dessous, `GET /api/salon/tables` agrège toutes les tables ouvertes, tous jeux confondus — avant, il fallait ouvrir les quatre jeux l'un après l'autre pour savoir si quelqu'un attendait.
 - **Perudo est volontairement traité à part** : il figure au catalogue et dans la liste, mais le clic ouvre son propre hall, avec son identité.
 - **Le retour suit la hiérarchie** : les salles d'attente ramènent à `/jouer/`, les jeux du jour au salon. Et `vues.js` fait remonter le geste retour du téléphone d'une vue au lieu de quitter le site.
+
+**Le panneau « Aujourd'hui » est une grille de cartes**, trois par rangée (deux sous 340 px), et non plus une liste en colonne : à huit entrées, la colonne occupait tout l'écran avant qu'on ait vu le reste du salon.
+
+⚠️ **La Géographie y compte pour TROIS cartes**, une par mode (`geo:silhouette`, `geo:drapeau`, `geo:voyage`), qui ouvrent `/geo?mode=…`. Ce sont trois manches distinctes, avec chacune sa donne et son classement ; la carte unique affichait « 1/3 » sans jamais dire laquelle restait. Trois endroits suivent cette découpe et doivent rester d'accord : `JEUX_DU_JOUR` (`public/app.js`), `JEUX` (`public/enchainement.js`, qui proposait sinon « la Géographie » à quelqu'un qui venait d'en finir un mode et le renvoyait sur celui qu'il avait déjà fait), et le pouls, qui envoie `geo.modes` — l'état des trois séparément, pas seulement leur compte. La page Géographie lit `?mode=` au chargement et allume le bon onglet ; son sélecteur continue d'en changer sans recharger.
 
 **L'ordre de l'accueil**, de haut en bas : identité · « En ce moment » · les blocs d'appel (invitations, tables ouvertes, annonce) · « Aujourd'hui » · les tuiles · le classement · « Passés récemment ». Deux intentions derrière : ce qui appelle à agir est en haut, ce qui n'est qu'une nouvelle du salon ferme la page. `ALWAYS_LAST = ['admin']` — l'administration est un outil, pas une pièce, et elle reste en dernier même pour qui a réorganisé ses tuiles.
 

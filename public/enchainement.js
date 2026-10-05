@@ -14,11 +14,17 @@
 (function () {
     if (window.Enchainement) return;
 
+    // ⚠️ Les trois modes de la Géographie comptent pour trois jeux, dans le
+    // même ordre que les cartes du salon. Avec une entrée unique, on proposait
+    // « la Géographie » à quelqu'un qui venait justement d'en finir un mode, et
+    // il retombait sur celui qu'il avait déjà fait.
     const JEUX = [
         { id: 'motus', nom: 'Motus', emoji: '🟨', href: '/motus/quotidien/' },
         { id: 'mf', nom: 'les Mots Fléchés', emoji: '🧩', href: '/mots-fleches' },
         { id: 'chiffres', nom: 'Le compte est bon', emoji: '🔢', href: '/chiffres' },
-        { id: 'geo', nom: 'la Géographie', emoji: '🌍', href: '/geo' },
+        { id: 'geo:silhouette', nom: 'Le pays', emoji: '🗺️', href: '/geo?mode=silhouette' },
+        { id: 'geo:drapeau', nom: 'Le drapeau', emoji: '🏳️', href: '/geo?mode=drapeau' },
+        { id: 'geo:voyage', nom: 'Le voyage', emoji: '🧭', href: '/geo?mode=voyage' },
         { id: 'motlong', nom: 'Le mot le plus long', emoji: '🔤', href: '/motlong' },
         { id: 'sudoku', nom: 'le Sudoku', emoji: '🧮', href: '/sudoku' },
     ];
@@ -27,8 +33,12 @@
     // proposer de refaire une grille déjà rendue n'aurait pas de sens.
     function estFait(id, pouls) {
         if (!pouls) return false;
-        if (id === 'mf' || id === 'geo') {
-            const m = pouls[id] || {};
+        if (id.startsWith('geo:')) {
+            const m = ((pouls.geo && pouls.geo.modes) || {})[id.slice(4)] || {};
+            return !!m.over;
+        }
+        if (id === 'mf') {
+            const m = pouls.mf || {};
             return !!(m.total && m.done >= m.total);
         }
         const g = pouls[id] || {};

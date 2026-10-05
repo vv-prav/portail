@@ -28,7 +28,16 @@ async function api(path, body) {
     return { ok: res.ok, data };
 }
 
-let MODE = 'silhouette';
+// Le mode d'arrivée vient de l'URL : le salon ouvre chacun des trois par sa
+// propre carte (`/geo?mode=drapeau`), et un lien partagé doit rouvrir le même.
+// Le sélecteur de la page continue d'en changer sans recharger.
+function modeDeLUrl() {
+    try {
+        const m = new URLSearchParams(location.search).get('mode') || '';
+        return ['silhouette', 'drapeau', 'voyage'].includes(m) ? m : 'silhouette';
+    } catch (e) { return 'silhouette'; }
+}
+let MODE = modeDeLUrl();
 let P = null;                 // l'état du mode courant
 let TOUS = [];                // la liste des pays proposables
 let essais = [];
@@ -234,7 +243,7 @@ function finCommune(d) {
     $('gg-autre').hidden = false;
     $('gg-autre').textContent = LIBELLE_MODE[modeSuivant()];
     $('gg-fin').hidden = false;
-    if (!laDate() && window.Enchainement) Enchainement.proposer('geo', $('gg-fin').querySelector('.ds-card'));
+    if (!laDate() && window.Enchainement) Enchainement.proposer('geo:' + MODE, $('gg-fin').querySelector('.ds-card'));
 }
 function renderBoard(liste, maPlace) {
     if (!liste.length) { $('gg-board').innerHTML = ''; return; }
@@ -290,6 +299,8 @@ async function changerDeMode(mode) {
 }
 $('gg-modes').querySelectorAll('button').forEach(b =>
     b.addEventListener('click', () => changerDeMode(b.dataset.mode)));
+// Au chargement, le bouton allumé est celui du mode demandé par l'URL.
+$('gg-modes').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.mode === MODE));
 $('gg-autre').addEventListener('click', () => changerDeMode(modeSuivant()));
 $('gg-fin-close').addEventListener('click', () => { $('gg-fin').hidden = true; });
 $('gg-partage').addEventListener('click', async () => {

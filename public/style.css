@@ -132,21 +132,29 @@ body.is-hub   .hub   { display: block; }
 .today-streak b { font-size: .84rem; }
 .today-streak[hidden] { display: none; }
 
-.today-list { display: flex; flex-direction: column; gap: 6px; }
-.today-item { display: flex; align-items: center; gap: 10px; padding: 11px 13px; border-radius: 12px;
+/* Des cartes, trois par rangée. En colonne, les huit jeux du jour prenaient
+   tout l'écran avant qu'on ait vu le reste du salon — et la Géographie, qui
+   en vaut trois à elle seule, aggravait le problème. */
+.today-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.today-card { display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    gap: 5px; padding: 11px 6px 9px; border-radius: 12px; min-height: 104px;
     background: linear-gradient(165deg, rgba(255,255,255,.03), rgba(0,0,0,.16)); border: 1px solid var(--line);
-    border-left: 3px solid var(--accent); text-decoration: none; color: inherit; }
-.today-item:active { transform: scale(.995); }
-.today-mark { font-size: 1.1rem; flex: 0 0 auto; }
-.today-name { flex: 1; min-width: 0; font-size: .86rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.today-state { flex: 0 0 auto; font-size: .72rem; font-weight: 700; padding: 3px 9px; border-radius: 999px;
-    background: rgba(255,255,255,.05); color: var(--muted); }
+    border-top: 3px solid var(--accent); text-decoration: none; color: inherit; text-align: center; }
+.today-card:active { transform: scale(.97); }
+.today-mark { font-size: 1.5rem; line-height: 1.1; }
+/* Le nom tient sur deux lignes : « Le mot le plus long » ne rentre pas en une,
+   et le tronquer sur une tuile de 100 px le rend illisible. */
+.today-name { font-size: .74rem; font-weight: 700; line-height: 1.2; }
+.today-state { margin-top: auto; font-size: .64rem; font-weight: 700; padding: 2px 7px; border-radius: 999px;
+    background: rgba(255,255,255,.05); color: var(--muted); white-space: nowrap; }
 /* L'état porte la couleur : ce qui reste à faire doit se voir sans lire. */
-.today-item.afaire .today-state { background: rgba(217,169,78,.16); color: var(--brass-soft); }
-.today-item.encours .today-state { background: rgba(217,169,78,.1); color: var(--brass-soft); }
-.today-item.fait { opacity: .62; }
-.today-item.fait .today-state { background: rgba(90,168,122,.16); color: #8fd0a8; }
-.today-item.fini { opacity: .62; }
+.today-card.afaire .today-state { background: rgba(217,169,78,.16); color: var(--brass-soft); }
+.today-card.encours .today-state { background: rgba(217,169,78,.1); color: var(--brass-soft); }
+.today-card.fait { opacity: .62; }
+.today-card.fait .today-state { background: rgba(90,168,122,.16); color: #8fd0a8; }
+.today-card.fini { opacity: .62; }
+/* Sous 340 px, trois colonnes ne laissent plus la place au nom : on passe à deux. */
+@media (max-width: 340px) { .today-list { grid-template-columns: repeat(2, 1fr); } }
 
 .rule { height: 1px; margin: 18px 0 20px; background: linear-gradient(90deg, transparent, var(--line) 15%, var(--line) 85%, transparent); position: relative; }
 .rule::after { content: "✦"; position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); background: var(--ink); padding: 0 10px; color: var(--brass); font-size: 0.68rem; }
@@ -313,9 +321,9 @@ body.is-hub   .hub   { display: block; }
 @media (max-width: 400px) {
     .hub-online-chip { min-height: 40px; }
     .today-resultats { padding: 12px 8px; }
-        .rank-toggle { padding: 14px; }
+    .rank-toggle { padding: 14px; }
     .rank-row { padding: 10px 12px; }
-    .today-item { padding: 13px; }
+    .today-card { min-height: 108px; }
 }
 
 /* Écrans courts : on récupère de la hauteur là où c'est décoratif. */
