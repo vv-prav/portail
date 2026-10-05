@@ -60,42 +60,47 @@ body.is-boot .cp { opacity:0; }
 .cp-sug.on b, .cp-sug:active b { color:var(--brass-soft); }
 .cp-restants { text-align:center; font-size:.74rem; color:var(--muted); margin:10px 0 0; min-height:1em; }
 
-/* ---------- Le tableau ----------
-   ⚠️ Six colonnes ne tiennent pas dans la largeur d'un téléphone, et les
-   serrer rendrait les chiffres illisibles. Le tableau défile donc
-   horizontalement, et la colonne du nom reste collée à gauche : sans elle,
-   on ne sait plus de quelle proposition parle la ligne qu'on regarde. */
-.cp-table-wrap { margin-top:12px; overflow-x:auto; -webkit-overflow-scrolling:touch;
-    border-radius:12px; }
-.cp-table-wrap[hidden] { display:none; }
-.cp-table { border-collapse:separate; border-spacing:4px; width:max-content; min-width:100%; }
-.cp-table thead th { font-size:.6rem; text-transform:uppercase; letter-spacing:.7px;
-    color:var(--muted); font-weight:700; padding:0 0 2px; text-align:center; }
-.cp-table thead th.cp-col-nom { text-align:left; padding-left:4px; }
-.cp-col-nom { position:sticky; left:0; z-index:2; background:var(--ink);
-    min-width:104px; text-align:left; font-weight:400; }
-/* ⚠️ Le fond de la colonne collée doit être OPAQUE : un dégradé en rgba()
-   laisse voir les cases qui défilent dessous, et le nom se retrouvait écrit
-   par-dessus la distance. D'où la couleur de fond pleine sous le dégradé, et
-   l'ombre qui dit que la colonne flotte. */
-tbody .cp-col-nom { padding:6px 8px; border-radius:10px;
-    background:linear-gradient(165deg, rgba(255,255,255,.05), rgba(0,0,0,.2)), var(--ink);
-    border:1px solid var(--line); box-shadow:6px 0 10px -6px rgba(0,0,0,.9); }
-tbody .cp-col-nom b { display:block; font-size:.82rem; font-weight:800; }
-tbody .cp-col-nom small { display:block; font-size:.66rem; color:var(--muted); }
+/* ---------- Les propositions ----------
+   ⚠️ Des CARTES, pas un tableau. Six colonnes qui défilent cachent la
+   distance et la direction derrière un geste, à 320 px — or c'est sur elles
+   qu'on raisonne. Ici tout tient dans la largeur : le nom et la distance sur
+   une ligne, les trois comparaisons secondaires en pastilles dessous. */
+.cp-essais { display:flex; flex-direction:column; gap:7px; margin-top:12px; }
+.cp-essai { padding:9px 11px; border-radius:12px; border:1px solid var(--line);
+    background:linear-gradient(165deg, rgba(255,255,255,.035), rgba(0,0,0,.18));
+    border-left:3px solid var(--line); animation:cpEntree .25s ease both; }
+@keyframes cpEntree { from { opacity:0; transform:translateY(-4px); } }
+/* La bordure gauche porte la température générale : on voit la série des
+   essais se réchauffer sans lire un seul chiffre. */
+.cp-essai.vert   { border-left-color:var(--good); }
+.cp-essai.orange { border-left-color:var(--brass); }
+.cp-essai.rouge  { border-left-color:var(--bad); }
+.cp-essai.juste  { border-color:var(--good); background:rgba(90,168,122,.12); }
 
-/* Les cases de comparaison. La couleur EST l'information : elle doit se lire
-   sans texte, d'où le fond plein plutôt qu'une simple bordure. */
-.cp-c { min-width:72px; height:54px; padding:4px 6px; border-radius:10px; text-align:center;
-    font-size:.78rem; font-weight:700; vertical-align:middle; }
-.cp-c small { display:block; font-size:.62rem; font-weight:400; opacity:.8; }
-.cp-c.vert   { background:rgba(90,168,122,.22);  color:#8fd0a8; border:1px solid rgba(90,168,122,.45); }
-.cp-c.orange { background:rgba(217,169,78,.18);  color:var(--brass-soft); border:1px solid rgba(217,169,78,.45); }
-.cp-c.rouge  { background:rgba(210,98,74,.16);   color:#e39d87; border:1px solid rgba(210,98,74,.38); }
-.cp-c.neutre { background:rgba(255,255,255,.04); color:var(--parchment); border:1px solid var(--line); }
-.cp-fleche { font-size:1.1rem; display:block; line-height:1.1; }
-tr.juste .cp-col-nom { border-color:var(--good); }
-.cp-aide { text-align:center; font-size:.68rem; color:var(--muted); margin:8px 0 0; line-height:1.5; }
+.cp-e-haut { display:flex; align-items:center; gap:10px; }
+.cp-e-nom { flex:1; min-width:0; }
+.cp-e-nom b { display:block; font-size:.92rem; font-weight:800;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cp-e-nom small { display:block; font-size:.68rem; color:var(--muted); }
+/* La distance et la direction, en gros et à droite : c'est le premier endroit
+   où l'œil se pose, et c'est bien l'indice principal. */
+.cp-e-loin { flex:0 0 auto; text-align:right; }
+.cp-e-km { display:block; font-size:.92rem; font-weight:800; color:var(--brass-soft);
+    font-variant-numeric:tabular-nums; white-space:nowrap; }
+/* Un vrai écart entre la flèche et le cardinal : le glyphe de la flèche
+   remplit toute sa boîte, et « ⬇️ SUD » se lisait « ⬇️SUD ». */
+.cp-e-loin small { display:block; font-size:.68rem; color:var(--muted); white-space:nowrap; }
+.cp-e-loin small em { font-style:normal; margin-right:4px; }
+.cp-essai.vert .cp-e-km { color:#8fd0a8; }
+
+.cp-e-bas { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+.cp-p { flex:1 1 0; min-width:0; text-align:center; padding:5px 6px; border-radius:8px;
+    font-size:.72rem; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cp-p i { font-style:normal; font-size:.78rem; }
+.cp-p.vert   { background:rgba(90,168,122,.22); color:#8fd0a8; border:1px solid rgba(90,168,122,.45); }
+.cp-p.orange { background:rgba(217,169,78,.18); color:var(--brass-soft); border:1px solid rgba(217,169,78,.45); }
+.cp-p.rouge  { background:rgba(210,98,74,.16);  color:#e39d87; border:1px solid rgba(210,98,74,.38); }
+.cp-aide { text-align:center; font-size:.68rem; color:var(--muted); margin:10px 0 0; }
 .cp-aide[hidden] { display:none; }
 
 /* ---------- La fin ---------- */

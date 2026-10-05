@@ -180,7 +180,7 @@ Six essais pour trouver la capitale du jour. Chaque proposition rend cinq compar
 - Les monnaies retirées et les langues des signes remontaient avec le reste : `wdt:` (meilleur rang seulement) pour les devises, et un petit tableau de renommage pour les libellés que personne n'emploie (« putonghua » → mandarin, « bokmål » → norvégien).
 - **Pour régénérer** : `node scripts/genere-capitales.js`. Rien à installer. Vérifier le résultat **à l'œil** — une capitale fausse se voit tout de suite, une population fantaisiste beaucoup moins.
 
-⚠️ Le tableau des essais **défile horizontalement** : six colonnes ne tiennent pas sur un téléphone, et les serrer rendrait les chiffres illisibles. La colonne du nom reste collée à gauche — et **son fond doit être opaque** : un dégradé en `rgba()` laissait voir les cases qui défilaient dessous, et le nom se retrouvait écrit par-dessus la distance.
+⚠️ **Une carte par proposition, et surtout pas un tableau.** La première version alignait les six colonnes dans un tableau qui défilait horizontalement : à 320 px on voyait la capitale, la devise et la langue, et il fallait faire glisser pour atteindre **la distance et la direction** — c'est-à-dire les deux indices sur lesquels on raisonne vraiment. Cacher le principal derrière un geste, c'est le rendre invisible. La carte met donc la distance et la direction en gros à droite du nom, les trois comparaisons secondaires en pastilles dessous, et la bordure gauche porte la température générale : on voit la série se réchauffer sans lire un chiffre. Tout tient dans la largeur, à 320 px comme ailleurs.
 
 ### La base des pays (`geo/pays.js`) — comment elle a été faite
 

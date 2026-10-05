@@ -82,24 +82,38 @@ function renderSuggestions() {
         b.addEventListener('click', () => proposer(b.dataset.nom)));
 }
 
-// ---------- Le tableau des essais ----------
+// ---------- Les essais ----------
+// ⚠️ **Une carte par proposition, et surtout PAS un tableau.** La première
+// version alignait six colonnes qui défilaient horizontalement : à 320 px on
+// voyait la capitale, la devise et la langue, et il fallait faire glisser le
+// tableau pour atteindre la distance et la direction — c'est-à-dire les deux
+// indices sur lesquels on raisonne vraiment. Cacher le principal derrière un
+// geste, c'est le rendre invisible.
+//
+// La carte met donc la distance et la direction en gros à droite du nom, et
+// range les trois comparaisons secondaires en pastilles dessous. Tout tient
+// dans la largeur, sans rien à faire glisser.
 const SENS = { 1: '▲', '-1': '▼', 0: '=' };
-function cellule(etat, contenu, titre) {
-    return `<td class="cp-c ${etat}"${titre ? ` title="${esc(titre)}"` : ''}>${contenu}</td>`;
-}
+const TITRE_POP = { 1: 'La réponse est plus peuplée', '-1': 'La réponse est moins peuplée', 0: '' };
 function renderEssais() {
-    $('cp-table-wrap').hidden = !essais.length;
-    $('cp-aide').hidden = !essais.length;
     $('cp-essais').innerHTML = essais.map(e => `
-        <tr class="${e.juste ? 'juste' : ''}">
-            <th class="cp-col-nom" scope="row"><b>${esc(e.ville)}</b><small>${esc(e.pays)}</small></th>
-            ${cellule(e.devise.etat, esc(e.devise.valeur || '—'))}
-            ${cellule(e.langue.etat, esc(e.langue.valeur))}
-            ${cellule(e.distance.etat, e.juste ? '🎯' : NOMBRE.format(e.distance.km) + '<small>km</small>')}
-            ${cellule('neutre', `<span class="cp-fleche">${e.direction.fleche}</span><small>${esc(e.direction.cardinal)}</small>`)}
-            ${cellule(e.population.etat, `${compact(e.population.valeur)}<small>${SENS[e.population.sens] || ''}</small>`,
-                e.population.sens > 0 ? 'La réponse est plus peuplée' : e.population.sens < 0 ? 'La réponse est moins peuplée' : '')}
-        </tr>`).join('');
+        <div class="cp-essai ${e.distance.etat}${e.juste ? ' juste' : ''}">
+            <div class="cp-e-haut">
+                <span class="cp-e-nom"><b>${esc(e.ville)}</b><small>${esc(e.pays)}</small></span>
+                <span class="cp-e-loin">
+                    ${e.juste ? '<b class="cp-e-km">🎯 trouvé</b>'
+                        : `<b class="cp-e-km">${NOMBRE.format(e.distance.km)} km</b>
+                           <small><em>${e.direction.fleche}</em>${esc(e.direction.cardinal)}</small>`}
+                </span>
+            </div>
+            <div class="cp-e-bas">
+                <span class="cp-p ${e.devise.etat}">${esc(e.devise.valeur || '—')}</span>
+                <span class="cp-p ${e.langue.etat}">${esc(e.langue.valeur)}</span>
+                <span class="cp-p ${e.population.etat}" title="${esc(TITRE_POP[e.population.sens] || '')}">
+                    ${compact(e.population.valeur)} <i>${SENS[e.population.sens] || ''}</i></span>
+            </div>
+        </div>`).join('');
+    $('cp-aide').hidden = !essais.length;
     const reste = (P.maxEssais || 6) - essais.length;
     $('cp-restants').textContent = fini ? '' : `${reste} essai${reste > 1 ? 's' : ''} restant${reste > 1 ? 's' : ''}`;
 }
@@ -121,9 +135,6 @@ async function proposer(nom) {
     essais.push(data.essai);
     fini = data.fini; trouve = data.trouve;
     renderEssais();
-    // Le tableau défile : la ligne qui vient d'arriver doit être visible.
-    const wrap = $('cp-table-wrap');
-    if (wrap) wrap.scrollLeft = 0;
     if (fini) montrerFin(data);
 }
 

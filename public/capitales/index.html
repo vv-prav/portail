@@ -48,26 +48,12 @@
             </form>
             <p class="cp-restants" id="cp-restants"></p>
 
-            <!-- Le tableau des propositions. Il défile horizontalement : six
-                 colonnes ne tiennent pas dans la largeur d'un téléphone, et les
-                 serrer rendrait les chiffres illisibles. La colonne du nom
-                 reste collée à gauche pendant le défilement. -->
-            <div class="cp-table-wrap" id="cp-table-wrap" hidden>
-                <table class="cp-table">
-                    <thead>
-                        <tr>
-                            <th class="cp-col-nom">Capitale</th>
-                            <th>Devise</th>
-                            <th>Langue</th>
-                            <th>Distance</th>
-                            <th>Direction</th>
-                            <th>Population</th>
-                        </tr>
-                    </thead>
-                    <tbody id="cp-essais"></tbody>
-                </table>
-            </div>
-            <p class="cp-aide" id="cp-aide" hidden>🟩 identique · 🟧 proche · 🟥 loin — fais glisser le tableau pour voir toutes les colonnes.</p>
+            <!-- Les propositions : une carte chacune. ⚠️ Pas un tableau —
+                 voir le commentaire de renderEssais(). Six colonnes qui
+                 défilaient cachaient la distance et la direction, c'est-à-dire
+                 l'essentiel, derrière un geste. -->
+            <div class="cp-essais" id="cp-essais"></div>
+            <p class="cp-aide" id="cp-aide" hidden>🟩 identique · 🟧 proche · 🟥 loin</p>
         </section>
     </div>
 
