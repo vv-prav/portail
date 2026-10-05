@@ -2187,9 +2187,17 @@ function classementDuSalon(periode, o) {
 // la période qui s'achève, puis on marque sa date de remise à zéro — elle ne
 // compte plus que ce qui vient après aujourd'hui. Les parties d'avant restent
 // en base, et vider cette date les fait réapparaître.
-function remettreLeClassementAZero(periode) {
+// `depuis` dit à partir de quand la nouvelle saison compte :
+//   · 'demain'      — la journée en cours ne compte pas. C'est net, mais ceux
+//                     qui ont déjà joué ce matin perdent leur matinée.
+//   · 'aujourdhui'  — la journée en cours compte, y compris les manches déjà
+//                     jouées avant la remise à zéro. Techniquement, le départ
+//                     est posé la VEILLE : le calcul ne garde que ce qui vient
+//                     après le départ, donc aujourd'hui entre dans le compte.
+function remettreLeClassementAZero(periode, depuis) {
     const id = PERIODES[periode] ? periode : 'toujours';
     const aujourdhui = mfTodayId();
+    const depart = depuis === 'aujourdhui' ? mfShiftDay(aujourdhui, -1) : aujourdhui;
     const podium = classementDuSalon(id).slice(0, 3)
         .map(l => ({ pseudo: l.pseudo, points: l.points }));
     const departs = departsClassement();
@@ -2199,10 +2207,26 @@ function remettreLeClassementAZero(periode) {
         du: departs[id] || null, au: aujourdhui, podium,
     });
     mfSet(K_CLASSEMENT_PALMARES, palmares.slice(0, 40));
-    departs[id] = aujourdhui;
+    departs[id] = depart;
     mfSet(K_CLASSEMENT_DEPARTS, departs);
     _titresCache = null;
-    return { periode: id, depart: aujourdhui, podium };
+    return { periode: id, depart, podium };
+}
+
+// Rattraper une remise à zéro faite « à partir de demain » : on recule le
+// départ d'un jour, et la journée en cours entre dans le compte avec tout ce
+// qui y a déjà été joué. Aucune nouvelle ligne au palmarès — ce n'est pas une
+// saison de plus, c'est la même qu'on fait commencer un jour plus tôt.
+function compterAussiAujourdhui(periode) {
+    const id = PERIODES[periode] ? periode : 'toujours';
+    const departs = departsClassement();
+    if (!departs[id]) return null;                       // rien n'a été remis à zéro
+    const veille = mfShiftDay(mfTodayId(), -1);
+    if (departs[id] <= veille) return null;              // aujourd'hui compte déjà
+    departs[id] = veille;
+    mfSet(K_CLASSEMENT_DEPARTS, departs);
+    _titresCache = null;
+    return { periode: id, depart: veille };
 }
 
 // Place au classement du Salon, sans recalculer tout le tableau deux fois.
@@ -3084,6 +3108,7 @@ require('./admin/routes')(app, {
         departs: departsClassement,
         palmares: () => mfGet(K_CLASSEMENT_PALMARES) || [],
         zero: remettreLeClassementAZero,
+        compterAujourdhui: compterAussiAujourdhui,
         // Annuler une remise à zéro : la période recompte tout.
         rouvrir: (periode) => {
             const departs = departsClassement();

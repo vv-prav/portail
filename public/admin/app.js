@@ -880,6 +880,13 @@ async function loadTitres() {
 // La même fonction de calcul que l'accueil, période par période, avec le
 // détail de ce qui a fait les points : sans lui, un total ne se vérifie pas.
 let clPeriode = 'toujours';
+// Le départ stocké est le dernier jour NON compté : ce qu'on montre, c'est le
+// premier jour compté, parce que c'est ça qu'on a en tête.
+function jourApres(iso) {
+    const d = new Date(iso + 'T12:00:00Z');
+    d.setUTCDate(d.getUTCDate() + 1);
+    return d.toISOString().slice(0, 10);
+}
 async function loadClassement() {
     const { data } = await api('/api/admin/classement?periode=' + clPeriode);
     if (!data) { $('cl-liste').innerHTML = '<p class="empty">Indisponible.</p>'; return; }
@@ -907,31 +914,52 @@ async function loadClassement() {
     // gestes. Les quatre sont indépendantes : c'est le point de la V2.
     $('cl-zeros').innerHTML = data.periodes.map(p => {
         const d = (data.departs || {})[p.id];
-        return `<div class="ds-row static">
-            <span class="ds-row-main">
-                <span class="ds-row-name">${esc(p.nom)}</span>
-                <span class="ds-row-sub">${d ? 'remise à zéro le ' + esc(d) + ' — les points comptent à partir du lendemain, et tout ce qui précède reste en base' : 'compte tout depuis le premier jour'}</span>
-            </span>
-            <span class="cl-actions">
+        // La journée en cours est-elle comptée ? Elle ne l'est pas quand le
+        // départ est posé aujourd'hui même : le calcul ne garde que ce qui
+        // vient APRÈS le départ.
+        const sansAujourdhui = !!d && d >= data.aujourdhui;
+        const dit = !d ? 'compte tout depuis le premier jour'
+            : sansAujourdhui ? 'remise à zéro aujourd’hui — <b>la journée en cours ne compte pas</b>, les points repartent demain'
+            : 'repart du ' + esc(jourApres(d)) + ' — tout ce qui précède reste en base, hors du calcul';
+        // ⚠️ Pas une `.ds-row` : à trois boutons, le nom de la période était
+        // rogné (« Aujour… ») et l'explication passait à un mot par ligne.
+        return `<div class="cl-per">
+            <p class="cl-per-nom">${esc(p.nom)}</p>
+            <p class="cl-per-dit">${dit}</p>
+            <div class="cl-actions">
+                ${sansAujourdhui ? `<button class="mini" data-aujourdhui="${p.id}" type="button">Compter aujourd’hui</button>` : ''}
                 <button class="mini danger" data-zero="${p.id}" type="button">Remettre à zéro</button>
                 ${d ? `<button class="mini" data-rouvrir="${p.id}" type="button">Rouvrir</button>` : ''}
-            </span>
+            </div>
         </div>`;
     }).join('');
+    // Rattrapage : compter la journée en cours, avec les manches déjà jouées.
+    $('cl-zeros').querySelectorAll('[data-aujourdhui]').forEach(b => b.addEventListener('click', async () => {
+        const { ok, data: r } = await api('/api/admin/classement/aujourdhui', { periode: b.dataset.aujourdhui });
+        toast(ok ? 'Les points d’aujourd’hui sont comptés.' : (r && r.error) || 'Erreur.');
+        loadClassement();
+    }));
     // ⚠️ On fait retaper le mot : ça change ce que voient tous les joueurs sur
     // l'accueil. Aucune donnée n'est perdue pour autant — et le message le dit,
     // sinon personne n'oserait cliquer.
     $('cl-zeros').querySelectorAll('[data-zero]').forEach(b => b.addEventListener('click', () => {
         const nom = data.periodes.find(p => p.id === b.dataset.zero).nom;
+        const zero = async (depuis) => {
+            const { ok, data: r } = await api('/api/admin/classement/zero', { periode: b.dataset.zero, depuis });
+            toast(ok ? 'Points remis à zéro — ' + nom + '.' : (r && r.error) || 'Erreur.');
+            loadClassement();
+        };
         DS.confirm({
             emoji: '🏆', title: 'Remettre « ' + nom + ' » à zéro ?',
-            text: 'Le podium actuel de cette période part au palmarès et tout le monde repart de zéro à partir de demain. Les trois autres périodes ne bougent pas, et aucune partie n’est effacée.',
+            text: 'Le podium actuel part au palmarès et tout le monde repart de zéro. Les autres périodes ne bougent pas, et aucune partie n’est effacée. Reste à dire à partir de quand la nouvelle saison compte.',
             confirmText: 'ZERO',
-            actions: [{ label: 'Remettre à zéro', danger: true, run: async () => {
-                const { ok, data: r } = await api('/api/admin/classement/zero', { periode: b.dataset.zero });
-                toast(ok ? 'Points remis à zéro — ' + nom + '.' : (r && r.error) || 'Erreur.');
-                loadClassement();
-            } }],
+            actions: [
+                // Par défaut la journée en cours compte : ceux qui ont joué ce
+                // matin ne doivent pas perdre leur matinée parce qu'on a remis
+                // les compteurs à zéro à midi.
+                { label: 'Aujourd’hui compris', danger: true, run: () => zero('aujourdhui') },
+                { label: 'À partir de demain', danger: true, run: () => zero('demain') },
+            ],
         });
     }));
     $('cl-zeros').querySelectorAll('[data-rouvrir]').forEach(b => b.addEventListener('click', async () => {

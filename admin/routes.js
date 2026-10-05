@@ -1172,6 +1172,9 @@ module.exports = function attachAdmin(app, ctx) {
         res.json({
             periode,
             departs: cl.departs(),
+            // La journée du salon commence à minuit à PARIS : le navigateur ne
+            // doit pas la recalculer de son côté, il la reçoit.
+            aujourdhui: mf.today(),
             palmares: cl.palmares(),
             lignes: cl.lire(periode),
             periodes: Object.values(cl.periodes).map(p => ({ id: p.id, nom: p.nom })),
@@ -1183,9 +1186,21 @@ module.exports = function attachAdmin(app, ctx) {
     A('/classement/zero', (req, res) => {
         const periode = String(req.body.periode || '');
         if (!ctx.classement.periodes[periode]) return res.status(400).json({ error: 'Période inconnue.' });
-        const r = ctx.classement.zero(periode);
+        // `depuis` : la journée en cours compte, ou la saison ne part que demain.
+        const depuis = req.body.depuis === 'aujourdhui' ? 'aujourdhui' : 'demain';
+        const r = ctx.classement.zero(periode, depuis);
         log(currentUser(req), 'points remis à zéro', ctx.classement.periodes[periode].nom,
+            `${depuis === 'aujourdhui' ? 'aujourd’hui compris' : 'à partir de demain'} · ` +
             r.podium.map(p => `${p.pseudo} ${p.points}`).join(', '));
+        res.json({ ok: true, ...r });
+    });
+    // Rattrapage : compter la journée en cours alors qu'elle avait été exclue.
+    A('/classement/aujourdhui', (req, res) => {
+        const periode = String(req.body.periode || '');
+        if (!ctx.classement.periodes[periode]) return res.status(400).json({ error: 'Période inconnue.' });
+        const r = ctx.classement.compterAujourdhui(periode);
+        if (!r) return res.status(400).json({ error: 'Cette période compte déjà la journée en cours.' });
+        log(currentUser(req), 'journée en cours comptée', ctx.classement.periodes[periode].nom);
         res.json({ ok: true, ...r });
     });
     A('/classement/rouvrir', (req, res) => {

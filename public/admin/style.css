@@ -178,8 +178,13 @@ body {
 /* La grille du Sudoku du jour, en petit, pour reconnaître celle qu'un joueur signale. */
 .ad-sudoku { font-family:ui-monospace,Menlo,monospace; font-size:.86rem; line-height:1.5; letter-spacing:.1em; text-align:center; color:var(--brass-soft); margin:8px 0; }
 
-/* Les deux gestes d'une période, côte à côte au bout de sa ligne. */
-.cl-actions { display:flex; gap:6px; flex:0 0 auto; }
+/* Une période et ses gestes : le nom et l'explication prennent la largeur,
+   les boutons passent dessous — à trois, ils rognaient tout le reste. */
+.cl-per { background:rgba(0,0,0,.22); border:1px solid var(--line); border-radius:12px; padding:10px 12px; }
+.cl-per + .cl-per { margin-top:8px; }
+.cl-per-nom { margin:0 0 3px; font-weight:700; font-size:.9rem; }
+.cl-per-dit { margin:0 0 10px; font-size:.78rem; line-height:1.5; color:var(--muted); }
+.cl-actions { display:flex; gap:8px; flex-wrap:wrap; }
 
 /* Une demande d'aide : le message prend toute la largeur, c'est lui qui dit
    qui est la personne. Les boutons passent dessous. */
@@ -189,3 +194,6 @@ body {
 .dem-qui span { font-weight:400; font-size:.72rem; color:var(--muted); }
 .dem-mot { margin:0 0 10px; font-size:.86rem; line-height:1.5; }
 .dem-actions { display:flex; gap:8px; flex-wrap:wrap; }
+/* Le palmarès : « Depuis le début · 2026-… » était tronqué par le `nowrap`
+   des lignes génériques, et c'est justement la date qui disparaissait. */
+#cl-palmares .ds-row-name { white-space: normal; }
