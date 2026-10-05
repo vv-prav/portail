@@ -166,6 +166,7 @@ const JEUX_DU_JOUR = [
     { id: 'sudoku',   nom: 'Sudoku',       emoji: '🧮', href: '/sudoku',           accent: '#8a7bc4' },
     { id: 'capitales', nom: 'Les capitales', emoji: '🏙️', href: '/capitales',     accent: '#c98a4a' },
     { id: 'carte',    nom: 'La carte',      emoji: '🗺️', href: '/carte',          accent: '#4f9a8f' },
+    { id: 'chrono',   nom: 'Le chrono',    emoji: '⏱️', href: '/chrono',         accent: '#c2513a' },
 ];
 // Ramène chaque jeu à un seul état, quelle que soit la forme de ses données.
 function etatDuJour(id, p) {
@@ -212,6 +213,7 @@ function renderToday(p) {
         (p.sudoku && p.sudoku.streak) || 0,
         (p.capitales && p.capitales.streak) || 0,
         (p.carte && p.carte.streak) || 0,
+        (p.chrono && p.chrono.streak) || 0,
     ];
     const meilleure = Math.max(...series);
     const el = $('today-streak');

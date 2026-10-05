@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, interactive-widget=overlays-content">
+    <meta name="theme-color" content="#14100b">
+    <title>Le chrono</title>
+    <link rel="icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="stylesheet" href="/design-system.css">
+    <link rel="stylesheet" href="/geo-commun.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="is-boot">
+    <div class="ch">
+        <header class="ch-head">
+            <a class="ds-icon-btn" href="/" aria-label="Retour au salon">←</a>
+            <div class="ch-titles">
+                <h1 class="ch-title">Le chrono</h1>
+                <span class="ch-date" id="ch-date"></span>
+            </div>
+            <span class="ch-manche" id="ch-manche" hidden>1/3</span>
+        </header>
+
+        <div class="ch-strip">
+            <span class="chip" id="ch-serie" hidden>🔥 <b>0</b></span>
+            <span class="chip" id="ch-next">🕛 —</span>
+            <span class="chip" id="ch-archive-chip" hidden>📅 Archive</span>
+        </div>
+
+        <!-- L'ÉCRAN D'ENTRÉE -->
+        <div class="ch-start" id="ch-start">
+            <div class="ch-start-box">
+                <div class="ch-start-emoji">⏱️</div>
+                <p class="ch-start-txt">Une durée t'est donnée. Tu lances, <b>rien ne s'affiche</b>, et tu arrêtes quand tu crois y être.</p>
+                <p class="ch-start-astuce">Trois manches, et c'est la <b>somme des écarts</b> qui classe. Les durées ne sont jamais rondes : compter dans sa tête ne suffit pas.</p>
+                <button class="ds-btn" id="ch-start-btn" type="button">Commencer</button>
+            </div>
+        </div>
+
+        <!-- LA MANCHE -->
+        <section class="ch-jeu" id="ch-jeu" hidden>
+            <p class="ch-consigne">Arrête à</p>
+            <p class="ch-vise" id="ch-vise">—</p>
+
+            <!-- ⚠️ LE BOUTON NE DOIT RIEN LAISSER VOIR DU TEMPS QUI PASSE.
+                 Ni compteur, ni barre, ni pulsation : tout ce qui a une
+                 cadence donne la mesure, et le jeu n'existe plus. Il change
+                 seulement de mot et de couleur. -->
+            <button class="ch-bouton" id="ch-bouton" type="button">Lancer</button>
+            <p class="ch-etat" id="ch-etat">Prends ton temps : le chronomètre ne part qu'au premier appui.</p>
+
+            <!-- Les manches rendues -->
+            <div class="ch-manches" id="ch-manches"></div>
+        </section>
+    </div>
+
+    <!-- FIN DE JOURNÉE -->
+    <div class="ds-overlay" id="ch-fin" hidden>
+        <div class="ds-card tall">
+            <button type="button" class="ds-card-close" id="ch-fin-close" aria-label="Fermer">✕</button>
+            <p class="ch-fin-emoji" id="ch-fin-emoji">⏱️</p>
+            <h2 class="ds-card-title" id="ch-fin-titre">—</h2>
+            <p class="ch-fin-ecart" id="ch-fin-ecart"></p>
+            <div id="ch-fin-manches"></div>
+            <p class="ds-card-text" id="ch-fin-texte"></p>
+            <button class="ds-btn ghost" id="ch-partage" type="button">Partager mon résultat</button>
+            <div id="ch-board"></div>
+        </div>
+    </div>
+
+    <script src="/profile-viewer.js"></script>
+    <script src="/design-system.js"></script>
+    <script src="/geo-commun.js"></script>
+    <script src="/enchainement.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

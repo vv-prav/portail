@@ -1032,7 +1032,7 @@ module.exports = function attachAdmin(app, ctx) {
         // traînent depuis des mois sans que rien ne les signale.
         const CONNUES = ['mf', 'motus', 'rec', 'voyages', 'pbac', 'yams', 'motusparty',
             'undercover', 'drapeaux', 'chiffres', 'geo', 'sudoku', 'motlong', 'admin', 'titres', 'perudo',
-            'capitales', 'carte', 'defi', 'salon', 'comptes', 'classement',
+            'capitales', 'carte', 'chrono', 'defi', 'salon', 'comptes', 'classement',
             'menage'];   // menage:* = les nettoyages faits une seule fois
         const orphelines = cles.filter(k => !CONNUES.includes(k.split(':')[0]))
             .map(k => { let t = 0; try { t = JSON.stringify(cache[k]).length; } catch (e) {} return { cle: k, octets: t }; })
@@ -1141,7 +1141,7 @@ module.exports = function attachAdmin(app, ctx) {
     //  (suivi d'un niveau ou d'un mode pour les Mots Fléchés et la
     //  Géographie), et `<jeu>:board:<date>` (idem).
     // =================================================================
-    const JEUX_DU_JOUR = { motus: 'Motus', mf: 'Mots Fléchés', chiffres: 'Le compte est bon', geo: 'Géographie', motlong: 'Le mot le plus long', sudoku: 'Sudoku', capitales: 'Les capitales', carte: 'La carte' };
+    const JEUX_DU_JOUR = { motus: 'Motus', mf: 'Mots Fléchés', chiffres: 'Le compte est bon', geo: 'Géographie', motlong: 'Le mot le plus long', sudoku: 'Sudoku', capitales: 'Les capitales', carte: 'La carte', chrono: 'Le chrono' };
     A('/jour/reset', (req, res) => {
         const pseudo = String(req.body.pseudo || ''), jeu = String(req.body.jeu || '');
         const date = /^\d{4}-\d{2}-\d{2}$/.test(req.body.date || '') ? req.body.date : mf.today();
@@ -1599,9 +1599,42 @@ module.exports = function attachAdmin(app, ctx) {
         res.json({ ok: true, pays: nouveau.nom });
     });
 
+    // ---------- Le chrono ----------
+    const CHR = () => ctx.chrono;
+    G('/chrono/day', (req, res) => {
+        const date = dateValide(req.query.date);
+        const durees = CHR().duJour(date);
+        let joues = 0, totalEcart = 0;
+        for (const [k, val] of Object.entries(mf.cache())) {
+            if (!k.startsWith('chrono:prog:') || !k.endsWith(`:${date}`) || !val || !val.fini) continue;
+            joues++; totalEcart += val.ecartTotal || 0;
+        }
+        res.json({
+            date, today: mf.today(), durees,
+            joues, ecartMoyen: joues ? Math.round(totalEcart / joues) : null,
+            classement: (mf.get(`chrono:board:${date}`) || []).slice()
+                .sort((a, b) => (b.score - a.score) || ((a.ms || 0) - (b.ms || 0)))
+                .map(e => ({ u: e.u, ecart: e.ecart, ms: e.ms, susp: !!e.susp })),
+        });
+    });
+    A('/chrono/regen', (req, res) => {
+        const date = dateValide(req.body.date);
+        const avant = (CHR().duJour(date) || []).join(',');
+        let nouvelles = avant;
+        for (let i = 0; i < 25 && nouvelles === avant; i++) {
+            CHR().moteur.varianteSuivante(date);
+            mf.del(CHR().kDurees(date));
+            nouvelles = (CHR().duJour(date) || []).join(',');
+        }
+        for (const k of Object.keys(mf.cache())) if (k.startsWith('chrono:prog:') && k.endsWith(`:${date}`)) mf.del(k);
+        mf.del(`chrono:board:${date}`);
+        log(currentUser(req), 'durées du chrono retirées au sort', `${date} : ${avant} → ${nouvelles}`);
+        res.json({ ok: true, durees: nouvelles.split(',').map(Number) });
+    });
+
     // La modération des classements : retirer une ligne, ou la marquer
     // suspecte (elle disparaît du classement public sans être effacée).
-    for (const app of ['sudoku', 'motlong', 'capitales', 'carte']) {
+    for (const app of ['sudoku', 'motlong', 'capitales', 'carte', 'chrono']) {
         A(`/${app}/board/remove`, (req, res) => {
             const date = dateValide(req.body.date), pseudo = String(req.body.pseudo || '');
             const cle = `${app}:board:${date}`;

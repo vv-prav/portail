@@ -37,7 +37,7 @@ function fmtDur(sec) {
 
 // ---------- Onglets ----------
 function switchTab(tab) {
-    ['home', 'accounts', 'parties', 'perudo', 'grids', 'motus', 'chiffres', 'geo', 'motlong', 'sudoku', 'dict', 'titres', 'capitales', 'carte', 'classement', 'sante', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== tab); });
+    ['home', 'accounts', 'parties', 'perudo', 'grids', 'motus', 'chiffres', 'geo', 'motlong', 'sudoku', 'dict', 'titres', 'capitales', 'carte', 'chrono', 'classement', 'sante', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== tab); });
     document.querySelectorAll('.ad-tile').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
     if (tab === 'home') { loadOverview(); loadDemandes(); }
     if (tab === 'accounts') { loadAccounts(); loadDemandes(); }
@@ -51,6 +51,7 @@ function switchTab(tab) {
     if (tab === 'sudoku') loadSudoku();
     if (tab === 'capitales') loadCapitales();
     if (tab === 'carte') loadCarte();
+    if (tab === 'chrono') loadChrono();
     if (tab === 'dict') { loadDictStats(); loadDict(); }
     if (tab === 'titres') loadTitres();
     if (tab === 'classement') loadClassement();
@@ -1177,6 +1178,37 @@ $('sd-regen').addEventListener('click', () => {
             if (!ok) return toast((data && data.error) || 'Le tirage a échoué.');
             toast(`Nouvelle grille : ${data.indices} indices.`);
             loadSudokuJour();
+        } }]);
+});
+
+// =====================================================================
+//  LE CHRONO
+// =====================================================================
+async function loadChrono() {
+    if (!$('chr-date').value) $('chr-date').value = dateDuSalon();
+    loadChronoJour();
+}
+$('chr-date').addEventListener('change', loadChronoJour);
+async function loadChronoJour() {
+    const date = $('chr-date').value;
+    const { data } = await api('/api/admin/chrono/day?date=' + encodeURIComponent(date));
+    if (!data) return;
+    const sec = (ms) => (ms / 1000).toFixed(2).replace('.', ',') + ' s';
+    $('chr-box').innerHTML = `
+        <div class="kv-row"><span>Durées à viser</span><b>${(data.durees || []).map(sec).join(' · ')}</b></div>
+        <div class="kv-row"><span>Journées jouées</span><b>${data.joues}${data.ecartMoyen != null ? ' · ' + sec(data.ecartMoyen) + ' d’écart en moyenne' : ''}</b></div>`;
+    boardAdmin('chr-board', 'chrono', date, data.classement || [],
+        e => sec(e.ecart != null ? e.ecart : e.ms), loadChronoJour);
+}
+$('chr-regen').addEventListener('click', () => {
+    const date = $('chr-date').value;
+    ask('♻️', 'Tirer d’autres durées ?',
+        `Trois autres durées seront tirées pour le ${date}. Les manches de ce jour-là et le classement seront effacés.`, [
+        { label: 'Tirer d’autres durées', danger: true, run: async () => {
+            const { ok, data } = await api('/api/admin/chrono/regen', { date });
+            if (!ok) return toast((data && data.error) || 'Le tirage a échoué.');
+            toast('Nouvelles durées tirées.');
+            loadChronoJour();
         } }]);
 });
 

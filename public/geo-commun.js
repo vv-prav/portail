@@ -34,7 +34,10 @@
     //  Il était écrit trois fois, à trois endroits, avec trois classes
     //  différentes pour exactement le même tableau.
     // ---------------------------------------------------------------
-    function classement(hote, liste, maPlace, detail) {
+    // `sansTemps` : certains jeux n'ont pas de durée à montrer. Au chrono,
+    // `ms` porte l'ÉCART, déjà écrit dans le détail — l'afficher une seconde
+    // fois en « 0:03 » ne dit rien et sème le doute.
+    function classement(hote, liste, maPlace, detail, sansTemps) {
         if (!hote) return;
         if (!liste || !liste.length) { hote.innerHTML = ''; return; }
         const medaille = ['🥇', '🥈', '🥉'];
@@ -45,7 +48,7 @@
                     <span class="ds-avatar xs" data-p="${esc(e.u)}"></span>
                     <span class="geo-b-nom">${esc(e.u)}</span>
                     <span class="geo-b-detail">${esc(detail ? detail(e) : (e.trouve === false ? '✗' : (e.essais || '') + '/6'))}</span>
-                    <span class="geo-b-temps">${temps(e.ms)}</span>
+                    <span class="geo-b-temps">${sansTemps ? '' : temps(e.ms)}</span>
                 </button>`).join('');
         if (window.PortailProfile) {
             hote.querySelectorAll('[data-view]').forEach(b =>

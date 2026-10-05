@@ -106,6 +106,16 @@ const JEUX_DU_JOUR = [
         ditImpeccable: 'situé en deux essais ou moins',
     },
     {
+        id: 'chrono', nom: 'Le chrono', emoji: '⏱️',
+        // ⚠️ Ici on ne rate pas : on est plus ou moins près. « Réussi » veut
+        // donc dire « sous une seconde d'écart au total », et « impeccable »
+        // sous trois dixièmes — les seuils du barème du jeu lui-même.
+        reussi: (v) => v.ecartTotal != null && v.ecartTotal <= 1500,
+        impeccable: (v) => v.ecartTotal != null && v.ecartTotal <= 350,
+        ditReussi: 'moins d’une seconde et demie d’écart sur trois manches',
+        ditImpeccable: 'moins de trois dixièmes d’écart en tout',
+    },
+    {
         id: 'sudoku', nom: 'Sudoku', emoji: '🧮',
         reussi: (v) => !!v.trouve,
         impeccable: (v) => !!v.trouve && v.ms != null && v.ms < 10 * 60 * 1000,

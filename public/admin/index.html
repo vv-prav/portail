@@ -36,6 +36,7 @@
             <button class="ad-tile" data-tab="sudoku" type="button"><span class="ad-tile-emoji">🧮</span><span>Sudoku</span></button>
             <button class="ad-tile" data-tab="capitales" type="button"><span class="ad-tile-emoji">🏙️</span><span>Capitales</span></button>
             <button class="ad-tile" data-tab="carte" type="button"><span class="ad-tile-emoji">🗺️</span><span>La carte</span></button>
+            <button class="ad-tile" data-tab="chrono" type="button"><span class="ad-tile-emoji">⏱️</span><span>Le chrono</span></button>
             <button class="ad-tile" data-tab="dict" type="button"><span class="ad-tile-emoji">📖</span><span>Dictionnaire</span></button>
             <button class="ad-tile" data-tab="titres" type="button"><span class="ad-tile-emoji">🏅</span><span>Titres</span></button>
             <button class="ad-tile" data-tab="classement" type="button"><span class="ad-tile-emoji">🏆</span><span>Classement</span></button>
@@ -341,6 +342,16 @@
                 <div id="car-box"></div>
                 <div id="car-board"></div>
                 <button class="mini danger wide" id="car-regen" type="button">Tirer un autre pays</button>
+            </div>
+        </section>
+
+        <section class="pane" id="pane-chrono" hidden>
+            <div class="card">
+                <h2 class="card-title">Les durées du jour</h2>
+                <input class="ds-input" id="chr-date" type="date" aria-label="Date des durées">
+                <div id="chr-box"></div>
+                <div id="chr-board"></div>
+                <button class="mini danger wide" id="chr-regen" type="button">Tirer d'autres durées</button>
             </div>
         </section>
 

@@ -540,7 +540,8 @@ function mfPurge() {
                 || (parts[0] === 'sudoku' && parts[1] === 'grille')
                 || (parts[0] === 'motlong' && parts[1] === 'tirage')
                 || (parts[0] === 'capitales' && parts[1] === 'ville')
-                || (parts[0] === 'carte' && parts[1] === 'pays')) {
+                || (parts[0] === 'carte' && parts[1] === 'pays')
+                || (parts[0] === 'chrono' && parts[1] === 'durees')) {
             // Le contenu du jour des jeux tirés de la date : gardé aussi
             // longtemps que les mots du Motus, pour la rotation.
             date = parts[2]; limit = limitMotusWord;
@@ -1250,6 +1251,7 @@ const sudokuApi = require('./sudoku/routes')(app, depsDuJour);
 const motlongApi = require('./motlong/routes')(app, depsDuJour);
 const capitalesApi = require('./capitales/routes')(app, depsDuJour);
 const carteApi = require('./carte/routes')(app, depsDuJour);
+const chronoApi = require('./chrono/routes')(app, depsDuJour);
 
 // Les noms dont se sert le reste du fichier, inchangés.
 const mChiffres = chiffresApi.moteur, chiffresDonne = chiffresApi.donne, kChiffresDonne = chiffresApi.kDonne, chiffresJeu = chiffresApi.jeu;
@@ -1258,6 +1260,7 @@ const mSudoku = sudokuApi.moteur, sudokuDuJour = sudokuApi.duJour, kSudokuGrille
 const mMotlong = motlongApi.moteur, motlongDuJour = motlongApi.duJour, kMotlongTirage = motlongApi.kTirage;
 const mCapitales = capitalesApi.moteur, capitaleDuJour = capitalesApi.duJour, kCapitaleVille = capitalesApi.kVille, capJeu = capitalesApi.jeu;
 const mCarte = carteApi.moteur, cartePaysDuJour = carteApi.duJour, kCartePays = carteApi.kPays, carteJeu = carteApi.jeu;
+const mChrono = chronoApi.moteur, chronoDurees = chronoApi.duJour, kChronoDurees = chronoApi.kDurees, chronoJeu = chronoApi.jeu;
 
 // ---------------------------------------------------------------------
 //  PERUDO — jeu temps réel, intégré au monolithe sous /perudo.
@@ -1774,6 +1777,7 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
     const mlProg = mMotlong.progression(user, today);
     const cpProg = mCapitales.progression(user, today);
     const caProg = mCarte.progression(user, today);
+    const chronoProg = mChrono.progression(user, today);
     // ⚠️ Les trois modes séparément, pas seulement leur compte : le salon en
     // fait trois cartes distinctes, parce que ce sont trois manches distinctes
     // avec chacune son classement. « 1/3 » ne disait pas laquelle restait.
@@ -1883,6 +1887,14 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
             over: !!(caProg && caProg.fini),
             solvers: mCarte.classement(today).filter(e => e.trouve).length,
             streak: mCarte.serie(user).encours,
+        },
+        // ⚠️ Au chrono, on ne « rate » pas : on est plus ou moins près. Une
+        // journée jouée est donc une journée faite.
+        chrono: {
+            done: !!(chronoProg && chronoProg.fini),
+            over: !!(chronoProg && chronoProg.fini),
+            solvers: mChrono.classement(today).length,
+            streak: mChrono.serie(user).encours,
         },
         pbac: { online: pbacOnline, names: pbacNames },
         undercover: { online: undercoverOnlineCount, names: undercoverNames },
@@ -2109,6 +2121,29 @@ function portraitJoueur(pseudo) {
                 ['Essais moyens', ca.trouves ? (ca.totalEssais / ca.trouves).toFixed(1) : null],
                 ['Du premier coup', ca.premierCoup || null],
                 ['Série en cours', mCarte.serie(pseudo).encours || null],
+            ]);
+    }
+
+    // Le chrono : c'est la régularité qui compte, donc la moyenne des écarts
+    // dit bien plus que le meilleur coup — et le meilleur, on le garde quand
+    // même, parce qu'on s'en souvient.
+    const ch = { jours: 0, totalEcart: 0, meilleur: null, parfaites: 0 };
+    for (const [k, v] of Object.entries(mfCache)) {
+        if (!k.startsWith(`chrono:prog:${pseudo}:`) || !v || !v.fini) continue;
+        ch.jours++;
+        ch.totalEcart += v.ecartTotal || 0;
+        if (ch.meilleur === null || (v.ecartTotal || 0) < ch.meilleur) ch.meilleur = v.ecartTotal || 0;
+        for (const m of (v.manches || [])) if (m.ecart <= 120) ch.parfaites++;
+    }
+    if (ch.jours) {
+        const cs = (ms) => (ms / 1000).toFixed(2).replace('.', ',') + ' s';
+        ajoute('chrono', 'Le chrono', '⏱️', ch.jours,
+            'meilleure journée à ' + cs(ch.meilleur), [
+                ['Journées jouées', ch.jours],
+                ['Écart moyen', cs(Math.round(ch.totalEcart / ch.jours))],
+                ['Meilleure journée', cs(ch.meilleur)],
+                ['Manches au millième', ch.parfaites || null],
+                ['Série en cours', mChrono.serie(pseudo).encours || null],
             ]);
     }
 
@@ -2343,7 +2378,7 @@ function calendrierActivite(pseudo, nbJours) {
 // jours au Compte est bon ou à la Géographie n'entretenait aucune série.
 // `PREFIXES_DU_JOUR` est désormais la seule liste — un jeu du jour ajouté
 // demain y prend une ligne, et les trois calculs le voient.
-const PREFIXES_DU_JOUR = ['motus', 'mf', 'chiffres', 'geo', 'sudoku', 'motlong', 'capitales', 'carte'];
+const PREFIXES_DU_JOUR = ['motus', 'mf', 'chiffres', 'geo', 'sudoku', 'motlong', 'capitales', 'carte', 'chrono'];
 function serieDuSalon(pseudo) {
     return Math.max(0, ...PREFIXES_DU_JOUR.map(app => serieDepuisJours(mfGet(`${app}:days:${pseudo}`))));
 }
@@ -2773,6 +2808,17 @@ app.get('/api/salon/resultats-du-jour', requireAuthApi, (req, res) => {
             : [],
     });
 
+    const chProgJour = mChrono.progression(user, date);
+    const chFiniJour = !!(chProgJour && chProgJour.fini);
+    jeux.push({
+        id: 'chrono', nom: 'Le chrono', emoji: '⏱️', accent: '#c2513a', href: '/chrono',
+        joue: chFiniJour,
+        mot: chFiniJour ? chronoDurees(date).map(d => (d / 1000).toFixed(1).replace('.', ',')).join(' · ') + ' s' : null,
+        classement: chFiniJour
+            ? mChrono.classement(date).map(e => ({ pseudo: e.u, detail: ((e.ecart != null ? e.ecart : e.ms) / 1000).toFixed(2).replace('.', ',') + ' s' }))
+            : [],
+    });
+
     for (const j of jeux) {
         j.maPlace = j.classement.findIndex(e => e.pseudo === user) + 1 || null;
         j.classement = j.classement.slice(0, 12);
@@ -3019,6 +3065,7 @@ app.get('/api/salon/mystats-summary', requireAuthApi, (req, res) => {
         if (mfGet(`motlong:prog:${pseudo}:${d}`)) weekCount++;
         if (mfGet(`capitales:prog:${pseudo}:${d}`)) weekCount++;
         if (mfGet(`carte:prog:${pseudo}:${d}`)) weekCount++;
+        if (mfGet(`chrono:prog:${pseudo}:${d}`)) weekCount++;
     }
     // "Jeu le plus joué" compare les totaux cumulés de chaque jeu entre eux.
     const totals = [];
@@ -3049,6 +3096,8 @@ app.get('/api/salon/mystats-summary', requireAuthApi, (req, res) => {
     if (cpJours) totals.push(['Les capitales', cpJours]);
     const caJours = Object.keys(mfCache).filter(k => k.startsWith(`carte:prog:${pseudo}:`) && mfCache[k] && mfCache[k].fini).length;
     if (caJours) totals.push(['La carte', caJours]);
+    const chJoursChrono = Object.keys(mfCache).filter(k => k.startsWith(`chrono:prog:${pseudo}:`) && mfCache[k] && mfCache[k].fini).length;
+    if (chJoursChrono) totals.push(['Le chrono', chJoursChrono]);
     totals.sort((a, b) => b[1] - a[1]);
     res.json({ weekCount, favoriteGame: totals.length ? totals[0][0] : null });
 });
@@ -3222,6 +3271,7 @@ require('./admin/routes')(app, {
     motlong: { moteur: mMotlong, duJour: motlongDuJour, kTirage: kMotlongTirage },
     capitales: { moteur: mCapitales, duJour: capitaleDuJour, kVille: kCapitaleVille, jeu: capJeu },
     carte: { moteur: mCarte, duJour: cartePaysDuJour, kPays: kCartePays, jeu: carteJeu },
+    chrono: { moteur: mChrono, duJour: chronoDurees, kDurees: kChronoDurees, jeu: chronoJeu },
     motusparty: () => motusPartyApi,
     // Les tables de tous les jeux, sous la forme unique du hall : l'onglet
     // Parties de l'admin lisait chaque module à sa façon, et une exception

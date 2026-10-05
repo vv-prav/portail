@@ -92,6 +92,7 @@ portail/
 ├── sudoku/{jeu,routes}.js     ← générateur, solveur, vérification
 ├── chiffres/{jeu,routes}.js   ← Le compte est bon
 ├── capitales/{jeu,villes,routes}.js ← Les capitales ; villes.js est GÉNÉRÉ
+├── chrono/{jeu,routes}.js     ← Le chrono : le temps à l'estime
 ├── geo/{commun,fiche,atlas,reservation}.js ← le socle des cinq jeux de géographie
 ├── carte/{jeu,centres,routes}.js ← La carte ; centres.js est GÉNÉRÉ
 ├── scripts/genere-carte.js    ← régénère la carte du monde et ses centres
@@ -168,9 +169,26 @@ Chaque mini-app suit le même schéma : `public/<app>/index.html` + `app.js` + `
 | **Le compte est bon** (`/chiffres`) | Six nombres, une cible, les quatre opérations — ni négatif ni fraction. **Aucun contenu à écrire** : la donne est tirée de la date, et un solveur exhaustif (`chiffres/jeu.js`) garantit que la cible est atteignable avant de la proposer. La solution affichée à la fin est la **plus courte**, obtenue par approfondissement progressif : sans ça la mémoïsation laissait passer un chemin qui repassait par 23 850 pour retomber sur 952, juste mais illisible. Le serveur rejoue les étapes au lieu de croire le total annoncé. Le chronomètre part au clic sur « Commencer ». |
 | **Le mot le plus long** (`/motlong`) | Neuf lettres, six propositions, le score est la longueur du plus long mot valable. Voir la section dédiée. |
 | **Sudoku** (`/sudoku`) | Une grille par jour, solution unique, résoluble sans deviner. Voir la section dédiée. |
+| **Le chrono** (`/chrono`) | Une durée est annoncée, on lance, **rien ne s'affiche**, et on arrête quand on croit y être. Trois manches, et c'est la somme des écarts qui classe. Voir la section dédiée. |
 | **La carte** (`/carte`) | Un pays à montrer du doigt sur une carte du monde, en six essais. Une erreur ne donne **que la direction** — une rose des vents qui s'arrête sur le cap. Voir la section dédiée. |
 | **Les capitales** (`/capitales`) | Deviner la capitale du jour en six essais. Chaque proposition donne cinq comparaisons — devise, langue, distance, direction, population — en vert/orange/rouge. Voir la section dédiée. |
 | **Géographie** (`/geo`) | **Trois modes** dans un seul jeu du jour : **Le pays** (silhouette), **Le drapeau**, et **Le voyage** (voir la section dédiée, sa mécanique est différente). Les deux premiers : Même mécanique dans les deux — six essais, et chaque proposition donne distance, direction et proximité, ce qui rend un pays méconnu trouvable par triangulation plutôt qu'au hasard, et rend surtout le mode Drapeau jouable. Les drapeaux sont des **emoji** : aucun fichier à servir, aucun droit à vérifier, et un rendu net sur téléphone. Voir la section dédiée pour la base de pays. |
+
+### Le chrono (`chrono/`) — arrêter un chronomètre qu'on ne voit pas
+
+Le seul jeu du salon qui ne demande ni vocabulaire ni culture : juste le sens du temps. Une durée est annoncée, on lance, **rien ne s'affiche**, on arrête.
+
+⚠️ **LA RÈGLE D'INTERFACE EST LA RÈGLE DU JEU.** Rien, pendant la manche, ne doit laisser deviner le temps qui passe : ni compteur, ni barre qui se remplit, ni point qui pulse, ni transition dont on pourrait lire la durée. Tout ce qui a une cadence donne la mesure, et le jeu n'existe plus. Le bouton change de mot et de couleur à l'appui — en 80 ms, trop vite pour servir d'horloge — et plus rien ne bouge ensuite. C'est écrit dans `chrono/jeu.js` autant que dans le CSS, parce que ce n'est pas un choix esthétique.
+
+**Trois décisions qui font le jeu :**
+
+- **Trois manches, et c'est la somme des écarts qui classe.** Un seul essai se joue à deux cents millisecondes de chance ; trois récompensent la régularité, et une fausse manœuvre ne ruine pas la journée.
+- ⚠️ **Les durées ne sont jamais rondes** — 7,4 s plutôt que 8 s. Compter « un-deux-trois » dans sa tête donne des secondes entières : la décimale oblige à estimer au lieu de compter, et c'est la différence entre un jeu d'adresse et un jeu de calcul mental. Le tirage ajoute 100 ms dès qu'il tombe sur un compte rond.
+- **Une seule durée envoyée à la fois.** Donner les trois d'un coup laisserait préparer la suivante pendant qu'on joue la première, et surtout les relire avant d'appuyer.
+
+**Ce qu'on ne peut pas garantir, et ce qu'on fait à la place.** Le temps est mesuré par le navigateur (`performance.now()`, qui ne bouge pas si l'horloge du téléphone se recale) : un aller-retour réseau pèse plus lourd que l'écart mesuré, donc le serveur ne peut pas prouver un résultat. Trois garde-fous, et ils suffisent dans un salon où tout le monde se connaît : les durées du jour sont les mêmes pour tous donc comparables, une manche jouée ne se rejoue pas, et **un écart total sous 30 ms est marqué `susp`** — inscrit mais invisible au classement public, l'administration tranche. C'est la règle du Sudoku, pour la même raison.
+
+⚠️ Au classement, `ms` porte **l'écart** et non le temps passé : c'est lui qui départage à points égaux, et le temps qu'on a mis à jouer n'a aucun sens dans un jeu où l'on attend un chronomètre. D'où le `sansTemps` de `Geo.classement` : afficher l'écart puis « 0:03 » juste à côté ne disait rien et semait le doute.
 
 ### La famille « géographie » — le socle commun aux cinq jeux
 
@@ -602,7 +620,7 @@ Liste à parcourir pour **tout** nouveau jeu :
 
 Dernier passage en date : **les défis** ont été branchés sur la carte du profil, le résumé, le classement (toutes périodes) et deux titres (`releve`, `lancegants`). Ils n'apparaissent ni dans les résultats du jour (ils ne sont pas quotidiens) ni dans `MODULES_JEUX` (ils n'ont ni socket ni table).
 
-Et pour un jeu du jour, ne pas oublier non plus le panneau « Aujourd'hui » (`JEUX_DU_JOUR` dans `public/app.js` + le pouls), `public/enchainement.js`, le préchargement du service worker, la purge de son contenu daté (`mfPurge`), et son panneau d'admin (tuile, onglet, routes `day`/`regen`/`board`). Dernier passage : **Les capitales** puis **La carte**, branchées aux neuf endroits ci-dessus, plus le panneau « Aujourd'hui », l'enchaînement, le préchargement du service worker, `mfPurge` et son onglet d'admin (contenu du jour, statistiques observées, modération du classement, régénération).
+Et pour un jeu du jour, ne pas oublier non plus le panneau « Aujourd'hui » (`JEUX_DU_JOUR` dans `public/app.js` + le pouls), `public/enchainement.js`, le préchargement du service worker, la purge de son contenu daté (`mfPurge`), et son panneau d'admin (tuile, onglet, routes `day`/`regen`/`board`). Dernier passage : **Les capitales**, **La carte** puis **Le chrono**, branchés aux neuf endroits ci-dessus, plus le panneau « Aujourd'hui », l'enchaînement, le préchargement du service worker, `mfPurge` et son onglet d'admin (contenu du jour, statistiques observées, modération du classement, régénération).
 
 ## Le classement du Salon — la V2 des points
 

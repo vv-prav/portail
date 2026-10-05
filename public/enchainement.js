@@ -29,6 +29,7 @@
         { id: 'sudoku', nom: 'le Sudoku', emoji: '🧮', href: '/sudoku' },
         { id: 'capitales', nom: 'Les capitales', emoji: '🏙️', href: '/capitales' },
         { id: 'carte', nom: 'La carte', emoji: '🗺️', href: '/carte' },
+        { id: 'chrono', nom: 'Le chrono', emoji: '⏱️', href: '/chrono' },
     ];
 
     // Un jeu est « fait » quand la manche du jour est terminée, gagnée ou non :
