@@ -122,16 +122,7 @@ body.is-boot .gg { opacity:0; }
 .gg-rep-forme path { fill:var(--brass); opacity:.85; }
 .gg-rep-region { margin:0; font-size:.74rem; color:var(--muted); }
 
-.gg-board { display:flex; flex-direction:column; gap:3px; margin-top:10px; }
-.gg-board-titre { margin:10px 0 2px; font-size:.64rem; text-transform:uppercase; letter-spacing:.9px;
-    color:var(--brass-soft); font-weight:700; text-align:left; }
-.gg-board-row { display:grid; grid-template-columns:24px 22px 1fr auto auto; gap:8px; align-items:center;
-    padding:7px 10px; border-radius:9px; background:rgba(255,255,255,.03); border:1px solid transparent;
-    font-family:inherit; color:var(--parchment); cursor:pointer; text-align:left; font-size:.78rem; }
-.gg-board-row.moi { border-color:var(--brass); background:rgba(217,169,78,.1); }
-.gg-b-rang { text-align:center; }
-.gg-b-nom { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.gg-b-essais { color:var(--brass-soft); font-weight:800; font-variant-numeric:tabular-nums; }
-.gg-b-temps { color:var(--muted); font-size:.7rem; font-variant-numeric:tabular-nums; }
+/* Le classement du jour vit dans geo-commun.css : il était écrit à
+   l'identique dans les trois pages de géographie. */
 
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.001ms !important; transition-duration:.001ms !important; } }

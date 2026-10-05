@@ -11,6 +11,8 @@ module.exports = function monterGeo(app, deps) {
             mfTodayId, mfShiftDay, mfSecondsToMidnight, dateDemandee, creerMoteur, racine } = deps;
 
     const geoJeu = require('./jeu');
+    const reservation = require('./reservation');
+    const { fiche } = require('./fiche');
     const mGeo = creerMoteur('geo');
 
     // Trois modes : le pays (silhouette), le drapeau, et le voyage (aller d'un
@@ -32,11 +34,9 @@ module.exports = function monterGeo(app, deps) {
         const cle = kGeoPays('voyage', date);
         let brut = mfGet(cle);
         if (!brut || !/^[A-Z]{2}>[A-Z]{2}$/.test(brut)) {
-            const recents = [];
-            for (let i = 1; i <= 30; i++) {
-                const c = mfGet(kGeoPays('voyage', mfShiftDay(date, -i)));
-                if (c) recents.push(...String(c).split('>'));
-            }
+            // Les trente derniers jours du voyage, ET ce qu'un autre jeu de
+            // géographie a déjà pris aujourd'hui (voir geo/reservation.js).
+            const recents = reservation.aEviter(mfGet, mfShiftDay, date, (d) => kGeoPays('voyage', d));
             const v = geoJeu.tirerVoyage(mGeo.tirageDuJour(date, 'voyage'), recents);
             brut = v.de + '>' + v.a;
             mfSet(cle, brut);
@@ -57,12 +57,9 @@ module.exports = function monterGeo(app, deps) {
         if (mode === 'voyage') return geoVoyageDuJour(date);
         const cache = mfGet(kGeoPays(mode, date));
         if (cache && geoJeu.parCode.get(cache)) return geoJeu.parCode.get(cache);
-        // On évite les pays sortis récemment dans le même mode.
-        const recents = [];
-        for (let i = 1; i <= 30; i++) {
-            const c = mfGet(kGeoPays(mode, mfShiftDay(date, -i)));
-            if (c) recents.push(c);
-        }
+        // On évite les pays sortis récemment dans le même mode, et ceux qu'un
+        // autre jeu de géographie a déjà pris aujourd'hui.
+        const recents = reservation.aEviter(mfGet, mfShiftDay, date, (d) => kGeoPays(mode, d));
         const p = geoJeu.tirerSansRepeter(mode, mGeo.tirageDuJour(date, mode), recents);
         mfSet(kGeoPays(mode, date), p.code);
         return p;
@@ -108,7 +105,7 @@ module.exports = function monterGeo(app, deps) {
             drapeau: mode === 'drapeau' ? geoJeu.drapeau(cible.code) : null,
             progression: prog || null,
             // La réponse n'est donnée qu'une fois la partie terminée.
-            reponse: fini ? { code: cible.code, nom: cible.nom, drapeau: geoJeu.drapeau(cible.code), region: cible.region, chemin: cible.chemin } : undefined,
+            reponse: fini ? fiche(cible.code) : undefined,
             serie: mGeo.serie(user),
         });
     });
@@ -157,7 +154,7 @@ module.exports = function monterGeo(app, deps) {
         mfSet(cle, prog);
         res.json({
             ok: true, essai: eval_, restants: geoJeu.MAX_ESSAIS - prog.essais.length, fini: prog.fini, trouve: prog.trouve,
-            reponse: prog.fini ? { code: cible.code, nom: cible.nom, drapeau: geoJeu.drapeau(cible.code), region: cible.region, chemin: cible.chemin } : undefined,
+            reponse: prog.fini ? fiche(cible.code) : undefined,
             score: prog.score, ms: prog.ms,
             place: prog.fini && date === today ? mGeo.placeDe(user, `${date}:${mode}`) : null,
             classement: prog.fini ? mGeo.classement(`${date}:${mode}`).slice(0, 15) : undefined,

@@ -13,9 +13,11 @@
 // =====================================================================
 module.exports = function monterCapitales(app, deps) {
     const { express, requireAuth, requireAuthApi, currentUser, mfGet, mfSet,
-            mfTodayId, mfSecondsToMidnight, dateDemandee, creerMoteur, racine } = deps;
+            mfTodayId, mfShiftDay, mfSecondsToMidnight, dateDemandee, creerMoteur, racine } = deps;
 
     const capJeu = require('./jeu');
+    const reservation = require('../geo/reservation');
+    const { fiche } = require('../geo/fiche');
     const mCapitales = creerMoteur('capitales');
     const kCapitaleDuJour = (date) => `capitales:ville:${date}`;
 
@@ -26,7 +28,13 @@ module.exports = function monterCapitales(app, deps) {
         const cache = mfGet(kCapitaleDuJour(date));
         const connue = cache && capJeu.parCode.get(cache);
         if (connue) return connue;
-        const v = capJeu.capitaleDuJour(mCapitales.tirageDuJour(date));
+        // ⚠️ Ce jeu n'avait AUCUNE garde anti-répétition : mesuré, douze
+        // répétitions à moins de quinze jours sur 180, dont la même ville à
+        // sept jours d'écart. Trente jours désormais, comme la Géographie, et
+        // on écarte ce qu'un autre jeu de géographie a déjà pris aujourd'hui
+        // (voir geo/reservation.js).
+        const eviter = reservation.aEviter(mfGet, mfShiftDay, date, kCapitaleDuJour);
+        const v = capJeu.capitaleDuJour(mCapitales.tirageDuJour(date), eviter);
         mfSet(kCapitaleDuJour(date), v.code);
         return v;
     }
@@ -51,8 +59,10 @@ module.exports = function monterCapitales(app, deps) {
             maxEssais: capJeu.MAX_ESSAIS,
             progression: prog,
             // La réponse n'arrive qu'à la fin — jamais avant.
-            reponse: fini ? { ville: cible.ville, pays: cible.pays, pop: cible.pop,
-                              devise: cible.devise, langue: (cible.langues || [])[0] || '—' } : undefined,
+            // ⚠️ La fiche du PAYS, pas seulement de la ville : la même qu'aux
+            // quatre autres jeux de géographie, pour qu'on apprenne la même
+            // chose quel que soit le chemin par lequel on y est arrivé.
+            reponse: fini ? fiche(cible.code) : undefined,
             serie: mCapitales.serie(user),
         });
     });
@@ -97,8 +107,7 @@ module.exports = function monterCapitales(app, deps) {
             ok: true, essai: eval_,
             restants: capJeu.MAX_ESSAIS - prog.essais.length,
             fini: !!prog.fini, trouve: !!prog.trouve,
-            reponse: prog.fini ? { ville: cible.ville, pays: cible.pays, pop: cible.pop,
-                                   devise: cible.devise, langue: (cible.langues || [])[0] || '—' } : undefined,
+            reponse: prog.fini ? fiche(cible.code) : undefined,
             score: prog.score, ms: prog.ms,
             place: prog.fini && date === today ? mCapitales.placeDe(user, date) : null,
             classement: prog.fini ? mCapitales.classement(date).slice(0, 15) : undefined,

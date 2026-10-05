@@ -8,6 +8,7 @@
     <link rel="icon" href="/icon-192.png">
     <link rel="apple-touch-icon" href="/icon-192.png">
     <link rel="stylesheet" href="/design-system.css">
+    <link rel="stylesheet" href="/geo-commun.css">
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="is-boot">
@@ -56,23 +57,6 @@
         </section>
     </div>
 
-    <!-- LA ROSE DES VENTS — l'aiguille tourne et s'arrête sur le cap. -->
-    <div class="ct-rose" id="ct-rose" hidden aria-hidden="true">
-        <div class="ct-rose-carte">
-            <svg class="ct-rose-svg" viewBox="0 0 100 100" aria-hidden="true">
-                <circle class="ct-rose-fond" cx="50" cy="50" r="46"/>
-                <g class="ct-rose-grads" id="ct-rose-grads"></g>
-                <g class="ct-rose-aiguille" id="ct-rose-aiguille">
-                    <polygon points="50,10 56,52 50,46 44,52"/>
-                    <polygon class="queue" points="50,90 44,48 50,54 56,48"/>
-                </g>
-                <circle class="ct-rose-axe" cx="50" cy="50" r="4"/>
-            </svg>
-            <p class="ct-rose-mot" id="ct-rose-mot">—</p>
-            <p class="ct-rose-depuis" id="ct-rose-depuis">—</p>
-        </div>
-    </div>
-
     <!-- FIN DE MANCHE -->
     <div class="ds-overlay" id="ct-fin" hidden>
         <div class="ds-card tall">
@@ -89,6 +73,7 @@
     <script src="monde.js"></script>
     <script src="/profile-viewer.js"></script>
     <script src="/design-system.js"></script>
+    <script src="/geo-commun.js"></script>
     <script src="/enchainement.js"></script>
     <script src="app.js"></script>
 </body>

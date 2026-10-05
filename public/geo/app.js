@@ -175,14 +175,18 @@ async function proposer(code) {
     essais.push(data.essai);
     fini = data.fini; trouve = data.trouve;
     renderEssais();
+    // La rose des vents de la famille. Ce mode affichait une flèche plate
+    // dans une case de 20 px pour dire exactement ce que La carte montre en
+    // grand : un seul geste pour les cinq jeux.
+    if (!data.essai.juste && data.essai.direction && data.essai.direction.angle != null) {
+        await Geo.rose({ angle: data.essai.direction.angle, mot: data.essai.direction.cardinal,
+                         depuis: data.essai.nom });
+    }
     if (fini) montrerFin(data);
 }
 
 // ---------- Le chronomètre ----------
-function formaterTemps(ms) {
-    const s = Math.max(0, Math.round(ms / 1000));
-    return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
-}
+const formaterTemps = Geo.temps;
 function lancerChrono() {
     clearInterval(chronoTimer);
     $('gg-chrono').hidden = false;
@@ -225,10 +229,9 @@ function montrerFin(d) {
         : 'Raté pour aujourd’hui';
     // On montre toujours la réponse sous ses deux formes : celui qui vient de
     // jouer le drapeau découvre la silhouette, et inversement.
-    $('gg-reponse').innerHTML = `
-        <p class="gg-rep-nom">${r.drapeau || ''} ${esc(r.nom || '')}</p>
-        ${r.chemin ? `<svg class="gg-rep-forme" viewBox="0 0 100 100" aria-hidden="true"><path d="${esc(r.chemin)}"/></svg>` : ''}
-        <p class="gg-rep-region">${esc(r.region || '')}</p>`;
+    // La fiche complète, commune aux cinq jeux : on montrait le drapeau à qui
+    // venait de jouer la silhouette, et l'inverse — autant tout donner.
+    $('gg-reponse').innerHTML = Geo.fiche(r);
     $('gg-fin-texte').textContent = trouve
         ? `${d.score} points${d.ms != null ? ' · ' + formaterTemps(d.ms) : ''}.`
         : `Six essais, et le compte n'y est pas. Demain, un autre pays.`;
@@ -237,7 +240,8 @@ function montrerFin(d) {
 const LIBELLE_MODE = { silhouette: '🗺️ Passer au pays', drapeau: '🏳️ Passer au drapeau', voyage: '🧭 Passer au voyage' };
 const modeSuivant = () => MODES[(MODES.indexOf(MODE) + 1) % MODES.length];
 function finCommune(d) {
-    renderBoard(d.classement || [], d.place);
+    Geo.classement($('gg-board'), d.classement || [], d.place,
+        (e) => (!e.trouve ? '✗' : (VOYAGE() ? e.essais + ' pas' : e.essais + '/6')));
     // Le mode suivant se propose depuis ici : c'est un seul jeu du jour, il ne
     // faut pas avoir à revenir au salon pour en faire le reste.
     $('gg-autre').hidden = false;
@@ -245,27 +249,6 @@ function finCommune(d) {
     $('gg-fin').hidden = false;
     if (!laDate() && window.Enchainement) Enchainement.proposer('geo:' + MODE, $('gg-fin').querySelector('.ds-card'));
 }
-function renderBoard(liste, maPlace) {
-    if (!liste.length) { $('gg-board').innerHTML = ''; return; }
-    const medaille = ['🥇', '🥈', '🥉'];
-    $('gg-board').innerHTML = `<p class="gg-board-titre">Le classement du jour</p>`
-        + liste.map((e, i) => `
-            <button type="button" class="gg-board-row${i + 1 === maPlace ? ' moi' : ''}" data-view="${esc(e.u)}">
-                <span class="gg-b-rang">${medaille[i] || (i + 1)}</span>
-                <span class="ds-avatar xs" data-p="${esc(e.u)}"></span>
-                <span class="gg-b-nom">${esc(e.u)}</span>
-                <span class="gg-b-essais">${!e.trouve ? '✗' : (VOYAGE() ? e.essais + ' pas' : e.essais + '/6')}</span>
-                <span class="gg-b-temps">${e.ms != null ? formaterTemps(e.ms) : ''}</span>
-            </button>`).join('');
-    if (window.PortailProfile) {
-        const box = $('gg-board');
-        box.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
-        PortailProfile.fetchAvatars(liste.map(e => e.u)).then(a => {
-            box.querySelectorAll('.ds-avatar[data-p]').forEach(el => { el.innerHTML = PortailProfile.bubbleHTML(a[el.dataset.p]); });
-        });
-    }
-}
-
 // Le partage ne révèle jamais le pays : seulement la suite des proximités,
 // comme les carrés de Motus racontent la partie sans donner le mot.
 function texteDePartage() {

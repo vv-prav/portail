@@ -138,7 +138,16 @@ const TIRABLES = VILLES.filter(v => !v.horsTirage);
 // La capitale du jour. `hasard` est le tirage du moteur commun des jeux du
 // jour — une fonction, pas un nombre : il la fait dépendre de la date et de la
 // variante, celle que fait avancer le bouton de régénération de l'admin.
-function capitaleDuJour(hasard) {
+function capitaleDuJour(hasard, eviter) {
+    const exclus = new Set(eviter || []);
+    // Jusqu'à quarante tirages pour tomber sur une capitale qui n'est ni
+    // sortie récemment ni déjà prise par un autre jeu — même méthode que la
+    // Géographie. Au-delà, on prend ce qui vient : mieux vaut une répétition
+    // qu'une journée sans jeu.
+    for (let i = 0; i < 40; i++) {
+        const v = TIRABLES[Math.floor(hasard() * TIRABLES.length)];
+        if (v && !exclus.has(v.code)) return v;
+    }
     return TIRABLES[Math.floor(hasard() * TIRABLES.length)] || TIRABLES[0];
 }
 

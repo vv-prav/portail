@@ -43,39 +43,15 @@ function laDate() {
 }
 
 // ---------- La carte ----------
+// Le tracé, la visée par proximité, le zoom et le glissé viennent du socle
+// commun (public/geo-commun.js) : la carte sert aussi au Voyage et à
+// l'atlas du profil, elle ne peut pas vivre ici.
+let CARTE = null;
 function construireCarte() {
-    const M = window.MONDE;
-    for (const p of M.pays) parCode.set(p.c, p);
-    $('ct-carte-box').innerHTML = `
-        <svg id="ct-svg" viewBox="0 0 ${M.w} ${M.h}" role="img" aria-label="Carte du monde">
-            <g id="ct-pays">${M.pays.map(p =>
-                `<path id="p${p.c}" d="${p.d}"/>`).join('')}</g>
-            <g id="ct-marques"></g>
-        </svg>`;
-    const svg = $('ct-svg');
-    // Un seul écouteur sur le SVG : 211 écouteurs de clic coûteraient cher
-    // pour rien, et le tracé n'est de toute façon pas la cible — le doigt
-    // tombe le plus souvent à côté.
-    svg.addEventListener('click', (e) => {
-        if (fini) return;
-        const pt = pointSvg(svg, e.clientX, e.clientY);
-        const p = plusProche(pt.x, pt.y);
-        if (p) viser(p);
+    for (const p of window.MONDE.pays) parCode.set(p.c, p);
+    CARTE = Geo.carte($('ct-carte-box'), {
+        surClic: (p) => { if (!fini) viser(p); },
     });
-}
-// Les coordonnées du doigt, ramenées dans le repère du SVG.
-function pointSvg(svg, clientX, clientY) {
-    const r = svg.getBoundingClientRect();
-    const M = window.MONDE;
-    return { x: (clientX - r.left) / r.width * M.w, y: (clientY - r.top) / r.height * M.h };
-}
-function plusProche(x, y) {
-    let best = null, bd = Infinity;
-    for (const p of window.MONDE.pays) {
-        const d = (p.x - x) ** 2 + (p.y - y) ** 2;
-        if (d < bd) { bd = d; best = p; }
-    }
-    return best;
 }
 
 function viser(p) {
@@ -83,9 +59,8 @@ function viser(p) {
     // serveur le refuserait.
     if (essais.some(e => e.code === p.c)) { DS.toast('Déjà montré.'); return; }
     vise = p;
-    for (const el of document.querySelectorAll('#ct-pays path.vise')) el.classList.remove('vise');
-    const el = $('p' + p.c);
-    if (el) el.classList.add('vise');
+    CARTE.demarquer('vise');
+    CARTE.marquer(p.c, 'vise');
     $('ct-vise-nom').textContent = p.n;
     $('ct-vise').hidden = false;
 }
@@ -96,17 +71,14 @@ function renderMarques() {
     const marques = essais.map(e => {
         const p = parCode.get(e.code);
         if (!p) return '';
-        return `<g class="ct-marque ${e.juste ? 'juste' : ''}" transform="translate(${p.x},${p.y})">
-            <circle r="7"/>
-            ${e.juste ? '<text class="ct-m-ico" y="3">★</text>'
-                : `<g transform="rotate(${e.angle})"><path class="ct-m-fleche" d="M0,-5 L3.2,3 L0,1 L-3.2,3 Z"/></g>`}
+        return `<g class="${e.juste ? 'juste' : ''}" transform="translate(${p.x},${p.y})">
+            <circle class="fond" r="7"/>
+            ${e.juste ? '<text class="ico" y="3">★</text>'
+                : `<g transform="rotate(${e.angle})"><path class="fleche" d="M0,-5 L3.2,3 L0,1 L-3.2,3 Z"/></g>`}
         </g>`;
     }).join('');
-    $('ct-marques').innerHTML = marques;
-    for (const e of essais) {
-        const el = $('p' + e.code);
-        if (el) el.classList.add(e.juste ? 'trouve' : 'rate');
-    }
+    CARTE.marques(marques);
+    for (const e of essais) CARTE.marquer(e.code, e.juste ? 'trouve' : 'rate');
 }
 
 function renderEssais() {
@@ -121,49 +93,6 @@ function renderEssais() {
     renderMarques();
 }
 
-// ---------- La rose des vents ----------
-// ⚠️ L'aiguille part toujours de la position où elle s'est arrêtée la fois
-// d'avant, et on ajoute des tours entiers : sans ça, passer de 350° à 10°
-// la ferait revenir en arrière sur presque un tour complet.
-let angleAiguille = 0;
-function montrerRose(e) {
-    const rose = $('ct-rose');
-    $('ct-rose-mot').textContent = e.cardinal;
-    $('ct-rose-depuis').textContent = 'depuis ' + e.nom;
-    const cible = e.angle;
-    const delta = ((cible - (angleAiguille % 360)) + 360) % 360;
-    angleAiguille += 360 * 2 + delta;      // deux tours, puis le cap
-    const aig = $('ct-rose-aiguille');
-    aig.style.transition = 'none';
-    aig.style.transform = `rotate(${angleAiguille - 360 * 2 - delta}deg)`;
-    rose.hidden = false;
-    // Le temps d'un repaint, sinon la transition ne part pas.
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-        aig.style.transition = 'transform 1.6s cubic-bezier(.16,.84,.26,1)';
-        aig.style.transform = `rotate(${angleAiguille}deg)`;
-    }));
-    // ⚠️ Un filet de sécurité, comme pour le plouf : si l'animation ne tourne
-    // pas (onglet en arrière-plan), la rose doit disparaître quand même.
-    clearTimeout(montrerRose._t);
-    montrerRose._t = setTimeout(fermerRose, 2600);
-    rose.addEventListener('click', fermerRose, { once: true });
-}
-function fermerRose() {
-    clearTimeout(montrerRose._t);
-    $('ct-rose').hidden = true;
-}
-// Les graduations et les quatre points cardinaux de la rose.
-function dessinerRose() {
-    let g = '';
-    for (let i = 0; i < 24; i++) {
-        const gros = i % 6 === 0;
-        g += `<line class="${gros ? 'gros' : ''}" x1="50" y1="${gros ? 6 : 8}" x2="50" y2="${gros ? 14 : 12}"
-              transform="rotate(${i * 15} 50 50)"/>`;
-    }
-    g += '<text class="ct-rose-n" x="50" y="24">N</text>';
-    $('ct-rose-grads').innerHTML = g;
-}
-
 async function valider() {
     if (!vise || fini) return;
     const code = vise.c;
@@ -176,20 +105,18 @@ async function valider() {
     essais.push(data.essai);
     fini = data.fini; trouve = data.trouve;
     renderEssais();
+    // La rose des vents est celle de toute la famille (Geo.rose) : elle rend
+    // la main quand l'aiguille s'est posée, donc la fin n'arrive jamais
+    // par-dessus l'information qu'on vient de donner.
     if (!data.essai.juste) {
-        montrerRose(data.essai);
-        if (data.essai.voisin) setTimeout(() => DS.toast('Tu touches ! C’est un pays voisin.'), 2700);
+        await Geo.rose({ angle: data.essai.angle, mot: data.essai.cardinal, depuis: data.essai.nom });
+        if (data.essai.voisin) DS.toast('Tu touches ! C’est un pays voisin.');
     }
-    // La fin attend la fin de la rose : les deux écrans l'un sur l'autre
-    // feraient perdre l'information qu'on vient juste de donner.
-    if (fini) setTimeout(() => montrerFin(data), data.essai.juste ? 400 : 2800);
+    if (fini) montrerFin(data);
 }
 
 // ---------- Le chronomètre ----------
-function formaterTemps(ms) {
-    const s = Math.max(0, Math.round(ms / 1000));
-    return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
-}
+const formaterTemps = Geo.temps;
 function lancerChrono() {
     clearInterval(chronoTimer);
     $('ct-chrono').hidden = false;
@@ -210,45 +137,24 @@ setInterval(() => {
 function montrerFin(d) {
     fini = true;
     clearInterval(chronoTimer);
-    fermerRose();
+    Geo.fermerRose();
     const r = d.reponse || {};
     // Qu'on ait trouvé ou non, la carte montre enfin où il était.
-    const el = $('p' + r.code);
-    if (el) el.classList.add('reponse');
+    if (CARTE && r.code) { CARTE.marquer(r.code, 'reponse'); CARTE.cadrer(r.code, trouve ? 1 : 2.4); }
     $('ct-fin-emoji').textContent = trouve ? (essais.length <= 2 ? '🏆' : '🎉') : '🗺️';
     $('ct-fin-titre').textContent = trouve
         ? `Trouvé en ${essais.length} essai${essais.length > 1 ? 's' : ''} !`
         : 'Raté pour aujourd’hui';
-    $('ct-reponse').innerHTML = `<p class="ct-rep-nom">${esc(r.nom || '')}</p>
-        <p class="ct-rep-region">${esc(r.region || '')}</p>`;
+    // La fiche complète : on ne vérifie plus seulement si on avait raison,
+    // on apprend le pays.
+    $('ct-reponse').innerHTML = Geo.fiche(r);
     $('ct-fin-texte').textContent = trouve
         ? `${d.score} points${d.ms != null ? ' · ' + formaterTemps(d.ms) : ''}.`
         : 'Il est maintenant éclairé sur la carte. Demain, un autre.';
-    renderBoard(d.classement || [], d.place);
+    Geo.classement($('ct-board'), d.classement || [], d.place, (e) => (e.trouve ? e.essais + '/6' : '✗'));
     $('ct-fin').hidden = false;
     if (!laDate() && window.Enchainement) Enchainement.proposer('carte', $('ct-fin').querySelector('.ds-card'));
 }
-function renderBoard(liste, maPlace) {
-    if (!liste.length) { $('ct-board').innerHTML = ''; return; }
-    const medaille = ['🥇', '🥈', '🥉'];
-    $('ct-board').innerHTML = `<p class="ct-board-titre">Le classement du jour</p>`
-        + liste.map((e, i) => `
-            <button type="button" class="ct-board-row${i + 1 === maPlace ? ' moi' : ''}" data-view="${esc(e.u)}">
-                <span class="ct-b-rang">${medaille[i] || (i + 1)}</span>
-                <span class="ds-avatar xs" data-p="${esc(e.u)}"></span>
-                <span class="ct-b-nom">${esc(e.u)}</span>
-                <span class="ct-b-essais">${!e.trouve ? '✗' : e.essais + '/6'}</span>
-                <span class="ct-b-temps">${e.ms != null ? formaterTemps(e.ms) : ''}</span>
-            </button>`).join('');
-    if (window.PortailProfile) {
-        const box = $('ct-board');
-        box.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
-        PortailProfile.fetchAvatars(liste.map(e => e.u)).then(a => {
-            box.querySelectorAll('.ds-avatar[data-p]').forEach(el => { el.innerHTML = PortailProfile.bubbleHTML(a[el.dataset.p]); });
-        });
-    }
-}
-
 // Le partage ne révèle jamais le pays : seulement la suite des caps, qui ne
 // veut rien dire sans savoir d'où ils ont été pris.
 function texteDePartage() {
@@ -286,7 +192,6 @@ async function charger() {
     const { data } = await api('/api/carte/today' + (d ? '?date=' + encodeURIComponent(d) : ''));
     P = data;
     document.body.classList.remove('is-boot');
-    dessinerRose();
     construireCarte();
     $('ct-date').textContent = new Date(P.date + 'T12:00:00')
         .toLocaleDateString(LOCALE, { weekday: 'long', day: 'numeric', month: 'long' });

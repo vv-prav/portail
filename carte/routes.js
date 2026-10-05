@@ -17,6 +17,8 @@ module.exports = function monterCarte(app, deps) {
             mfTodayId, mfShiftDay, mfSecondsToMidnight, dateDemandee, creerMoteur, racine } = deps;
 
     const carteJeu = require('./jeu');
+    const reservation = require('../geo/reservation');
+    const { fiche } = require('../geo/fiche');
     const mCarte = creerMoteur('carte');
     const kCartePays = (date) => `carte:pays:${date}`;
 
@@ -24,13 +26,11 @@ module.exports = function monterCarte(app, deps) {
         const cache = mfGet(kCartePays(date));
         const connu = cache && carteJeu.parCode.get(cache);
         if (connu) return connu;
-        // Deux jours de suite sur le même pays serait décevant : on écarte les
-        // six derniers, comme le fait la Géographie.
-        const recents = [];
-        for (let i = 1; i <= 6; i++) {
-            const c = mfGet(kCartePays(mfShiftDay(date, -i)));
-            if (c) recents.push(c);
-        }
+        // ⚠️ Trente jours sans répétition, comme la Géographie — six ne
+        // suffisaient pas : mesuré, onze répétitions à moins de quinze jours
+        // sur 180. Et on écarte ce qu'un autre jeu de géographie a déjà pris
+        // aujourd'hui (voir geo/reservation.js).
+        const recents = reservation.aEviter(mfGet, mfShiftDay, date, kCartePays);
         const p = carteJeu.paysDuJour(mCarte.tirageDuJour(date), recents);
         mfSet(kCartePays(date), p.code);
         return p;
@@ -51,7 +51,7 @@ module.exports = function monterCarte(app, deps) {
             progression: prog,
             // La réponse — c'est-à-dire OÙ il se trouve — seulement une fois
             // la manche finie, pour que l'écran de fin puisse la montrer.
-            reponse: (prog && prog.fini) ? { code: cible.code, nom: cible.nom, region: cible.region } : undefined,
+            reponse: (prog && prog.fini) ? fiche(cible.code) : undefined,
             serie: mCarte.serie(user),
         });
     });
@@ -96,7 +96,7 @@ module.exports = function monterCarte(app, deps) {
             restants: carteJeu.MAX_ESSAIS - prog.essais.length,
             fini: !!prog.fini, trouve: !!prog.trouve,
             // La réponse n'arrive qu'à la fin, et seulement alors.
-            reponse: prog.fini ? { code: cible.code, nom: cible.nom, region: cible.region } : undefined,
+            reponse: prog.fini ? fiche(cible.code) : undefined,
             score: prog.score, ms: prog.ms,
             place: prog.fini && date === today ? mCarte.placeDe(user, date) : null,
             classement: prog.fini ? mCarte.classement(date).slice(0, 15) : undefined,

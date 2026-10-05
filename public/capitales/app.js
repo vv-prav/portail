@@ -135,14 +135,18 @@ async function proposer(nom) {
     essais.push(data.essai);
     fini = data.fini; trouve = data.trouve;
     renderEssais();
+    // La rose des vents de la famille : la direction était rendue ici par une
+    // flèche plate dans une case, alors que La carte la montrait en grand.
+    // Le même renseignement doit se montrer de la même façon.
+    if (!data.essai.juste && data.essai.direction && data.essai.direction.angle != null) {
+        await Geo.rose({ angle: data.essai.direction.angle, mot: data.essai.direction.cardinal,
+                         depuis: data.essai.ville });
+    }
     if (fini) montrerFin(data);
 }
 
 // ---------- Le chronomètre ----------
-function formaterTemps(ms) {
-    const s = Math.max(0, Math.round(ms / 1000));
-    return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
-}
+const formaterTemps = Geo.temps;
 function lancerChrono() {
     clearInterval(chronoTimer);
     $('cp-chrono').hidden = false;
@@ -168,38 +172,16 @@ function montrerFin(d) {
     $('cp-fin-titre').textContent = trouve
         ? `Trouvé en ${essais.length} essai${essais.length > 1 ? 's' : ''} !`
         : 'Raté pour aujourd’hui';
-    $('cp-reponse').innerHTML = `
-        <p class="cp-rep-nom">${esc(r.ville || '')}</p>
-        <p class="cp-rep-pays">${esc(r.pays || '')}</p>
-        <p class="cp-rep-infos">${esc(r.devise || '')} · ${esc(r.langue || '')} · ${compact(r.pop)} habitants</p>`;
+    // La fiche complète du pays, la même qu'aux quatre autres jeux de
+    // géographie — la capitale y figure, avec tout le reste.
+    $('cp-reponse').innerHTML = Geo.fiche(r);
     $('cp-fin-texte').textContent = trouve
         ? `${d.score} points${d.ms != null ? ' · ' + formaterTemps(d.ms) : ''}.`
         : 'Six essais, et le compte n’y est pas. Demain, une autre ville.';
-    renderBoard(d.classement || [], d.place);
+    Geo.classement($('cp-board'), d.classement || [], d.place, (e) => (e.trouve ? e.essais + '/6' : '✗'));
     $('cp-fin').hidden = false;
     if (!laDate() && window.Enchainement) Enchainement.proposer('capitales', $('cp-fin').querySelector('.ds-card'));
 }
-function renderBoard(liste, maPlace) {
-    if (!liste.length) { $('cp-board').innerHTML = ''; return; }
-    const medaille = ['🥇', '🥈', '🥉'];
-    $('cp-board').innerHTML = `<p class="cp-board-titre">Le classement du jour</p>`
-        + liste.map((e, i) => `
-            <button type="button" class="cp-board-row${i + 1 === maPlace ? ' moi' : ''}" data-view="${esc(e.u)}">
-                <span class="cp-b-rang">${medaille[i] || (i + 1)}</span>
-                <span class="ds-avatar xs" data-p="${esc(e.u)}"></span>
-                <span class="cp-b-nom">${esc(e.u)}</span>
-                <span class="cp-b-essais">${!e.trouve ? '✗' : e.essais + '/6'}</span>
-                <span class="cp-b-temps">${e.ms != null ? formaterTemps(e.ms) : ''}</span>
-            </button>`).join('');
-    if (window.PortailProfile) {
-        const box = $('cp-board');
-        box.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => PortailProfile.open(b.dataset.view)));
-        PortailProfile.fetchAvatars(liste.map(e => e.u)).then(a => {
-            box.querySelectorAll('.ds-avatar[data-p]').forEach(el => { el.innerHTML = PortailProfile.bubbleHTML(a[el.dataset.p]); });
-        });
-    }
-}
-
 // Le partage ne révèle jamais la ville : seulement la couleur des colonnes,
 // comme les carrés de Motus racontent la partie sans donner le mot.
 const CARRE = { vert: '🟩', orange: '🟧', rouge: '🟥', neutre: '⬜' };
