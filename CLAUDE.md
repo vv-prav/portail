@@ -92,6 +92,7 @@ portail/
 ├── sudoku/{jeu,routes}.js     ← générateur, solveur, vérification
 ├── chiffres/{jeu,routes}.js   ← Le compte est bon
 ├── capitales/{jeu,villes,routes}.js ← Les capitales ; villes.js est GÉNÉRÉ
+├── geo/{commun,fiche,atlas,reservation}.js ← le socle des cinq jeux de géographie
 ├── carte/{jeu,centres,routes}.js ← La carte ; centres.js est GÉNÉRÉ
 ├── scripts/genere-carte.js    ← régénère la carte du monde et ses centres
 ├── scripts/genere-capitales.js ← régénère capitales/villes.js depuis Wikidata
@@ -109,6 +110,7 @@ portail/
 └── public/
     ├── index.html / app.js / style.css     ← LE SALON (page d'accueil)
     ├── design-system.css / design-system.js ← voir section dédiée
+    ├── geo-commun.js / geo-commun.css        ← le socle des pages de géographie
     ├── profile-viewer.js                    ← bulle de profil partagée
     ├── des.js                               ← LE dé du salon : catalogue, rendu, skin
     ├── style.js                             ← LE coin de style : catalogue, rendu, bouton
@@ -170,6 +172,38 @@ Chaque mini-app suit le même schéma : `public/<app>/index.html` + `app.js` + `
 | **Les capitales** (`/capitales`) | Deviner la capitale du jour en six essais. Chaque proposition donne cinq comparaisons — devise, langue, distance, direction, population — en vert/orange/rouge. Voir la section dédiée. |
 | **Géographie** (`/geo`) | **Trois modes** dans un seul jeu du jour : **Le pays** (silhouette), **Le drapeau**, et **Le voyage** (voir la section dédiée, sa mécanique est différente). Les deux premiers : Même mécanique dans les deux — six essais, et chaque proposition donne distance, direction et proximité, ce qui rend un pays méconnu trouvable par triangulation plutôt qu'au hasard, et rend surtout le mode Drapeau jouable. Les drapeaux sont des **emoji** : aucun fichier à servir, aucun droit à vérifier, et un rendu net sur téléphone. Voir la section dédiée pour la base de pays. |
 
+### La famille « géographie » — le socle commun aux cinq jeux
+
+Cinq des dix jeux du jour tournent autour de `geo/pays.js` : Le pays, Le drapeau, Le voyage, Les capitales, La carte. **La moitié du salon est donc de la géographie**, et ce qui suit est né d'un audit de cette dérive.
+
+| Fichier | Ce qu'il porte |
+|---|---|
+| `geo/commun.js` | distance, caps, normalisation, drapeau, flèches, cardinaux, **barème** |
+| `geo/reservation.js` | le verrou anti-collision et la garde anti-répétition |
+| `geo/fiche.js` | la fiche d'un pays, montrée à la fin des cinq jeux |
+| `geo/atlas.js` | les pays qu'un joueur a trouvés, tous jeux confondus |
+| `public/geo-commun.js` + `.css` | classement du jour, rose des vents, fiche, **carte du monde avec zoom** |
+
+⚠️ **Un seul barème pour la famille, dans `geo/commun.js`.** Il était écrit TROIS fois à l'identique ; `normaliser()` quatre fois, `distanceKm()` deux, les huit flèches trois. Cinq occasions de diverger en silence — un barème corrigé dans un fichier sur trois, et deux jeux ne comptent plus pareil sans que rien ne le signale.
+
+⚠️ **`capReel()` et `capSurCarte()` ne sont pas interchangeables.** Le premier est le cap d'une boussole : il répond « NORD » pour aller de la France aux Samoa, parce que le plus court chemin passe par le pôle. Exact, et inutilisable devant une carte plate où les Samoa sont à l'ouest — la flèche enverrait vers l'Arctique et deux relèvements ne se croiseraient nulle part. **Tout jeu qui demande de montrer un endroit sur la carte utilise le second, et lui seul.**
+
+⚠️ **`direction()` renvoie un objet `{angle, fleche, cardinal}`, pas une chaîne.** L'angle exact est ce que vise l'aiguille de la rose des vents ; l'arrondir à 45° la ferait mentir d'un demi-secteur. Seule exception : un **pas de voyage**, où le serveur range la flèche seule.
+
+#### Le verrou anti-collision
+
+Les cinq jeux tiraient dans le même vivier en s'ignorant. Mesuré sur 180 jours avec les vraies graines : **six collisions, une tous les trente jours** — la silhouette de la Chine le matin, et Pékin tombait tout seul l'après-midi. Le premier jeu qui tire pose sa réponse en base (il le faisait déjà), les suivants l'évitent. Et la garde anti-répétition passe à **trente jours partout** : La carte se contentait de six (11 répétitions), Les capitales n'en avaient aucune (12, dont la même ville à sept jours d'écart). Remesuré : **zéro collision, zéro répétition**.
+
+#### La fiche pays, et l'atlas
+
+`geo/fiche.js` réunit trois jeux de données qui ne se parlaient pas — `geo/pays.js`, `capitales/villes.js` et le drapeau dérivé du code — pour montrer, à la fin de chaque manche : drapeau, silhouette, capitale, monnaie, langue, population, superficie et voisins en toutes lettres. ⚠️ `aireReelle` et **jamais** `aire` : la seconde est la surface du tracé dessiné, et ferait dire que la Pologne est plus vaste que la Norvège.
+
+`geo/atlas.js` fait l'inverse : il relit les progressions des cinq jeux pour savoir quels pays un joueur a trouvés, et le profil les allume sur la carte du monde, chacun de la couleur du jeu par lequel on l'a appris. ⚠️ **Seules les manches réussies comptent** — un atlas qui se remplit sans rien savoir ne vaudrait rien. Le voyage fait exception et compte les pays traversés : y avoir mis le pied est le principe du jeu.
+
+#### Le classement de la discipline
+
+`GET /api/salon/classement?famille=geo` : les mêmes points, filtrés sur la famille. ⚠️ **Pas un second barème** — deux barèmes dans un même salon, et personne ne saurait plus ce que vaut une manche.
+
 ### La carte (`carte/`) — montrer un pays du doigt
 
 Un nom est donné, on le cherche sur une carte du monde. Une erreur ne renvoie **que la direction**, montrée par une rose des vents dont l'aiguille tourne et s'arrête sur le cap. Pas de distance : deux relèvements se croisent sur la réponse, ce qui fait un puzzle plutôt qu'un chaud-froid.
@@ -178,7 +212,9 @@ Un nom est donné, on le cherche sur une carte du monde. Une erreur ne renvoie *
 
 **Trois décisions d'interface, toutes prises sur des mesures :**
 
-1. ⚠️ **On vise le centre le plus proche du doigt, jamais l'intérieur du tracé.** Mesuré : sur un écran de 375 px, carte entière affichée, **2 pays sur 211** atteignent la cible tactile de 44 × 44 px. La France fait 9 px de côté, la Belgique 2, le Rwanda 2. Tester si le doigt est *dans* le pays rendrait la moitié du monde impossible à désigner. Vérifié après coup : un doigt posé à côté de la Belgique sélectionne bien la Belgique.
+1. La carte elle-même (`public/carte/monde.js`) sert aussi au **Voyage** et à **Mon atlas** : elle est chargée par les trois pages, et une seule fois en cache. Le zoom, le glissé et la visée par proximité vivent dans `public/geo-commun.js`. ⚠️ **Un glissé n'est pas un clic** : au-delà de dix pixels de déplacement, on déplaçait la carte, on ne désignait rien.
+
+⚠️ **On vise le centre le plus proche du doigt, jamais l'intérieur du tracé.** Mesuré : sur un écran de 375 px, carte entière affichée, **2 pays sur 211** atteignent la cible tactile de 44 × 44 px. La France fait 9 px de côté, la Belgique 2, le Rwanda 2. Tester si le doigt est *dans* le pays rendrait la moitié du monde impossible à désigner. Vérifié après coup : un doigt posé à côté de la Belgique sélectionne bien la Belgique.
 2. **Viser, puis valider.** Le pays visé s'allume et son nom s'affiche ; un second geste confirme. Sans ça, un doigt qui glisse coûterait un essai sur six.
 3. **La carte garde la mémoire** : chaque pays montré reste coloré avec sa flèche dessus. C'est ce qui permet de trianguler, et c'est tout le jeu puisqu'il n'y a pas de distance.
 
