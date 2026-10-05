@@ -194,13 +194,17 @@ Cinq des onze jeux du jour sont de la géographie. Ils mettent à l'épreuve ; i
 
 **Les trois portes, et pas une de plus** : *Réviser* (ce qui est dû aujourd'hui — la principale), *Découvrir une région*, *Au hasard*. Dans une leçon de région, ⚠️ on commence par ce qu'on ne sait PAS : revoir d'abord ce qu'on maîtrise, c'est perdre la moitié de la séance.
 
+⚠️ **Les leçons sont rangées par CONTINENT**, six portes qui se déplient sur leurs sous-régions. Vingt-quatre régions d'un seul tenant, c'était une liste à faire défiler : on ne voyait ni où on en était, ni par où commencer. Chaque continent porte son propre compte de pays sus.
+
+⚠️ **Et une leçon de région ne montre pas le monde entier.** Chercher le Laos sur une carte planétaire, c'est chercher une aiguille ; sur l'Asie du Sud-Est, c'est apprendre. `Geo.carte().cadrerSur(codes)` calcule l'étendue des pays de la leçon — avec une **marge proportionnelle** à cette étendue et non fixe : soixante unités fixes autour de l'Asie du Sud-Est ramenaient soixante-seize pays dans le cadre, dont l'Australie et les Comores. Un quart de l'étendue de chaque côté en laisse vingt-quatre, tous de la région ou limitrophes. On peut toujours dézoomer.
+
 **Les rangs** — Curieux, Explorateur, Voyageur, Navigateur, Globe-trotteur, Géographe, Maître du monde, Atlas vivant — ne donnent aucun avantage et n'entrent dans aucun classement. Ils disent où on en est, et c'est déjà beaucoup quand l'objectif est à 194.
 
 ⚠️ **La fiche du pays s'affiche à CHAQUE réponse, juste ou fausse.** C'est le moment où l'on regarde vraiment ; la cacher quand on a bon serait manquer la moitié des occasions d'apprendre.
 
 ⚠️ La séance en cours est rangée côté serveur (`geo:seance:<pseudo>`) **avec les bonnes réponses** : le navigateur ne reçoit que des énoncés.
 
-**`geo/regions.js`** est la seule donnée que tout ceci ajoute : `geo/pays.js` ne connaît que cinq régions, dont une Afrique à 54 pays, et personne n'apprend 54 pays d'un coup. Les 24 sous-régions de la norme M49 font de 2 à 17 pays — la taille d'une leçon. Régénérable par `scripts/genere-regions.js`.
+**`geo/regions.js`** est la seule donnée que tout ceci ajoute : `geo/pays.js` ne connaît que cinq régions, dont une Afrique à 54 pays, et personne n'apprend 54 pays d'un coup. Les 24 sous-régions de la norme M49 font de 2 à 17 pays — la taille d'une leçon — et se regroupent en six continents. Le module exporte `{ continents, regions }`. Régénérable par `scripts/genere-regions.js`.
 
 ### Le chrono (`chrono/`) — arrêter un chronomètre qu'on ne voit pas
 

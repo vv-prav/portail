@@ -29,6 +29,7 @@ let Q = null;                 // la question affichée
 let repondu = false;
 let derniereSource = 'revision';
 let ATLAS = null, CARTE_Q = null;
+let CADRE = null;            // les pays de la leçon, pour cadrer la carte
 
 // ---------- L'accueil ----------
 function renderRang(b) {
@@ -74,16 +75,46 @@ function renderPortes(b) {
     }));
 }
 
+// ⚠️ Les continents d'abord. Vingt-quatre régions d'un seul tenant, c'était
+// une liste à faire défiler, pas une progression : on ne voyait ni où on en
+// était ni par où commencer. Six portes, et chacune s'ouvre sur ses leçons.
+let continentOuvert = null;
 function renderRegions(b) {
-    $('ap-regions').innerHTML = b.regions.map(r => `
-        <button type="button" class="ap-region" data-region="${esc(r.id)}">
-            <span class="ap-region-emoji">${r.emoji}</span>
-            <span class="ap-region-txt">
-                <b>${esc(r.nom)}</b>
-                <small>${r.su} / ${r.total} su${r.su > 1 ? 's' : ''}</small>
-            </span>
-            <span class="ap-jauge petite"><i style="width:${r.part}%"></i></span>
-        </button>`).join('');
+    $('ap-regions').innerHTML = b.continents.map(c => {
+        const siennes = b.regions.filter(r => r.continent === c.id);
+        const ouvert = continentOuvert === c.id;
+        return `
+        <div class="ap-cont${ouvert ? ' ouvert' : ''}">
+            <button type="button" class="ap-cont-tete" data-continent="${esc(c.id)}">
+                <span class="ap-cont-emoji">${c.emoji}</span>
+                <span class="ap-cont-txt">
+                    <b>${esc(c.nom)}</b>
+                    <small>${c.su} / ${c.total} pays su${c.su > 1 ? 's' : ''}</small>
+                </span>
+                <span class="ap-jauge petite"><i style="width:${c.part}%"></i></span>
+                <span class="ap-cont-chevron">›</span>
+            </button>
+            <div class="ap-cont-corps">
+                ${siennes.map(r => `
+                    <button type="button" class="ap-region" data-region="${esc(r.id)}">
+                        <span class="ap-region-txt">
+                            <b>${esc(r.nom)}</b>
+                            <small>${r.su} / ${r.total}</small>
+                        </span>
+                        <span class="ap-jauge petite"><i style="width:${r.part}%"></i></span>
+                    </button>`).join('')}
+            </div>
+        </div>`;
+    }).join('');
+
+    $('ap-regions').querySelectorAll('[data-continent]').forEach(t => t.addEventListener('click', () => {
+        continentOuvert = continentOuvert === t.dataset.continent ? null : t.dataset.continent;
+        renderRegions(b);
+        if (continentOuvert) {
+            const el = $('ap-regions').querySelector(`[data-continent="${continentOuvert}"]`);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }));
     $('ap-regions').querySelectorAll('[data-region]').forEach(b2 =>
         b2.addEventListener('click', () => lancerSeance('region:' + b2.dataset.region)));
 }
@@ -135,6 +166,8 @@ async function lancerSeance(source) {
     $('ap-accueil').hidden = true;
     $('ap-seance').hidden = false;
     $('ap-s-titre').textContent = data.titre;
+    CADRE = data.cadre || null;
+    CARTE_Q = null;          // une nouvelle leçon, un nouveau cadrage
     montrerQuestion(data.question);
 }
 
@@ -167,6 +200,10 @@ function montrerQuestion(q) {
         // pour rien, et perdrait le zoom au passage.
         $('ap-choix').innerHTML = '<div class="ap-carte" id="ap-carte-q"></div>';
         CARTE_Q = Geo.carte($('ap-carte-q'), { surClic: (p) => repondre(p.c) });
+        // ⚠️ Dans une leçon de région, la carte montre LA RÉGION. Chercher le
+        // Laos sur une carte du monde, c'est chercher une aiguille ; sur
+        // l'Asie du Sud-Est, c'est apprendre. On peut toujours dézoomer.
+        if (CADRE) CARTE_Q.cadrerSur(CADRE);
         return;
     }
     $('ap-choix').innerHTML = q.choix.map(c =>

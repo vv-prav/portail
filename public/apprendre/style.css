@@ -81,14 +81,31 @@ body.is-boot .ap { opacity:0; }
 .ap-legende i.n4 { background:rgba(90,168,122,.7); }
 .ap-legende i.n5 { background:var(--good); }
 
-/* ---------- Les régions ---------- */
-.ap-regions { display:flex; flex-direction:column; gap:5px; }
+/* ---------- Les continents et leurs régions ----------
+   Six portes, chacune repliée sur ses leçons. Vingt-quatre régions d'un
+   seul tenant, c'était une liste à faire défiler, pas une progression. */
+.ap-regions { display:flex; flex-direction:column; gap:6px; }
+.ap-cont { border-radius:13px; background:rgba(255,255,255,.03);
+    border:1px solid var(--line); overflow:hidden; }
+.ap-cont-tete { display:flex; align-items:center; gap:10px; width:100%; padding:11px 12px;
+    background:transparent; border:0; color:inherit; font-family:inherit; text-align:left; cursor:pointer; }
+.ap-cont-emoji { font-size:1.3rem; flex:0 0 auto; }
+.ap-cont-txt { flex:1; min-width:0; }
+.ap-cont-txt b { display:block; font-size:.92rem; font-weight:800; }
+.ap-cont-txt small { display:block; font-size:.7rem; color:var(--muted); }
+.ap-cont-chevron { color:var(--brass); font-size:1.2rem; transition:transform .2s; }
+.ap-cont.ouvert .ap-cont-chevron { transform:rotate(90deg); }
+/* ⚠️ Replié = pas affiché du tout, et non pas « hauteur zéro » : une
+   hauteur animée laisse les boutons focalisables au clavier alors qu'on ne
+   les voit pas. */
+.ap-cont-corps { display:none; padding:0 8px 8px; flex-direction:column; gap:4px; }
+.ap-cont.ouvert .ap-cont-corps { display:flex; }
 .ap-region { display:flex; align-items:center; gap:10px; width:100%; padding:9px 12px;
-    border-radius:11px; background:rgba(0,0,0,.22); border:1px solid var(--line);
+    border-radius:10px; background:rgba(0,0,0,.26); border:1px solid transparent;
     color:inherit; font-family:inherit; text-align:left; cursor:pointer; }
-.ap-region-emoji { font-size:1.1rem; }
+.ap-region:active { border-color:var(--brass); }
 .ap-region-txt { flex:1; min-width:0; }
-.ap-region-txt b { display:block; font-size:.85rem; font-weight:700; }
+.ap-region-txt b { display:block; font-size:.84rem; font-weight:700; }
 .ap-region-txt small { display:block; font-size:.68rem; color:var(--muted); }
 
 /* ---------- La séance ---------- */

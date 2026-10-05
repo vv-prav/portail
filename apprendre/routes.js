@@ -15,7 +15,7 @@ module.exports = function monterApprendre(app, deps) {
 
     const savoir = require('../geo/savoir');
     const exercices = require('../geo/exercices');
-    const REGIONS = require('../geo/regions');
+    const { regions: REGIONS } = require('../geo/regions');
     const { fiche } = require('../geo/fiche');
 
     const kSeance = (pseudo) => `geo:seance:${pseudo}`;
@@ -58,10 +58,16 @@ module.exports = function monterApprendre(app, deps) {
 
         let codes = [];
         let titre = '';
+        // Les pays à montrer sur la carte quand la question est « montre-le ».
+        // ⚠️ Dans une leçon de région, on ne doit PAS voir le monde entier :
+        // chercher le Laos sur une carte planétaire, c'est chercher une
+        // aiguille ; sur l'Asie du Sud-Est, c'est apprendre.
+        let cadre = null;
         if (source.startsWith('region:')) {
             const r = REGIONS.find(x => x.id === source.slice(7));
             if (!r) return res.status(400).json({ error: 'Région inconnue.' });
             titre = r.emoji + ' ' + r.nom;
+            cadre = r.pays;
             // ⚠️ Dans une leçon, on commence par ce qu'on ne sait PAS. Revoir
             // d'abord les pays qu'on maîtrise déjà, c'est perdre la moitié de
             // la séance avant d'apprendre quoi que ce soit.
@@ -90,7 +96,7 @@ module.exports = function monterApprendre(app, deps) {
         // navigateur ne reçoit que les énoncés.
         mfSet(kSeance(pseudo), { titre, source, debutA: Date.now(), index: 0, justes: 0, questions });
         res.json({
-            titre, total: questions.length,
+            titre, cadre, total: questions.length,
             question: publique(questions[0], 0, questions.length),
         });
     });

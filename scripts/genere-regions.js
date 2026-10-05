@@ -17,6 +17,34 @@ const wc = require(path.join(process.cwd(), 'node_modules', 'world-countries'));
 const R = path.join(__dirname, '..');
 const PAYS = require(R + '/geo/pays.js');
 
+// Les six continents, qui regroupent les sous-régions. ⚠️ On apprend par
+// continent d'abord : vingt-quatre entrées d'un seul tenant, c'était une
+// liste à faire défiler, pas une progression. Six portes, et chacune
+// s'ouvre sur ses propres leçons.
+const CONTINENTS = {
+    europe: { nom: 'Europe', emoji: '🏰', rang: 1 },
+    afrique: { nom: 'Afrique', emoji: '🦁', rang: 2 },
+    asie: { nom: 'Asie', emoji: '🏯', rang: 3 },
+    'amerique-nord': { nom: 'Amérique du Nord', emoji: '🗽', rang: 4 },
+    'amerique-sud': { nom: 'Amérique du Sud', emoji: '🌴', rang: 5 },
+    oceanie: { nom: 'Océanie', emoji: '🏝️', rang: 6 },
+};
+const CONTINENT_DE = {
+    'Western Europe': 'europe', 'Southern Europe': 'europe', 'Northern Europe': 'europe',
+    'Central Europe': 'europe', 'Southeast Europe': 'europe', 'Eastern Europe': 'europe',
+    'Northern Africa': 'afrique', 'Western Africa': 'afrique', 'Middle Africa': 'afrique',
+    'Eastern Africa': 'afrique', 'Southern Africa': 'afrique',
+    'Western Asia': 'asie', 'Central Asia': 'asie', 'Southern Asia': 'asie',
+    'Eastern Asia': 'asie', 'South-Eastern Asia': 'asie',
+    // ⚠️ Les Caraïbes et l'Amérique centrale vont avec l'Amérique du Nord :
+    // c'est le découpage des Nations unies, et surtout c'est celui qu'on a
+    // en tête quand on regarde une carte.
+    'North America': 'amerique-nord', 'Central America': 'amerique-nord', 'Caribbean': 'amerique-nord',
+    'South America': 'amerique-sud',
+    'Australia and New Zealand': 'oceanie', 'Melanesia': 'oceanie',
+    'Micronesia': 'oceanie', 'Polynesia': 'oceanie',
+};
+
 // Les noms français des sous-régions, écrits à la main : ce sont des
 // libellés destinés à être lus, pas des codes. L'ordre est celui dans lequel
 // on les propose à l'apprentissage — on commence par chez soi.
@@ -69,6 +97,7 @@ for (const [cle, [nom, emoji, rang]] of Object.entries(NOMS)) {
         .sort((a, b) => (b.aireReelle || 0) - (a.aireReelle || 0));
     if (!liste.length) { console.log('⚠️ région vide :', nom); continue; }
     sortie.push({ id: cle.toLowerCase().replace(/[^a-z]+/g, '-'), nom, emoji, rang,
+                  continent: CONTINENT_DE[cle],
                   pays: liste.map(p => p.code) });
 }
 sortie.sort((a, b) => a.rang - b.rang);
@@ -100,7 +129,13 @@ const entete = `// =============================================================
 //
 //  ${sortie.length} régions, ${total} pays.
 // =====================================================================
-module.exports = [\n`;
+module.exports = {
+  continents: ${JSON.stringify(Object.entries(CONTINENTS).map(([id, c]) => ({ id, ...c })).sort((a, b) => a.rang - b.rang))},
+  regions: [\n`;
 fs.writeFileSync(R + '/geo/regions.js',
-    entete + sortie.map(r => JSON.stringify(r)).join(',\n') + '\n];\n');
+    entete + sortie.map(r => JSON.stringify(r)).join(',\n') + '\n] };\n');
 console.log('→ geo/regions.js écrit');
+for (const [id, c] of Object.entries(CONTINENTS)) {
+    const n = sortie.filter(r => r.continent === id).reduce((s, r) => s + r.pays.length, 0);
+    console.log('  ' + c.emoji + ' ' + c.nom.padEnd(18) + String(n).padStart(3) + ' pays');
+}

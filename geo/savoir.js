@@ -20,7 +20,7 @@
 //        n = niveau, d = à revoir le, v = fois vu, e = fois raté
 // =====================================================================
 const PAYS = require('./pays');
-const REGIONS = require('./regions');
+const { regions: REGIONS, continents: CONTINENTS } = require('./regions');
 
 const SOUVERAINS = PAYS.filter(p => p.souverain);
 const TOTAL = SOUVERAINS.length;
@@ -132,7 +132,18 @@ function aRevoir(savoir, today, combien) {
     return combien ? du.slice(0, combien) : du;
 }
 
-/** Le tableau de bord d'un joueur : rang, compteurs, régions. */
+// Ce qu'un joueur sait d'une liste de pays : combien vus, combien maîtrisés.
+function compter(savoir, pays) {
+    let su = 0, vu = 0;
+    for (const c of pays) {
+        const n = (savoir[c] && savoir[c].n) || 0;
+        if (n > 0) vu++;
+        if (n >= SEUIL_MAITRISE) su++;
+    }
+    return { total: pays.length, vu, su, part: Math.round(su / Math.max(1, pays.length) * 100) };
+}
+
+/** Le tableau de bord d'un joueur : rang, compteurs, continents, régions. */
 function bilan(savoir, today) {
     const parNiveau = [0, 0, 0, 0, 0, 0];
     let maitrises = 0, vus = 0;
@@ -149,15 +160,14 @@ function bilan(savoir, today) {
         parNiveau,
         rang: rangDe(maitrises),
         aRevoir: aRevoir(savoir, today).length,
-        regions: REGIONS.map(r => {
-            let su = 0, vu = 0;
-            for (const c of r.pays) {
-                const n = (savoir[c] && savoir[c].n) || 0;
-                if (n > 0) vu++;
-                if (n >= SEUIL_MAITRISE) su++;
-            }
-            return { id: r.id, nom: r.nom, emoji: r.emoji, total: r.pays.length, vu, su,
-                     part: Math.round(su / r.pays.length * 100) };
+        regions: REGIONS.map(r => ({ ...compter(savoir, r.pays), id: r.id, nom: r.nom,
+                                     emoji: r.emoji, continent: r.continent })),
+        // ⚠️ Les continents d'abord : vingt-quatre régions d'un seul tenant,
+        // c'était une liste à faire défiler, pas une progression. Six portes,
+        // et chacune s'ouvre sur ses propres leçons.
+        continents: CONTINENTS.map(c => {
+            const pays = REGIONS.filter(r => r.continent === c.id).flatMap(r => r.pays);
+            return { ...compter(savoir, pays), id: c.id, nom: c.nom, emoji: c.emoji };
         }),
     };
 }

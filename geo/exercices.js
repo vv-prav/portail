@@ -18,7 +18,7 @@
 //  sous-région. C'est la leçon déjà tirée pour le quiz des drapeaux.
 // =====================================================================
 const PAYS = require('./pays');
-const REGIONS = require('./regions');
+const { regions: REGIONS } = require('./regions');
 const VILLES = require('../capitales/villes');
 const { drapeau, normaliser } = require('./commun');
 

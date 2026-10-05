@@ -339,6 +339,30 @@
                 hote.querySelectorAll('.' + classe).forEach(el => el.classList.remove(classe));
             },
             marques(html) { hote.querySelector('.geo-carte-marques').innerHTML = html; },
+            // ⚠️ Cadrer sur une LISTE de pays, en calculant leur étendue.
+            // Chercher le Laos sur une carte du monde, c'est chercher une
+            // aiguille ; sur l'Asie du Sud-Est, c'est apprendre. Une leçon de
+            // région doit donc montrer la région, pas la planète.
+            cadrerSur(codes, marge) {
+                const liste = (codes || []).map(c => M.pays.find(p => p.c === c)).filter(Boolean);
+                if (liste.length < 2) { if (liste[0]) this.cadrer(liste[0].c, 4); return; }
+                const xs = liste.map(p => p.x), ys = liste.map(p => p.y);
+                const x0 = Math.min(...xs), x1 = Math.max(...xs);
+                const y0 = Math.min(...ys), y1 = Math.max(...ys);
+                // ⚠️ La marge est PROPORTIONNELLE à l'étendue de la région, pas
+                // fixe : soixante unités de marge autour de l'Asie du Sud-Est
+                // ramenaient soixante-seize pays dans le cadre, dont
+                // l'Australie et les Comores — on cherchait de nouveau une
+                // aiguille. Un quart de l'étendue de chaque côté suffit à
+                // situer la région sans noyer ce qu'on cherche.
+                const part = marge != null ? marge : 0.25;
+                const mx = Math.max(18, (x1 - x0) * part), my = Math.max(14, (y1 - y0) * part);
+                const l = Math.max(40, x1 - x0 + mx * 2), h = Math.max(40, y1 - y0 + my * 2);
+                vue.k = Math.min(MAX, Math.max(MIN, Math.min(M.w / l, M.h / h)));
+                vue.x = M.w / 2 - (x0 + x1) / 2 * vue.k;
+                vue.y = M.h / 2 - (y0 + y1) / 2 * vue.k;
+                appliquer();
+            },
             // Cadrer sur un pays : utile quand on veut montrer la réponse.
             cadrer(code, k) {
                 const p = M.pays.find(x => x.c === code);
