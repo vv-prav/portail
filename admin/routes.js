@@ -1032,7 +1032,7 @@ module.exports = function attachAdmin(app, ctx) {
         // traînent depuis des mois sans que rien ne les signale.
         const CONNUES = ['mf', 'motus', 'rec', 'voyages', 'pbac', 'yams', 'motusparty',
             'undercover', 'drapeaux', 'chiffres', 'geo', 'sudoku', 'motlong', 'admin', 'titres', 'perudo',
-            'defi', 'salon', 'comptes', 'classement',
+            'capitales', 'defi', 'salon', 'comptes', 'classement',
             'menage'];   // menage:* = les nettoyages faits une seule fois
         const orphelines = cles.filter(k => !CONNUES.includes(k.split(':')[0]))
             .map(k => { let t = 0; try { t = JSON.stringify(cache[k]).length; } catch (e) {} return { cle: k, octets: t }; })
@@ -1141,7 +1141,7 @@ module.exports = function attachAdmin(app, ctx) {
     //  (suivi d'un niveau ou d'un mode pour les Mots Fléchés et la
     //  Géographie), et `<jeu>:board:<date>` (idem).
     // =================================================================
-    const JEUX_DU_JOUR = { motus: 'Motus', mf: 'Mots Fléchés', chiffres: 'Le compte est bon', geo: 'Géographie', motlong: 'Le mot le plus long', sudoku: 'Sudoku' };
+    const JEUX_DU_JOUR = { motus: 'Motus', mf: 'Mots Fléchés', chiffres: 'Le compte est bon', geo: 'Géographie', motlong: 'Le mot le plus long', sudoku: 'Sudoku', capitales: 'Les capitales' };
     A('/jour/reset', (req, res) => {
         const pseudo = String(req.body.pseudo || ''), jeu = String(req.body.jeu || '');
         const date = /^\d{4}-\d{2}-\d{2}$/.test(req.body.date || '') ? req.body.date : mf.today();
@@ -1527,9 +1527,47 @@ module.exports = function attachAdmin(app, ctx) {
         res.json({ ok: true, lettres: nouveau.lettres, source: nouveau.source });
     });
 
-    // La modération des deux classements : retirer une ligne, ou la marquer
+    // ---------- Les capitales ----------
+    const CP = () => ctx.capitales;
+    G('/capitales/day', (req, res) => {
+        const date = dateValide(req.query.date);
+        const v = CP().duJour(date);
+        let joues = 0, trouves = 0, totalEssais = 0;
+        for (const [k, val] of Object.entries(mf.cache())) {
+            if (!k.startsWith('capitales:prog:') || !k.endsWith(`:${date}`) || !val || !val.fini) continue;
+            joues++;
+            if (val.trouve) { trouves++; totalEssais += (val.essais || []).length; }
+        }
+        res.json({
+            date, today: mf.today(),
+            ville: v.ville, pays: v.pays, pop: v.pop, devise: v.devise, langues: v.langues,
+            joues, trouves, essaisMoyens: trouves ? +(totalEssais / trouves).toFixed(1) : null,
+            classement: (mf.get(`capitales:board:${date}`) || []).slice()
+                .sort((a, b) => (b.score - a.score) || ((a.ms || 0) - (b.ms || 0)))
+                .map(e => ({ u: e.u, trouve: !!e.trouve, essais: e.essais, ms: e.ms, susp: !!e.susp })),
+        });
+    });
+    // ⚠️ Même piège que partout : le tirage ne dépend que de la date, donc
+    // effacer la clé redonne la même ville. C'est le compteur de variante qui
+    // décale la graine, et on insiste jusqu'à obtenir une capitale différente.
+    A('/capitales/regen', (req, res) => {
+        const date = dateValide(req.body.date);
+        const avant = CP().duJour(date);
+        let nouvelle = avant;
+        for (let i = 0; i < 25 && nouvelle.code === avant.code; i++) {
+            CP().moteur.varianteSuivante(date);
+            mf.del(CP().kVille(date));
+            nouvelle = CP().duJour(date);
+        }
+        for (const k of Object.keys(mf.cache())) if (k.startsWith('capitales:prog:') && k.endsWith(`:${date}`)) mf.del(k);
+        mf.del(`capitales:board:${date}`);
+        log(currentUser(req), 'capitale du jour retirée au sort', `${date} : ${avant.ville} → ${nouvelle.ville}`);
+        res.json({ ok: true, ville: nouvelle.ville, pays: nouvelle.pays });
+    });
+
+    // La modération des classements : retirer une ligne, ou la marquer
     // suspecte (elle disparaît du classement public sans être effacée).
-    for (const app of ['sudoku', 'motlong']) {
+    for (const app of ['sudoku', 'motlong', 'capitales']) {
         A(`/${app}/board/remove`, (req, res) => {
             const date = dateValide(req.body.date), pseudo = String(req.body.pseudo || '');
             const cle = `${app}:board:${date}`;

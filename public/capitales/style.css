@@ -1,0 +1,118 @@
+/* =====================================================================
+   LES CAPITALES — le tableau des propositions
+   Même nuit chaude que le reste du salon. Le tableau est la pièce
+   maîtresse : six colonnes, dont cinq portent une couleur qui dit tout.
+   ===================================================================== */
+:root {
+    --ink:#14100b; --ink-2:#1d1710; --ink-3:#241b12;
+    --brass:#d9a94e; --brass-soft:#ecca82; --parchment:#efe4cf;
+    --muted:#a08f74; --line:rgba(217,169,78,0.20);
+    --good:#5aa87a; --tiede:#c9a24a; --bad:#d2624a;
+}
+html,body { margin:0; padding:0; }
+body {
+    min-height:100svh; overflow-x:hidden;
+    font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; color:var(--parchment);
+    background:radial-gradient(130% 70% at 50% -8%, #2a2317 0%, transparent 55%), var(--ink);
+    background-attachment:fixed; -webkit-font-smoothing:antialiased;
+}
+body.is-boot .cp { opacity:0; }
+.cp { opacity:1; transition:opacity .2s; display:flex; flex-direction:column; gap:12px;
+    max-width:560px; margin:0 auto; padding:max(10px,env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom)); }
+
+.cp-head { display:flex; align-items:center; gap:10px; }
+.cp-titles { flex:1; min-width:0; }
+.cp-title { margin:0; font-size:1.2rem; font-weight:800;
+    background:linear-gradient(180deg,var(--brass-soft),var(--brass));
+    -webkit-background-clip:text; background-clip:text; color:transparent; }
+.cp-date { font-size:.74rem; color:var(--muted); text-transform:capitalize; }
+.cp-chrono { flex:0 0 auto; font-size:.86rem; font-weight:800; color:var(--brass-soft); font-variant-numeric:tabular-nums; }
+.cp-chrono[hidden] { display:none; }
+
+.cp-strip { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
+.chip { font-size:.74rem; color:var(--muted); background:rgba(0,0,0,.28); border:1px solid var(--line);
+    border-radius:999px; padding:4px 11px; }
+.chip[hidden] { display:none; }
+.chip b { color:var(--brass-soft); }
+
+.cp-start { display:grid; place-items:center; padding:28px 0; }
+.cp-start[hidden] { display:none; }
+.cp-start-box { text-align:center; max-width:340px; }
+.cp-start-emoji { font-size:2.8rem; margin-bottom:10px; }
+.cp-start-txt { font-size:.86rem; color:var(--muted); line-height:1.55; margin:0 0 10px; }
+/* L'astuce qui rend le jeu jouable mérite d'être lue : elle est encadrée,
+   pas noyée dans le paragraphe au-dessus. */
+.cp-start-astuce { font-size:.8rem; line-height:1.5; margin:0 0 18px; padding:9px 12px;
+    border-radius:10px; background:rgba(217,169,78,.1); border:1px solid var(--line); }
+.cp-start-astuce b { color:var(--brass-soft); }
+
+.cp-jeu[hidden] { display:none; }
+.cp-form { position:relative; margin-top:6px; }
+.cp-suggest { position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:30;
+    background:var(--ink-2); border:1px solid var(--line); border-radius:12px; overflow:hidden;
+    box-shadow:0 12px 28px rgba(0,0,0,.5); }
+.cp-suggest[hidden] { display:none; }
+.cp-sug { display:block; width:100%; padding:9px 14px; border:0; background:transparent;
+    color:var(--parchment); font-family:inherit; font-size:.86rem; text-align:left; cursor:pointer; }
+.cp-sug small { display:block; font-size:.7rem; color:var(--muted); }
+.cp-sug + .cp-sug { border-top:1px solid var(--line); }
+.cp-sug.on, .cp-sug:active { background:rgba(217,169,78,.16); }
+.cp-sug.on b, .cp-sug:active b { color:var(--brass-soft); }
+.cp-restants { text-align:center; font-size:.74rem; color:var(--muted); margin:10px 0 0; min-height:1em; }
+
+/* ---------- Le tableau ----------
+   ⚠️ Six colonnes ne tiennent pas dans la largeur d'un téléphone, et les
+   serrer rendrait les chiffres illisibles. Le tableau défile donc
+   horizontalement, et la colonne du nom reste collée à gauche : sans elle,
+   on ne sait plus de quelle proposition parle la ligne qu'on regarde. */
+.cp-table-wrap { margin-top:12px; overflow-x:auto; -webkit-overflow-scrolling:touch;
+    border-radius:12px; }
+.cp-table-wrap[hidden] { display:none; }
+.cp-table { border-collapse:separate; border-spacing:4px; width:max-content; min-width:100%; }
+.cp-table thead th { font-size:.6rem; text-transform:uppercase; letter-spacing:.7px;
+    color:var(--muted); font-weight:700; padding:0 0 2px; text-align:center; }
+.cp-table thead th.cp-col-nom { text-align:left; padding-left:4px; }
+.cp-col-nom { position:sticky; left:0; z-index:2; background:var(--ink);
+    min-width:104px; text-align:left; font-weight:400; }
+/* ⚠️ Le fond de la colonne collée doit être OPAQUE : un dégradé en rgba()
+   laisse voir les cases qui défilent dessous, et le nom se retrouvait écrit
+   par-dessus la distance. D'où la couleur de fond pleine sous le dégradé, et
+   l'ombre qui dit que la colonne flotte. */
+tbody .cp-col-nom { padding:6px 8px; border-radius:10px;
+    background:linear-gradient(165deg, rgba(255,255,255,.05), rgba(0,0,0,.2)), var(--ink);
+    border:1px solid var(--line); box-shadow:6px 0 10px -6px rgba(0,0,0,.9); }
+tbody .cp-col-nom b { display:block; font-size:.82rem; font-weight:800; }
+tbody .cp-col-nom small { display:block; font-size:.66rem; color:var(--muted); }
+
+/* Les cases de comparaison. La couleur EST l'information : elle doit se lire
+   sans texte, d'où le fond plein plutôt qu'une simple bordure. */
+.cp-c { min-width:72px; height:54px; padding:4px 6px; border-radius:10px; text-align:center;
+    font-size:.78rem; font-weight:700; vertical-align:middle; }
+.cp-c small { display:block; font-size:.62rem; font-weight:400; opacity:.8; }
+.cp-c.vert   { background:rgba(90,168,122,.22);  color:#8fd0a8; border:1px solid rgba(90,168,122,.45); }
+.cp-c.orange { background:rgba(217,169,78,.18);  color:var(--brass-soft); border:1px solid rgba(217,169,78,.45); }
+.cp-c.rouge  { background:rgba(210,98,74,.16);   color:#e39d87; border:1px solid rgba(210,98,74,.38); }
+.cp-c.neutre { background:rgba(255,255,255,.04); color:var(--parchment); border:1px solid var(--line); }
+.cp-fleche { font-size:1.1rem; display:block; line-height:1.1; }
+tr.juste .cp-col-nom { border-color:var(--good); }
+.cp-aide { text-align:center; font-size:.68rem; color:var(--muted); margin:8px 0 0; line-height:1.5; }
+.cp-aide[hidden] { display:none; }
+
+/* ---------- La fin ---------- */
+.cp-fin-emoji { font-size:2.4rem; margin:0 0 4px; text-align:center; }
+.cp-reponse { display:grid; place-items:center; gap:2px; margin:6px 0 10px; }
+.cp-rep-nom { margin:0; font-size:1.3rem; font-weight:800; color:var(--brass-soft); }
+.cp-rep-pays { margin:0; font-size:.84rem; color:var(--parchment); }
+.cp-rep-infos { margin:4px 0 0; font-size:.72rem; color:var(--muted); }
+
+.cp-board { display:flex; flex-direction:column; gap:3px; margin-top:10px; }
+.cp-board-titre { margin:10px 0 2px; font-size:.64rem; text-transform:uppercase; letter-spacing:.9px;
+    color:var(--muted); text-align:center; }
+.cp-board-row { display:grid; grid-template-columns:24px 22px 1fr auto auto; gap:8px; align-items:center;
+    width:100%; padding:7px 10px; border-radius:10px; background:rgba(0,0,0,.22);
+    border:1px solid transparent; color:inherit; font-family:inherit; font-size:.8rem; cursor:pointer; text-align:left; }
+.cp-board-row.moi { border-color:var(--brass); background:rgba(217,169,78,.1); }
+.cp-b-rang { text-align:center; }
+.cp-b-nom { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cp-b-essais { color:var(--brass-soft); font-weight:800; font-variant-numeric:tabular-nums; }
+.cp-b-temps { color:var(--muted); font-size:.7rem; font-variant-numeric:tabular-nums; }

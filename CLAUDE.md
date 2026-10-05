@@ -91,6 +91,8 @@ portail/
 ├── motlong/{jeu,mots,routes}.js ← le Mot le plus long ; mots.js est GÉNÉRÉ
 ├── sudoku/{jeu,routes}.js     ← générateur, solveur, vérification
 ├── chiffres/{jeu,routes}.js   ← Le compte est bon
+├── capitales/{jeu,villes,routes}.js ← Les capitales ; villes.js est GÉNÉRÉ
+├── scripts/genere-capitales.js ← régénère capitales/villes.js depuis Wikidata
 ├── geo/{jeu,pays,routes}.js   ← la Géographie et ses trois modes
 ├── quotidien/moteur.js        ← le moteur commun des jeux du jour récents
 ├── scripts/genere-motlong.py  ← régénère motlong/mots.js depuis Lexique383
@@ -162,7 +164,23 @@ Chaque mini-app suit le même schéma : `public/<app>/index.html` + `app.js` + `
 | **Le compte est bon** (`/chiffres`) | Six nombres, une cible, les quatre opérations — ni négatif ni fraction. **Aucun contenu à écrire** : la donne est tirée de la date, et un solveur exhaustif (`chiffres/jeu.js`) garantit que la cible est atteignable avant de la proposer. La solution affichée à la fin est la **plus courte**, obtenue par approfondissement progressif : sans ça la mémoïsation laissait passer un chemin qui repassait par 23 850 pour retomber sur 952, juste mais illisible. Le serveur rejoue les étapes au lieu de croire le total annoncé. Le chronomètre part au clic sur « Commencer ». |
 | **Le mot le plus long** (`/motlong`) | Neuf lettres, six propositions, le score est la longueur du plus long mot valable. Voir la section dédiée. |
 | **Sudoku** (`/sudoku`) | Une grille par jour, solution unique, résoluble sans deviner. Voir la section dédiée. |
+| **Les capitales** (`/capitales`) | Deviner la capitale du jour en six essais. Chaque proposition donne cinq comparaisons — devise, langue, distance, direction, population — en vert/orange/rouge. Voir la section dédiée. |
 | **Géographie** (`/geo`) | **Trois modes** dans un seul jeu du jour : **Le pays** (silhouette), **Le drapeau**, et **Le voyage** (voir la section dédiée, sa mécanique est différente). Les deux premiers : Même mécanique dans les deux — six essais, et chaque proposition donne distance, direction et proximité, ce qui rend un pays méconnu trouvable par triangulation plutôt qu'au hasard, et rend surtout le mode Drapeau jouable. Les drapeaux sont des **emoji** : aucun fichier à servir, aucun droit à vérifier, et un rendu net sur téléphone. Voir la section dédiée pour la base de pays. |
+
+### Les capitales (`capitales/`) — le jeu, et d'où viennent ses données
+
+Six essais pour trouver la capitale du jour. Chaque proposition rend cinq comparaisons, chacune colorée : **devise** (identique ou non), **langue** (vert si c'est la même langue principale, orange si une autre langue officielle est commune — l'Autriche proposée contre la Suisse doit se voir), **distance** (vert sous 1 000 km, orange sous 3 000), **direction** (une des huit flèches, jamais colorée : elle oriente, elle ne juge pas) et **population** de la ville, avec une flèche qui dit si la réponse est plus ou moins peuplée.
+
+⚠️ **On peut taper un PAYS à la place de sa capitale, et c'est ce qui rend le jeu jouable.** Personne n'écrit « Nukuʻalofa » de tête, mais tout le monde sait écrire « Tonga ». Sans cette saisie, il faudrait connaître le nom de la ville pour s'en servir comme sonde, et le jeu se réduirait aux trente capitales qu'on sait écrire. C'est aussi ce qui permet de garder au tirage des capitales confidentielles : on les atteint par leur pays une fois la région trouvée. Les suggestions affichent donc le pays sous la capitale — taper « Kazakhstan » doit montrer qu'on va proposer Astana, sinon on croit s'être trompé.
+
+**Les données** (`capitales/villes.js`, 29 Ko, jamais envoyées au navigateur) sont générées **une fois** depuis Wikidata par `scripts/genere-capitales.js` : 194 capitales de pays souverains, avec les coordonnées de la **ville** (c'est la distance entre deux capitales qu'on compare, pas entre deux pays), sa population, la devise du pays et ses langues officielles. Le script contient les quatre requêtes SPARQL et, surtout, les arbitrages :
+
+- ⚠️ **Wikidata ne tranche pas entre capitale officielle, siège du gouvernement et capitale constitutionnelle.** Treize pays en ont plusieurs — Pretoria/Le Cap/Bloemfontein, La Paz/Sucre, Amsterdam/La Haye. Le critère retenu est *la réponse qu'on attend dans un jeu*, et chaque choix est commenté. **Les autres restent acceptées à la saisie** (`alias`) : taper Sucre ou La Haye marche.
+- ⚠️ **La population est un mauvais juge de notoriété** — la même leçon qu'au quiz des drapeaux. Elle place Dodoma devant Bratislava et range Reykjavik avec Ngerulmud. D'où une liste de notoriété écrite à la main : 157 capitales tirables sur 194. `horsTirage` ne retire **rien** de la saisie, il empêche seulement de tomber un matin. Jérusalem en fait partie, par la règle qui écarte déjà le Kosovo et le Somaliland de `geo/pays.js`.
+- Les monnaies retirées et les langues des signes remontaient avec le reste : `wdt:` (meilleur rang seulement) pour les devises, et un petit tableau de renommage pour les libellés que personne n'emploie (« putonghua » → mandarin, « bokmål » → norvégien).
+- **Pour régénérer** : `node scripts/genere-capitales.js`. Rien à installer. Vérifier le résultat **à l'œil** — une capitale fausse se voit tout de suite, une population fantaisiste beaucoup moins.
+
+⚠️ Le tableau des essais **défile horizontalement** : six colonnes ne tiennent pas sur un téléphone, et les serrer rendrait les chiffres illisibles. La colonne du nom reste collée à gauche — et **son fond doit être opaque** : un dégradé en `rgba()` laissait voir les cases qui défilaient dessous, et le nom se retrouvait écrit par-dessus la distance.
 
 ### La base des pays (`geo/pays.js`) — comment elle a été faite
 
@@ -527,7 +545,7 @@ Liste à parcourir pour **tout** nouveau jeu :
 
 Dernier passage en date : **les défis** ont été branchés sur la carte du profil, le résumé, le classement (toutes périodes) et deux titres (`releve`, `lancegants`). Ils n'apparaissent ni dans les résultats du jour (ils ne sont pas quotidiens) ni dans `MODULES_JEUX` (ils n'ont ni socket ni table).
 
-Et pour un jeu du jour, ne pas oublier non plus le panneau « Aujourd'hui » (`JEUX_DU_JOUR` dans `public/app.js` + le pouls), `public/enchainement.js`, le préchargement du service worker, la purge de son contenu daté (`mfPurge`), et son panneau d'admin (tuile, onglet, routes `day`/`regen`/`board`). Dernier passage : le Sudoku, le Mot le plus long et le Voyage, branchés partout ci-dessus.
+Et pour un jeu du jour, ne pas oublier non plus le panneau « Aujourd'hui » (`JEUX_DU_JOUR` dans `public/app.js` + le pouls), `public/enchainement.js`, le préchargement du service worker, la purge de son contenu daté (`mfPurge`), et son panneau d'admin (tuile, onglet, routes `day`/`regen`/`board`). Dernier passage : **Les capitales**, branchées aux neuf endroits ci-dessus, plus le panneau « Aujourd'hui », l'enchaînement, le préchargement du service worker, `mfPurge` et son onglet d'admin (contenu du jour, statistiques observées, modération du classement, régénération).
 
 ## Le classement du Salon — la V2 des points
 
@@ -549,7 +567,7 @@ Et pour un jeu du jour, ne pas oublier non plus le panneau « Aujourd'hui » (`J
 | …impeccable | +2 |
 | Une partie à plusieurs ou un défi, joué | 1 |
 | …gagné | +3 |
-| Les six jeux du jour dans la même journée (grand chelem) | +3 |
+| Tous les jeux du jour dans la même journée (grand chelem) | +3 |
 
 Ce que « réussi » et « impeccable » veulent dire est écrit **jeu par jeu dans `JEUX_DU_JOUR`**, en haut du fichier. ⚠️ **Cette table sert au calcul ET à l'explication montrée aux joueurs** (`explications()`, servie par `GET /api/salon/bareme`, affichée par le bouton « Comment ça compte ? » de l'accueil) : une règle du jeu écrite à deux endroits finit toujours par mentir à l'un des deux.
 

@@ -34,6 +34,7 @@
             <button class="ad-tile" data-tab="geo" type="button"><span class="ad-tile-emoji">🌍</span><span>Géographie</span></button>
             <button class="ad-tile" data-tab="motlong" type="button"><span class="ad-tile-emoji">🔤</span><span>Mot le plus long</span></button>
             <button class="ad-tile" data-tab="sudoku" type="button"><span class="ad-tile-emoji">🧮</span><span>Sudoku</span></button>
+            <button class="ad-tile" data-tab="capitales" type="button"><span class="ad-tile-emoji">🏙️</span><span>Capitales</span></button>
             <button class="ad-tile" data-tab="dict" type="button"><span class="ad-tile-emoji">📖</span><span>Dictionnaire</span></button>
             <button class="ad-tile" data-tab="titres" type="button"><span class="ad-tile-emoji">🏅</span><span>Titres</span></button>
             <button class="ad-tile" data-tab="classement" type="button"><span class="ad-tile-emoji">🏆</span><span>Classement</span></button>
@@ -319,6 +320,16 @@
                 <div id="sd-box"></div>
                 <div id="sd-board"></div>
                 <button class="mini danger wide" id="sd-regen" type="button">Tirer une autre grille</button>
+            </div>
+        </section>
+
+        <section class="pane" id="pane-capitales" hidden>
+            <div class="card">
+                <h2 class="card-title">La capitale du jour</h2>
+                <input class="ds-input" id="cap-date" type="date" aria-label="Date de la capitale">
+                <div id="cap-box"></div>
+                <div id="cap-board"></div>
+                <button class="mini danger wide" id="cap-regen" type="button">Tirer une autre capitale</button>
             </div>
         </section>
 

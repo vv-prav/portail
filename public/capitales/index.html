@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, interactive-widget=resizes-content">
+    <meta name="theme-color" content="#14100b">
+    <title>Les capitales</title>
+    <link rel="icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="stylesheet" href="/design-system.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="is-boot">
+    <div class="cp">
+        <header class="cp-head">
+            <a class="ds-icon-btn" href="/" aria-label="Retour au salon">←</a>
+            <div class="cp-titles">
+                <h1 class="cp-title">Les capitales</h1>
+                <span class="cp-date" id="cp-date"></span>
+            </div>
+            <span class="cp-chrono" id="cp-chrono" hidden>0:00</span>
+        </header>
+
+        <div class="cp-strip">
+            <span class="chip" id="cp-serie" hidden>🔥 <b>0</b></span>
+            <span class="chip" id="cp-next">🕛 —</span>
+            <span class="chip" id="cp-archive-chip" hidden>📅 Archive</span>
+        </div>
+
+        <!-- L'ÉCRAN D'ENTRÉE : le chronomètre ne part qu'au clic, comme
+             partout ailleurs. -->
+        <div class="cp-start" id="cp-start">
+            <div class="cp-start-box">
+                <div class="cp-start-emoji">🏙️</div>
+                <p class="cp-start-txt">Une capitale à trouver en six essais. Chaque proposition te dit tout ce qu'elle a en commun avec la bonne réponse : la devise, la langue, la distance, la direction et la taille.</p>
+                <p class="cp-start-astuce">Tu peux taper un <b>pays</b> au lieu de sa capitale : « Kazakhstan » vaut « Astana ».</p>
+                <button class="ds-btn" id="cp-start-btn" type="button">Commencer</button>
+            </div>
+        </div>
+
+        <!-- LA MANCHE -->
+        <section class="cp-jeu" id="cp-jeu" hidden>
+            <form class="cp-form" id="cp-form" autocomplete="off">
+                <input class="ds-input" id="cp-saisie" type="text" placeholder="Une capitale, ou un pays…"
+                       autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false"
+                       aria-label="Proposer une capitale ou un pays">
+                <div class="cp-suggest" id="cp-suggest" hidden></div>
+            </form>
+            <p class="cp-restants" id="cp-restants"></p>
+
+            <!-- Le tableau des propositions. Il défile horizontalement : six
+                 colonnes ne tiennent pas dans la largeur d'un téléphone, et les
+                 serrer rendrait les chiffres illisibles. La colonne du nom
+                 reste collée à gauche pendant le défilement. -->
+            <div class="cp-table-wrap" id="cp-table-wrap" hidden>
+                <table class="cp-table">
+                    <thead>
+                        <tr>
+                            <th class="cp-col-nom">Capitale</th>
+                            <th>Devise</th>
+                            <th>Langue</th>
+                            <th>Distance</th>
+                            <th>Direction</th>
+                            <th>Population</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cp-essais"></tbody>
+                </table>
+            </div>
+            <p class="cp-aide" id="cp-aide" hidden>🟩 identique · 🟧 proche · 🟥 loin — fais glisser le tableau pour voir toutes les colonnes.</p>
+        </section>
+    </div>
+
+    <!-- FIN DE MANCHE -->
+    <div class="ds-overlay" id="cp-fin" hidden>
+        <div class="ds-card tall">
+            <button type="button" class="ds-card-close" id="cp-fin-close" aria-label="Fermer">✕</button>
+            <p class="cp-fin-emoji" id="cp-fin-emoji">🎉</p>
+            <h2 class="ds-card-title" id="cp-fin-titre">—</h2>
+            <div class="cp-reponse" id="cp-reponse"></div>
+            <p class="ds-card-text" id="cp-fin-texte"></p>
+            <button class="ds-btn ghost" id="cp-partage" type="button">Partager mon résultat</button>
+            <div class="cp-board" id="cp-board"></div>
+        </div>
+    </div>
+
+    <script src="/profile-viewer.js"></script>
+    <script src="/design-system.js"></script>
+    <script src="/enchainement.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

@@ -27,6 +27,7 @@
         { id: 'geo:voyage', nom: 'Le voyage', emoji: '🧭', href: '/geo?mode=voyage' },
         { id: 'motlong', nom: 'Le mot le plus long', emoji: '🔤', href: '/motlong' },
         { id: 'sudoku', nom: 'le Sudoku', emoji: '🧮', href: '/sudoku' },
+        { id: 'capitales', nom: 'Les capitales', emoji: '🏙️', href: '/capitales' },
     ];
 
     // Un jeu est « fait » quand la manche du jour est terminée, gagnée ou non :

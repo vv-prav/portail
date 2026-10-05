@@ -92,6 +92,13 @@ const JEUX_DU_JOUR = [
         ditImpeccable: 'le mot le plus long possible',
     },
     {
+        id: 'capitales', nom: 'Les capitales', emoji: '🏙️',
+        reussi: (v) => !!v.trouve,
+        impeccable: (v) => !!v.trouve && (v.essais || []).length <= 3,
+        ditReussi: 'la capitale trouvée',
+        ditImpeccable: 'trouvée en trois essais ou moins',
+    },
+    {
         id: 'sudoku', nom: 'Sudoku', emoji: '🧮',
         reussi: (v) => !!v.trouve,
         impeccable: (v) => !!v.trouve && v.ms != null && v.ms < 10 * 60 * 1000,

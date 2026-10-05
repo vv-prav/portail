@@ -37,7 +37,7 @@ function fmtDur(sec) {
 
 // ---------- Onglets ----------
 function switchTab(tab) {
-    ['home', 'accounts', 'parties', 'perudo', 'grids', 'motus', 'chiffres', 'geo', 'motlong', 'sudoku', 'dict', 'titres', 'classement', 'sante', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== tab); });
+    ['home', 'accounts', 'parties', 'perudo', 'grids', 'motus', 'chiffres', 'geo', 'motlong', 'sudoku', 'dict', 'titres', 'capitales', 'classement', 'sante', 'system'].forEach(p => { $('pane-' + p).hidden = (p !== tab); });
     document.querySelectorAll('.ad-tile').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
     if (tab === 'home') { loadOverview(); loadDemandes(); }
     if (tab === 'accounts') { loadAccounts(); loadDemandes(); }
@@ -49,6 +49,7 @@ function switchTab(tab) {
     if (tab === 'geo') loadGeo();
     if (tab === 'motlong') loadMotlong();
     if (tab === 'sudoku') loadSudoku();
+    if (tab === 'capitales') loadCapitales();
     if (tab === 'dict') { loadDictStats(); loadDict(); }
     if (tab === 'titres') loadTitres();
     if (tab === 'classement') loadClassement();
@@ -1175,6 +1176,37 @@ $('sd-regen').addEventListener('click', () => {
             if (!ok) return toast((data && data.error) || 'Le tirage a échoué.');
             toast(`Nouvelle grille : ${data.indices} indices.`);
             loadSudokuJour();
+        } }]);
+});
+
+// =====================================================================
+//  LES CAPITALES
+// =====================================================================
+async function loadCapitales() {
+    if (!$('cap-date').value) $('cap-date').value = dateDuSalon();
+    loadCapitalesJour();
+}
+$('cap-date').addEventListener('change', loadCapitalesJour);
+async function loadCapitalesJour() {
+    const date = $('cap-date').value;
+    const { data } = await api('/api/admin/capitales/day?date=' + encodeURIComponent(date));
+    if (!data) return;
+    $('cap-box').innerHTML = `
+        <div class="kv-row"><span>Capitale</span><b>${esc(data.ville)} — ${esc(data.pays)}</b></div>
+        <div class="kv-row"><span>Ses indices</span><b>${esc(data.devise || '—')} · ${esc((data.langues || [])[0] || '—')} · ${new Intl.NumberFormat('fr-FR').format(data.pop || 0)} hab.</b></div>
+        <div class="kv-row"><span>Manches</span><b>${data.joues} terminées · ${data.trouves} trouvées${data.essaisMoyens != null ? ' · ' + data.essaisMoyens + ' essais en moyenne' : ''}</b></div>`;
+    boardAdmin('cap-board', 'capitales', date, data.classement || [],
+        e => (e.trouve ? e.essais + '/6 · ' + minSec(e.ms) : 'non trouvée'), loadCapitalesJour);
+}
+$('cap-regen').addEventListener('click', () => {
+    const date = $('cap-date').value;
+    ask('♻️', 'Tirer une autre capitale ?',
+        `Une autre capitale sera tirée pour le ${date}. Les manches de ce jour-là et le classement seront effacés.`, [
+        { label: 'Tirer une autre capitale', danger: true, run: async () => {
+            const { ok, data } = await api('/api/admin/capitales/regen', { date });
+            if (!ok) return toast((data && data.error) || 'Le tirage a échoué.');
+            toast(`Nouvelle capitale : ${data.ville}.`);
+            loadCapitalesJour();
         } }]);
 });
 
