@@ -15,40 +15,21 @@
 
 const PAYS = require('./pays');
 
-const R = 6371;                       // rayon de la Terre, en kilomètres
+const COMMUN = require('./commun');
+const { rad, normaliser, R } = COMMUN;
 const MAX_KM = Math.PI * R;           // deux points antipodaux
-const rad = (d) => d * Math.PI / 180;
 
 const parCode = new Map(PAYS.map(p => [p.code, p]));
 
-// Le drapeau en emoji : deux lettres converties en indicateurs régionaux.
-// Aucun fichier à charger, aucun droit à vérifier, et le rendu est net sur
-// les téléphones — ce qui est l'écran de tout le monde ici.
-function drapeau(code) {
-    return String.fromCodePoint(...[...code].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
-}
+// Le drapeau, la distance et le cap viennent du socle commun : ils étaient
+// écrits à l'identique dans trois jeux (voir geo/commun.js).
+const { drapeau, distanceKm, capReel, capComplet } = COMMUN;
 
-// Distance orthodromique. La formule de haversine plutôt que la loi des
-// cosinus : la seconde perd toute précision sur les courtes distances, et
-// deux pays voisins sont exactement le cas qui compte.
-function distanceKm(a, b) {
-    const dLat = rad(b.lat - a.lat), dLon = rad(b.lon - a.lon);
-    const h = Math.sin(dLat / 2) ** 2
-        + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLon / 2) ** 2;
-    return Math.round(2 * R * Math.asin(Math.min(1, Math.sqrt(h))));
-}
-
-// Le cap, ramené à huit flèches. Plus fin serait illisible, moins fin
-// n'orienterait plus rien.
-const FLECHES = ['⬆️', '↗️', '➡️', '↘️', '⬇️', '↙️', '⬅️', '↖️'];
+// Le cap d'un pays vers un autre, prêt à afficher : la flèche, le mot, et
+// l'angle exact pour l'aiguille de la rose des vents.
 function direction(a, b) {
-    if (a.code === b.code) return '🎯';
-    const dLon = rad(b.lon - a.lon);
-    const y = Math.sin(dLon) * Math.cos(rad(b.lat));
-    const x = Math.cos(rad(a.lat)) * Math.sin(rad(b.lat))
-        - Math.sin(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.cos(dLon);
-    const cap = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-    return FLECHES[Math.round(cap / 45) % 8];
+    if (a.code === b.code) return { angle: null, fleche: '🎯', cardinal: 'ici' };
+    return capComplet(capReel(a, b));
 }
 
 // La proximité en pourcentage. L'échelle est volontairement resserrée : sur une
@@ -104,13 +85,6 @@ function trouverPays(saisie) {
         || PAYS.find(p => p.code === String(saisie).toUpperCase().trim())
         || null;
 }
-function normaliser(s) {
-    return String(s || '')
-        .normalize('NFD').replace(/[̀-ͯ]/g, '')
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, ' ')
-        .trim();
-}
 
 function evaluer(codePropose, codeCible) {
     const a = parCode.get(codePropose), b = parCode.get(codeCible);
@@ -134,14 +108,9 @@ function listeDesNoms() {
     return PAYS.map(p => ({ code: p.code, nom: p.nom }));
 }
 
-// Le score : six essais, et plus on trouve tôt, plus ça rapporte. Zéro si on
-// échoue — comme aux autres jeux du jour, une partie ratée reste une partie
-// jouée, pas des points.
-const MAX_ESSAIS = 6;
-function score(essais, trouve) {
-    if (!trouve) return 0;
-    return Math.max(1, MAX_ESSAIS + 1 - essais) * 2;
-}
+// Le barème est celui de toute la famille (geo/commun.js) : six essais, et
+// plus on trouve tôt, plus ça rapporte.
+const { MAX_ESSAIS, score } = COMMUN;
 
 // =====================================================================
 //  LE VOYAGE — de proche en proche

@@ -18,9 +18,12 @@
 //  du jour pour autant.
 // =====================================================================
 const PAYS = require('../geo/pays');
+// Le socle commun des jeux de géographie (geo/commun.js) : les flèches, les
+// cardinaux et le barème y sont écrits une seule fois.
+const COMMUN = require('../geo/commun');
+const { capSurCarte, capComplet, MAX_ESSAIS, score } = COMMUN;
 
 const parCode = new Map(PAYS.map(p => [p.code, p]));
-const rad = (d) => d * Math.PI / 180;
 
 // ---------- Le tirage du jour ----------
 // Mêmes règles que la Géographie, et c'est volontaire : un pays souverain
@@ -71,15 +74,7 @@ function paysDuJour(hasard, recents) {
 // l'aiguille de la rose des vents vise. L'arrondir à 45° ferait mentir
 // l'animation d'un demi-secteur.
 const CENTRES = require('./centres');
-const CARDINAUX = ['NORD', 'NORD-EST', 'EST', 'SUD-EST', 'SUD', 'SUD-OUEST', 'OUEST', 'NORD-OUEST'];
-const FLECHES = ['⬆️', '↗️', '➡️', '↘️', '⬇️', '↙️', '⬅️', '↖️'];
-function cap(a, b) {
-    const A = CENTRES[a.code], B = CENTRES[b.code];
-    if (!A || !B) return 0;
-    // Dans un SVG, y descend : d'où le -dy pour que 0° soit le nord.
-    const dx = B[0] - A[0], dy = B[1] - A[1];
-    return (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360;
-}
+const cap = (a, b) => capSurCarte(CENTRES[a.code], CENTRES[b.code]);
 
 /**
  * Évalue un pays montré du doigt.
@@ -92,25 +87,13 @@ function evaluer(codeMontre, codeCible) {
     if (a.code === b.code) {
         return { code: a.code, nom: a.nom, juste: true, angle: null, cardinal: 'ici', fleche: '🎯' };
     }
-    const angle = cap(a, b);
-    const secteur = Math.round(angle / 45) % 8;
     return {
         code: a.code, nom: a.nom, juste: false,
-        angle: Math.round(angle),
-        cardinal: CARDINAUX[secteur],
-        fleche: FLECHES[secteur],
+        ...capComplet(cap(a, b)),
         // Un pays frontalier, c'est brûlant, et la direction seule ne le dit
         // pas : deux pays voisins peuvent avoir des centres très éloignés.
         voisin: !!(b.voisins || []).includes(a.code),
     };
 }
 
-const MAX_ESSAIS = 6;
-// Même barème que la Géographie et les Capitales : 12 points au premier
-// essai, 2 au sixième. Les jeux du jour se comparent sans conversion.
-function score(essais, trouve) {
-    if (!trouve) return 0;
-    return Math.max(1, MAX_ESSAIS + 1 - essais) * 2;
-}
-
-module.exports = { PAYS, parCode, pool, paysDuJour, evaluer, cap, score, MAX_ESSAIS, CARDINAUX };
+module.exports = { PAYS, parCode, pool, paysDuJour, evaluer, cap, score, MAX_ESSAIS };

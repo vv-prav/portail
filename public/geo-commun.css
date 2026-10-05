@@ -1,0 +1,84 @@
+/* =====================================================================
+   LE SOCLE COMMUN DES PAGES DE GÉOGRAPHIE
+   Ce qui doit se ressembler d'un jeu à l'autre : le classement du jour,
+   la rose des vents, la fiche d'un pays, et la carte du monde.
+   Chaque jeu garde son style.css pour ce qui lui est propre.
+   ===================================================================== */
+
+/* ---------- Le classement du jour ---------- */
+.geo-board-titre { margin:10px 0 2px; font-size:.64rem; text-transform:uppercase; letter-spacing:.9px;
+    color:var(--muted); text-align:center; }
+.geo-board-row { display:grid; grid-template-columns:24px 22px 1fr auto auto; gap:8px; align-items:center;
+    width:100%; padding:7px 10px; border-radius:10px; background:rgba(0,0,0,.22);
+    border:1px solid transparent; color:inherit; font-family:inherit; font-size:.8rem; cursor:pointer; text-align:left; }
+.geo-board-row + .geo-board-row { margin-top:3px; }
+.geo-board-row.moi { border-color:var(--brass); background:rgba(217,169,78,.1); }
+.geo-b-rang { text-align:center; }
+.geo-b-nom { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.geo-b-detail { color:var(--brass-soft); font-weight:800; font-variant-numeric:tabular-nums; }
+.geo-b-temps { color:var(--muted); font-size:.7rem; font-variant-numeric:tabular-nums; }
+
+/* ---------- La rose des vents ----------
+   ⚠️ Aucune animation sur l'opacité du voile : une transition partant de
+   zéro ne progresse pas tant que la page n'est pas peinte, et laisserait un
+   bloqueur plein écran invisible. Seule la carte bouge. */
+.geo-rose { position:fixed; inset:0; z-index:1100; display:grid; place-items:center;
+    background:rgba(10,8,5,.82); backdrop-filter:blur(3px); }
+.geo-rose[hidden] { display:none; }
+.geo-rose-carte { text-align:center; animation:geoRose .25s ease both; }
+@keyframes geoRose { from { transform:scale(.94); } }
+.geo-rose-svg { width:min(58vw,210px); height:auto; }
+.geo-rose-fond { fill:rgba(20,16,11,.9); stroke:var(--brass); stroke-width:1.5; }
+.geo-rose-grads line { stroke:rgba(217,169,78,.45); stroke-width:.8; }
+.geo-rose-grads line.gros { stroke:var(--brass); stroke-width:1.6; }
+.geo-rose-n { fill:var(--brass); font-size:9px; font-weight:800; text-anchor:middle; }
+.geo-rose-aiguille { transform-origin:50px 50px; }
+.geo-rose-aiguille polygon { fill:var(--bad,#d2624a); }
+.geo-rose-aiguille polygon.queue { fill:rgba(239,228,207,.55); }
+.geo-rose-axe { fill:var(--brass-soft); }
+.geo-rose-mot { margin:12px 0 0; font-size:1.4rem; font-weight:800; color:var(--brass-soft); letter-spacing:1px; }
+.geo-rose-depuis { margin:2px 0 0; font-size:.8rem; color:var(--muted); }
+
+/* ---------- La fiche d'un pays ---------- */
+.geo-fiche { margin:8px 0 4px; padding:12px; border-radius:14px;
+    background:rgba(255,255,255,.03); border:1px solid var(--line); text-align:center; }
+.geo-fiche-tete { display:flex; align-items:center; justify-content:center; gap:14px; min-height:64px; }
+.geo-fiche-drapeau { font-size:2.6rem; line-height:1; }
+.geo-fiche-forme { width:66px; height:66px; }
+.geo-fiche-forme path { fill:var(--brass); opacity:.85; }
+.geo-fiche-nom { margin:8px 0 0; font-size:1.25rem; font-weight:800; color:var(--brass-soft); }
+.geo-fiche-region { margin:1px 0 10px; font-size:.74rem; color:var(--muted); }
+.geo-fiche-lignes { display:flex; flex-direction:column; gap:1px; text-align:left; }
+.geo-fiche-ligne { display:flex; align-items:baseline; gap:10px; padding:5px 2px; font-size:.78rem;
+    border-top:1px solid rgba(255,255,255,.06); }
+.geo-fiche-ligne span { flex:0 0 84px; color:var(--muted); }
+.geo-fiche-ligne b { flex:1; min-width:0; font-weight:700; }
+
+/* ---------- La carte du monde ---------- */
+.geo-carte-hote { position:relative; border-radius:14px; overflow:hidden;
+    background:rgba(0,0,0,.25); border:1px solid var(--line); }
+.geo-carte { display:block; width:100%; height:auto; touch-action:none; }
+.geo-carte-pays path { fill:#2b2318; stroke:rgba(217,169,78,.35); stroke-width:.4;
+    transition:fill .25s; cursor:pointer; }
+.geo-carte-pays path.vise { fill:var(--brass); stroke:var(--brass-soft); stroke-width:.8; }
+.geo-carte-pays path.rate { fill:#5a3a30; }
+.geo-carte-pays path.trouve, .geo-carte-pays path.reponse { fill:var(--good,#5aa87a); stroke:#8fd0a8; stroke-width:.8; }
+/* Le voyage : les pays traversés forment une tache qui grandit, et les
+   frontières intérieures s'effacent — c'est le territoire parcouru, pas une
+   liste de pays coloriés. */
+.geo-carte-pays path.visite { fill:var(--brass); stroke:var(--brass); stroke-width:.6; }
+.geo-carte-pays path.depart { fill:var(--brass-soft); stroke:var(--brass-soft); }
+.geo-carte-pays path.arrivee { fill:var(--good,#5aa87a); stroke:#8fd0a8; stroke-width:.8; }
+/* ⚠️ Les marques ne reçoivent pas les clics : posées SUR les pays, elles
+   bloqueraient le prochain geste à cet endroit. */
+.geo-carte-marques { pointer-events:none; }
+.geo-carte-marques circle.fond { fill:rgba(20,16,11,.82); stroke:var(--brass); stroke-width:1; }
+.geo-carte-marques .fleche { fill:var(--brass-soft); }
+.geo-carte-marques .ico { fill:var(--good,#5aa87a); font-size:9px; text-anchor:middle; font-weight:700; }
+.geo-carte-marques .juste circle.fond { stroke:var(--good,#5aa87a); }
+
+.geo-carte-zoom { position:absolute; right:8px; bottom:8px; display:flex; flex-direction:column; gap:4px; }
+.geo-carte-zoom button { width:34px; height:34px; border-radius:9px; border:1px solid var(--line);
+    background:rgba(20,16,11,.86); color:var(--brass-soft); font-size:1.05rem; font-weight:700;
+    font-family:inherit; cursor:pointer; line-height:1; }
+.geo-carte-zoom button:active { transform:scale(.94); }

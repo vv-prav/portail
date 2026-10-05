@@ -122,7 +122,7 @@ function renderVoyage() {
             <div class="gg-pas${i === pas.length - 1 ? ' ici' : ''}">
                 <span class="gg-e-drapeau">${e.drapeau}</span>
                 <span class="gg-e-nom">${esc(e.nom)}</span>
-                <span class="gg-e-km">${new Intl.NumberFormat(LOCALE).format(e.km)} km ${e.direction}</span>
+                <span class="gg-e-km">${new Intl.NumberFormat(LOCALE).format(e.km)} km ${e.direction.fleche}</span>
             </div>`));
     if (fini && trouve) lignes.push(`<div class="gg-pas arrivee"><span class="gg-e-drapeau">${P.arrivee.drapeau}</span><span class="gg-e-nom">${esc(P.arrivee.nom)}</span><span class="gg-e-km">arrivée 🎯</span></div>`);
     $('gg-essais').innerHTML = `<div class="gg-route">${lignes.join('')}</div>`
@@ -143,7 +143,7 @@ function renderEssais() {
             <span class="gg-e-drapeau">${e.drapeau}</span>
             <span class="gg-e-nom">${esc(e.nom)}</span>
             <span class="gg-e-km">${e.juste ? '' : new Intl.NumberFormat(LOCALE).format(e.km) + ' km'}</span>
-            <span class="gg-e-dir">${e.direction}</span>
+            <span class="gg-e-dir">${e.direction.fleche}</span>
             <span class="gg-e-prox">${e.proximite}%</span>
             <span class="gg-e-jauge"><i style="width:${e.proximite}%"></i></span>
         </div>`).join('');
@@ -281,7 +281,7 @@ function texteDePartage() {
     const titre = MODE === 'drapeau' ? 'Le drapeau mystère' : 'Le pays mystère';
     const lignes = essais.map(e => {
         const pleins = Math.round(e.proximite / 20);
-        return '🟩'.repeat(pleins) + '⬜'.repeat(5 - pleins) + ' ' + (e.juste ? '🎯' : e.direction);
+        return '🟩'.repeat(pleins) + '⬜'.repeat(5 - pleins) + ' ' + (e.juste ? '🎯' : e.direction.fleche);
     });
     return `${titre} — ${jour}\n`
         + (trouve ? `${essais.length}/6` : `X/6`) + `\n`

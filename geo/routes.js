@@ -196,7 +196,7 @@ module.exports = function monterGeo(app, deps) {
             prog.erreurs.push(erreur);
         } else {
             const e = geoJeu.evaluer(propose.code, cible.a.code);
-            etape = { code: propose.code, nom: propose.nom, drapeau: e.drapeau, km: e.km, direction: e.direction };
+            etape = { code: propose.code, nom: propose.nom, drapeau: e.drapeau, km: e.km, direction: e.direction.fleche };
             prog.pas.push(etape);
         }
 

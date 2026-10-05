@@ -19,16 +19,10 @@
 // =====================================================================
 const VILLES = require('./villes');
 
-const R = 6371;
-const rad = (d) => d * Math.PI / 180;
-
-function normaliser(s) {
-    return String(s || '')
-        .normalize('NFD').replace(/[̀-ͯ]/g, '')
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, ' ')
-        .trim();
-}
+// Le socle commun des jeux de géographie : distance, caps, normalisation et
+// barème. Tout ça était écrit ici une deuxième fois (voir geo/commun.js).
+const COMMUN = require('../geo/commun');
+const { normaliser, distanceKm, capReel, capComplet, MAX_ESSAIS, score } = COMMUN;
 
 // ---------------------------------------------------------------------
 //  L'INDEX DE SAISIE
@@ -71,26 +65,11 @@ function propositions() {
 // ---------------------------------------------------------------------
 //  LES COMPARAISONS
 // ---------------------------------------------------------------------
-function distanceKm(a, b) {
-    const dLat = rad(b.lat - a.lat), dLon = rad(b.lon - a.lon);
-    const h = Math.sin(dLat / 2) ** 2
-        + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLon / 2) ** 2;
-    return Math.round(2 * R * Math.asin(Math.min(1, Math.sqrt(h))));
-}
-
-// Le cap, ramené à huit flèches — comme à la Géographie, pour que les deux
-// jeux se lisent de la même façon.
-const FLECHES = ['⬆️', '↗️', '➡️', '↘️', '⬇️', '↙️', '⬅️', '↖️'];
-const CARDINAUX = ['NORD', 'NORD-EST', 'EST', 'SUD-EST', 'SUD', 'SUD-OUEST', 'OUEST', 'NORD-OUEST'];
+// Le cap d'une capitale vers une autre, prêt à afficher. Il porte l'angle
+// exact en plus du mot : c'est lui que vise l'aiguille de la rose des vents.
 function direction(a, b) {
-    if (a.code === b.code) return { fleche: '🎯', cardinal: 'ici' };
-    const dLon = rad(b.lon - a.lon);
-    const y = Math.sin(dLon) * Math.cos(rad(b.lat));
-    const x = Math.cos(rad(a.lat)) * Math.sin(rad(b.lat))
-        - Math.sin(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.cos(dLon);
-    const cap = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-    const i = Math.round(cap / 45) % 8;
-    return { fleche: FLECHES[i], cardinal: CARDINAUX[i] };
+    if (a.code === b.code) return { angle: null, fleche: '🎯', cardinal: 'ici' };
+    return capComplet(capReel(a, b));
 }
 
 // Les seuils de distance. Mille kilomètres, c'est le pays d'à côté en
@@ -155,20 +134,12 @@ function evaluer(codePropose, codeCible) {
 //  LE TIRAGE ET LE SCORE
 // ---------------------------------------------------------------------
 const TIRABLES = VILLES.filter(v => !v.horsTirage);
-const MAX_ESSAIS = 6;
 
 // La capitale du jour. `hasard` est le tirage du moteur commun des jeux du
 // jour — une fonction, pas un nombre : il la fait dépendre de la date et de la
 // variante, celle que fait avancer le bouton de régénération de l'admin.
 function capitaleDuJour(hasard) {
     return TIRABLES[Math.floor(hasard() * TIRABLES.length)] || TIRABLES[0];
-}
-
-// Même barème que la Géographie : trouver au premier essai vaut 12, au
-// sixième 2, échouer 0. Les deux jeux se comparent ainsi sans conversion.
-function score(essais, trouve) {
-    if (!trouve) return 0;
-    return Math.max(1, MAX_ESSAIS + 1 - essais) * 2;
 }
 
 module.exports = {
