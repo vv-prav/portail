@@ -188,10 +188,20 @@
         const MIN = 1, MAX = 8;
 
         hote.classList.add('geo-carte-hote');
+        // ⚠️ LES PASTILLES. Soixante-dix pays sur deux cent dix sont trop
+        // petits pour être VUS : Samoa, Malte, la Barbade font moins d'un
+        // pixel à l'écran sur un téléphone. On pouvait déjà les désigner (on
+        // vise le centre le plus proche), mais rien ne montrait qu'il y avait
+        // un pays là — on cliquait dans le vide de bonne foi, et le jeu
+        // paraissait cassé. Une pastille les rend visibles, et elle garde la
+        // même taille à l'écran quel que soit le zoom.
+        const minis = M.pays.filter(p => p.mini);
         hote.innerHTML = `
             <svg class="geo-carte" viewBox="0 0 ${M.w} ${M.h}" role="img" aria-label="Carte du monde">
                 <g class="geo-carte-vue">
                     <g class="geo-carte-pays">${M.pays.map(p => `<path id="gp${p.c}" d="${p.d}"/>`).join('')}</g>
+                    <g class="geo-carte-points">${minis.map(p =>
+                        `<circle id="gd${p.c}" cx="${p.x}" cy="${p.y}" r="3.2"/>`).join('')}</g>
                     <g class="geo-carte-marques"></g>
                 </g>
             </svg>
@@ -214,7 +224,24 @@
             vue.x = marge(vue.x, M.w); vue.y = marge(vue.y, M.h);
             g.setAttribute('transform', `translate(${vue.x} ${vue.y}) scale(${vue.k})`);
             hote.classList.toggle('zoome', vue.k > 1.05);
+            majPastilles();
         }
+        // ⚠️ La pastille se mesure en PIXELS D'ÉCRAN, pas en unités de carte.
+        // Un rayon fixe dans le repère de la carte donnait deux pixels sur un
+        // téléphone — on ne voyait toujours rien — et aurait grossi avec le
+        // zoom jusqu'à couvrir les pays voisins qu'elle est censée aider à
+        // distinguer. On repart donc de la largeur réellement affichée.
+        const RAYON_ECRAN = 4;
+        function majPastilles() {
+            const points = hote.querySelectorAll('.geo-carte-points circle');
+            if (!points.length) return;
+            const large = svg.getBoundingClientRect().width || M.w;
+            const r = (RAYON_ECRAN / (large / M.w) / vue.k).toFixed(2);
+            for (const d of points) d.setAttribute('r', r);
+        }
+        // La largeur affichée change avec l'écran : on remesure au besoin.
+        if (window.ResizeObserver) new ResizeObserver(majPastilles).observe(hote);
+
         // Zoomer en gardant sous le doigt le point qu'on vise.
         function zoomer(facteur, cx, cy) {
             const avant = vue.k;
@@ -300,13 +327,16 @@
         return {
             vue,
             svg,
-            // Allumer un pays d'une classe donnée.
+            // Allumer un pays d'une classe donnée. ⚠️ Le tracé ET sa
+            // pastille : pour un pays minuscule, la pastille est la seule
+            // chose qu'on voit — l'allumer sans elle ne montrerait rien.
             marquer(code, classe) {
-                const el = hote.querySelector('#gp' + code);
-                if (el) el.classList.add(classe);
+                for (const el of [hote.querySelector('#gp' + code), hote.querySelector('#gd' + code)]) {
+                    if (el) el.classList.add(classe);
+                }
             },
             demarquer(classe) {
-                hote.querySelectorAll('.geo-carte-pays path.' + classe).forEach(el => el.classList.remove(classe));
+                hote.querySelectorAll('.' + classe).forEach(el => el.classList.remove(classe));
             },
             marques(html) { hote.querySelector('.geo-carte-marques').innerHTML = html; },
             // Cadrer sur un pays : utile quand on veut montrer la réponse.

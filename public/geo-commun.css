@@ -69,6 +69,20 @@
 .geo-carte-pays path.visite { fill:var(--brass); stroke:var(--brass); stroke-width:.6; }
 .geo-carte-pays path.depart { fill:var(--brass-soft); stroke:var(--brass-soft); }
 .geo-carte-pays path.arrivee { fill:var(--good,#5aa87a); stroke:#8fd0a8; stroke-width:.8; }
+/* Les pastilles des pays minuscules. ⚠️ Elles ne reçoivent pas les clics :
+   la visée se fait déjà par proximité du centre, et une cible cliquable de
+   trois pixels serait pire que pas de cible du tout. Elles sont là pour
+   qu'on VOIE qu'un pays existe à cet endroit. */
+.geo-carte-points { pointer-events:none; }
+.geo-carte-points circle { fill:rgba(217,169,78,.28); stroke:rgba(217,169,78,.65);
+    stroke-width:.5; vector-effect:non-scaling-stroke; transition:fill .25s; }
+.geo-carte-points circle.vise { fill:var(--brass); stroke:var(--brass-soft); }
+.geo-carte-points circle.rate { fill:#5a3a30; stroke:#8a5a4a; }
+.geo-carte-points circle.trouve, .geo-carte-points circle.reponse,
+.geo-carte-points circle.arrivee { fill:var(--good,#5aa87a); stroke:#8fd0a8; }
+.geo-carte-points circle.visite, .geo-carte-points circle.depart { fill:var(--brass); stroke:var(--brass-soft); }
+.geo-carte-points circle.atlas { stroke-width:.8; }
+
 /* ⚠️ Les marques ne reçoivent pas les clics : posées SUR les pays, elles
    bloqueraient le prochain geste à cet endroit. */
 .geo-carte-marques { pointer-events:none; }

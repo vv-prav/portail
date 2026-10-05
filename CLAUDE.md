@@ -230,7 +230,13 @@ Un nom est donné, on le cherche sur une carte du monde. Une erreur ne renvoie *
 
 **Trois décisions d'interface, toutes prises sur des mesures :**
 
-1. La carte elle-même (`public/carte/monde.js`) sert aussi au **Voyage** et à **Mon atlas** : elle est chargée par les trois pages, et une seule fois en cache. Le zoom, le glissé et la visée par proximité vivent dans `public/geo-commun.js`. ⚠️ **Un glissé n'est pas un clic** : au-delà de dix pixels de déplacement, on déplaçait la carte, on ne désignait rien.
+1. ⚠️ **Les pastilles des pays minuscules.** Soixante-dix pays sur deux cent dix sont trop petits pour être VUS : Samoa, Malte, la Barbade font moins d'un pixel sur un téléphone. On pouvait déjà les désigner — la visée se fait par proximité du centre — mais rien ne montrait qu'un pays existait là : **on cliquait dans le vide de bonne foi, et le jeu paraissait cassé**. Chacun porte donc une pastille, marquée `mini` à la génération (surface du tracé sous 25 px² dans la boîte 1000 × 500).
+
+Elle se dimensionne **en pixels d'écran, jamais en unités de carte** : un rayon fixe donnait deux pixels sur un téléphone — on ne voyait toujours rien — et aurait grossi avec le zoom jusqu'à couvrir les pays voisins qu'elle est censée aider à distinguer. On repart de la largeur réellement affichée, et elle vaut 8 px au zoom 1 comme au zoom 5. Elle ne reçoit pas les clics : une cible de huit pixels serait pire que la visée par proximité. ⚠️ `marquer()` allume le tracé **et** la pastille : pour un pays minuscule, la pastille est la seule chose qu'on voit.
+
+⚠️ **Un pays, un seul tracé.** Natural Earth donne parfois plusieurs géométries pour le même pays — l'Australie en avait deux, le continent et ses îles lointaines. Sans regroupement, deux entrées de même code produisaient **deux balises SVG de même identifiant**, et `marquer('AU')` n'en trouvait qu'une. Le générateur rassemble désormais les morceaux d'un même pays en un chemin unique.
+
+La carte elle-même (`public/carte/monde.js`) sert aussi au **Voyage** et à **Mon atlas** : elle est chargée par les trois pages, et une seule fois en cache. Le zoom, le glissé et la visée par proximité vivent dans `public/geo-commun.js`. ⚠️ **Un glissé n'est pas un clic** : au-delà de dix pixels de déplacement, on déplaçait la carte, on ne désignait rien.
 
 ⚠️ **On vise le centre le plus proche du doigt, jamais l'intérieur du tracé.** Mesuré : sur un écran de 375 px, carte entière affichée, **2 pays sur 211** atteignent la cible tactile de 44 × 44 px. La France fait 9 px de côté, la Belgique 2, le Rwanda 2. Tester si le doigt est *dans* le pays rendrait la moitié du monde impossible à désigner. Vérifié après coup : un doigt posé à côté de la Belgique sélectionne bien la Belgique.
 2. **Viser, puis valider.** Le pays visé s'allume et son nom s'affiche ; un second geste confirme. Sans ça, un doigt qui glisse coûterait un essai sur six.

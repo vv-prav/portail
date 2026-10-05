@@ -60,7 +60,12 @@ const fc = feature(t, t.objects.countries);
 const proj = geoNaturalEarth1().fitSize([W, H], fc);
 const chemin = geoPath(proj);
 
-const pays = [];
+// ⚠️ Natural Earth peut donner PLUSIEURS géométries pour un même pays
+// (l'Australie en a deux : le continent et ses îles lointaines). Sans
+// regroupement, on écrivait deux entrées de même code — donc deux balises
+// SVG de même identifiant, et `marquer('AU')` n'en trouvait qu'une.
+// On rassemble les tracés d'un même pays en un seul chemin.
+const parPays = new Map();
 const inconnus = [];
 for (const f of fc.features) {
     const code = parNumerique.get(f.id);
@@ -76,20 +81,32 @@ for (const f of fc.features) {
     // redécouvrir le même piège.
     const [x, y] = proj([connu.lon, connu.lat]);
     if (!isFinite(x) || !isFinite(y)) { inconnus.push(f.properties.name + ' (sans centre)'); continue; }
-    pays.push({
+    const deja = parPays.get(code);
+    if (deja) {
+        deja.d += arrondir(d);                 // les morceaux s'ajoutent au même tracé
+        deja.a += Math.round(chemin.area(f));
+        continue;
+    }
+    parPays.set(code, {
         c: code, n: connu.nom,
         x: +x.toFixed(1), y: +y.toFixed(1),
         a: Math.round(chemin.area(f)),
         d: arrondir(d),
     });
 }
-pays.sort((a, b) => a.n.localeCompare(b.n, 'fr'));
+const pays = [...parPays.values()].sort((a, b) => a.n.localeCompare(b.n, 'fr'));
 
 const poids = JSON.stringify(pays).length;
 console.log(`carte : ${pays.length} pays tracés · ${(poids / 1024).toFixed(0)} Ko`);
 console.log(`écartés (absents de geo/pays.js) : ${inconnus.length} — ${inconnus.slice(0, 8).join(', ')}…`);
-const petits = pays.filter(p => p.a < 60).length;
-console.log(`pays sous 60 px² dans la boîte 1000×500 : ${petits} (ils restent cliquables par proximité)`);
+// ⚠️ Les pays trop petits pour être VUS. Ils restaient cliquables (on vise
+// le centre le plus proche), mais on ne voyait pas qu'il y avait un pays :
+// on cliquait dans le vide de bonne foi. Ils sont marqués `mini`, et la
+// carte leur dessine une pastille.
+const MINI = 25;                       // px² dans la boîte 1000 × 500
+for (const p of pays) if (p.a < MINI) p.mini = 1;
+const petits = pays.filter(p => p.mini).length;
+console.log(`pays trop petits pour être vus (pastille) : ${petits}`);
 
 const entete = `// =====================================================================
 //  LA CARTE DU MONDE — un tracé par pays, et le centre de chacun
