@@ -88,7 +88,14 @@ function renderPortes(b) {
             <span class="ap-porte-emoji">${p.emoji}</span>
             <span class="ap-porte-txt"><b>${esc(p.nom)}</b><small>${esc(p.sous)}</small></span>
             <span class="ap-porte-fleche">›</span>
-        </button>`).join('');
+        </button>`).join('')
+        + `<button type="button" class="ap-regler" id="ap-regler">⚙️ Ce que je veux travailler</button>`;
+    $('ap-regler').addEventListener('click', () => {
+        const r = $('ap-reglages');
+        r.hidden = !r.hidden;
+        r.open = !r.hidden;
+        if (!r.hidden) r.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
     $('ap-portes').querySelectorAll('[data-source]').forEach(b2 => b2.addEventListener('click', () => {
         if (b2.dataset.source === 'decouvrir') {
             $('ap-regions').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -129,21 +136,42 @@ function renderFormes() {
 }
 
 // ---------- Les familles de drapeaux ----------
-async function renderFamilles() {
-    const { ok, data } = await api('/api/apprendre/familles');
-    if (!ok) return;
-    $('ap-familles').innerHTML = data.familles.map(f => `
-        <button type="button" class="ap-famille" data-famille="${esc(f.id)}">
-            <span class="ap-famille-tete">
+// ⚠️ Repliées, comme les continents. Dépliées, les dix familles faisaient
+// 1 437 px sur une page de 2 597 — **55 % de la page pour une porte
+// secondaire**, et elles repoussaient la carte du monde à deux mille pixels
+// du haut. La règle et les drapeaux ne s'affichent qu'à l'ouverture.
+let familleOuverte = null;
+let FAMILLES_VUES = [];
+function renderFamilles() {
+    $('ap-familles').innerHTML = FAMILLES_VUES.map(f => {
+        const ouverte = familleOuverte === f.id;
+        return `
+        <div class="ap-famille${ouverte ? ' ouverte' : ''}">
+            <button type="button" class="ap-famille-tete" data-ouvrir="${esc(f.id)}">
                 <span class="ap-famille-emoji">${f.emoji}</span>
                 <span class="ap-famille-txt"><b>${esc(f.nom)}</b><small>${f.su} / ${f.total}</small></span>
                 <span class="ap-jauge petite"><i style="width:${f.part}%"></i></span>
-            </span>
-            <span class="ap-famille-regle">${esc(f.regle)}</span>
-            <span class="ap-famille-drapeaux">${f.pays.map(c => drapeauDe(c)).join(' ')}</span>
-        </button>`).join('');
+                <span class="ap-cont-chevron">›</span>
+            </button>
+            <div class="ap-famille-corps">
+                <p class="ap-famille-regle">${esc(f.regle)}</p>
+                <p class="ap-famille-drapeaux">${f.pays.map(c => drapeauDe(c)).join(' ')}</p>
+                <button type="button" class="ds-btn small" data-famille="${esc(f.id)}">S'entraîner dessus</button>
+            </div>
+        </div>`;
+    }).join('');
+    $('ap-familles').querySelectorAll('[data-ouvrir]').forEach(b => b.addEventListener('click', () => {
+        familleOuverte = familleOuverte === b.dataset.ouvrir ? null : b.dataset.ouvrir;
+        renderFamilles();
+    }));
     $('ap-familles').querySelectorAll('[data-famille]').forEach(b =>
         b.addEventListener('click', () => lancerSeance('famille:' + b.dataset.famille)));
+}
+async function chargerFamilles() {
+    const { ok, data } = await api('/api/apprendre/familles');
+    if (!ok) return;
+    FAMILLES_VUES = data.familles;
+    renderFamilles();
 }
 // Le drapeau d'un code, construit comme côté serveur : deux lettres
 // converties en indicateurs régionaux.
@@ -218,12 +246,16 @@ async function ouvrirFiche(code) {
 }
 
 async function chargerAccueil() {
+    // Les réglages prennent leur place sous les portes dès le départ : sans
+    // ça ils flottaient à côté de leur hôte, et ne le rejoignaient qu'après
+    // une première séance.
+    $('ap-reglages-hote').appendChild($('ap-reglages'));
     const { ok, data } = await api('/api/apprendre/bilan');
     if (!ok) return;
     BILAN = data;
     document.body.classList.remove('is-boot');
     renderRang(data); renderPortes(data); renderRegions(data);
-    renderFormes(); renderFamilles();
+    renderFormes(); chargerFamilles();
     renderAtlas();
 }
 
@@ -363,10 +395,20 @@ function montrerFin(b) {
         <div class="ap-jauge grande"><i style="width:${b.rang.part}%"></i></div>
         <p class="ap-fin-suite">${b.rang.emoji} ${esc(b.rang.nom)}${b.rang.suivant
             ? ` · encore ${b.rang.suivant.manque} pour ${esc(b.rang.suivant.nom)}` : ''}</p>`;
+    // ⚠️ Les réglages suivent le joueur : au moment de décider de la suite,
+    // c'est là qu'on veut choisir ce qu'on travaille. Un seul élément déplacé,
+    // jamais deux copies — elles finiraient par diverger.
+    const r = $('ap-reglages');
+    r.hidden = false; r.open = false;
+    $('ap-fin-reglages').appendChild(r);
     $('ap-fin').hidden = false;
 }
 
 function revenir() {
+    // Et ils rentrent à leur place, repliés.
+    const r = $('ap-reglages');
+    r.hidden = true; r.open = false;
+    $('ap-reglages-hote').appendChild(r);
     $('ap-fin').hidden = true;
     $('ap-seance').hidden = true;
     $('ap-accueil').hidden = false;

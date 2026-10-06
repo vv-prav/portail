@@ -210,6 +210,15 @@ Et 10 **familles** — croix nordiques, panafricain, panarabe, croissant et éto
 
 ⚠️ **60 % de révision au plus, le reste en découverte.** Mesuré sur trente jours de simulation, la file de révision restait à zéro ou un : les intervalles grandissent vite et la séance se remplissait de nouveautés. On découvrait beaucoup et on consolidait peu — 116 jours pour les 194 pays. Plafonner la découverte force la consolidation quand il y a de quoi réviser, et laisse la séance pleine quand il n'y a rien.
 
+#### La mise en page, et ce qu'elle a coûté à trouver
+
+Mesurée bloc par bloc à 375 px, la première version faisait **2 597 px**, dont **1 437 pour les seules familles de drapeaux** — 55 % de la page pour une porte secondaire, parce que les dix blocs affichaient leur règle et tous leurs drapeaux en permanence. Conséquence : **la carte du monde arrivait à 2 000 px du haut**, soit après une page et demie de défilement, alors que c'est l'élément le plus gratifiant de la page — celui qui montre physiquement le chemin parcouru.
+
+Trois corrections, et la page tombe à **1 765 px** :
+- ⚠️ **les familles se replient**, comme les continents : 1 437 → 599 px ;
+- ⚠️ **la carte remonte juste sous le rang** : 1 999 → 247 px, donc visible au premier écran, légende comprise ;
+- ⚠️ **les réglages quittent le fil de l'accueil.** C'est un réglage de SÉANCE : sa place est au moment où l'on en lance une. Un bouton discret les appelle sous les portes, et le même élément **se déplace** dans l'écran de fin au moment de décider de la suite. Un seul élément, deux maisons — le dupliquer, c'est se condamner à les voir diverger.
+
 **Les trois portes, et pas une de plus** : *Réviser* (ce qui est dû aujourd'hui — la principale), *Découvrir une région*, *Au hasard*. Dans une leçon de région, ⚠️ on commence par ce qu'on ne sait PAS : revoir d'abord ce qu'on maîtrise, c'est perdre la moitié de la séance.
 
 ⚠️ **Les leçons sont rangées par CONTINENT**, six portes qui se déplient sur leurs sous-régions. Vingt-quatre régions d'un seul tenant, c'était une liste à faire défiler : on ne voyait ni où on en était, ni par où commencer. Chaque continent porte son propre compte de pays sus.

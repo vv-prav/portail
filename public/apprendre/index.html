@@ -28,12 +28,28 @@
                  quand l'objectif est à cent quatre-vingt-quatorze. -->
             <div class="ap-rang" id="ap-rang"></div>
 
-            <div class="ap-portes" id="ap-portes"></div>
+            <!-- ⚠️ La carte juste sous le rang. Elle était à deux mille pixels
+                 du haut, sous les familles dépliées : l'élément le plus
+                 gratifiant de la page — celui qui montre physiquement le
+                 chemin parcouru — arrivait après une page et demie de
+                 défilement, et sa légende encore plus bas. -->
+            <h2 class="ap-section">Ma carte du monde</h2>
+            <div class="ap-atlas" id="ap-atlas"></div>
+            <p class="ap-legende">
+                <i class="n1"></i>découvert <i class="n2"></i>reconnu
+                <i class="n3"></i>su <i class="n4"></i>solide <i class="n5"></i>acquis
+            </p>
 
-            <!-- Les réglages de la séance. ⚠️ Repliés par défaut : on doit
-                 pouvoir s'entraîner sans rien régler, et les trouver quand on
-                 veut travailler un point précis. -->
-            <details class="ap-reglages" id="ap-reglages">
+
+            <div class="ap-portes" id="ap-portes"></div>
+            <div class="ap-reglages-hote" id="ap-reglages-hote"></div>
+
+            <!-- ⚠️ Les réglages ne sont PAS un bloc de l'accueil : c'est un
+                 réglage de SÉANCE, et sa place est au moment où l'on en lance
+                 une. Un seul élément, deux maisons : sous les portes quand on
+                 l'appelle, et dans l'écran de fin au moment de décider de la
+                 suite. Le dupliquer, c'est se condamner à les voir diverger. -->
+            <details class="ap-reglages" id="ap-reglages" hidden>
                 <summary>Ce que je veux travailler</summary>
                 <p class="ap-reglages-aide">Choisis une ou plusieurs formes, ou laisse tout pour alterner.</p>
                 <div class="ap-formes" id="ap-formes"></div>
@@ -46,13 +62,6 @@
             <h2 class="ap-section">Les familles de drapeaux</h2>
             <p class="ap-aide">Un drapeau ne s'apprend pas comme une image à retenir, mais comme une règle à comprendre puis une variante à distinguer.</p>
             <div class="ap-familles" id="ap-familles"></div>
-
-            <h2 class="ap-section">Ma carte du monde</h2>
-            <div class="ap-atlas" id="ap-atlas"></div>
-            <p class="ap-legende">
-                <i class="n1"></i>découvert <i class="n2"></i>reconnu
-                <i class="n3"></i>su <i class="n4"></i>solide <i class="n5"></i>acquis
-            </p>
 
             <h2 class="ap-section">Les régions</h2>
             <div class="ap-regions" id="ap-regions"></div>
@@ -89,6 +98,7 @@
             <h2 class="ds-card-title" id="ap-fin-titre">—</h2>
             <p class="ap-fin-score" id="ap-fin-score"></p>
             <div class="ap-fin-rang" id="ap-fin-rang"></div>
+            <div class="ap-reglages-hote" id="ap-fin-reglages"></div>
             <button class="ds-btn" id="ap-encore" type="button">Encore une séance</button>
             <button class="ds-btn ghost" id="ap-retour" type="button">Revenir à l'accueil</button>
         </div>

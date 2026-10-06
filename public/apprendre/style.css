@@ -168,18 +168,25 @@ body.is-boot .ap { opacity:0; }
 
 /* ---------- Les familles de drapeaux ---------- */
 .ap-familles { display:flex; flex-direction:column; gap:6px; }
-.ap-famille { display:block; width:100%; padding:11px 12px; border-radius:13px;
-    background:rgba(255,255,255,.03); border:1px solid var(--line);
-    color:inherit; font-family:inherit; text-align:left; cursor:pointer; }
-.ap-famille:active { border-color:var(--brass); }
-.ap-famille-tete { display:flex; align-items:center; gap:10px; }
+.ap-famille { border-radius:13px; background:rgba(255,255,255,.03);
+    border:1px solid var(--line); overflow:hidden; }
+.ap-famille-tete { display:flex; align-items:center; gap:10px; width:100%; padding:11px 12px;
+    background:transparent; border:0; color:inherit; font-family:inherit; text-align:left; cursor:pointer; }
+.ap-famille .ap-cont-chevron { color:var(--brass); font-size:1.2rem; transition:transform .2s; }
+.ap-famille.ouverte .ap-cont-chevron { transform:rotate(90deg); }
+/* ⚠️ Replié = pas affiché du tout : une hauteur animée laisserait le bouton
+   d'entraînement focalisable au clavier alors qu'on ne le voit pas. */
+.ap-famille-corps { display:none; padding:0 12px 12px; }
+.ap-famille.ouverte .ap-famille-corps { display:block; }
 .ap-famille-emoji { font-size:1.2rem; }
 .ap-famille-txt { flex:1; min-width:0; }
 .ap-famille-txt b { display:block; font-size:.9rem; font-weight:800; }
 .ap-famille-txt small { display:block; font-size:.7rem; color:var(--muted); }
-.ap-famille-regle { display:block; margin:7px 0 6px; font-size:.74rem; color:var(--muted); line-height:1.5; }
-/* Les drapeaux de la famille, en petit : on voit la règle AVANT de réviser. */
-.ap-famille-drapeaux { display:block; font-size:1.1rem; line-height:1.5; letter-spacing:1px; }
+.ap-famille-regle { margin:0 0 8px; font-size:.76rem; color:var(--muted); line-height:1.55; }
+/* Les drapeaux de la famille : on voit la règle ET ses variantes AVANT de
+   réviser. C'est tout l'intérêt d'apprendre par familles. */
+.ap-famille-drapeaux { margin:0 0 10px; font-size:1.3rem; line-height:1.6; letter-spacing:2px; }
+.ap-famille-corps .ds-btn { width:100%; }
 
 /* ---------- La courbe ---------- */
 .ap-courbe { margin:10px 0 2px; }
@@ -213,3 +220,13 @@ body.is-boot .ap { opacity:0; }
     background:rgba(217,169,78,.1); border:1px solid var(--line);
     font-size:.78rem; line-height:1.55; }
 .ap-pourquoi b { display:block; color:var(--brass-soft); margin-bottom:2px; }
+
+/* ⚠️ Les réglages ne sont plus un bloc permanent de l'accueil : un bouton
+   discret les appelle, et ils rejoignent l'écran de fin au moment où l'on
+   décide de la suite. Sur l'accueil, ils ajoutaient une ligne à ignorer. */
+.ap-regler { width:100%; margin-top:2px; padding:9px; border-radius:11px;
+    background:transparent; border:1px dashed var(--line); color:var(--muted);
+    font-family:inherit; font-size:.78rem; cursor:pointer; }
+.ap-regler:active { border-color:var(--brass); color:var(--brass-soft); }
+.ap-reglages[hidden] { display:none; }
+.ap-reglages-hote:empty { display:none; }
