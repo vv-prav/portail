@@ -30,23 +30,72 @@ let repondu = false;
 let derniereSource = 'revision';
 let ATLAS = null, CARTE_Q = null;
 let CADRE = null;            // les pays de la leçon, pour cadrer la carte
+let NIVEAUX = {};            // le niveau de chaque pays, tel qu'affiché
+let AVANT = null;            // l'état d'avant la séance, pour dire ce qui a changé
 
 // ---------- L'accueil ----------
+// ⚠️ Le rang disait CINQ FOIS la même chose : le nom du rang, le nombre de
+// pays maîtrisés, la jauge, le gain de la courbe, et ce qui reste à faire.
+// Quatre suffisent, et alignées à gauche elles se lisent d'un coup d'œil —
+// un bloc centré oblige l'œil à repartir du milieu à chaque ligne.
 function renderRang(b) {
     const r = b.rang;
     $('ap-rang').innerHTML = `
         <div class="ap-rang-tete">
             <span class="ap-rang-emoji">${r.emoji}</span>
-            <span class="ap-rang-nom">${esc(r.nom)}</span>
-        </div>
-        <div class="ap-rang-chiffres">
-            <b>${b.maitrises}</b><span>pays maîtrisés sur ${b.total}</span>
+            <span class="ap-rang-txt">
+                <b>${esc(r.nom)}</b>
+                <small><b>${b.maitrises}</b> / ${b.total} pays maîtrisés</small>
+            </span>
         </div>
         <div class="ap-jauge grande"><i style="width:${r.part}%"></i></div>
-        ${courbeHTML(b.courbe)}
         <p class="ap-rang-suite">${r.suivant
             ? `Encore <b>${r.suivant.manque}</b> pour devenir ${esc(r.suivant.emoji + ' ' + r.suivant.nom)}`
-            : 'Tu as fait le tour du monde.'}</p>`;
+            : 'Tu as fait le tour du monde.'}</p>
+        ${courbeHTML(b.courbe)}`;
+}
+
+// ---------- Ce qui a changé ----------
+// ⚠️ On revenait d'une séance sur une page identique à l'œil. Des niveaux
+// avaient monté, parfois un pays était passé maîtrisé, parfois le rang avec
+// lui — et rien ne le disait. Le seul retour était le score de la séance, qui
+// parle de la séance et non du chemin parcouru. Ici on compare l'avant et
+// l'après, et les pays qui ont bougé clignotent sur la carte : c'est la carte
+// qui porte la récompense, pas une phrase.
+function montrerChangements() {
+    const h = $('ap-change');
+    if (!AVANT || !BILAN) { h.hidden = true; return; }
+    // ⚠️ DÉCOUVRIR ET CONSOLIDER NE SONT PAS LA MÊME NOUVELLE. Un pays raté
+    // monte quand même de « jamais vu » à « découvert » — il entre dans les
+    // révisions, et c'est bien ce qu'on veut. Mais tout compter comme une
+    // progression annonçait « 10 pays ont progressé » après un 1 sur 10 : le
+    // bandeau contredisait le score affiché une seconde plus tôt.
+    const neufs = [], montes = [], descendus = [];
+    for (const code of new Set([...Object.keys(NIVEAUX), ...Object.keys(AVANT.niveaux)])) {
+        const a = AVANT.niveaux[code] || 0, b = NIVEAUX[code] || 0;
+        if (b > a) (a ? montes : neufs).push(code);
+        else if (b < a) descendus.push(code);
+    }
+    const gagnes = BILAN.maitrises - AVANT.maitrises;
+    const rangNeuf = BILAN.rang.nom !== AVANT.rang;
+    const bouges = neufs.concat(montes, descendus);
+    AVANT = null;                       // une seule fois : au retour de séance
+    if (!bouges.length && !gagnes) { h.hidden = true; return; }
+
+    const bouts = [];
+    if (gagnes > 0) bouts.push(`<b>+${gagnes}</b> pays maîtrisé${gagnes > 1 ? 's' : ''}`);
+    if (neufs.length) bouts.push(`<b>${neufs.length}</b> pays découvert${neufs.length > 1 ? 's' : ''}`);
+    if (montes.length) bouts.push(`<b>${montes.length}</b> consolidé${montes.length > 1 ? 's' : ''}`);
+    if (descendus.length) bouts.push(`<b>${descendus.length}</b> à revoir`);
+    h.innerHTML = `
+        <p class="ap-change-txt">${rangNeuf
+            ? `${BILAN.rang.emoji} Te voilà <b>${esc(BILAN.rang.nom)}</b> — `
+            : 'Depuis ta séance : '}${bouts.join(', ')}.</p>
+        <small>Ils clignotent sur ta carte.</small>`;
+    h.hidden = false;
+    // Le clignotement s'éteint seul : un repère permanent cesserait d'en être un.
+    for (const code of bouges) if (ATLAS) ATLAS.marquer(code, 'bouge');
+    setTimeout(() => { if (ATLAS) ATLAS.demarquer('bouge'); }, 6000);
 }
 
 // ⚠️ La courbe de progression : la seule chose qui donne envie de continuer
@@ -98,7 +147,10 @@ function renderPortes(b) {
     });
     $('ap-portes').querySelectorAll('[data-source]').forEach(b2 => b2.addEventListener('click', () => {
         if (b2.dataset.source === 'decouvrir') {
-            $('ap-regions').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // ⚠️ Le tiroir est replié : y faire défiler sans l'ouvrir
+            // amènerait sur une ligne fermée, et la porte paraîtrait morte.
+            $('ap-tiroir-regions').open = true;
+            $('ap-tiroir-regions').scrollIntoView({ behavior: 'smooth', block: 'start' });
             return;
         }
         lancerSeance(b2.dataset.source);
@@ -171,12 +223,19 @@ async function chargerFamilles() {
     const { ok, data } = await api('/api/apprendre/familles');
     if (!ok) return;
     FAMILLES_VUES = data.familles;
+    // Le compte sur le tiroir replié : c'est lui qui donne envie de l'ouvrir.
+    const su = FAMILLES_VUES.reduce((s, f) => s + f.su, 0);
+    const tot = FAMILLES_VUES.reduce((s, f) => s + f.total, 0);
+    $('ap-fam-compte').textContent =
+        `${FAMILLES_VUES.length} familles · ${su} / ${tot} drapeaux sus`;
     renderFamilles();
 }
 // Le drapeau d'un code, construit comme côté serveur : deux lettres
 // converties en indicateurs régionaux.
 const drapeauDe = (code) => String.fromCodePoint(...[...code].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
 function renderRegions(b) {
+    $('ap-reg-compte').textContent =
+        `${b.continents.length} continents · ${b.regions.length} leçons`;
     $('ap-regions').innerHTML = b.continents.map(c => {
         const siennes = b.regions.filter(r => r.continent === c.id);
         const ouvert = continentOuvert === c.id;
@@ -225,7 +284,8 @@ async function renderAtlas() {
     if (!ok) return;
     if (!ATLAS) ATLAS = Geo.carte($('ap-atlas'), { surClic: (p) => ouvrirFiche(p.c) });
     for (let n = 1; n <= 5; n++) ATLAS.demarquer('niv' + n);
-    for (const [code, n] of Object.entries(data.niveaux || {})) {
+    NIVEAUX = data.niveaux || {};
+    for (const [code, n] of Object.entries(NIVEAUX)) {
         if (n > 0) ATLAS.marquer(code, 'niv' + n);
     }
 }
@@ -256,12 +316,22 @@ async function chargerAccueil() {
     document.body.classList.remove('is-boot');
     renderRang(data); renderPortes(data); renderRegions(data);
     renderFormes(); chargerFamilles();
-    renderAtlas();
+    // ⚠️ La carte AVANT le bilan des changements : c'est elle qui porte le
+    // clignotement, et `NIVEAUX` n'est à jour qu'une fois la carte peinte.
+    await renderAtlas();
+    montrerChangements();
 }
 
 // ---------- Une séance ----------
 async function lancerSeance(source) {
     derniereSource = source;
+    // L'instantané d'avant : sans lui, il n'y a rien à comparer au retour.
+    // ⚠️ On ne le reprend PAS à chaque séance enchaînée : il doit décrire
+    // tout ce qui a changé depuis qu'on a quitté l'accueil, sinon trois
+    // séances d'affilée n'en montreraient qu'une.
+    if (!AVANT && BILAN) {
+        AVANT = { niveaux: { ...NIVEAUX }, maitrises: BILAN.maitrises, rang: BILAN.rang.nom };
+    }
     const { ok, data } = await api('/api/apprendre/seance', {
         source, combien: 10,
         formes: formesChoisies.size ? [...formesChoisies] : null,
@@ -385,13 +455,15 @@ async function repondre(valeur) {
 }
 
 function montrerFin(b) {
-    BILAN = b;
+    // ⚠️ On ne remplace PAS `BILAN` par celui-ci : le bilan de séance compte
+    // des questions là où celui de l'accueil compte des pays. L'accueil se
+    // recharge au retour, c'est lui qui fait foi.
     const part = Math.round(b.justes / b.total * 100);
     $('ap-fin-emoji').textContent = part === 100 ? '🏆' : part >= 70 ? '🎓' : '📚';
     $('ap-fin-titre').textContent = part === 100 ? 'Sans faute !' : part >= 70 ? 'Belle séance' : 'C’est en se trompant qu’on apprend';
     $('ap-fin-score').innerHTML = `<b>${b.justes}</b> / ${b.total}`;
     $('ap-fin-rang').innerHTML = `
-        <p class="ap-fin-maitrise"><b>${b.maitrises}</b> pays maîtrisés sur ${b.total}</p>
+        <p class="ap-fin-maitrise"><b>${b.maitrises}</b> pays maîtrisés sur ${b.pays}</p>
         <div class="ap-jauge grande"><i style="width:${b.rang.part}%"></i></div>
         <p class="ap-fin-suite">${b.rang.emoji} ${esc(b.rang.nom)}${b.rang.suivant
             ? ` · encore ${b.rang.suivant.manque} pour ${esc(b.rang.suivant.nom)}` : ''}</p>`;

@@ -21,8 +21,20 @@
             </div>
         </header>
 
-        <!-- L'ACCUEIL : où j'en suis, et les trois portes -->
+        <!-- L'ACCUEIL — TROIS ÉTAGES, ET PAS UN DE PLUS.
+             ⚠️ La page répondait à trois questions différentes sans jamais le
+             dire : *où j'en suis*, *qu'est-ce que je lance*, *qu'est-ce qu'il
+             y a à voir*. Tout était à la suite, du même poids, et il fallait
+             lire pour trier. Les titres ne sont pas de la décoration : ils
+             disent à quoi sert ce qui les suit, et c'est ce qui permet de
+             sauter les deux étages dont on n'a pas besoin. -->
         <section class="ap-accueil" id="ap-accueil">
+            <!-- ⚠️ CE QUI A CHANGÉ. Une séance faisait monter des niveaux, des
+                 pays, parfois un rang — et on revenait sur une page
+                 identique à l'œil. Le travail ne se voyait pas. -->
+            <div class="ap-change" id="ap-change" hidden></div>
+
+            <h2 class="ap-section">Où j'en suis</h2>
             <!-- Le rang. ⚠️ Il ne donne aucun avantage et n'entre dans aucun
                  classement : il dit où on en est, et c'est déjà beaucoup
                  quand l'objectif est à cent quatre-vingt-quatorze. -->
@@ -33,14 +45,13 @@
                  gratifiant de la page — celui qui montre physiquement le
                  chemin parcouru — arrivait après une page et demie de
                  défilement, et sa légende encore plus bas. -->
-            <h2 class="ap-section">Ma carte du monde</h2>
             <div class="ap-atlas" id="ap-atlas"></div>
             <p class="ap-legende">
                 <i class="n1"></i>découvert <i class="n2"></i>reconnu
                 <i class="n3"></i>su <i class="n4"></i>solide <i class="n5"></i>acquis
             </p>
 
-
+            <h2 class="ap-section">Je m'entraîne</h2>
             <div class="ap-portes" id="ap-portes"></div>
             <div class="ap-reglages-hote" id="ap-reglages-hote"></div>
 
@@ -59,12 +70,32 @@
                 </label>
             </details>
 
-            <h2 class="ap-section">Les familles de drapeaux</h2>
-            <p class="ap-aide">Un drapeau ne s'apprend pas comme une image à retenir, mais comme une règle à comprendre puis une variante à distinguer.</p>
-            <div class="ap-familles" id="ap-familles"></div>
+            <h2 class="ap-section">J'explore</h2>
+            <!-- ⚠️ DEUX TIROIRS, PAS DEUX LISTES. Les dix familles et les six
+                 continents étaient dépliés en permanence : seize lignes
+                 toujours visibles pour un étage où l'on ne va qu'en le
+                 cherchant. Replié, chacun tient en une ligne qui dit ce qu'on
+                 en sait — et le compte suffit à donner envie de l'ouvrir. -->
+            <div class="ap-explore">
+                <details class="ap-tiroir" id="ap-tiroir-regions">
+                    <summary>
+                        <span class="ap-tiroir-emoji">🌍</span>
+                        <span class="ap-tiroir-txt"><b>Les régions du monde</b><small id="ap-reg-compte">—</small></span>
+                        <span class="ap-cont-chevron">›</span>
+                    </summary>
+                    <div class="ap-regions" id="ap-regions"></div>
+                </details>
 
-            <h2 class="ap-section">Les régions</h2>
-            <div class="ap-regions" id="ap-regions"></div>
+                <details class="ap-tiroir" id="ap-tiroir-familles">
+                    <summary>
+                        <span class="ap-tiroir-emoji">🏳️</span>
+                        <span class="ap-tiroir-txt"><b>Les familles de drapeaux</b><small id="ap-fam-compte">—</small></span>
+                        <span class="ap-cont-chevron">›</span>
+                    </summary>
+                    <p class="ap-aide">Un drapeau ne s'apprend pas comme une image à retenir, mais comme une règle à comprendre puis une variante à distinguer.</p>
+                    <div class="ap-familles" id="ap-familles"></div>
+                </details>
+            </div>
         </section>
 
         <!-- UNE SÉANCE -->

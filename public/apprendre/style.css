@@ -28,21 +28,39 @@ body.is-boot .ap { opacity:0; }
     background:linear-gradient(180deg,var(--brass-soft),var(--brass));
     -webkit-background-clip:text; background-clip:text; color:transparent; }
 .ap-sous { font-size:.74rem; color:var(--muted); }
-.ap-section { margin:8px 0 0; font-size:.66rem; text-transform:uppercase; letter-spacing:1.1px;
+/* Les trois étages. ⚠️ La marge du bas est NÉGATIVE : un titre doit toucher
+   ce qu'il annonce et respirer avant ce qui le précède, sinon il flotte entre
+   deux blocs et n'en désigne aucun. */
+.ap-section { margin:12px 0 -5px; font-size:.66rem; text-transform:uppercase; letter-spacing:1.1px;
     color:var(--muted); font-weight:700; }
 
-/* ---------- Le rang ---------- */
-.ap-rang { padding:14px; border-radius:16px; text-align:center;
+/* ---------- Le rang ----------
+   ⚠️ Aligné à gauche, et quatre lignes au lieu de cinq. Centré, l'œil
+   repartait du milieu à chaque ligne pour lire quatre variantes de la même
+   information : le nom du rang, le compte, la jauge, le gain, le reste à
+   faire. Le compte a rejoint le nom du rang, qu'il qualifie. */
+.ap-rang { padding:13px 14px; border-radius:16px;
     background:linear-gradient(165deg, rgba(217,169,78,.12), rgba(0,0,0,.22));
     border:1px solid var(--line); }
-.ap-rang-tete { display:flex; align-items:center; justify-content:center; gap:10px; }
-.ap-rang-emoji { font-size:2rem; line-height:1; }
-.ap-rang-nom { font-size:1.2rem; font-weight:800; color:var(--brass-soft); }
-.ap-rang-chiffres { margin:8px 0 6px; }
-.ap-rang-chiffres b { font-size:1.8rem; font-weight:800; }
-.ap-rang-chiffres span { display:block; font-size:.74rem; color:var(--muted); }
+.ap-rang-tete { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+.ap-rang-emoji { font-size:2rem; line-height:1; flex:0 0 auto; }
+.ap-rang-txt { flex:1; min-width:0; }
+.ap-rang-txt > b { display:block; font-size:1.18rem; font-weight:800; color:var(--brass-soft); }
+.ap-rang-txt small { display:block; margin-top:1px; font-size:.78rem; color:var(--muted); }
+.ap-rang-txt small b { color:var(--parchment); font-size:.94rem; font-weight:800; }
 .ap-rang-suite { margin:8px 0 0; font-size:.78rem; color:var(--muted); }
 .ap-rang-suite b { color:var(--brass-soft); }
+
+/* ---------- Ce qui a changé depuis la séance ----------
+   ⚠️ Il n'apparaît QU'AU RETOUR d'une séance, et disparaît au rechargement
+   suivant : un bandeau permanent cesserait d'être une nouvelle. */
+.ap-change { padding:11px 13px; border-radius:14px;
+    background:rgba(90,168,122,.14); border:1px solid rgba(90,168,122,.4);
+    animation:apMonte .35s ease both; }
+.ap-change[hidden] { display:none; }
+.ap-change-txt { margin:0; font-size:.86rem; line-height:1.45; }
+.ap-change-txt b { color:#8fd0a8; }
+.ap-change small { display:block; margin-top:3px; font-size:.7rem; color:var(--muted); }
 
 .ap-jauge { height:5px; border-radius:999px; background:rgba(0,0,0,.35); overflow:hidden; }
 .ap-jauge.grande { height:8px; }
@@ -75,6 +93,23 @@ body.is-boot .ap { opacity:0; }
 .ap-legende i.n3 { background:rgba(90,168,122,.45); }
 .ap-legende i.n4 { background:rgba(90,168,122,.7); }
 .ap-legende i.n5 { background:var(--good); }
+
+/* ---------- L'étage « J'explore » : deux tiroirs ----------
+   ⚠️ Dix familles et six continents dépliés en permanence, c'était seize
+   lignes toujours visibles pour l'étage où l'on ne va qu'en le cherchant.
+   Replié, chacun tient en une ligne qui dit ce qu'on en sait. */
+.ap-explore { display:flex; flex-direction:column; gap:6px; }
+.ap-tiroir { border-radius:14px; background:rgba(255,255,255,.03);
+    border:1px solid var(--line); overflow:hidden; }
+.ap-tiroir > summary { display:flex; align-items:center; gap:11px; padding:12px;
+    cursor:pointer; list-style:none; }
+.ap-tiroir > summary::-webkit-details-marker { display:none; }
+.ap-tiroir-emoji { font-size:1.3rem; flex:0 0 auto; }
+.ap-tiroir-txt { flex:1; min-width:0; }
+.ap-tiroir-txt b { display:block; font-size:.94rem; font-weight:800; }
+.ap-tiroir-txt small { display:block; font-size:.7rem; color:var(--muted); }
+.ap-tiroir[open] > summary .ap-cont-chevron { transform:rotate(90deg); }
+.ap-tiroir > .ap-aide, .ap-tiroir > .ap-familles, .ap-tiroir > .ap-regions { margin:0 8px 8px; }
 
 /* ---------- Les continents et leurs régions ----------
    Six portes, chacune repliée sur ses leçons. Vingt-quatre régions d'un

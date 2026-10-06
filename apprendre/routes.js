@@ -137,6 +137,11 @@ module.exports = function monterApprendre(app, deps) {
         });
     });
 
+    function bilanDeFin(sav, today, seance) {
+        const b = savoir.bilan(sav, today);
+        return { ...b, pays: b.total, justes: seance.justes, total: seance.questions.length };
+    }
+
     // L'énoncé seul : tout sauf le code attendu.
     function publique(q, index, total) {
         if (!q) return null;
@@ -184,10 +189,13 @@ module.exports = function monterApprendre(app, deps) {
             niveau: (sav[q.code] || {}).n || 0,
             question: publique(suivante, seance.index, seance.questions.length),
             fini: !suivante,
-            bilan: suivante ? null : {
-                justes: seance.justes, total: seance.questions.length,
-                ...savoir.bilan(sav, today),
-            },
+            // ⚠️ DEUX TOTAUX, DEUX NOMS. `total` était écrit par les deux
+            // objets sans dire la même chose — 194 pays pour le bilan, dix
+            // questions pour la séance — et le bilan, étalé en dernier,
+            // écrasait l'autre : l'écran de fin annonçait « 4 / 194 ». Le
+            // monde compte ses pays sous `pays`, la séance ses questions
+            // sous `total`, et plus rien ne se recouvre.
+            bilan: suivante ? null : bilanDeFin(sav, today, seance),
         });
     });
 
