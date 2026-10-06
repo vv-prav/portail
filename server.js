@@ -2929,17 +2929,12 @@ app.get('/api/salon/classement', requireAuthApi, (req, res) => {
 
 // Comment les points sont comptés — en mots, et généré depuis le barème
 // lui-même. Une règle du jeu recopiée à la main finit toujours par mentir.
-// Mon atlas : les pays trouvés, tous jeux de géographie confondus. Servi à
-// part du profil, parce que la page ne le charge que si on ouvre l'onglet —
-// et parce qu'il parcourt tout le cache une fois.
-const { atlas: calculerAtlas } = require('./geo/atlas');
-app.get('/api/salon/atlas', requireAuthApi, (req, res) => {
-    const demande = String(req.query.pseudo || '').trim();
-    // On peut regarder l'atlas de quelqu'un d'autre : c'est public comme les
-    // classements, et c'est ce qui donne envie de le remplir.
-    const pseudo = (demande && registeredUsers[demande]) ? demande : currentUser(req);
-    res.json({ pseudo, ...calculerAtlas(mfCache, pseudo) });
-});
+// ⚠️ `/api/salon/atlas` a disparu, et geo/atlas.js avec. Il y avait DEUX
+// cartes du monde pour la même idée : l'atlas du profil comptait les pays
+// « trouvés en jeu », la carte de l'apprentissage les pays « sus », avec
+// deux codes couleur dans deux pages. Personne n'aurait compris pourquoi.
+// Une seule fait foi désormais, celle de la maîtrise, servie par
+// `/api/apprendre/niveaux` et `/api/apprendre/bilan`.
 
 app.get('/api/salon/bareme', requireAuthApi, (req, res) => {
     res.json(explications());

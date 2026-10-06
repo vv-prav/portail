@@ -228,7 +228,37 @@ function noterManche(savoir, code, essais, trouve, date) {
     }
 }
 
+// ---------------------------------------------------------------------
+//  LA COURBE DE PROGRESSION
+//  ⚠️ C'est la seule chose qui donne envie de continuer quand l'objectif
+//  est à cent quatre-vingt-quatorze et qu'on en est à trente. Un chiffre
+//  seul ne dit pas qu'on avance ; une courbe, si.
+//
+//  Un relevé par jour, gardé cent jours. Rangé dans la même clé que le
+//  savoir, sous `__j` — une clé de plus par joueur n'apporterait rien et
+//  demanderait une ligne de plus au renommage.
+// ---------------------------------------------------------------------
+const HISTORIQUE_JOURS = 100;
+function releverLeJour(savoir, today) {
+    const h = savoir.__j || {};
+    const b = bilan(savoir, today);
+    h[today] = b.maitrises;
+    const jours = Object.keys(h).sort();
+    while (jours.length > HISTORIQUE_JOURS) delete h[jours.shift()];
+    savoir.__j = h;
+    return h;
+}
+// La courbe à montrer : un point par jour relevé, du plus ancien au plus
+// récent. Moins de deux points ne fait pas une courbe.
+function courbe(savoir) {
+    const h = savoir.__j || {};
+    const jours = Object.keys(h).sort();
+    if (jours.length < 2) return [];
+    return jours.map(d => ({ d, n: h[d] }));
+}
+
 module.exports = {
     CLE, NIVEAUX, NIVEAU_MAX, SEUIL_MAITRISE, RANGS, TOTAL,
     lire, noter, aRevoir, bilan, rangDe, nourrir, ajouterJours,
+    releverLeJour, courbe,
 };

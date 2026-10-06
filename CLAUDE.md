@@ -192,11 +192,31 @@ Cinq des onze jeux du jour sont de la géographie. Ils mettent à l'épreuve ; i
 
 **Le pont avec les jeux du jour, et il va dans les deux sens.** `savoir.nourrir()` relit les progressions des cinq jeux à chaque ouverture : trouvé en deux coups, le pays monte ; raté, il revient demain. **Jouer suffit à apprendre, le joueur n'a rien à déclarer.** Et ⚠️ **les pays proposés à tort comptent aussi** — ce sont les confusions réelles du joueur, pas une liste théorique. Une manche de drapeau ratée en six essais nourrit sept pays d'un coup.
 
+#### Les drapeaux (`geo/drapeaux.js`)
+
+⚠️ **Les leurres d'un drapeau viennent de la RESSEMBLANCE, pas du voisinage.** C'est le défaut le plus grave qu'avait l'apprentissage, et il se mesure : sur mille tirages, le Tchad n'était **jamais** proposé avec la Roumanie, Monaco jamais avec l'Indonésie, l'Irlande jamais avec la Côte d'Ivoire, la Norvège jamais avec l'Islande. Les confusions de drapeaux ne sont pas géographiques — le Tchad et la Roumanie sont à trois mille kilomètres. On s'entraînait donc exactement sur ce qu'on savait déjà. Après correction : **100 %** pour chacune de ces paires.
+
+`geo/drapeaux.js` est **le seul contenu de toute la géographie qui ne se dérive d'aucune donnée**, et c'est assumé — comme la liste des pays notoires du quiz. Aucune base ne dit que deux drapeaux se confondent : c'est un fait d'usage. 47 groupes couvrant 87 pays, chacun avec **ce qui les distingue** — « le bleu du Tchad est plus sombre que celui de la Roumanie », et c'est tout. Cette phrase s'affiche quand on se trompe : la fiche du bon pays ne suffit pas, ce qu'il faut c'est savoir **quoi regarder**.
+
+Et 10 **familles** — croix nordiques, panafricain, panarabe, croissant et étoile, Union Jack, Croix du Sud, tricolores verticaux, soleils, panslave, étoilés. ⚠️ Un drapeau ne s'apprend pas comme une image à retenir mais comme une **règle** à comprendre puis une variante à distinguer : les cinq croix nordiques se retiennent en bloc, une par une elles ne tiennent pas. Une leçon de famille s'entraîne forcément au drapeau — demander la capitale du Danemark dans une leçon sur les croix nordiques n'apprendrait rien de la famille.
+
+#### Les sept formes, et les ponts inverses
+
+⚠️ **Reconnaître et retrouver sont deux savoirs différents.** Repérer le drapeau du Pérou dans une liste de noms est bien plus facile que de le désigner parmi quatre drapeaux rouge-et-blanc. Trois ponts sur cinq n'allaient que dans un sens ; `nom-drapeau` et `nom-silhouette` ferment deux d'entre eux, et les choix portent alors l'image.
+
+⚠️ **La saisie libre** (optionnelle) est le seul exercice qui dise vraiment si l'on sait : on ne peut plus éliminer. Pas d'autocomplétion — elle le ramènerait à un choix multiple. Les autres capitales d'un pays sont acceptées : on ne piège personne sur La Haye ou Sucre. Imposée, elle découragerait ; c'est pourquoi c'est une case à cocher.
+
+#### Le dosage
+
+⚠️ **60 % de révision au plus, le reste en découverte.** Mesuré sur trente jours de simulation, la file de révision restait à zéro ou un : les intervalles grandissent vite et la séance se remplissait de nouveautés. On découvrait beaucoup et on consolidait peu — 116 jours pour les 194 pays. Plafonner la découverte force la consolidation quand il y a de quoi réviser, et laisse la séance pleine quand il n'y a rien.
+
 **Les trois portes, et pas une de plus** : *Réviser* (ce qui est dû aujourd'hui — la principale), *Découvrir une région*, *Au hasard*. Dans une leçon de région, ⚠️ on commence par ce qu'on ne sait PAS : revoir d'abord ce qu'on maîtrise, c'est perdre la moitié de la séance.
 
 ⚠️ **Les leçons sont rangées par CONTINENT**, six portes qui se déplient sur leurs sous-régions. Vingt-quatre régions d'un seul tenant, c'était une liste à faire défiler : on ne voyait ni où on en était, ni par où commencer. Chaque continent porte son propre compte de pays sus.
 
 ⚠️ **Et une leçon de région ne montre pas le monde entier.** Chercher le Laos sur une carte planétaire, c'est chercher une aiguille ; sur l'Asie du Sud-Est, c'est apprendre. `Geo.carte().cadrerSur(codes)` calcule l'étendue des pays de la leçon — avec une **marge proportionnelle** à cette étendue et non fixe : soixante unités fixes autour de l'Asie du Sud-Est ramenaient soixante-seize pays dans le cadre, dont l'Australie et les Comores. Un quart de l'étendue de chaque côté en laisse vingt-quatre, tous de la région ou limitrophes. On peut toujours dézoomer.
+
+**La courbe de progression** garde un relevé par jour (100 jours), rangé sous `__j` dans la même clé que le savoir. ⚠️ C'est la seule chose qui donne envie de continuer quand l'objectif est à 194 et qu'on en est à trente : un chiffre seul ne dit pas qu'on avance, une courbe si. En dessous de deux relevés elle ne s'affiche pas — un trait plat ressemblerait à une panne.
 
 **Les rangs** — Curieux, Explorateur, Voyageur, Navigateur, Globe-trotteur, Géographe, Maître du monde, Atlas vivant — ne donnent aucun avantage et n'entrent dans aucun classement. Ils disent où on en est, et c'est déjà beaucoup quand l'objectif est à 194.
 
@@ -248,7 +268,7 @@ Les cinq jeux tiraient dans le même vivier en s'ignorant. Mesuré sur 180 jours
 
 `geo/fiche.js` réunit trois jeux de données qui ne se parlaient pas — `geo/pays.js`, `capitales/villes.js` et le drapeau dérivé du code — pour montrer, à la fin de chaque manche : drapeau, silhouette, capitale, monnaie, langue, population, superficie et voisins en toutes lettres. ⚠️ `aireReelle` et **jamais** `aire` : la seconde est la surface du tracé dessiné, et ferait dire que la Pologne est plus vaste que la Norvège.
 
-`geo/atlas.js` fait l'inverse : il relit les progressions des cinq jeux pour savoir quels pays un joueur a trouvés, et le profil les allume sur la carte du monde, chacun de la couleur du jeu par lequel on l'a appris. ⚠️ **Seules les manches réussies comptent** — un atlas qui se remplit sans rien savoir ne vaudrait rien. Le voyage fait exception et compte les pays traversés : y avoir mis le pied est le principe du jeu.
+⚠️ **Il n'y a qu'UNE carte du monde dans tout le salon**, et c'est celle de la maîtrise. Il y en avait deux pour la même idée : l'atlas du profil comptait les pays « trouvés en jeu », celle de l'apprentissage les pays « sus », avec deux codes couleur dans deux pages — personne n'aurait compris pourquoi. `geo/atlas.js` et `/api/salon/atlas` ont disparu ; le profil lit `/api/apprendre/niveaux` et affiche les cinq teintes de maîtrise. Les cinq jeux nourrissant le même modèle, jouer remplit bien cette carte — simplement, elle dit maintenant ce qu'on SAIT.
 
 #### Le classement de la discipline
 

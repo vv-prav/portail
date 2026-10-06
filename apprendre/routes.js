@@ -16,6 +16,7 @@ module.exports = function monterApprendre(app, deps) {
     const savoir = require('../geo/savoir');
     const exercices = require('../geo/exercices');
     const { regions: REGIONS } = require('../geo/regions');
+    const DRAPEAUX = require('../geo/drapeaux');
     const { fiche } = require('../geo/fiche');
 
     const kSeance = (pseudo) => `geo:seance:${pseudo}`;
@@ -33,7 +34,11 @@ module.exports = function monterApprendre(app, deps) {
         const today = mfTodayId();
         const sav = savoir.lire(mfGet, pseudo);
         const touche = savoir.nourrir(mfCacheDe(), sav, pseudo, today);
-        if (touche) mfSet(savoir.CLE(pseudo), sav);
+        // Le relevé du jour, pour la courbe de progression. Il ne coûte rien
+        // et c'est la seule trace du chemin parcouru.
+        const avant = (sav.__j || {})[today];
+        savoir.releverLeJour(sav, today);
+        if (touche || avant !== (sav.__j || {})[today]) mfSet(savoir.CLE(pseudo), sav);
         return { today, sav };
     }
 
@@ -42,7 +47,7 @@ module.exports = function monterApprendre(app, deps) {
     app.get('/api/apprendre/bilan', requireAuthApi, (req, res) => {
         const pseudo = currentUser(req);
         const { today, sav } = etatDe(pseudo);
-        res.json({ pseudo, ...savoir.bilan(sav, today) });
+        res.json({ pseudo, ...savoir.bilan(sav, today), courbe: savoir.courbe(sav) });
     });
 
     // Une séance. `source` dit d'où viennent les pays :
@@ -63,6 +68,7 @@ module.exports = function monterApprendre(app, deps) {
         // chercher le Laos sur une carte planétaire, c'est chercher une
         // aiguille ; sur l'Asie du Sud-Est, c'est apprendre.
         let cadre = null;
+        let formeImposee = null;
         if (source.startsWith('region:')) {
             const r = REGIONS.find(x => x.id === source.slice(7));
             if (!r) return res.status(400).json({ error: 'Région inconnue.' });
@@ -73,25 +79,55 @@ module.exports = function monterApprendre(app, deps) {
             // la séance avant d'apprendre quoi que ce soit.
             codes = r.pays.slice().sort((a, b) =>
                 ((sav[a] && sav[a].n) || 0) - ((sav[b] && sav[b].n) || 0)).slice(0, combien);
+        } else if (source.startsWith('famille:')) {
+            const fam = DRAPEAUX.FAMILLES.find(x => x.id === source.slice(8));
+            if (!fam) return res.status(400).json({ error: 'Famille inconnue.' });
+            titre = fam.emoji + ' ' + fam.nom;
+            cadre = fam.pays;
+            // ⚠️ Une famille s'entraîne AU DRAPEAU, forcément : c'est le
+            // drapeau qui les rassemble. Demander la capitale du Danemark
+            // dans une leçon sur les croix nordiques n'apprendrait rien de la
+            // famille.
+            formeImposee = ['drapeau', 'nom-drapeau'];
+            codes = fam.pays.slice().sort((a, b) =>
+                ((sav[a] && sav[a].n) || 0) - ((sav[b] && sav[b].n) || 0)).slice(0, combien);
         } else if (source === 'libre') {
             titre = 'Au hasard';
             const tous = REGIONS.flatMap(r => r.pays);
             codes = tous.sort(() => Math.random() - 0.5).slice(0, combien);
         } else {
             titre = 'Ta révision du jour';
-            codes = savoir.aRevoir(sav, today, combien).map(x => x.code);
-            // Rien à revoir : on complète avec des pays jamais vus, sinon la
-            // porte principale serait vide tant qu'on n'a pas commencé.
+            // ⚠️ Le dosage : SOIXANTE pour cent de révision au plus, le reste
+            // en découverte. Mesuré sur trente jours de simulation, la file de
+            // révision restait à zéro ou un : les intervalles grandissent vite
+            // et la séance se remplissait de nouveautés. On découvrait
+            // beaucoup et on consolidait peu — cent seize jours pour les cent
+            // quatre-vingt-quatorze pays. Plafonner la découverte force la
+            // consolidation quand il y a de quoi réviser, et laisse la séance
+            // pleine quand il n'y a rien.
+            const duJour = savoir.aRevoir(sav, today, combien).map(x => x.code);
+            const placeRevision = Math.min(duJour.length, Math.ceil(combien * 0.6));
+            codes = duJour.slice(0, placeRevision);
             if (codes.length < combien) {
                 const manquants = REGIONS.flatMap(r => r.pays)
-                    .filter(c => !sav[c] || !sav[c].n)
+                    .filter(c => (!sav[c] || !sav[c].n) && !codes.includes(c))
                     .slice(0, combien - codes.length);
                 codes = codes.concat(manquants);
+                // S'il ne reste rien à découvrir, on reprend de la révision.
+                if (codes.length < combien) {
+                    codes = codes.concat(duJour.slice(placeRevision, placeRevision + combien - codes.length));
+                }
             }
         }
         if (!codes.length) return res.json({ titre, questions: [], vide: true });
 
-        const questions = exercices.serie(codes, hasard, formes);
+        let questions = exercices.serie(codes, hasard, formeImposee || formes);
+        // ⚠️ La saisie libre : on ne peut plus éliminer, donc c'est le seul
+        // exercice qui dise vraiment si l'on sait. Optionnel — imposé, il
+        // découragerait. Et jamais sur une question qui se joue sur la carte.
+        if ((req.body || {}).saisie) {
+            questions = questions.map(q => (q.type === 'choix' ? exercices.enSaisieLibre(q) : q));
+        }
         // ⚠️ La séance est gardée ICI, avec les bonnes réponses. Le
         // navigateur ne reçoit que les énoncés.
         mfSet(kSeance(pseudo), { titre, source, debutA: Date.now(), index: 0, justes: 0, questions });
@@ -130,8 +166,16 @@ module.exports = function monterApprendre(app, deps) {
         const suivante = seance.questions[seance.index];
         mfSet(kSeance(pseudo), seance);
 
+        // ⚠️ Quand on confond deux drapeaux, la fiche du bon pays ne suffit
+        // pas : ce qu'il faut, c'est savoir QUOI REGARDER pour ne plus les
+        // confondre. « Le bleu du Tchad est plus sombre que celui de la
+        // Roumanie » vaut mieux que dix révisions.
+        const mauvais = String((req.body || {}).reponse || '').toUpperCase().trim();
+        const pourquoi = (!juste && mauvais.length === 2)
+            ? DRAPEAUX.pourquoiOnConfond(q.code, mauvais) : null;
+
         res.json({
-            juste,
+            juste, pourquoi,
             // ⚠️ La fiche du pays arrive à CHAQUE réponse, juste ou fausse :
             // c'est le moment où on apprend, et le seul où on regarde
             // vraiment. La cacher quand on a bon serait manquer la moitié
@@ -144,6 +188,23 @@ module.exports = function monterApprendre(app, deps) {
                 justes: seance.justes, total: seance.questions.length,
                 ...savoir.bilan(sav, today),
             },
+        });
+    });
+
+    // Les familles de drapeaux, et ce qu'on en sait. ⚠️ Un drapeau ne
+    // s'apprend pas comme une image à retenir mais comme une règle à
+    // comprendre puis une variante à distinguer : les croix nordiques se
+    // retiennent en bloc, une par une elles ne tiennent pas.
+    app.get('/api/apprendre/familles', requireAuthApi, (req, res) => {
+        const pseudo = currentUser(req);
+        const { sav } = etatDe(pseudo);
+        res.json({
+            familles: DRAPEAUX.FAMILLES.map(f => {
+                const su = f.pays.filter(c => ((sav[c] && sav[c].n) || 0) >= 3).length;
+                return { id: f.id, nom: f.nom, emoji: f.emoji, regle: f.regle,
+                         total: f.pays.length, su, part: Math.round(su / f.pays.length * 100),
+                         pays: f.pays };
+            }),
         });
     });
 

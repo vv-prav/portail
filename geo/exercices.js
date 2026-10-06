@@ -21,6 +21,7 @@ const PAYS = require('./pays');
 const { regions: REGIONS } = require('./regions');
 const VILLES = require('../capitales/villes');
 const { drapeau, normaliser } = require('./commun');
+const { confondsAvec, FAMILLES } = require('./drapeaux');
 
 const parCode = new Map(PAYS.map(p => [p.code, p]));
 const villeParCode = new Map(VILLES.map(v => [v.code, v]));
@@ -55,6 +56,20 @@ const FORMES = {
         question: 'Montre ce pays sur la carte',
         dispo: () => true,
     },
+    // ⚠️ LES PONTS INVERSES. Reconnaître et retrouver sont deux savoirs
+    // différents : repérer le drapeau du Pérou dans une liste de noms est
+    // bien plus facile que de le désigner parmi quatre drapeaux
+    // rouge-et-blanc. On n'entraînait que le plus facile des deux.
+    'nom-drapeau': {
+        id: 'nom-drapeau', nom: 'Retrouver le drapeau', emoji: '🔍',
+        question: 'Lequel est le drapeau de ce pays ?',
+        dispo: () => true,
+    },
+    'nom-silhouette': {
+        id: 'nom-silhouette', nom: 'Retrouver la forme', emoji: '🧩',
+        question: 'Laquelle est la silhouette de ce pays ?',
+        dispo: (p) => !!p.chemin,
+    },
 };
 const TOUTES = Object.keys(FORMES);
 
@@ -64,7 +79,7 @@ const TOUTES = Object.keys(FORMES);
 //  n'en manque jamais : la plus petite région compte deux pays, mais le
 //  repli sur le monde entier est toujours là.
 // ---------------------------------------------------------------------
-function leurres(p, combien, hasard, filtre) {
+function leurres(p, combien, hasard, filtre, visuel) {
     const pris = new Set([p.code]);
     const out = [];
     const ajouter = (codes) => {
@@ -78,6 +93,13 @@ function leurres(p, combien, hasard, filtre) {
             pris.add(c); out.push(parCode.get(c));
         }
     };
+    // ⚠️ POUR UN DRAPEAU, LA RESSEMBLANCE PASSE AVANT LE VOISINAGE. Les
+    // confusions de drapeaux ne sont pas géographiques : le Tchad se confond
+    // avec la Roumanie, qui est à trois mille kilomètres. Mesuré avant
+    // correction, sur mille tirages — le Tchad n'était JAMAIS proposé avec la
+    // Roumanie, Monaco jamais avec l'Indonésie, la Norvège jamais avec
+    // l'Islande. On s'entraînait sur ce qu'on savait déjà.
+    if (visuel) ajouter(confondsAvec(p.code));
     ajouter(p.voisins || []);
     const r = regionDe.get(p.code);
     if (r) ajouter(r.pays);
@@ -112,8 +134,13 @@ function question(code, forme, hasard) {
         return { ...base, enonce: p.nom, type: 'carte' };
     }
 
-    const faux = leurres(p, 3, hasard, forme === 'capitale' || forme === 'pays'
-        ? (q) => !!villeParCode.get(q.code) : null);
+    // `visuel` : les formes où c'est l'image qu'on compare, donc où la
+    // ressemblance prime sur le voisinage.
+    const visuel = forme === 'drapeau' || forme === 'nom-drapeau';
+    const faux = leurres(p, 3, hasard,
+        forme === 'capitale' || forme === 'pays' ? (q) => !!villeParCode.get(q.code)
+        : forme === 'nom-silhouette' ? (q) => !!q.chemin : null,
+        visuel);
     if (faux.length < 3) return null;
 
     if (forme === 'silhouette') {
@@ -123,6 +150,15 @@ function question(code, forme, hasard) {
     if (forme === 'drapeau') {
         return { ...base, type: 'choix', drapeau: drapeau(code),
                  choix: melanger([p, ...faux], hasard).map(q => ({ v: q.code, t: q.nom })) };
+    }
+    // Les deux inverses : l'énoncé est le nom, les choix sont des images.
+    if (forme === 'nom-drapeau') {
+        return { ...base, type: 'images', enonce: p.nom,
+                 choix: melanger([p, ...faux], hasard).map(q => ({ v: q.code, d: drapeau(q.code) })) };
+    }
+    if (forme === 'nom-silhouette') {
+        return { ...base, type: 'formes', enonce: p.nom,
+                 choix: melanger([p, ...faux], hasard).map(q => ({ v: q.code, c: q.chemin })) };
     }
     if (forme === 'capitale') {
         return { ...base, type: 'choix', enonce: p.nom, drapeau: drapeau(code),
@@ -154,10 +190,40 @@ function serie(codes, hasard, formesVoulues) {
     return out;
 }
 
+// ---------------------------------------------------------------------
+//  LA SAISIE LIBRE
+//  ⚠️ Reconnaître parmi quatre n'est pas savoir. En saisie libre, on ne
+//  peut plus éliminer : c'est le seul exercice qui dise vraiment si on
+//  sait. Il reste optionnel — imposé, il découragerait.
+// ---------------------------------------------------------------------
+function enSaisieLibre(q) {
+    if (!q || !q.choix) return q;
+    const { choix, ...reste } = q;
+    return { ...reste, type: 'saisie',
+             // L'énoncé ne change pas ; seule la façon de répondre change.
+             attendu: q.forme === 'capitale' ? 'capitale' : 'pays' };
+}
+
 // La réponse est vérifiée ICI, jamais dans le navigateur.
 function verifier(q, reponse) {
     if (!q) return false;
-    return String(reponse || '').toUpperCase().trim() === q.code;
+    const brut = String(reponse || '').trim();
+    if (!brut) return false;
+    // Un choix : la réponse est un code.
+    if (brut.toUpperCase() === q.code) return true;
+    // Une saisie libre : on compare les noms, accents et casse ignorés.
+    const n = normaliser(brut);
+    if (!n) return false;
+    const p = parCode.get(q.code);
+    if (!p) return false;
+    if (q.forme === 'capitale') {
+        const v = villeParCode.get(q.code);
+        if (!v) return false;
+        // Les autres capitales du même pays sont acceptées : on ne piège
+        // personne sur La Haye ou Sucre.
+        return [v.ville, ...(v.alias || [])].some(x => normaliser(x) === n);
+    }
+    return normaliser(p.nom) === n;
 }
 
-module.exports = { FORMES, TOUTES, question, serie, verifier, leurres };
+module.exports = { FORMES, TOUTES, question, serie, verifier, leurres, enSaisieLibre };

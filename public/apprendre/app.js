@@ -43,9 +43,32 @@ function renderRang(b) {
             <b>${b.maitrises}</b><span>pays maîtrisés sur ${b.total}</span>
         </div>
         <div class="ap-jauge grande"><i style="width:${r.part}%"></i></div>
+        ${courbeHTML(b.courbe)}
         <p class="ap-rang-suite">${r.suivant
             ? `Encore <b>${r.suivant.manque}</b> pour devenir ${esc(r.suivant.emoji + ' ' + r.suivant.nom)}`
             : 'Tu as fait le tour du monde.'}</p>`;
+}
+
+// ⚠️ La courbe de progression : la seule chose qui donne envie de continuer
+// quand l'objectif est à cent quatre-vingt-quatorze et qu'on en est à trente.
+// Un chiffre seul ne dit pas qu'on avance ; une courbe, si. Deux points
+// suffisent à la tracer — en dessous, on ne montre rien plutôt qu'un trait
+// plat qui ressemblerait à une panne.
+function courbeHTML(points) {
+    if (!points || points.length < 2) return '';
+    const n = points.length;
+    const haut = Math.max(1, ...points.map(p => p.n));
+    const L = 300, H = 46;
+    const d = points.map((p, i) =>
+        `${i ? 'L' : 'M'}${(i / (n - 1) * L).toFixed(1)},${(H - p.n / haut * (H - 4)).toFixed(1)}`).join('');
+    const gagnes = points[n - 1].n - points[0].n;
+    return `<div class="ap-courbe">
+        <svg viewBox="0 0 ${L} ${H}" preserveAspectRatio="none" aria-hidden="true">
+            <path class="ligne" d="${d}"/>
+            <path class="aire" d="${d}L${L},${H}L0,${H}Z"/>
+        </svg>
+        <small>${gagnes > 0 ? `+${gagnes} pays sur ${n} jours` : `${n} jours suivis`}</small>
+    </div>`;
 }
 
 function renderPortes(b) {
@@ -79,6 +102,52 @@ function renderPortes(b) {
 // une liste à faire défiler, pas une progression : on ne voyait ni où on en
 // était ni par où commencer. Six portes, et chacune s'ouvre sur ses leçons.
 let continentOuvert = null;
+
+// ⚠️ Le choix des formes existait côté serveur depuis le début et n'était
+// jamais envoyé : impossible de dire « aujourd'hui, les drapeaux seulement ».
+// La fonctionnalité était écrite et inaccessible.
+const FORMES = [
+    { id: 'drapeau', nom: 'Reconnaître un drapeau', emoji: '🏳️' },
+    { id: 'nom-drapeau', nom: 'Retrouver un drapeau', emoji: '🔍' },
+    { id: 'silhouette', nom: 'Reconnaître une forme', emoji: '🗺️' },
+    { id: 'nom-silhouette', nom: 'Retrouver une forme', emoji: '🧩' },
+    { id: 'capitale', nom: 'Les capitales', emoji: '🏙️' },
+    { id: 'pays', nom: 'De quel pays ?', emoji: '🔎' },
+    { id: 'position', nom: 'Situer sur la carte', emoji: '📍' },
+];
+let formesChoisies = new Set();
+function renderFormes() {
+    $('ap-formes').innerHTML = FORMES.map(f => `
+        <button type="button" class="ap-forme${formesChoisies.has(f.id) ? ' on' : ''}" data-forme="${f.id}">
+            ${f.emoji} ${esc(f.nom)}
+        </button>`).join('');
+    $('ap-formes').querySelectorAll('[data-forme]').forEach(b => b.addEventListener('click', () => {
+        if (formesChoisies.has(b.dataset.forme)) formesChoisies.delete(b.dataset.forme);
+        else formesChoisies.add(b.dataset.forme);
+        renderFormes();
+    }));
+}
+
+// ---------- Les familles de drapeaux ----------
+async function renderFamilles() {
+    const { ok, data } = await api('/api/apprendre/familles');
+    if (!ok) return;
+    $('ap-familles').innerHTML = data.familles.map(f => `
+        <button type="button" class="ap-famille" data-famille="${esc(f.id)}">
+            <span class="ap-famille-tete">
+                <span class="ap-famille-emoji">${f.emoji}</span>
+                <span class="ap-famille-txt"><b>${esc(f.nom)}</b><small>${f.su} / ${f.total}</small></span>
+                <span class="ap-jauge petite"><i style="width:${f.part}%"></i></span>
+            </span>
+            <span class="ap-famille-regle">${esc(f.regle)}</span>
+            <span class="ap-famille-drapeaux">${f.pays.map(c => drapeauDe(c)).join(' ')}</span>
+        </button>`).join('');
+    $('ap-familles').querySelectorAll('[data-famille]').forEach(b =>
+        b.addEventListener('click', () => lancerSeance('famille:' + b.dataset.famille)));
+}
+// Le drapeau d'un code, construit comme côté serveur : deux lettres
+// converties en indicateurs régionaux.
+const drapeauDe = (code) => String.fromCodePoint(...[...code].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
 function renderRegions(b) {
     $('ap-regions').innerHTML = b.continents.map(c => {
         const siennes = b.regions.filter(r => r.continent === c.id);
@@ -154,13 +223,18 @@ async function chargerAccueil() {
     BILAN = data;
     document.body.classList.remove('is-boot');
     renderRang(data); renderPortes(data); renderRegions(data);
+    renderFormes(); renderFamilles();
     renderAtlas();
 }
 
 // ---------- Une séance ----------
 async function lancerSeance(source) {
     derniereSource = source;
-    const { ok, data } = await api('/api/apprendre/seance', { source, combien: 10 });
+    const { ok, data } = await api('/api/apprendre/seance', {
+        source, combien: 10,
+        formes: formesChoisies.size ? [...formesChoisies] : null,
+        saisie: $('ap-saisie-libre').checked,
+    });
     if (!ok) { DS.toast((data && data.error) || 'Impossible de lancer la séance.'); return; }
     if (data.vide || !data.question) { DS.toast('Rien à revoir pour l’instant.'); return; }
     $('ap-accueil').hidden = true;
@@ -206,8 +280,39 @@ function montrerQuestion(q) {
         if (CADRE) CARTE_Q.cadrerSur(CADRE);
         return;
     }
-    $('ap-choix').innerHTML = q.choix.map(c =>
-        `<button type="button" class="ap-choix-btn" data-v="${esc(c.v)}">${esc(c.t)}</button>`).join('');
+    // La saisie libre : plus de choix, on écrit. ⚠️ Pas d'autocomplétion —
+    // elle rendrait l'exercice aussi facile qu'un choix multiple, et c'est
+    // précisément ce qu'on veut éviter ici.
+    if (q.type === 'saisie') {
+        $('ap-choix').innerHTML = `
+            <form class="ap-saisie-form" id="ap-saisie-form" autocomplete="off">
+                <input class="ds-input" id="ap-saisie-champ" type="text"
+                       placeholder="${q.attendu === 'capitale' ? 'La capitale…' : 'Le pays…'}"
+                       autocomplete="off" autocorrect="off" autocapitalize="words" spellcheck="false"
+                       aria-label="Ta réponse">
+                <button class="ds-btn" type="submit">Valider</button>
+            </form>`;
+        $('ap-saisie-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const v = $('ap-saisie-champ').value.trim();
+            if (v) repondre(v);
+        });
+        $('ap-saisie-champ').focus();
+        return;
+    }
+    // Les deux ponts inverses : ce sont les CHOIX qui portent l'image.
+    if (q.type === 'images') {
+        $('ap-choix').innerHTML = `<div class="ap-grille">` + q.choix.map(c =>
+            `<button type="button" class="ap-image" data-v="${esc(c.v)}">${c.d}</button>`).join('') + `</div>`;
+    } else if (q.type === 'formes') {
+        $('ap-choix').innerHTML = `<div class="ap-grille">` + q.choix.map(c =>
+            `<button type="button" class="ap-forme-choix" data-v="${esc(c.v)}">
+                <svg viewBox="0 0 100 100" aria-hidden="true"><path d="${esc(c.c)}"/></svg>
+            </button>`).join('') + `</div>`;
+    } else {
+        $('ap-choix').innerHTML = q.choix.map(c =>
+            `<button type="button" class="ap-choix-btn" data-v="${esc(c.v)}">${esc(c.t)}</button>`).join('');
+    }
     $('ap-choix').querySelectorAll('[data-v]').forEach(b =>
         b.addEventListener('click', () => repondre(b.dataset.v)));
 }
@@ -224,6 +329,10 @@ async function repondre(valeur) {
         else if (b.dataset.v === valeur) b.classList.add('faux');
         b.disabled = true;
     });
+    // En saisie libre, le champ se verrouille : la réponse est donnée juste
+    // en dessous, le rouvrir n'aurait aucun sens.
+    const champ = $('ap-saisie-champ');
+    if (champ) { champ.disabled = true; champ.classList.add(data.juste ? 'juste' : 'faux'); }
     if (CARTE_Q) { CARTE_Q.marquer(data.fiche.code, 'reponse'); if (!data.juste) CARTE_Q.marquer(valeur, 'rate'); }
 
     const NIV = ['jamais vu', 'découvert', 'reconnu', 'su', 'solide', 'acquis'];
@@ -231,7 +340,9 @@ async function repondre(valeur) {
     $('ap-verdict').innerHTML = data.juste
         ? `✓ C'est ça — <b>${esc(NIV[data.niveau])}</b>`
         : `✗ C'était <b>${esc(data.fiche.nom)}</b>`;
-    $('ap-fiche').innerHTML = Geo.fiche(data.fiche);
+    $('ap-fiche').innerHTML = (data.pourquoi
+        ? `<p class="ap-pourquoi"><b>${esc(data.pourquoi.quoi)}</b>${esc(data.pourquoi.distinguer)}</p>` : '')
+        + Geo.fiche(data.fiche);
     $('ap-correction').hidden = false;
     $('ap-suivant').textContent = data.fini ? 'Voir le bilan' : 'Continuer';
     $('ap-suivant').onclick = () => {

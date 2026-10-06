@@ -81,7 +81,6 @@
 .geo-carte-points circle.trouve, .geo-carte-points circle.reponse,
 .geo-carte-points circle.arrivee { fill:var(--good,#5aa87a); stroke:#8fd0a8; }
 .geo-carte-points circle.visite, .geo-carte-points circle.depart { fill:var(--brass); stroke:var(--brass-soft); }
-.geo-carte-points circle.atlas { stroke-width:.8; }
 
 /* ⚠️ Les marques ne reçoivent pas les clics : posées SUR les pays, elles
    bloqueraient le prochain geste à cet endroit. */
@@ -97,13 +96,26 @@
     font-family:inherit; cursor:pointer; line-height:1; }
 .geo-carte-zoom button:active { transform:scale(.94); }
 
-/* ---------- Mon atlas ----------
-   Un pays trouvé s'allume de la couleur du jeu par lequel on l'a trouvé :
-   la carte raconte alors comment on a appris le monde, pas seulement
-   combien de pays on sait. */
-.geo-carte-pays path.atlas { stroke-width:.5; }
-.geo-carte-pays path.par-pays { fill:#c9a24a; stroke:#e0bd6a; }
-.geo-carte-pays path.par-drapeau { fill:#6f7bb0; stroke:#9aa5d4; }
-.geo-carte-pays path.par-voyage { fill:#4f9a8f; stroke:#78c0b4; }
-.geo-carte-pays path.par-capitales { fill:#c98a4a; stroke:#e5ac74; }
-.geo-carte-pays path.par-carte { fill:#5aa87a; stroke:#8fd0a8; }
+
+/* ⚠️ Les marques ne reçoivent pas les clics : posées SUR les pays, elles
+   bloqueraient le prochain geste à cet endroit. */
+.geo-carte-marques { pointer-events:none; }
+.geo-carte-marques circle.fond { fill:rgba(20,16,11,.82); stroke:var(--brass); stroke-width:1; }
+.geo-carte-marques .fleche { fill:var(--brass-soft); }
+.geo-carte-marques .ico { fill:var(--good,#5aa87a); font-size:9px; text-anchor:middle; font-weight:700; }
+.geo-carte-marques .juste circle.fond { stroke:var(--good,#5aa87a); }
+
+.geo-carte-zoom { position:absolute; right:8px; bottom:8px; display:flex; flex-direction:column; gap:4px; }
+.geo-carte-zoom button { width:34px; height:34px; border-radius:9px; border:1px solid var(--line);
+    background:rgba(20,16,11,.86); color:var(--brass-soft); font-size:1.05rem; font-weight:700;
+    font-family:inherit; cursor:pointer; line-height:1; }
+.geo-carte-zoom button:active { transform:scale(.94); }
+
+/* ---------- Les cinq niveaux de maîtrise ----------
+   ⚠️ Au socle commun, et non dans la page d'apprentissage : le profil
+   affiche la même carte. Il n'y en a qu'une dans tout le salon. */
+.geo-carte-pays path.niv1, .geo-carte-points circle.niv1 { fill:rgba(217,169,78,.18); }
+.geo-carte-pays path.niv2, .geo-carte-points circle.niv2 { fill:rgba(217,169,78,.35); }
+.geo-carte-pays path.niv3, .geo-carte-points circle.niv3 { fill:rgba(90,168,122,.45); stroke:rgba(143,208,168,.5); }
+.geo-carte-pays path.niv4, .geo-carte-points circle.niv4 { fill:rgba(90,168,122,.7); stroke:#8fd0a8; }
+.geo-carte-pays path.niv5, .geo-carte-points circle.niv5 { fill:var(--good); stroke:#a8e0c0; }

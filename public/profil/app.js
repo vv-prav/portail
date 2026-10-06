@@ -393,26 +393,30 @@ async function loadProfile() {
 }
 
 // ---------- Mon atlas ----------
-// La carte du monde est déjà chargée pour La carte et le Voyage, et les cinq
-// jeux de géographie laissaient déjà la trace de chaque pays trouvé : il n'y
-// avait qu'à les rapprocher. Les pays s'allument de la couleur du jeu par
-// lequel on les a trouvés.
-const TEINTE_JEU = { pays: 'par-pays', drapeau: 'par-drapeau', voyage: 'par-voyage',
-                     capitales: 'par-capitales', carte: 'par-carte' };
+// ⚠️ UNE SEULE carte du monde dans tout le salon, et c'est celle de la
+// MAÎTRISE. Il y en avait deux pour la même idée : celle-ci comptait les
+// pays « trouvés en jeu », celle de l'apprentissage les pays « sus », avec
+// deux codes couleur dans deux pages. Personne n'aurait compris pourquoi.
+// Les cinq jeux du jour nourrissent le même modèle, donc jouer remplit bien
+// cette carte — simplement, elle dit maintenant ce qu'on SAIT.
+const TEINTE_NIVEAU = { 1: 'niv1', 2: 'niv2', 3: 'niv3', 4: 'niv4', 5: 'niv5' };
 async function chargerAtlas() {
     if (!window.Geo || !window.MONDE) return;
-    const { ok, data } = await api('/api/salon/atlas');
-    if (!ok || !data || !data.combien) return;        // un atlas vide ne dit rien
+    const [{ ok, data: bilan }, { data: niv }] = await Promise.all([
+        api('/api/apprendre/bilan'),
+        api('/api/apprendre/niveaux'),
+    ]);
+    if (!ok || !bilan || !bilan.vus) return;          // un atlas vide ne dit rien
     $('pr-atlas-section').hidden = false;
-    const part = Math.round(data.combien / data.total * 100);
-    $('pr-atlas-compte').innerHTML = `<b>${data.combien}</b> / ${data.total} pays <span>· ${part} % du monde</span>`;
+    const part = Math.round(bilan.maitrises / bilan.total * 100);
+    $('pr-atlas-compte').innerHTML = `<b>${bilan.maitrises}</b> / ${bilan.total} pays sus`
+        + `<span>· ${part} % du monde · ${bilan.rang.emoji} ${esc(bilan.rang.nom)}</span>`;
     const carte = Geo.carte($('pr-atlas'), {});
-    for (const [code, jeu] of Object.entries(data.pays || {})) {
-        carte.marquer(code, 'atlas');
-        carte.marquer(code, TEINTE_JEU[jeu] || 'par-carte');
+    for (const [code, n] of Object.entries((niv && niv.niveaux) || {})) {
+        carte.marquer(code, TEINTE_NIVEAU[n] || 'niv1');
     }
-    $('pr-atlas-manquants').textContent = (data.manquants || []).length
-        ? 'Jamais trouvés : ' + data.manquants.join(', ') + '…'
+    $('pr-atlas-manquants').textContent = bilan.aRevoir
+        ? `${bilan.aRevoir} pays à revoir aujourd’hui.`
         : '';
 }
 loadProfile();
