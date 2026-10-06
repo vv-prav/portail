@@ -162,6 +162,18 @@ body.is-hub   .hub   { display: block; }
 
 /* --- Tuiles (grille de 2 colonnes, glissables) --- */
 .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/* ⚠️ La carte de l'Université prend les DEUX colonnes : elle n'ouvre pas sur
+   une partie mais sur un lieu, et une tuile carrée la rangerait au même
+   niveau que les autres. En longueur, elle a la place de dire ce qui
+   attend derrière — et une porte qui dit ce qu'il y a derrière se pousse. */
+.tile.large { grid-column: 1 / -1; flex-direction: row; align-items: center; gap: 14px;
+    text-align: left; padding: 14px 16px; min-height: 0; }
+.tile.large .tile-mark { font-size: 2rem; margin: 0; flex: 0 0 auto; }
+.tile-large-txt { flex: 1; min-width: 0; }
+.tile.large .tile-name { display: block; }
+.tile-large-sous { display: block; font-size: .74rem; color: var(--muted); margin-top: 2px; }
+.tile-large-rang { flex: 0 0 auto; font-size: .72rem; font-weight: 700; color: var(--brass-soft);
+    background: rgba(217,169,78,.14); border-radius: 999px; padding: 4px 10px; white-space: nowrap; }
 .tile {
     position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 7px;
     padding: 20px 10px 14px; min-height: 128px; justify-content: center;

@@ -1894,6 +1894,9 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
         },
         // ⚠️ Au chrono, on ne « rate » pas : on est plus ou moins près. Une
         // journée jouée est donc une journée faite.
+        // L'Université des papillons : ce qui attend derrière la porte. Une
+        // porte qui dit ce qu'il y a derrière se pousse ; une porte muette, non.
+        apprendre: apprendreApi.resume(user),
         chrono: {
             done: !!(chronoProg && chronoProg.fini),
             over: !!(chronoProg && chronoProg.fini),

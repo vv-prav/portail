@@ -237,5 +237,17 @@ module.exports = function monterApprendre(app, deps) {
         res.json({ ...f, niveau: (sav[f.code] || {}).n || 0 });
     });
 
-    return { savoir, exercices };
+    // Le résumé pour l'accueil du salon : juste de quoi remplir la carte.
+    // ⚠️ Il NE met pas le modèle à jour — le pouls est appelé à chaque
+    // ouverture de l'accueil, et relire les progressions de tous les jeux à
+    // chaque fois coûterait cher pour rien. La mise à jour se fait en entrant
+    // dans l'Université.
+    function resume(pseudo) {
+        const sav = savoir.lire(mfGet, pseudo);
+        const b = savoir.bilan(sav, mfTodayId());
+        return { maitrises: b.maitrises, total: b.total, aRevoir: b.aRevoir,
+                 rang: { nom: b.rang.nom, emoji: b.rang.emoji } };
+    }
+
+    return { savoir, exercices, resume };
 };
