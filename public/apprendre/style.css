@@ -23,15 +23,26 @@ body.is-boot .ap { opacity:0; }
     max-width:560px; margin:0 auto; padding:max(10px,env(safe-area-inset-top)) 14px calc(28px + env(safe-area-inset-bottom)); }
 
 .ap-head { display:flex; align-items:center; gap:10px; }
+/* ⚠️ Une séance est un écran à elle seule. L'en-tête du site y empilait un
+   second bouton de sortie au-dessus du « ✕ » de la séance, sans que rien ne
+   dise lequel quittait quoi — et prenait soixante pixels au-dessus de la
+   question. */
+body.en-seance .ap-head { display:none; }
 .ap-titles { flex:1; min-width:0; }
 .ap-title { margin:0; font-size:1.2rem; font-weight:800;
     background:linear-gradient(180deg,var(--brass-soft),var(--brass));
     -webkit-background-clip:text; background-clip:text; color:transparent; }
 .ap-sous { font-size:.74rem; color:var(--muted); }
-/* Les trois étages. ⚠️ La marge du bas est NÉGATIVE : un titre doit toucher
-   ce qu'il annonce et respirer avant ce qui le précède, sinon il flotte entre
-   deux blocs et n'en désigne aucun. */
-.ap-section { margin:12px 0 -5px; font-size:.66rem; text-transform:uppercase; letter-spacing:1.1px;
+/* ⚠️ L'ACCUEIL POSE SES ÉCARTS LUI-MÊME, EN UN SEUL ENDROIT. Ils venaient
+   des marges de chacun de ses blocs, et ne s'accordaient donc nulle part :
+   2 px entre le rang et la carte, 0 avant un titre, et une marge négative
+   de 5 px qui faisait littéralement CHEVAUCHER les trois titres de section
+   sur la carte qui les suivait. La marge négative venait d'un calcul juste
+   pour `.ap`, qui est en flex avec un `gap` de 14 px — mais `.ap-accueil`,
+   lui, était en flux normal : rien ne venait compenser le retrait. */
+.ap-accueil { display:flex; flex-direction:column; gap:12px; }
+/* Un titre appartient à ce qui le suit : 18 px au-dessus, 8 en dessous. */
+.ap-section { margin:6px 0 -4px; font-size:.66rem; text-transform:uppercase; letter-spacing:1.1px;
     color:var(--muted); font-weight:700; }
 
 /* ---------- Le rang ----------
@@ -84,9 +95,11 @@ body.is-boot .ap { opacity:0; }
 
 /* ---------- La carte de maîtrise ----------
    Cinq teintes, du plus pâle au plus franc : on voit son monde se remplir. */
-.ap-atlas { margin-top:2px; }
+.ap-atlas { margin:0; }
+/* La légende est la légende de la carte : elle se colle à elle (le `gap` de
+   l'accueil l'en éloignait autant que de la section suivante). */
 .ap-legende { display:flex; align-items:center; justify-content:center; gap:5px; flex-wrap:wrap;
-    margin:6px 0 0; font-size:.66rem; color:var(--muted); }
+    margin:-6px 0 0; font-size:.66rem; color:var(--muted); }
 .ap-legende i { width:11px; height:11px; border-radius:3px; display:inline-block; margin-left:7px; }
 .ap-legende i.n1 { background:rgba(217,169,78,.18); }
 .ap-legende i.n2 { background:rgba(217,169,78,.35); }

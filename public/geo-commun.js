@@ -142,6 +142,15 @@
     //  carte nom + région, Les capitales cinq lignes de ville. Tout existe
     //  pourtant déjà dans les données — autant l'apprendre.
     // ---------------------------------------------------------------
+    // ⚠️ Les habitants sont ceux de la CAPITALE, et ils se rangent donc sur
+    // la ligne de la capitale. Sur une ligne « Habitants » à eux, posés sous
+    // le nom du pays, ils se lisaient comme la population du pays : la fiche
+    // de la Turquie annonçait 5,8 millions d'habitants — ceux d'Ankara.
+    function habitants(n) {
+        if (n >= 1e6) return (n / 1e6).toFixed(1).replace('.', ',').replace(',0', '') + ' M hab.';
+        return NOMBRE.format(n) + ' hab.';
+    }
+
     function fiche(p) {
         if (!p) return '';
         const ligne = (quoi, valeur) => valeur
@@ -158,10 +167,11 @@
                 <p class="geo-fiche-nom">${esc(p.nom || '')}</p>
                 <p class="geo-fiche-region">${esc(p.region || '')}</p>
                 <div class="geo-fiche-lignes">
-                    ${ligne('Capitale', p.capitale)}
+                    ${ligne('Capitale', p.capitale
+                        ? p.capitale + (p.popCapitale ? ` · ${habitants(p.popCapitale)}` : '')
+                        : null)}
                     ${ligne('Monnaie', p.devise)}
                     ${ligne('Langue', p.langue)}
-                    ${ligne('Habitants', p.population ? NOMBRE.format(p.population) : null)}
                     ${ligne('Superficie', p.aire ? NOMBRE.format(p.aire) + ' km²' : null)}
                     ${ligne('Voisins', voisins)}
                 </div>

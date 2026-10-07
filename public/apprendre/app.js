@@ -106,7 +106,14 @@ function montrerChangements() {
 function courbeHTML(points) {
     if (!points || points.length < 2) return '';
     const n = points.length;
-    const haut = Math.max(1, ...points.map(p => p.n));
+    // ⚠️ DEUX RELEVÉS NE FONT PAS UNE COURBE. La garde ne comptait que les
+    // points, jamais leurs valeurs : deux jours à zéro passaient, et on
+    // dessinait soixante pixels de vide traversés d'un trait parfaitement
+    // plat — précisément la panne que ce commentaire disait éviter. Tant que
+    // rien n'a bougé, il n'y a rien à montrer, et le rang se suffit.
+    const valeurs = points.map(p => p.n);
+    if (Math.max(...valeurs) === Math.min(...valeurs)) return '';
+    const haut = Math.max(1, ...valeurs);
     const L = 300, H = 46;
     const d = points.map((p, i) =>
         `${i ? 'L' : 'M'}${(i / (n - 1) * L).toFixed(1)},${(H - p.n / haut * (H - 4)).toFixed(1)}`).join('');
@@ -339,6 +346,13 @@ async function lancerSeance(source) {
     });
     if (!ok) { DS.toast((data && data.error) || 'Impossible de lancer la séance.'); return; }
     if (data.vide || !data.question) { DS.toast('Rien à revoir pour l’instant.'); return; }
+    // ⚠️ DEUX SORTIES L'UNE SOUS L'AUTRE, ET ELLES NE FONT PAS LA MÊME CHOSE.
+    // L'en-tête du site restait affiché pendant une question : son « ← »
+    // quittait l'Université, le « ✕ » juste dessous arrêtait la séance. Rien
+    // ne distinguait les deux, et le titre occupait soixante pixels au-dessus
+    // de la question. Une séance est un écran à elle seule, avec une seule
+    // sortie — c'est déjà la règle des vues dans les autres jeux.
+    document.body.classList.add('en-seance');
     $('ap-accueil').hidden = true;
     $('ap-seance').hidden = false;
     $('ap-s-titre').textContent = data.titre;
@@ -481,6 +495,7 @@ function revenir() {
     const r = $('ap-reglages');
     r.hidden = true; r.open = false;
     $('ap-reglages-hote').appendChild(r);
+    document.body.classList.remove('en-seance');
     $('ap-fin').hidden = true;
     $('ap-seance').hidden = true;
     $('ap-accueil').hidden = false;
