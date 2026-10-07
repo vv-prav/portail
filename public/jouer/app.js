@@ -105,12 +105,17 @@ function combienDeJoueurs(j) {
     if (j.libre) return j.libre;
     return j.min === j.max ? `${j.min} joueurs` : `${j.min} à ${j.max} joueurs`;
 }
-function carteJeu(j, dispos) {
-    // Combien on serait si tout le monde venait : soi, plus les présents.
-    const assez = dispos == null || (dispos + 1) >= j.min;
+// ⚠️ AUCUN JEU N'EST GRISÉ, même quand personne n'est connecté. Les cartes
+// s'estompaient quand on n'était pas assez nombreux — mais ouvrir une table
+// AVANT que les autres arrivent est précisément le geste qu'on attend : le
+// lien d'invitation existe pour ça, et une table ouverte est ce qui fait
+// venir du monde. Griser découragait le seul mouvement qui remplit le salon.
+// Le nombre de joueurs reste écrit sur la carte, il n'est simplement plus
+// un jugement. Le tri par disponibilité, lui, demeure.
+function carteJeu(j) {
     const solo = j.solo ? `<span class="jo-cat-solo">solo ${esc(j.solo)}</span>` : '';
     return `
-        <a class="jo-cat${assez ? '' : ' pas-assez'}" href="${j.direct ? j.href : j.href + '/?creer=1'}" style="--acc:${j.accent}">
+        <a class="jo-cat" href="${j.direct ? j.href : j.href + '/?creer=1'}" style="--acc:${j.accent}">
             <span class="jo-cat-emoji">${j.emoji}</span>
             <span class="jo-cat-corps">
                 <b>${esc(j.nom)}</b>
@@ -134,9 +139,9 @@ function ouvrirCatalogue() {
     // marche à coup sûr : il passe devant.
     const seul = dispos === 0;
     const blocReseau = `<p class="jo-cat-famille">Chacun sur son téléphone</p>`
-        + reseau.map(j => carteJeu(j, dispos)).join('');
+        + reseau.map(carteJeu).join('');
     const blocLocal = `<p class="jo-cat-famille">À un seul téléphone</p>`
-        + CATALOGUE_LOCAL.map(j => carteJeu(j, null)).join('');
+        + CATALOGUE_LOCAL.map(carteJeu).join('');
     $('jo-cat-intro').textContent = seul
         ? 'Personne d’autre en ligne : les jeux marqués « solo » et ceux à un seul téléphone marchent quand même.'
         : `Vous êtes ${dispos + 1} en ligne. Choisis un jeu, tu régleras la partie juste après.`;
@@ -206,57 +211,6 @@ function ligneTable(t, avatars) {
     </a>`;
 }
 
-// Le salon vide n'avait aucune mémoire : on lisait « aucune table ouverte » et
-// on repartait. L'historique des parties existait pourtant, enfermé dans
-// l'admin. Rappeler la dernière fois, c'est offrir un geste au lieu d'une
-// impasse — et le plus souvent, on rejoue à ce à quoi on a joué.
-function blocSouvenir(d) {
-    if (!d) return '';
-    const avec = d.joueurs.filter(p => p !== etat.moi);
-    const qui = avec.length ? ` avec ${avec.slice(0, 3).map(esc).join(', ')}${avec.length > 3 ? ` +${avec.length - 3}` : ''}` : '';
-    return `<a class="jo-souvenir" href="${d.href}/?creer=1" style="--acc:${d.accent}">
-        <span class="jo-souvenir-emoji">${d.emoji}</span>
-        <span class="jo-souvenir-corps">
-            <em>${d.moi ? 'Ta dernière partie' : 'La dernière du salon'} — ${esc(ilYA(d.quand))}</em>
-            <b>${esc(d.nom)}${esc(qui)}</b>
-        </span>
-        <span class="jo-souvenir-go">Relancer ›</span>
-    </a>`;
-}
-
-// ---------- Défis ----------
-// Le hall n'en montre que trois : c'est un aperçu, la vraie liste est à côté.
-function ligneDefi(d) {
-    const fait = d.moi.etat === 'fini';
-    const etatTexte = fait
-        ? `${d.moi.score} pt${d.moi.score > 1 ? 's' : ''} · ${d.place}<sup>${d.place === 1 ? 'er' : 'e'}</sup> sur ${d.joueurs}`
-        : `${d.joueurs} ${d.joueurs > 1 ? 'ont' : 'a'} joué`;
-    return `<a class="jo-defi${fait ? ' fait' : ''}" href="/defis/?d=${encodeURIComponent(d.id)}" style="--acc:${d.accent}">
-        <span class="jo-defi-emoji">${d.emoji}</span>
-        <span class="jo-defi-corps">
-            <b>${esc(d.nom)} · de ${esc(d.auteur)}</b>
-            <em>${etatTexte}</em>
-        </span>
-        <span class="jo-defi-go">${fait ? 'Voir ›' : 'Jouer ›'}</span>
-    </a>`;
-}
-
-// ---------- Rendez-vous ----------
-function ligneRdv(r) {
-    const venants = r.inscrits.length;
-    const action = r.cEstMoi
-        ? `<span class="jo-rdv-action annuler" data-annuler="${esc(r.id)}">Annuler</span>`
-        : `<span class="jo-rdv-action${r.jeViens ? ' dedans' : ''}" data-rdv="${esc(r.id)}">${r.jeViens ? '✓ Je viens' : 'Je viens'}</span>`;
-    return `<div class="jo-rdv-l" style="--acc:${r.accent}">
-        <span class="jo-rdv-emoji">${r.emoji}</span>
-        <span class="jo-rdv-corps">
-            <b>${esc(r.nom)} · ${esc(quandTexte(r.quand))}</b>
-            <em>${esc(r.hote)}${r.note ? ' — ' + esc(r.note) : ''} · ${venants} inscrit${venants > 1 ? 's' : ''}</em>
-        </span>
-        ${action}
-    </div>`;
-}
-
 // ---------- Invitations reçues ----------
 function ligneInvit(i) {
     return `<div class="jo-invit" style="--acc:${i.accent}">
@@ -271,7 +225,7 @@ function ligneInvit(i) {
 }
 
 // ---------- L'état, et son rendu ----------
-const etat = { moi: null, tables: [], presents: [], rendezvous: [], derniere: null, invitations: [], defis: [] };
+const etat = { moi: null, tables: [], presents: [], invitations: [] };
 
 async function charger() {
     const { ok, data } = await api('/api/salon/tables');
@@ -282,10 +236,7 @@ async function charger() {
     etat.moi = data.moi;
     etat.tables = data.tables || [];
     etat.presents = data.presents || [];
-    etat.rendezvous = data.rendezvous || [];
-    etat.derniere = data.derniere || null;
     etat.invitations = data.invitations || [];
-    etat.defis = data.defis || [];
     await rendre();
 }
 
@@ -300,12 +251,6 @@ async function rendre() {
     $('jo-tables-titre').textContent = attente
         ? `${attente} table${attente > 1 ? 's' : ''} à rejoindre`
         : (enCours ? 'Parties en cours' : 'Tables ouvertes');
-    $('jo-sub').textContent = tables.length
-        ? `${tables.length} partie${tables.length > 1 ? 's' : ''} en ce moment`
-        : (etat.presents.length
-            ? `${etat.presents.length} personne${etat.presents.length > 1 ? 's' : ''} en ligne — lance la première partie.`
-            : 'Personne ne joue pour l’instant — lance la première.');
-
     // Les avatars de tout le monde en une fois : joueurs attablés et présents.
     const pseudos = [...new Set([
         ...tables.flatMap(t => t.presents || t.joueurs),
@@ -313,26 +258,12 @@ async function rendre() {
     ])];
     const avatars = pseudos.length ? await PortailProfile.fetchAvatars(pseudos) : {};
 
-    // Tables
+    // Tables. ⚠️ Rien d'autre sous ce titre : l'explication qui s'y trouvait
+    // vantait le rendez-vous et le partage de lien, et se lisait comme une
+    // page d'aide à chaque fois qu'il ne se passait rien.
     $('jo-tables').innerHTML = tables.length
         ? tables.map(t => ligneTable(t, avatars)).join('')
-        : `<p class="jo-vide">Aucune table ouverte. Crée une partie, propose un rendez-vous, ou partage le
-             lien : les autres te rejoindront même s’ils ne sont pas déjà connectés.</p>`
-          + blocSouvenir(etat.derniere);
-
-    // Défis — ce qui attend une manche passe devant ce qui est déjà fait.
-    $('jo-defis').innerHTML = etat.defis.length
-        ? etat.defis.slice(0, 3).map(ligneDefi).join('')
-          + `<a class="jo-defis-tout" href="/defis/">Tous les défis ›</a>`
-        : `<a class="jo-vide lien" href="/defis/">Aucun défi en cours. Un défi, c’est la même manche
-             pour tout le monde, jouée quand chacun peut, dans les vingt-quatre heures.
-             <b>En lancer un ›</b></a>`;
-
-    // Rendez-vous
-    $('jo-rdv').innerHTML = etat.rendezvous.length
-        ? etat.rendezvous.map(ligneRdv).join('')
-        : `<p class="jo-vide petit">Aucun rendez-vous. C’est le moyen le plus sûr de jouer à plusieurs :
-             on fixe l’heure, chacun vient.</p>`;
+        : `<p class="jo-vide">Aucune table ouverte pour le moment</p>`;
 
     // Invitations
     $('jo-invits').innerHTML = etat.invitations.map(ligneInvit).join('');
@@ -358,24 +289,6 @@ document.addEventListener('click', async (e) => {
     const qui = e.target.closest('[data-qui]');
     if (qui) { menuJoueur(qui.dataset.qui); return; }
 
-    const rdv = e.target.closest('[data-rdv]');
-    if (rdv) {
-        const { data } = await api('/api/salon/rdv/inscription', { id: rdv.dataset.rdv });
-        if (data && data.error) DS.toast(data.error); else charger();
-        return;
-    }
-    const annuler = e.target.closest('[data-annuler]');
-    if (annuler) {
-        DS.confirm({
-            emoji: '📅', title: 'Annuler ce rendez-vous ?',
-            text: 'Ceux qui s’étaient inscrits ne le verront plus.',
-            actions: [{ label: 'Annuler le rendez-vous', danger: true, run: async () => {
-                await api('/api/salon/rdv/annuler', { id: annuler.dataset.annuler });
-                charger();
-            } }],
-        });
-        return;
-    }
     const refus = e.target.closest('[data-refus]');
     if (refus) { await api('/api/salon/invitation/vue', { id: refus.dataset.refus }); charger(); return; }
     const vue = e.target.closest('[data-vue]');
@@ -409,64 +322,6 @@ function choisirJeuPour(pseudo) {
         })),
     });
 }
-
-// ---------- Proposer un rendez-vous ----------
-let rdvJeu = null;
-function ouvrirFormRdv() {
-    rdvJeu = null;
-    $('jo-rdv-jeux').innerHTML = CATALOGUE.map(j =>
-        `<button type="button" class="jo-rdv-jeu" data-jeu="${j.id}">${j.emoji} ${esc(j.nom)}</button>`).join('');
-    $('jo-rdv-rapide').innerHTML = raccourcisHoraires().map((r, i) =>
-        `<button type="button" class="jo-rdv-quand" data-quand="${r.ts}">${esc(r.label)}</button>`).join('');
-    $('jo-rdv-note').value = '';
-    $('jo-rdv-erreur').hidden = true;
-    $('jo-rdv-quand').value = '';
-    $('jo-rdv-form').hidden = false;
-}
-// Trois propositions qui couvrent presque tous les cas réels — « ce soir »
-// veut dire quelque chose de précis quand on se connaît. Le champ complet
-// reste là pour le reste.
-function raccourcisHoraires() {
-    const soir = new Date(); soir.setHours(21, 0, 0, 0);
-    const listes = [];
-    if (soir.getTime() > Date.now() + 5 * 60000) listes.push({ label: 'Ce soir 21 h', ts: soir.getTime() });
-    const demainSoir = new Date(); demainSoir.setDate(demainSoir.getDate() + 1); demainSoir.setHours(21, 0, 0, 0);
-    listes.push({ label: 'Demain 21 h', ts: demainSoir.getTime() });
-    const dans1h = new Date(Math.ceil((Date.now() + 3600e3) / 900e3) * 900e3);   // arrondi au quart d'heure
-    listes.unshift({ label: 'Dans une heure', ts: dans1h.getTime() });
-    return listes;
-}
-$('jo-rdv-creer').addEventListener('click', ouvrirFormRdv);
-$('jo-rdv-close').addEventListener('click', () => { $('jo-rdv-form').hidden = true; });
-$('jo-rdv-form').addEventListener('click', (e) => { if (e.target === $('jo-rdv-form')) $('jo-rdv-form').hidden = true; });
-$('jo-rdv-jeux').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-jeu]'); if (!b) return;
-    rdvJeu = b.dataset.jeu;
-    $('jo-rdv-jeux').querySelectorAll('.jo-rdv-jeu').forEach(x => x.classList.toggle('on', x === b));
-});
-$('jo-rdv-rapide').addEventListener('click', (e) => {
-    const b = e.target.closest('[data-quand]'); if (!b) return;
-    // On remplit le champ complet plutôt que de garder la valeur à part : ce
-    // qu'on voit est ce qui sera envoyé, et ça reste modifiable.
-    const d = new Date(Number(b.dataset.quand));
-    const pad = (n) => String(n).padStart(2, '0');
-    $('jo-rdv-quand').value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    $('jo-rdv-rapide').querySelectorAll('.jo-rdv-quand').forEach(x => x.classList.toggle('on', x === b));
-});
-$('jo-rdv-valider').addEventListener('click', async () => {
-    const err = $('jo-rdv-erreur');
-    const dire = (m) => { err.textContent = m; err.hidden = false; };
-    if (!rdvJeu) return dire('Choisis un jeu.');
-    const brut = $('jo-rdv-quand').value;
-    if (!brut) return dire('Choisis une heure.');
-    const quand = new Date(brut).getTime();
-    if (!quand) return dire('Cette heure n’est pas valide.');
-    const { data } = await api('/api/salon/rdv', { jeu: rdvJeu, quand, note: $('jo-rdv-note').value });
-    if (data && data.error) return dire(data.error);
-    $('jo-rdv-form').hidden = true;
-    DS.toast('Rendez-vous proposé ✓');
-    charger();
-});
 
 // ---------- Le direct ----------
 // La page interrogeait le serveur toutes les dix secondes, alors que les six

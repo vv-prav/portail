@@ -196,7 +196,12 @@ a { text-decoration: none; }
 }
 .ds-chip { position: relative; }
 
-.ds-card-title { margin: 0; font-size: var(--ds-fs-lg); color: var(--parchment); }
+/* ⚠️ Les 46 px de chaque côté réservent la place de la croix, qui est en
+   position absolue à 14 px du bord et fait 40 px de large. Sans eux, un titre
+   un peu long passe DESSOUS : « Qui connaît le monde » et « Classement &
+   historique » se faisaient barrer par le ✕. La marge est symétrique pour que
+   le titre reste centré — n'en mettre qu'à droite le décalerait. */
+.ds-card-title { margin: 0; padding: 0 46px; font-size: var(--ds-fs-lg); color: var(--parchment); }
 .ds-card-text { margin: 0; font-size: var(--ds-fs-sm); color: var(--muted); line-height: 1.5; }
 .ds-card-actions { display: flex; flex-direction: column; gap: var(--ds-sp-2); margin-top: var(--ds-sp-2); }
 

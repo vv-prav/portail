@@ -52,7 +52,39 @@ function renderRang(b) {
         <p class="ap-rang-suite">${r.suivant
             ? `Encore <b>${r.suivant.manque}</b> pour devenir ${esc(r.suivant.emoji + ' ' + r.suivant.nom)}`
             : 'Tu as fait le tour du monde.'}</p>
-        ${courbeHTML(b.courbe)}`;
+        ${courbeHTML(b.courbe)}
+        ${b.place ? `<button type="button" class="ap-place" id="ap-place">
+            🏅 <b>${b.place.place}<sup>${b.place.place === 1 ? 're' : 'e'}</sup></b>
+            sur ${b.place.total} · voir le classement ›</button>` : ''}`;
+    const bouton = $('ap-place');
+    if (bouton) bouton.addEventListener('click', ouvrirClassement);
+}
+
+// ---------- Le classement de la géographie ----------
+// ⚠️ UNE LIGNE, PAS UN BLOC. La page vient d'être ramenée de 2 597 px à un
+// écran ; un classement posé à plat y aurait rendu la moitié du terrain
+// gagné. Sa place tient dans la carte du rang, et la liste complète s'ouvre
+// par-dessus — on ne la consulte pas à chaque visite.
+//
+// ⚠️ Il ne distribue aucun point et n'entre dans aucune saison : c'est un
+// état des lieux, pas une course. L'Université reste l'entraînement — dès
+// qu'il y a des points à gagner, on cesse de se tromper, et on cesse
+// d'apprendre. Savoir où l'on se situe est autre chose que marquer.
+async function ouvrirClassement() {
+    const { ok, data } = await api('/api/apprendre/classement');
+    if (!ok) { DS.toast('Classement indisponible.'); return; }
+    const lignes = (data.lignes || []).map((l, i) => `
+        <button type="button" class="ap-cl-l${l.pseudo === data.moi ? ' moi' : ''}" data-qui="${esc(l.pseudo)}">
+            <span class="ap-cl-place">${i + 1}</span>
+            <span class="ap-cl-nom">${esc(l.pseudo)}<small>${l.rang.emoji} ${esc(l.rang.nom)}</small></span>
+            <span class="ap-cl-n"><b>${l.maitrises}</b><small>sur ${l.vus} croisés</small></span>
+        </button>`).join('');
+    $('ap-cl-liste').innerHTML = lignes
+        || `<p class="ap-cl-vide">Personne n'a encore commencé.</p>`;
+    $('ap-classement').hidden = false;
+    // Toucher quelqu'un ouvre son profil — donc son atlas, désormais.
+    $('ap-cl-liste').querySelectorAll('[data-qui]').forEach(b =>
+        b.addEventListener('click', () => PortailProfile.open(b.dataset.qui)));
 }
 
 // ---------- Ce qui a changé ----------
@@ -502,6 +534,10 @@ function revenir() {
     CARTE_Q = null;
     chargerAccueil();
 }
+$('ap-cl-close').addEventListener('click', () => { $('ap-classement').hidden = true; });
+$('ap-classement').addEventListener('click', (e) => {
+    if (e.target === $('ap-classement')) $('ap-classement').hidden = true;
+});
 $('ap-quitter').addEventListener('click', revenir);
 $('ap-retour').addEventListener('click', revenir);
 $('ap-fin-close').addEventListener('click', revenir);

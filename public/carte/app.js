@@ -9,9 +9,14 @@
 //     côté, la Belgique 2. Tester si le doigt est DANS le pays rendrait la
 //     moitié du monde impossible à désigner. On cherche donc le pays dont
 //     le centre est le plus proche du doigt.
-//  2. **Viser, puis valider.** Le pays visé s'allume et son nom s'affiche ;
-//     un second geste confirme. Sans ça, un doigt qui glisse coûterait un
-//     essai sur six.
+//  2. ⚠️ **UN CLIC = UN ESSAI, et il y en a six.** Il y avait auparavant
+//     deux gestes : viser (le pays s'allumait, son nom s'affichait) puis
+//     valider. Le nom n'apprenait rien — on sait ce qu'on montre — et le
+//     second geste a été retiré sur demande. Conséquence assumée : un doigt
+//     posé de travers coûte un essai. Le garde-fou qui reste est celui de
+//     `geo-commun.js` — au-delà de dix pixels de déplacement, on déplaçait
+//     la carte, on ne désignait rien. Ne pas réintroduire la validation
+//     sans le demander : elle a été retirée sur décision, pas par oubli.
 //  3. **La carte garde la mémoire** : chaque pays montré reste coloré avec
 //     sa flèche dessus. C'est ce qui permet de trianguler — et c'est tout
 //     le jeu, puisqu'on ne reçoit aucune distance.
@@ -35,7 +40,6 @@ let P = null;
 let essais = [];
 let fini = false, trouve = false;
 let debutA = 0, chronoTimer = null;
-let vise = null;                     // le pays sous le doigt, pas encore validé
 const parCode = new Map();
 
 function laDate() {
@@ -50,19 +54,8 @@ let CARTE = null;
 function construireCarte() {
     for (const p of window.MONDE.pays) parCode.set(p.c, p);
     CARTE = Geo.carte($('ct-carte-box'), {
-        surClic: (p) => { if (!fini) viser(p); },
+        surClic: (p) => { if (!fini) montrer(p.c); },
     });
-}
-
-function viser(p) {
-    // Un pays déjà montré ne se revise pas : il n'apprendrait rien, et le
-    // serveur le refuserait.
-    if (essais.some(e => e.code === p.c)) { DS.toast('Déjà montré.'); return; }
-    vise = p;
-    CARTE.demarquer('vise');
-    CARTE.marquer(p.c, 'vise');
-    $('ct-vise-nom').textContent = p.n;
-    $('ct-vise').hidden = false;
 }
 
 // Les pays déjà montrés, et leur flèche posée dessus : c'est la mémoire du
@@ -93,14 +86,16 @@ function renderEssais() {
     renderMarques();
 }
 
-async function valider() {
-    if (!vise || fini) return;
-    const code = vise.c;
-    $('ct-vise').hidden = true;
-    const el = $('p' + code);
-    if (el) el.classList.remove('vise');
-    vise = null;
+// ⚠️ Un essai part dès le clic. On garde quand même le refus du doublon :
+// remontrer un pays déjà montré n'apprendrait rien et ne doit surtout pas
+// coûter un des six essais — c'est le seul clic qui reste gratuit.
+let envoiEnCours = false;
+async function montrer(code) {
+    if (fini || envoiEnCours) return;
+    if (essais.some(e => e.code === code)) { DS.toast('Déjà montré.'); return; }
+    envoiEnCours = true;
     const { ok, data } = await api('/api/carte/montrer', { date: P.date, pays: code });
+    envoiEnCours = false;
     if (!ok) { DS.toast((data && data.error) || 'Impossible de montrer ce pays.'); return; }
     essais.push(data.essai);
     fini = data.fini; trouve = data.trouve;
@@ -165,7 +160,6 @@ function texteDePartage() {
         + `\n${location.origin}/carte`;
 }
 
-$('ct-valider').addEventListener('click', valider);
 $('ct-fin-close').addEventListener('click', () => { $('ct-fin').hidden = true; });
 $('ct-partage').addEventListener('click', async () => {
     const texte = texteDePartage();

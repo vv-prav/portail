@@ -121,6 +121,19 @@
         </section>
     </div>
 
+    <!-- LE CLASSEMENT DE LA GÉOGRAPHIE
+         ⚠️ Par-dessus, et non dans le fil de la page : on ne le consulte pas
+         à chaque visite, et la page vient d'être ramenée à un écran. -->
+    <div class="ds-overlay" id="ap-classement" hidden>
+        <div class="ds-card tall">
+            <button type="button" class="ds-card-close" id="ap-cl-close" aria-label="Fermer">✕</button>
+            <h2 class="ds-card-title">Qui connaît le monde</h2>
+            <p class="ap-cl-aide">Le nombre de pays maîtrisés — pas des points :
+               ici on s'entraîne, on ne marque pas.</p>
+            <div class="ap-cl-liste" id="ap-cl-liste"></div>
+        </div>
+    </div>
+
     <!-- FIN DE SÉANCE -->
     <div class="ds-overlay" id="ap-fin" hidden>
         <div class="ds-card tall">

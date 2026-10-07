@@ -113,41 +113,12 @@ function renderIndice() {
 }
 
 // ---------- Les essais ----------
-// ⚠️ La carte du voyage : les pays traversés forment une TACHE QUI GRANDIT,
-// pas une liste de pays coloriés chacun dans son coin. Deux pays voisins
-// peints de la même couleur sans frontière entre eux se lisent comme un seul
-// territoire — et c'est exactement ce qu'est un voyage de proche en proche.
-// La frontière intérieure disparaît donc dès que le pas touche le précédent.
-let CARTE_VOYAGE = null;
-function carteDuVoyage() {
-    if (CARTE_VOYAGE || !window.MONDE || !VOYAGE()) return CARTE_VOYAGE;
-    const hote = document.getElementById('gg-carte');
-    if (!hote) return null;
-    hote.hidden = false;
-    CARTE_VOYAGE = Geo.carte(hote, {});
-    return CARTE_VOYAGE;
-}
-function peindreVoyage() {
-    const c = carteDuVoyage();
-    if (!c) return;
-    for (const classe of ['visite', 'depart', 'arrivee', 'rate']) c.demarquer(classe);
-    c.marquer(P.depart.code, 'depart');
-    for (const e of pas) c.marquer(e.code, 'visite');
-    for (const e of erreurs) c.marquer(e.code, 'rate');
-    // L'arrivée ne se montre qu'une fois atteinte : la révéler avant
-    // donnerait le but, et le but est justement ce qu'on cherche à rejoindre.
-    if (fini) c.marquer(P.arrivee.code, 'arrivee');
-    // Le dernier pas est entouré : c'est de là qu'on repart.
-    const la = ici();
-    if (la && !fini) {
-        const p = window.MONDE.pays.find(x => x.c === la.code);
-        if (p) c.marques(`<g transform="translate(${p.x},${p.y})"><circle class="fond" r="8"/><text class="ico" y="3">●</text></g>`);
-    } else c.marques('');
-}
-
+// ⚠️ LE VOYAGE N'A PLUS DE CARTE, et c'est un retour en arrière assumé. Le
+// trajet s'y dessinait en tache qui grandit ; il se lit de nouveau comme un
+// fil de pays, chacun avec sa distance et sa direction. Ne pas remettre la
+// carte sans le demander : elle a été retirée sur décision, pas par oubli.
 function renderVoyage() {
     const la = ici();
-    peindreVoyage();
     // Le fil du voyage : le départ, puis chaque pas avec la distance et la
     // direction qui restent jusqu'à l'arrivée — c'est la boussole du joueur.
     // ⚠️ Pour un pas de voyage, le serveur range la flèche SEULE dans
@@ -311,9 +282,6 @@ function texteDePartage() {
 async function changerDeMode(mode) {
     if (mode === MODE) return;
     MODE = mode;
-    CARTE_VOYAGE = null;
-    const hote = document.getElementById('gg-carte');
-    if (hote) { hote.hidden = true; hote.innerHTML = ''; }
     $('gg-modes').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.mode === mode));
     $('gg-fin').hidden = true;
     await charger();
@@ -332,18 +300,11 @@ $('gg-partage').addEventListener('click', async () => {
     } catch (e) {}
 });
 
-// Au départ, la carte se cadre sur le pays de départ : le monde entier ne
-// dit pas où l'on est, et c'est la première chose qu'on veut savoir.
-function cadrerAuDepart() {
-    const c = carteDuVoyage();
-    if (c && P && P.depart) c.cadrer(P.depart.code, 2.2);
-}
 $('gg-start-btn').addEventListener('click', async () => {
     debutA = Date.now();
     $('gg-start').hidden = true;
     $('gg-jeu').hidden = false;
     renderIndice(); renderEssais();
-    if (VOYAGE()) cadrerAuDepart();
     if (!P.archive) {
         const { data } = await api('/api/geo/start', { mode: MODE, date: P.date });
         if (data && data.debutA) debutA = data.debutA;
@@ -411,12 +372,6 @@ async function charger() {
         $('gg-start').hidden = true;
         $('gg-jeu').hidden = false;
         renderIndice(); renderEssais();
-        // En reprenant une partie en cours, la carte se cadre sur le dernier
-        // pas : le monde entier ne dit pas où l'on en est.
-        if (VOYAGE()) {
-            const c = carteDuVoyage(), la = ici();
-            if (c && la) c.cadrer(la.code, 2.2);
-        }
         if (!fini) lancerChrono();
         else {
             const { data: cl } = await api(`/api/geo/classement?mode=${MODE}&date=${encodeURIComponent(P.date)}`);

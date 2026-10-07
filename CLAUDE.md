@@ -229,6 +229,10 @@ Trois corrections, et la page tombe à **1 765 px** :
 
 **Les rangs** — Curieux, Explorateur, Voyageur, Navigateur, Globe-trotteur, Géographe, Maître du monde, Atlas vivant — ne donnent aucun avantage et n'entrent dans aucun classement. Ils disent où on en est, et c'est déjà beaucoup quand l'objectif est à 194.
 
+**Le classement de la géographie** (`GET /api/apprendre/classement`) range tout le monde au nombre de pays maîtrisés, à égalité au nombre de pays croisés. ⚠️ **Il ne distribue aucun point et n'entre dans aucune saison** : c'est un état des lieux, pas une course — dès qu'il y a des points à gagner, on cesse de se tromper, et on cesse d'apprendre. Savoir où l'on se situe est autre chose que marquer. Comme le classement du Salon et les titres, **il ne stocke rien** : tout est recalculé depuis les clés `geo:savoir:*`, avec un cache d'une minute.
+
+⚠️ **Sa place tient en UNE LIGNE dans la carte du rang**, et la liste s'ouvre par-dessus. La page vient d'être ramenée de 2 597 px à un écran ; un classement posé à plat y aurait repris la moitié du terrain gagné. Qui n'a jamais rien vu n'y figure pas : une liste où la moitié des lignes sont à zéro ne dit plus rien de personne. Toucher quelqu'un ouvre sa bulle de profil, donc son atlas.
+
 ⚠️ **La fiche du pays s'affiche à CHAQUE réponse, juste ou fausse.** C'est le moment où l'on regarde vraiment ; la cacher quand on a bon serait manquer la moitié des occasions d'apprendre.
 
 ⚠️ La séance en cours est rangée côté serveur (`geo:seance:<pseudo>`) **avec les bonnes réponses** : le navigateur ne reçoit que des énoncés.
@@ -300,7 +304,7 @@ Elle se dimensionne **en pixels d'écran, jamais en unités de carte** : un rayo
 La carte elle-même (`public/carte/monde.js`) sert aussi au **Voyage** et à **Mon atlas** : elle est chargée par les trois pages, et une seule fois en cache. Le zoom, le glissé et la visée par proximité vivent dans `public/geo-commun.js`. ⚠️ **Un glissé n'est pas un clic** : au-delà de dix pixels de déplacement, on déplaçait la carte, on ne désignait rien.
 
 ⚠️ **On vise le centre le plus proche du doigt, jamais l'intérieur du tracé.** Mesuré : sur un écran de 375 px, carte entière affichée, **2 pays sur 211** atteignent la cible tactile de 44 × 44 px. La France fait 9 px de côté, la Belgique 2, le Rwanda 2. Tester si le doigt est *dans* le pays rendrait la moitié du monde impossible à désigner. Vérifié après coup : un doigt posé à côté de la Belgique sélectionne bien la Belgique.
-2. **Viser, puis valider.** Le pays visé s'allume et son nom s'affiche ; un second geste confirme. Sans ça, un doigt qui glisse coûterait un essai sur six.
+2. ⚠️ **UN CLIC = UN ESSAI, et il y en a six.** Il y avait deux gestes — viser (le pays s'allumait, son nom s'affichait) puis valider. Le nom n'apprenait rien, on sait ce qu'on montre ; le second geste a été retiré **sur demande**. Conséquence assumée : un doigt posé de travers coûte un essai. Le seul garde-fou qui reste est celui de `geo-commun.js` — au-delà de dix pixels de déplacement, on déplaçait la carte, on ne désignait rien. Remontrer un pays déjà montré reste gratuit : c'est le seul clic qui ne compte pas. **Ne pas réintroduire la validation sans le demander** : elle a été retirée sur décision, pas par oubli.
 3. **La carte garde la mémoire** : chaque pays montré reste coloré avec sa flèche dessus. C'est ce qui permet de trianguler, et c'est tout le jeu puisqu'il n'y a pas de distance.
 
 ⚠️⚠️ **Le cap est calculé SUR LA CARTE, pas sur le globe**, et c'est la décision la moins intuitive du jeu. Le cap orthodromique — le vrai, celui d'une boussole — répond « NORD » pour aller de la France aux Samoa, puisque le plus court chemin passe par le pôle. C'est exact, et c'était inutilisable : le joueur a une carte plate sous les yeux et les Samoa sont tout à l'ouest. La première version faisait exactement cette erreur, et la flèche envoyait vers l'Arctique. L'angle se mesure donc entre les deux pays **dans le repère de la carte** (`carte/centres.js`, généré avec elle). Conséquence assumée : « Japon → États-Unis » dit OUEST, parce que c'est à gauche sur cette carte.
@@ -395,6 +399,8 @@ Variables de couleur (`--ink`, `--brass`, `--parchment`...), typographie, échel
 
 ⚠️ **`.ds-btn` est en `display:block`, ce qui l'emporte sur l'attribut `hidden`** (un simple `display:none` de la feuille du navigateur, la plus faible). Un bouton « caché » restait donc affiché : le « Lancer la partie » réservé à l'hôte apparaissait chez tous les joueurs de six jeux (le serveur refusait, mais l'écran mentait), et « Rejouer » avant la fin. `.ds-btn[hidden], .ds-icon-btn[hidden] { display:none }` corrige les vingt et un boutons d'un coup. Même piège pour toute classe qui pose un `display` : lui ajouter sa règle `[hidden]`.
 
+⚠️ **`.ds-card-title` réserve 46 px de chaque côté** : la croix de fermeture est en position absolue à 14 px du bord et fait 40 px de large, donc un titre centré un peu long passait **dessous** — « Qui connaît le monde » et « Classement & historique » se faisaient barrer par le ✕. La marge est symétrique pour que le titre reste centré ; n'en mettre qu'à droite le décalerait.
+
 ⚠️ **Tout élément qui couvre l'écran sans être interactif prend `pointer-events:none`** : la célébration du Yams ne l'avait pas (contrairement à celle de Motus Party) et avalait les clics pendant ses 3 secondes ; le toast, à z-index 1200 en bas au centre, se posait pile sur le bouton « Lancer les dés ».
 
 ### `public/design-system.js`
@@ -422,6 +428,11 @@ Un filet de sécurité retire le voile quoi qu'il arrive, et une touche écourte
 ### `public/profile-viewer.js`
 
 Système séparé (avant le design system, mais du même esprit) : `PortailProfile.fetchAvatars([pseudos])`, `PortailProfile.bubbleHTML(avatarData)`, `PortailProfile.open(pseudo)` (ouvre un profil public en lecture seule, alimenté par `GET /api/public-profile`, qui ne renvoie **jamais** rien de sensible).
+
+**La bulle montre aussi l'atlas de la personne** : les pays qu'elle sait, aux cinq teintes de maîtrise. ⚠️ Deux garde-fous :
+- **La carte se charge à la demande.** `carte/monde.js` pèse 151 Ko, `geo-commun.js` et sa feuille de style ne sont chargés que sur les pages de géographie, et cette bulle s'ouvre depuis une quinzaine de pages. Les trois morceaux sont donc posés par `chargerLaCarte()` au **premier profil ouvert**, et le navigateur les garde ensuite. Sans ça, soit tout le salon payait la carte, soit l'atlas n'apparaissait que là où personne ne touche un pseudo.
+- **On montre dès le premier pays croisé**, pas à partir du premier maîtrisé. Le seuil de maîtrise est à trois révisions réussies : n'afficher qu'au-delà privait de carte exactement ceux dont on veut voir le départ. Le titre dit les deux (`34 pays croisés · aucun encore maîtrisé`).
+- `Geo.carte(hote, { zoom: false })` retire les trois boutons de zoom : à cette taille ils couvraient un bon quart de l'océan Indien, et on ne manipule pas la carte d'un profil. Le pincement continue de marcher.
 
 ### Apps migrées vers le design system (vérifié au moment de l'écriture)
 
@@ -477,12 +488,16 @@ Depuis, trois regroupements de plus :
 
 Le hall (`/jouer/`) répond bien aux deux questions qu'on se pose — qui joue, et sinon quoi lancer. Sauf que **la réponse était presque toujours « personne »** : Motus du jour compte 186 clés de statistiques, Yams 5 et Motus Party 2. Ce n'est pas un défaut d'interface, c'est que le temps réel exige que deux personnes ouvrent l'appli à la même minute, et qu'entre gens qui ont une vie ça n'arrive pas tout seul.
 
-Quatre réponses ont donc été ajoutées, dont **trois ne demandent pas la simultanéité** :
+Quatre réponses avaient été ajoutées. ⚠️ **Trois ont depuis été retirées du hall, sur demande** — le code serveur demeure, seul l'affichage est parti :
 
-- **Les défis** (`defis/jeu.js`, `/defis/`) — voir la section dédiée. C'est la réponse de fond.
-- **Les rendez-vous** (`salon:rdv`) — « je lance un Petit Bac ce soir à 21 h », les autres s'inscrivent. On fabrique la coïncidence au lieu de l'espérer. Un rendez-vous **ne crée aucune table** : à l'heure dite, l'hôte ouvre une partie normalement. Réserver une table d'avance obligerait à la garder ouverte des heures, et le ramasseur de tables fantômes la fermerait — deux mécanismes qui se contrediraient.
-- **Les invitations** (`salon:invitations`, 15 min de vie) — le hall savait qui était là **et** ce qui était ouvert, il ne reliait simplement pas les deux : toucher quelqu'un ouvrait sa fiche de statistiques.
-- **La mémoire** — un salon vide rappelle la dernière partie (`admin:gameHistory`, jusqu'ici enfermé dans l'admin) avec un bouton *Relancer*. « Aucune table ouverte » était une impasse.
+- **Les défis** (`defis/jeu.js`, `/defis/`) — voir la section dédiée. Ils gardent leur page, leur bloc sur l'accueil et leur place au classement ; c'est l'aperçu dans le hall qui a disparu.
+- **Les rendez-vous** (`salon:rdv`) — « je lance un Petit Bac ce soir à 21 h », les autres s'inscrivent. ⚠️ **Le formulaire de création n'existe plus nulle part**, et c'était le seul : la fonctionnalité est donc éteinte, même si `/api/salon/rdv*` répond encore et que l'accueil afficherait un rendez-vous s'il en restait un. À supprimer pour de bon, ou à remettre quelque part — ne pas laisser dans cet entre-deux sans le décider.
+- **Les invitations** (`salon:invitations`, 15 min de vie) — **toujours là**, c'est la seule des quatre qui reste dans le hall. Toucher quelqu'un lui propose une partie.
+- **La mémoire** — le rappel de la dernière partie avec son bouton *Relancer* a été retiré du hall.
+
+Et sous « Tables ouvertes », **une seule phrase quand il n'y a rien** : « Aucune table ouverte pour le moment ». L'explication qui s'y trouvait vantait le rendez-vous et le partage de lien, et se lisait comme une page d'aide à chaque fois qu'il ne se passait rien.
+
+⚠️ **Aucun jeu n'est grisé au catalogue**, même quand personne n'est connecté. Les cartes s'estompaient quand on n'était pas assez nombreux — mais ouvrir une table AVANT que les autres arrivent est précisément le geste qu'on attend : le lien d'invitation existe pour ça, et une table ouverte est ce qui fait venir du monde. Griser découragait le seul mouvement qui remplit le salon. Le nombre de joueurs reste écrit sur la carte, il n'est simplement plus un jugement ; le tri par disponibilité, lui, demeure.
 
 ⚠️ **Tout ça ne sert à rien dans le hall.** Les jeux du jour font 90 % du passage ; `/jouer/` est une pièce devant laquelle personne ne marche. L'annonce doit donc aller **là où sont les gens** : le bloc « ce qui t'attend » de l'accueil (`renderAppels`, alimenté par `tablesOuvertes` / `rendezvous` / `invitations` / `defis` du pouls) et la fin de chaque jeu du jour (`Enchainement.annonceDe`, qui passe **avant** le jeu du jour suivant — une table attend du monde maintenant, la grille de demain attendra).
 
@@ -608,6 +623,7 @@ Point commun des trois : **aucun contenu écrit à la main**. C'est ce qui tue u
 
 Aller d'un pays à un autre en ne passant que par des frontières communes. On arrive en posant le pied dans un voisin de l'arrivée. Trois erreurs (un pays qui ne touche pas celui où l'on est) ou trop de détours, et le voyage s'arrête. Douze points pour le plus court chemin sans erreur, deux de moins par détour ou par erreur.
 
+- ⚠️ **Le voyage n'a PAS de carte**, et c'est un retour en arrière assumé. Le trajet s'y est dessiné un temps en tache qui grandit ; il se lit de nouveau comme un fil de pays, chacun avec sa distance et sa direction. La page `/geo/` ne charge donc plus `carte/monde.js` du tout (151 Ko). **Ne pas remettre la carte sans le demander.**
 - ⚠️ **Le graphe est rendu symétrique** : la base déclare une frontière d'un seul côté, et sans ça le chemin le plus court montré à la fin pourrait être interdit au joueur.
 - **Entre 2 et 4 pays à traverser.** À 5, les trajets passaient par des régions où presque personne ne s'oriente (« Myanmar → Monténégro » par la Chine, la Russie, l'Ukraine, la Hongrie et la Croatie).
 - Revenir sur ses pas est permis : c'est ce qui garantit qu'aucun voyage n'est une impasse. Chaque pas compte, y compris ceux en arrière.

@@ -12,6 +12,7 @@
 // =====================================================================
 module.exports = function monterApprendre(app, deps) {
     const { express, requireAuth, requireAuthApi, currentUser, mfGet, mfSet, mfTodayId, racine } = deps;
+    const tousLesPseudos = deps.pseudos || (() => []);
 
     const savoir = require('../geo/savoir');
     const exercices = require('../geo/exercices');
@@ -47,7 +48,20 @@ module.exports = function monterApprendre(app, deps) {
     app.get('/api/apprendre/bilan', requireAuthApi, (req, res) => {
         const pseudo = currentUser(req);
         const { today, sav } = etatDe(pseudo);
-        res.json({ pseudo, ...savoir.bilan(sav, today), courbe: savoir.courbe(sav) });
+        // ⚠️ Sa place voyage avec le bilan : une ligne dans la carte du rang
+        // ne coûte aucune hauteur, là où un bloc de classement en coûterait
+        // beaucoup sur une page qu'on vient de ramener à un écran.
+        const liste = classement(tousLesPseudos());
+        const i = liste.findIndex(l => l.pseudo === pseudo);
+        res.json({
+            pseudo, ...savoir.bilan(sav, today), courbe: savoir.courbe(sav),
+            place: i >= 0 ? { place: i + 1, total: liste.length } : null,
+        });
+    });
+
+    // La liste complète, demandée seulement quand on la déplie.
+    app.get('/api/apprendre/classement', requireAuthApi, (req, res) => {
+        res.json({ moi: currentUser(req), lignes: classement(tousLesPseudos()) });
     });
 
     // Une séance. `source` dit d'où viennent les pays :
@@ -245,6 +259,68 @@ module.exports = function monterApprendre(app, deps) {
         res.json({ ...f, niveau: (sav[f.code] || {}).n || 0 });
     });
 
+    // Les niveaux d'un joueur, pour l'atlas montré dans sa bulle de profil.
+    // ⚠️ Comme la route publique, et pour la même raison : juste le niveau,
+    // jamais les dates de révision. Et pas de mise à jour du modèle — on
+    // regarde le profil de quelqu'un d'autre, on ne joue pas à sa place.
+    function niveauxDe(pseudo) {
+        const sav = savoir.lire(mfGet, pseudo);
+        const niveaux = {};
+        let maitrises = 0, vus = 0;
+        for (const [code, e] of Object.entries(sav)) {
+            if (code === '__' || code === '__j' || !e || !e.n) continue;
+            niveaux[code] = e.n;
+            vus++;
+            if (e.n >= savoir.SEUIL_MAITRISE) maitrises++;
+        }
+        const b = savoir.bilan(sav, mfTodayId());
+        // ⚠️ `vus` autant que `maitrises` : quelqu'un qui a croisé trente pays
+        // sans en maîtriser un seul a bel et bien un atlas à montrer, et c'est
+        // même le cas de tous les débutants. Ne garder que les maîtrisés
+        // privait de carte exactement ceux dont on veut voir le départ.
+        return { niveaux, maitrises, vus, total: b.total,
+                 rang: { nom: b.rang.nom, emoji: b.rang.emoji } };
+    }
+
+    // ---------------------------------------------------------------------
+    //  LE CLASSEMENT DE LA GÉOGRAPHIE
+    //  ⚠️ Il ne distribue aucun point et n'entre dans aucune saison : c'est
+    //  un état des lieux — combien de pays chacun maîtrise — et non une
+    //  course. L'Université reste l'entraînement : dès qu'il y a des points
+    //  à gagner, on cesse de se tromper, et on cesse d'apprendre. Ce qui ne
+    //  veut pas dire qu'on n'a pas envie de savoir où l'on se situe.
+    //
+    //  Recalculé à la demande depuis les clés existantes, comme le classement
+    //  du Salon et les titres — rien n'est stocké. Un cache d'une minute
+    //  suffit : trente-deux comptes, une clé chacun.
+    // ---------------------------------------------------------------------
+    let cacheClassement = null, cacheExpire = 0;
+    function classement(pseudos) {
+        if (cacheClassement && Date.now() < cacheExpire) return cacheClassement;
+        const lignes = [];
+        for (const pseudo of pseudos) {
+            const sav = savoir.lire(mfGet, pseudo);
+            let maitrises = 0, vus = 0;
+            for (const [code, e] of Object.entries(sav)) {
+                if (code === '__' || code === '__j' || !e || !e.n) continue;
+                vus++;
+                if (e.n >= savoir.SEUIL_MAITRISE) maitrises++;
+            }
+            // ⚠️ Qui n'a jamais rien vu n'apparaît pas. Une liste où la
+            // moitié des lignes sont à zéro ne dit plus rien de personne.
+            if (!vus) continue;
+            const r = savoir.rangDe(maitrises);
+            lignes.push({ pseudo, maitrises, vus, rang: { nom: r.nom, emoji: r.emoji } });
+        }
+        // À égalité de pays maîtrisés, celui qui en a découvert le plus passe
+        // devant : il a plus de chemin derrière lui.
+        lignes.sort((a, b) => b.maitrises - a.maitrises || b.vus - a.vus
+            || a.pseudo.localeCompare(b.pseudo, 'fr'));
+        cacheClassement = lignes;
+        cacheExpire = Date.now() + 60000;
+        return lignes;
+    }
+
     // Le résumé pour l'accueil du salon : juste de quoi remplir la carte.
     // ⚠️ Il NE met pas le modèle à jour — le pouls est appelé à chaque
     // ouverture de l'accueil, et relire les progressions de tous les jeux à
@@ -257,5 +333,5 @@ module.exports = function monterApprendre(app, deps) {
                  rang: { nom: b.rang.nom, emoji: b.rang.emoji } };
     }
 
-    return { savoir, exercices, resume };
+    return { savoir, exercices, resume, niveauxDe, classement: () => classement(tousLesPseudos()) };
 };

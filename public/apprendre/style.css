@@ -62,6 +62,35 @@ body.en-seance .ap-head { display:none; }
 .ap-rang-suite { margin:8px 0 0; font-size:.78rem; color:var(--muted); }
 .ap-rang-suite b { color:var(--brass-soft); }
 
+/* ---------- Sa place, et le classement ----------
+   Une ligne dans la carte du rang : elle ne coûte presque aucune hauteur,
+   là où un bloc de classement aurait repris la moitié du terrain gagné en
+   ramenant la page à un écran. */
+.ap-place { width:100%; margin-top:9px; padding:7px; border-radius:10px;
+    background:rgba(255,255,255,.04); border:1px solid var(--line);
+    color:var(--muted); font-family:inherit; font-size:.76rem; cursor:pointer; }
+.ap-place b { color:var(--brass-soft); font-size:.92rem; }
+.ap-place:active { border-color:var(--brass); }
+
+.ap-cl-aide { margin:0 0 12px; font-size:.74rem; color:var(--muted); line-height:1.5; text-align:center; }
+.ap-cl-liste { display:flex; flex-direction:column; gap:5px; }
+.ap-cl-l { display:flex; align-items:center; gap:9px; width:100%; padding:9px 10px;
+    border-radius:11px; background:rgba(255,255,255,.03); border:1px solid transparent;
+    color:inherit; font-family:inherit; text-align:left; cursor:pointer; }
+.ap-cl-l.moi { background:rgba(217,169,78,.13); border-color:var(--line); }
+.ap-cl-place { flex:0 0 20px; font-size:.78rem; font-weight:800; color:var(--muted);
+    font-variant-numeric:tabular-nums; }
+.ap-cl-nom { flex:1; min-width:0; font-size:.86rem; font-weight:700;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* Le rang sous le pseudo, et le compte de pays croisés sous le nombre
+   maîtrisé : à zéro maîtrisé partout — l'état d'un salon qui commence — une
+   colonne de zéros ne disait rien de personne. */
+.ap-cl-nom small { display:block; font-size:.66rem; font-weight:400; color:var(--muted); }
+.ap-cl-n { flex:0 0 auto; text-align:right; }
+.ap-cl-n b { display:block; color:var(--brass-soft); font-size:1.05rem; line-height:1.1; }
+.ap-cl-n small { font-size:.63rem; color:var(--muted); }
+.ap-cl-vide { margin:0; text-align:center; font-size:.8rem; color:var(--muted); }
+
 /* ---------- Ce qui a changé depuis la séance ----------
    ⚠️ Il n'apparaît QU'AU RETOUR d'une séance, et disparaît au rechargement
    suivant : un bandeau permanent cesserait d'être une nouvelle. */

@@ -44,6 +44,13 @@
 .pv-stat-row b { color:#ecca82; text-align:right; }
 .pv-empty { color:#a08f74; font-size:.8rem; text-align:center; margin:6px 0 0; }
 .pv-bubble-btn { all:unset; cursor:pointer; display:inline-flex; }
+/* L'atlas de quelqu'un : où il en est de la géographie, d'un coup d'œil.
+   ⚠️ Pas de légende ici — la bulle est déjà dense, et la phrase au-dessus
+   dit l'essentiel. Le détail des cinq teintes est à l'Université. */
+.pv-atlas { margin:0 0 16px; }
+.pv-atlas[hidden] { display:none; }
+.pv-atlas-titre { margin:0 0 6px; font-size:.74rem; color:#a08f74; text-align:left; }
+.pv-atlas-titre b { color:#ecca82; }
 .pv-card { max-height:86vh; overflow-y:auto; }
 .pv-rang { display:inline-flex; align-items:center; gap:6px; margin:0 0 14px; padding:4px 12px; border-radius:999px;
     background:rgba(217,169,78,.14); border:1px solid rgba(217,169,78,.3); font-size:.74rem; color:#ecca82; }
@@ -90,6 +97,10 @@
                 <p class="pv-rang" id="pv-rang-el" hidden></p>
                 <div class="pv-titres" id="pv-titres-el"></div>
                 <div class="pv-h2h" id="pv-h2h-el" hidden></div>
+                <div class="pv-atlas" id="pv-atlas-el" hidden>
+                    <p class="pv-atlas-titre" id="pv-atlas-titre"></p>
+                    <div id="pv-atlas-carte"></div>
+                </div>
                 <div class="pv-stats" id="pv-stats-el"></div>
             </div>`;
         document.body.appendChild(overlayEl);
@@ -136,6 +147,74 @@
         return bouts.filter(Boolean).join(' ');
     }
 
+    // ---------------------------------------------------------------
+    //  L'ATLAS DE QUELQU'UN
+    //  ⚠️ LA CARTE DU MONDE SE CHARGE À LA DEMANDE. `carte/monde.js` pèse
+    //  151 Ko, et cette bulle s'ouvre depuis une quinzaine de pages — la
+    //  poser dans chacune ferait payer la carte à tout le salon pour un
+    //  bloc que personne n'a encore demandé. Elle n'arrive donc qu'au
+    //  premier profil ouvert, et le navigateur la garde en cache ensuite.
+    //  Les pages de géographie l'ont déjà : elles ne rechargent rien.
+    // ---------------------------------------------------------------
+    //  Trois morceaux manquent selon la page : le dessin du monde, le socle
+    //  qui sait le tracer (`Geo.carte`), et sa feuille de style. On les pose
+    //  tous les trois à la demande — sinon l'atlas n'aurait paru que sur les
+    //  pages de géographie, c'est-à-dire pas là où l'on touche un pseudo.
+    function poser(tag, attrs) {
+        return new Promise((resoudre) => {
+            const e = document.createElement(tag);
+            Object.assign(e, attrs);
+            e.onload = () => resoudre(true);
+            e.onerror = () => resoudre(false);
+            document.head.appendChild(e);
+        });
+    }
+    let chargementCarte = null;
+    function chargerLaCarte() {
+        if (window.MONDE && window.Geo && window.Geo.carte) return Promise.resolve(true);
+        if (chargementCarte) return chargementCarte;
+        const aFaire = [];
+        if (!document.querySelector('link[href="/geo-commun.css"]')) {
+            aFaire.push(poser('link', { rel: 'stylesheet', href: '/geo-commun.css' }));
+        }
+        if (!window.Geo || !window.Geo.carte) aFaire.push(poser('script', { src: '/geo-commun.js' }));
+        if (!window.MONDE) aFaire.push(poser('script', { src: '/carte/monde.js' }));
+        chargementCarte = Promise.all(aFaire)
+            .then(() => !!(window.MONDE && window.Geo && window.Geo.carte));
+        return chargementCarte;
+    }
+
+    let atlasRendu = null;
+    async function montrerAtlas(el, data) {
+        const a = data.atlas;
+        const box = el.querySelector('#pv-atlas-el');
+        // Rien à montrer tant que la personne n'a rien vu : une carte vide
+        // ne dit pas « il commence », elle se lit comme une panne. Mais un
+        // seul pays croisé suffit — on ne demande pas d'en maîtriser.
+        if (!a || !a.vus) return;
+        // Si l'un des trois morceaux ne vient pas, on s'abstient en silence
+        // plutôt que de lever une erreur en plein rendu de profil.
+        if (!await chargerLaCarte()) return;
+        // Le profil a pu changer pendant le chargement de la carte.
+        if (el.querySelector('#pv-name-el').textContent !== data.pseudo) return;
+
+        el.querySelector('#pv-atlas-titre').innerHTML = a.maitrises
+            ? `${a.rang.emoji} <b>${a.maitrises}</b> pays maîtrisés sur ${a.total} · ${a.vus} croisés`
+            : `${a.rang.emoji} <b>${a.vus}</b> pays croisés · aucun encore maîtrisé`;
+        const hote = el.querySelector('#pv-atlas-carte');
+        // Une seule carte, réutilisée d'un profil à l'autre : la reconstruire
+        // rejouerait deux cent dix tracés à chaque ouverture.
+        if (!atlasRendu || atlasRendu.hote !== hote) {
+            hote.innerHTML = '';
+            atlasRendu = { carte: window.Geo.carte(hote, { zoom: false }), hote };
+        }
+        for (let n = 1; n <= 5; n++) atlasRendu.carte.demarquer('niv' + n);
+        for (const [code, n] of Object.entries(a.niveaux || {})) {
+            if (n > 0) atlasRendu.carte.marquer(code, 'niv' + n);
+        }
+        box.hidden = false;
+    }
+
     async function open(pseudo) {
         if (!pseudo) return;
         injectStyles();
@@ -147,6 +226,7 @@
         el.querySelector('#pv-rang-el').hidden = true;
         el.querySelector('#pv-titres-el').innerHTML = '';
         el.querySelector('#pv-h2h-el').hidden = true;
+        el.querySelector('#pv-atlas-el').hidden = true;
         el.querySelector('#pv-stats-el').innerHTML = '';
         try {
             const res = await fetch('/api/public-profile?pseudo=' + encodeURIComponent(pseudo));
@@ -179,6 +259,8 @@
             const h2h = el.querySelector('#pv-h2h-el');
             const texte = texteFaceAface(data.faceAface, data.pseudo);
             if (texte) { h2h.innerHTML = texte; h2h.hidden = false; }
+
+            montrerAtlas(el, data);
 
             const hote = el.querySelector('#pv-stats-el');
             hote.innerHTML = (data.jeux && data.jeux.length)

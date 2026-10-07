@@ -126,8 +126,3 @@ body.is-boot .gg { opacity:0; }
    l'identique dans les trois pages de géographie. */
 
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.001ms !important; transition-duration:.001ms !important; } }
-
-/* La carte du voyage. Elle ne paraît que dans ce mode, et son hôte porte
-   déjà tout le style commun (geo-commun.css). */
-.gg-carte { margin-top:10px; }
-.gg-carte[hidden] { display:none; }

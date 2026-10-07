@@ -1245,6 +1245,9 @@ const depsDuJour = {
     // L'apprentissage relit les progressions de tous les jeux de géographie
     // pour tenir son modèle à jour : il lui faut le cache entier.
     cache: () => mfCache,
+    // La liste des comptes, pour le classement de la géographie : il se
+    // recalcule à la demande, et il lui faut donc savoir qui existe.
+    pseudos: () => Object.values(registeredUsers).map(u => u && u.pseudo).filter(Boolean),
     // Chaque jeu reçoit un moteur déjà relié au cache commun.
     creerMoteur: (app) => creerMoteur(app, { get: mfGet, set: mfSet, today: mfTodayId, shift: mfShiftDay }),
 };
@@ -3185,6 +3188,10 @@ app.get('/api/public-profile', requireAuthApi, (req, res) => {
         titres: titresVisiblesDe(pseudo),
         jeux: portrait.jeux,
         faceAface,
+        // Son atlas : les pays qu'il SAIT, par niveau de maîtrise. ⚠️ On
+        // n'envoie que les niveaux, jamais les dates de révision : l'état
+        // complet du modèle d'apprentissage ne regarde que lui.
+        atlas: apprendreApi.niveauxDe(pseudo),
     });
 });
 

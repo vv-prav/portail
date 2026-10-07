@@ -186,6 +186,11 @@
     //  rend pas l'Europe lisible pour autant — on ne voit pas ce qu'on
     //  montre. Le zoom répond à ça.
     //
+    //  `opts.zoom === false` retire les trois boutons — pour une carte qu'on
+    //  regarde sans la manipuler, comme l'atlas d'une bulle de profil : à
+    //  cette taille ils couvraient un bon quart de l'océan Indien. Le
+    //  pincement et la molette continuent de marcher.
+    //
     //  Pincer à deux doigts, ou le bouton +. Un glissé déplace la carte.
     //  ⚠️ Un glissé ne doit PAS valoir un clic : on compare le déplacement
     //  à un seuil, sinon déplacer la carte désignerait un pays au hasard.
@@ -215,11 +220,11 @@
                     <g class="geo-carte-marques"></g>
                 </g>
             </svg>
-            <div class="geo-carte-zoom">
+            ${opts.zoom === false ? '' : `<div class="geo-carte-zoom">
                 <button type="button" data-z="+" aria-label="Zoomer">+</button>
                 <button type="button" data-z="-" aria-label="Dézoomer">−</button>
                 <button type="button" data-z="0" aria-label="Revoir le monde entier">⤢</button>
-            </div>`;
+            </div>`}`;
         const svg = hote.querySelector('.geo-carte');
         const g = hote.querySelector('.geo-carte-vue');
 
