@@ -1033,6 +1033,7 @@ module.exports = function attachAdmin(app, ctx) {
         const CONNUES = ['mf', 'motus', 'rec', 'voyages', 'pbac', 'yams', 'motusparty',
             'undercover', 'drapeaux', 'chiffres', 'geo', 'sudoku', 'motlong', 'admin', 'titres', 'perudo',
             'capitales', 'carte', 'chrono', 'defi', 'salon', 'comptes', 'classement',
+            'fil',       // fil:* = la conversation du salon et les marques de lecture
             'menage'];   // menage:* = les nettoyages faits une seule fois
         const orphelines = cles.filter(k => !CONNUES.includes(k.split(':')[0]))
             .map(k => { let t = 0; try { t = JSON.stringify(cache[k]).length; } catch (e) {} return { cle: k, octets: t }; })
@@ -1705,6 +1706,24 @@ module.exports = function attachAdmin(app, ctx) {
         log(currentUser(req), 'titre retiré', pseudo, id);
         // Un titre calculé ne se retire pas à la main : il se reperd en jouant.
         res.json({ ok: true, note: 'Seuls les titres posés à la main peuvent être retirés.' });
+    });
+
+    // =================================================================
+    //  LE FIL DU SALON
+    //  À trente-deux personnes qui se connaissent, retirer une ligne est
+    //  toute la modération nécessaire — c'est déjà la règle de l'historique
+    //  des parties. Pas de blocage, pas de signalement : il n'y a personne
+    //  à qui les adresser.
+    // =================================================================
+    G('/fil', (req, res) => {
+        res.json({ messages: (ctx.fil().messages() || []).slice(-100) });
+    });
+    A('/fil/supprimer', (req, res) => {
+        const ts = Number(req.body.ts);
+        if (!ts) return res.status(400).json({ error: 'Message inconnu.' });
+        const fait = ctx.fil().supprimer(ts);
+        if (fait) log(currentUser(req), 'message retiré du fil', String(ts), '');
+        res.json({ ok: fait });
     });
 
 };

@@ -166,6 +166,10 @@ async function loadPulse() {
     renderRecentlyActive(data.recentlyActive);
     renderLiveGames(data.activeGames);
     renderAppels(data);
+    // Le fil : son compteur voyage avec le pouls, donc sans une requête de
+    // plus. ⚠️ `window.Fil` peut ne pas exister — une page qui ne déclare pas
+    // `data-fil` n'a pas de bulle, et ce n'est pas une erreur.
+    if (window.Fil && data.fil) Fil.compteur(data.fil.nonLus);
     const st = $('me-streak');
     if (data.mf && data.mf.streak > 0) { st.innerHTML = '🔥 <b>' + data.mf.streak + '</b>'; st.hidden = false; }
     else st.hidden = true;

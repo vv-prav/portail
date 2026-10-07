@@ -48,12 +48,20 @@ const PREFIXES_BRUTS = [
     // renommé perdait ses statistiques du Quiz, de l'Infiltré, du Perudo et
     // des défis.
     'drapeaux:stats', 'undercover:stats', 'perudo:stats', 'defi:stats',
+    // Où il en est de sa lecture du fil du salon. Oubliée ici, la marque
+    // resterait sous l'ancien nom et tout le fil repasserait non lu.
+    'fil:lu',
 ];
 // Familles dont le 3ᵉ segment est un pseudo normalisé.
 const PREFIXES_NORMALISES = ['yams:stats', 'pbac:stats'];
 
 // Familles dont la valeur est une liste d'entrées portant un champ `u`.
-const VALEURS_AVEC_U = /^(motus|mf|chiffres|geo|sudoku|motlong|capitales|carte|chrono):(board|cmt):/;
+// ⚠️ `fil:messages` est seul de sa famille : une clé unique, pas une par
+// date. Elle y a quand même sa place — ses entrées portent le même `u`, et
+// un renommage y laisserait sinon des messages signés d'un nom qui n'existe
+// plus. Le contenu des messages, lui, n'est jamais réécrit : citer le pseudo
+// de quelqu'un ne doit pas suivre son changement de nom.
+const VALEURS_AVEC_U = /^(motus|mf|chiffres|geo|sudoku|motlong|capitales|carte|chrono):(board|cmt):|^fil:messages$/;
 // Listes d'index : de simples tableaux de pseudos bruts.
 // ⚠️ Tous les index, pas seulement ceux du Yams et du Petit Bac : un joueur
 // renommé disparaissait des classements du Quiz, de l'Infiltré, du Perudo.

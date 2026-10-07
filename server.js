@@ -1257,6 +1257,14 @@ const carteApi = require('./carte/routes')(app, depsDuJour);
 const chronoApi = require('./chrono/routes')(app, depsDuJour);
 const apprendreApi = require('./apprendre/routes')(app, depsDuJour);
 
+// Le fil du salon : une seule conversation, continue, qui ne recommence pas
+// à minuit. ⚠️ Il ne remplace pas la discussion du jour, qui porte sur le mot
+// ou la grille et garde donc son sujet.
+const SALLE_FIL = 'salon_fil';
+const filApi = require('./fil/routes')(app, io, {
+    requireAuthApi, currentUser, mfGet, mfSet, escapeHtml, salle: SALLE_FIL,
+});
+
 // Les noms dont se sert le reste du fichier, inchangés.
 const mChiffres = chiffresApi.moteur, chiffresDonne = chiffresApi.donne, kChiffresDonne = chiffresApi.kDonne, chiffresJeu = chiffresApi.jeu;
 const mGeo = geoApi.moteur, geoDuJour = geoApi.duJour, kGeoPays = geoApi.kPays, GEO_MODES = geoApi.MODES, GEO_NOMS = geoApi.NOMS, geoJeu = geoApi.jeu;
@@ -1912,6 +1920,10 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
         tablesOuvertes, rendezvous: rdvAVenir,
         invitations: invitationsPour(user),
         defis: { attente: defisApi.enAttentePour(user) },
+        // ⚠️ Le compteur du fil passe par le pouls, et c'est ce qui le rend
+        // accessible depuis une page qui n'affiche pas la bulle : zéro requête
+        // de plus, et on sait qu'il y a quelque chose à lire.
+        fil: filApi.nonLus(user),
     });
 });
 
@@ -3255,6 +3267,9 @@ require('./admin/routes')(app, {
         kProg: kMotusProg, kBoard: kMotusBoard, kCmt: kMotusCmt,
         kWord: kMotusWord, varianteSuivante: motusVarianteSuivante,
     },
+    // Le fil du salon : lire et retirer une ligne. À trente-deux personnes qui
+    // se connaissent, retirer un message est toute la modération nécessaire.
+    fil: () => filApi,
     pbac: () => pbacApi,
     undercover: () => undercoverApi,
     yams: () => yamsApi,
@@ -3381,6 +3396,12 @@ io.on('connection', (socket) => {
     // Salle du hall : ceux qui regardent « Jouer ensemble » en ce moment.
     socket.on('hall_join', () => { socket.join(SALLE_HALL); });
     socket.on('hall_leave', () => { socket.leave(SALLE_HALL); });
+
+    // Salle du fil : ceux qui ont la conversation ouverte, et eux seuls. Le
+    // fil s'assume asynchrone — ceci n'est qu'un raccourci pour les deux
+    // personnes qui se trouvent là en même temps.
+    socket.on('fil_join', () => { socket.join(SALLE_FIL); });
+    socket.on('fil_leave', () => { socket.leave(SALLE_FIL); });
 });
 
 // Filet de sécurité : aucune erreur ne doit faire tomber le serveur

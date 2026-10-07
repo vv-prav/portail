@@ -689,6 +689,43 @@ Dernier passage en date : **les défis** ont été branchés sur la carte du pro
 
 Et pour un jeu du jour, ne pas oublier non plus le panneau « Aujourd'hui » (`JEUX_DU_JOUR` dans `public/app.js` + le pouls), `public/enchainement.js`, le préchargement du service worker, la purge de son contenu daté (`mfPurge`), et son panneau d'admin (tuile, onglet, routes `day`/`regen`/`board`). Dernier passage : **Les capitales**, **La carte** puis **Le chrono**, branchés aux neuf endroits ci-dessus, plus le panneau « Aujourd'hui », l'enchaînement, le préchargement du service worker, `mfPurge` et son onglet d'admin (contenu du jour, statistiques observées, modération du classement, régénération).
 
+## Le fil du salon (`fil/routes.js`, `public/fil.js`)
+
+Une seule conversation, continue, qui ne recommence pas à minuit.
+
+⚠️ **Ce n'est pas un chat, et la nuance est tout le dossier.** La leçon la mieux mesurée du salon est que le temps réel n'arrive pas tout seul : le hall posait les bonnes questions, mais la réponse était presque toujours « personne ». Un chat en direct aurait le même sort à trente-deux comptes. On écrit quand on veut, on lit quand on passe ; le direct n'est qu'un bonus. Techniquement c'est la même chose — en pratique ça change le nom du vide : un fil sans nouveau message dit « rien de neuf », un chat vide dit « personne ne vient ».
+
+⚠️ **Il ne remplace pas la discussion du jour** (`mf:cmt:<date>`, `motus:cmt:<date>`), qui porte sur le mot ou la grille et garde son sujet. Les deux partagent la même forme de données (`{u, t, ts}`), le même plafond de 200, le même anti-flood de 4 s et le même `escapeHtml` **à l'écriture** — si l'une des deux change de règle, l'autre doit suivre.
+
+### Où la bulle apparaît, et pourquoi pas partout
+
+Une page **demande** la bulle, elle ne la subit pas :
+
+```html
+<body data-fil>            → toujours (l'accueil, /jouer/)
+<body data-fil="attente">  → seulement dans #v-lobby / #v-waiting
+```
+
+C'est le mécanisme de `data-jeu` pour `style.js`. ⚠️ **Le coin bas-droite est déjà occupé** : `.geo-carte-zoom` y pose ses trois boutons à 8 px dans les cinq jeux de géographie — qui ne déclarent donc pas `data-fil`. Et le salon s'est fait prendre deux fois sur ce motif : le toast à z-index 1200 se posait sur « Lancer les dés » du Yams, la célébration avalait les clics. **Jamais pendant une manche** : le clavier natif occupe le bas de l'écran au Motus et aux Mots Fléchés, et on ne coupe pas quelqu'un qui joue.
+
+Le mode `attente` suit les vues avec un `MutationObserver` sur l'attribut `hidden` de `#v-lobby`/`#v-waiting` — les six jeux les basculent ainsi (vérifié), donc aucune app n'a quoi que ce soit à appeler.
+
+### Les clés, et le piège de leur nom
+
+| Clé | Quoi |
+|---|---|
+| `fil:messages` | les 200 derniers, un seul tableau |
+| `fil:lu:<pseudo>` | l'horodatage de sa dernière lecture |
+
+⚠️ **Le pseudo est au TROISIÈME segment, et ce n'est pas un choix de goût.** `supprimerDonneesJoueur()` efface les clés dont `seg[2]` est le pseudo, et `comptes/renommage.js` migre les familles de `PREFIXES_BRUTS` au même rang. Nommée `salon:fil:lu:<pseudo>`, la clé aurait survécu à la suppression d'un compte **et** au renommage sans que rien ne le signale. `fil:messages` est en plus dans `VALEURS_AVEC_U` — seule de sa famille à n'avoir pas de date — pour que le `u` des messages suive un renommage ; leur **texte**, lui, n'est jamais réécrit : citer le pseudo de quelqu'un ne doit pas suivre son changement de nom.
+
+### Deux détails qui comptent
+
+- ⚠️ **Le compteur de non-lus voyage avec le pouls**, que l'accueil demande déjà : zéro requête de plus, et on sait qu'il y a quelque chose à lire même depuis une page sans bulle. Ses propres messages n'y comptent pas — sans ce filtre, écrire se signalait à soi-même comme une nouvelle.
+- ⚠️ **L'accueil ne charge pas socket.io**, et c'est justement la page où la bulle est le plus présente. Faute de socket, un sondage de 5 s tourne **uniquement tant que la feuille est ouverte**. Sans lui, on aurait une conversation ouverte qui ne bouge pas pendant qu'on vous écrit.
+
+**Aucune notification** : pas de son, pas de vibration, pas de titre d'onglet qui clignote. Le salon n'a pas vocation à réclamer l'attention ; la pastille attend qu'on passe. Modération : l'admin retire une ligne (`/api/admin/fil/supprimer`), comme pour l'historique des parties — à trente-deux personnes qui se connaissent, c'est tout ce qu'il faut.
+
 ## Le classement du Salon — la V2 des points
 
 `comptes/classement.js` calcule un score transversal à tous les jeux, exposé par `GET /api/salon/classement?periode=…` et affiché replié en bas de l'accueil. **Il ne stocke rien** : tout est recalculé à la demande depuis les clés existantes, donc changer le barème ne demande aucune migration.
