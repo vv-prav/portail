@@ -721,7 +721,9 @@ Le mode `attente` suit les vues avec un `MutationObserver` sur l'attribut `hidde
 
 ### Deux détails qui comptent
 
-- ⚠️ **Le compteur de non-lus voyage avec le pouls**, que l'accueil demande déjà : zéro requête de plus, et on sait qu'il y a quelque chose à lire même depuis une page sans bulle. Ses propres messages n'y comptent pas — sans ce filtre, écrire se signalait à soi-même comme une nouvelle.
+- **Le point rouge** (`.fil-point`, 11 px, sans chiffre) dit qu'il y a du non-lu. Un compteur n'appelait aucune décision — on ouvre, ou on n'ouvre pas — là où un point se lit d'un coup d'œil. Ses propres messages n'y comptent pas : sans ce filtre, écrire se signalait à soi-même comme une nouvelle.
+- ⚠️ **Il se demande en HTTP (`GET /api/fil/nonlus`), PAS par socket.** Mesuré sur la page du Yams : deux appels à `io()` donnent deux identifiants de socket et deux gestionnaires différents — la connexion n'est pas mutualisée ici. Rejoindre la salle au chargement aurait donc ajouté **un second websocket par joueur sur les huit pages** qui portent la bulle, pour un point rouge. Le socket ne sert que pendant la lecture. Le point se rafraîchit au chargement, au retour sur l'onglet, et toutes les 60 s **tant que la page est visible** — un onglet en arrière-plan ne sonde rien.
+- ⚠️ **Le pouls le porte aussi**, ce qui donne à l'accueil un rafraîchissement gratuit ; mais c'est la seule page qui l'appelle, et c'est pourquoi la requête dédiée existe : sans elle, la bulle restait muette sur `/jouer/` et les six jeux.
 - ⚠️ **L'accueil ne charge pas socket.io**, et c'est justement la page où la bulle est le plus présente. Faute de socket, un sondage de 5 s tourne **uniquement tant que la feuille est ouverte**. Sans lui, on aurait une conversation ouverte qui ne bouge pas pendant qu'on vous écrit.
 
 **Aucune notification** : pas de son, pas de vibration, pas de titre d'onglet qui clignote. Le salon n'a pas vocation à réclamer l'attention ; la pastille attend qu'on passe. Modération : l'admin retire une ligne (`/api/admin/fil/supprimer`), comme pour l'historique des parties — à trente-deux personnes qui se connaissent, c'est tout ce qu'il faut.

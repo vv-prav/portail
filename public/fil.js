@@ -59,10 +59,14 @@
     box-shadow:0 6px 20px rgba(0,0,0,.45); }
 .fil-bulle[hidden] { display:none; }
 .fil-bulle:active { transform:scale(.94); }
-.fil-pastille { position:absolute; top:-3px; right:-3px; min-width:20px; height:20px; padding:0 5px;
-    border-radius:999px; background:#d2624a; color:#fff; font-size:.7rem; font-weight:800;
-    display:grid; place-items:center; box-shadow:0 0 0 2px var(--ds-ink,#14100b); }
-.fil-pastille[hidden] { display:none; }
+/* Un point, pas un compteur. Le nombre de messages qu'on n'a pas lus
+   n'appelle aucune décision — on ouvre, ou on n'ouvre pas. Et un point se
+   lit d'un coup d'œil là où « 14 » demande à être interprété.
+   ⚠️ L'anneau sombre le détache du fond : posé sur le bord de la bulle, il
+   se confondait avec elle sur les pages à fond clair. */
+.fil-point { position:absolute; top:1px; right:1px; width:11px; height:11px;
+    border-radius:50%; background:#d2624a; box-shadow:0 0 0 2px var(--ds-ink,#14100b); }
+.fil-point[hidden] { display:none; }
 
 /* ⚠️ Le voile naît CACHÉ et son état sûr est l'état visible : seule
    l'opacité est animée, jamais \`visibility\`. Transitionnée, elle reste à
@@ -111,7 +115,7 @@
         bulle.type = 'button';
         bulle.className = 'fil-bulle';
         bulle.setAttribute('aria-label', 'Le fil du salon');
-        bulle.innerHTML = '💬<span class="fil-pastille" hidden></span>';
+        bulle.innerHTML = '💬<span class="fil-point" hidden></span>';
         bulle.addEventListener('click', ouvrir);
         document.body.appendChild(bulle);
 
@@ -234,9 +238,13 @@
         }
     }
 
-    // Le direct, quand il y a quelqu'un. Le socket n'est rejoint qu'à
-    // l'ouverture de la feuille : une page qui ne lit pas le fil n'a aucune
-    // raison de tenir une salle.
+    // Le direct, quand il y a quelqu'un — et SEULEMENT pendant qu'on lit.
+    // ⚠️ Mesuré sur la page du Yams : deux appels à `io()` donnent deux
+    // identifiants de socket différents et deux gestionnaires distincts. La
+    // connexion n'est donc pas mutualisée ici, et rejoindre la salle au
+    // chargement aurait ajouté un second websocket par joueur sur les huit
+    // pages qui portent la bulle — pour un point rouge. Le point se demande
+    // en HTTP (voir `demanderLeCompte`), le socket ne sert qu'à la lecture.
     function rejoindre() {
         if (!window.io) return;
         try {
@@ -263,9 +271,23 @@
     function majPastille(n) {
         nonLus = Math.max(0, n | 0);
         if (!bulle) return;
-        const p = bulle.querySelector('.fil-pastille');
-        p.textContent = nonLus > 99 ? '99+' : String(nonLus);
+        const p = bulle.querySelector('.fil-point');
         p.hidden = !nonLus;
+        bulle.setAttribute('aria-label', nonLus
+            ? 'Le fil du salon — des messages non lus' : 'Le fil du salon');
+    }
+
+    // Le point au chargement, sur CHAQUE page qui porte la bulle. L'accueil
+    // le recevra de toute façon par le pouls soixante secondes plus tard —
+    // mais les six jeux et `/jouer/` n'appellent pas le pouls, et c'est
+    // précisément là que la bulle restait muette.
+    async function demanderLeCompte() {
+        try {
+            const r = await fetch('/api/fil/nonlus');
+            if (!r.ok) return;
+            const d = await r.json();
+            if (!ouvert) majPastille(d.nonLus);
+        } catch (e) {}
     }
 
     // ⚠️ Sur une page de jeu, la bulle ne vit que dans le hall et la salle
@@ -287,6 +309,18 @@
 
     creer();
     if (mode === 'attente') suivreLesVues();
+
+    // Le point, et comment il reste à jour sans websocket :
+    //   · au chargement ;
+    //   · au retour sur l'onglet — c'est le moment où l'on regarde ;
+    //   · toutes les soixante secondes tant que la page est VISIBLE. Un
+    //     onglet en arrière-plan ne sonde rien : personne ne regarde.
+    // Le pouls de l'accueil le rafraîchit en plus, sans frais.
+    demanderLeCompte();
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) demanderLeCompte();
+    });
+    setInterval(() => { if (!document.hidden && !ouvert) demanderLeCompte(); }, 60000);
 
     // Le compteur vient du pouls, que l'accueil demande déjà : une page qui
     // ne l'appelle pas garde une pastille muette jusqu'à l'ouverture, ce qui

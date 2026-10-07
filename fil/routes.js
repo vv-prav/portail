@@ -73,6 +73,15 @@ module.exports = function monterLeFil(app, io, deps) {
         res.json({ messages: liste.slice(-PAGE), moi: pseudo, luJusqua: avant });
     });
 
+    // ⚠️ LE COMPTE SEUL, SANS RIEN MARQUER. Le pouls le porte déjà, mais
+    // l'accueil est la seule page à l'appeler : sur les six jeux et sur
+    // `/jouer/`, la bulle restait muette jusqu'à ce qu'on l'ouvre — le point
+    // rouge n'y existait pas. Une requête minuscule, au chargement, et le
+    // signal vaut partout où la bulle est posée.
+    app.get('/api/fil/nonlus', requireAuthApi, (req, res) => {
+        res.json(nonLus(currentUser(req)));
+    });
+
     // Quand un message arrive en direct alors que la feuille est ouverte :
     // il est lu à l'instant où il s'affiche, et le badge ne doit pas
     // repasser à un parce qu'on n'a pas refermé.
