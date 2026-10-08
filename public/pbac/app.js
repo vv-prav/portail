@@ -367,6 +367,10 @@ function onState(s) {
 
     // Le bouton d'invitation n'a de sens que dans la salle d'attente.
     if (s.status === 'lobby') Invitation.definirTable(s.id); else Invitation.effacer();
+    // ⚠️ Le bouton « Inviter » ne vaut QUE dans la salle d'attente, le fil de
+    // table vaut tant qu'on est à la table — jusqu'à la fin de la partie.
+    // Les deux ne se déduisent donc pas l'un de l'autre.
+    if (window.Fil) Fil.table(s.id || null);
     if (s.status === 'lobby') {
         $('pb-round-tag').hidden = true;
         renderWaiting(s);

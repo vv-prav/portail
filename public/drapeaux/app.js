@@ -328,6 +328,10 @@ function onEtat(s) {
         ? `Question ${s.question ? s.question.numero : 1} / ${s.options.nbQuestions}`
         : (s.status === 'ended' ? 'Partie terminée' : `Partie de ${s.host}`);
     if (s.status === 'lobby') Invitation.definirTable(s.id); else Invitation.effacer();
+    // ⚠️ Le bouton « Inviter » ne vaut QUE dans la salle d'attente, le fil de
+    // table vaut tant qu'on est à la table — jusqu'à la fin de la partie.
+    // Les deux ne se déduisent donc pas l'un de l'autre.
+    if (window.Fil) Fil.table(s.id || null);
 
     if (s.status === 'lobby') { montrer('v-waiting'); renderAttente(s); }
     else if (s.status === 'playing') {

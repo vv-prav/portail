@@ -386,8 +386,14 @@ module.exports = function attachAdmin(app, ctx) {
         if (isAdmin(pseudo)) return res.status(400).json({ error: 'Impossible de supprimer un administrateur.' });
         const U = users();
         if (!U[pseudo]) return res.status(404).json({ error: 'Compte introuvable.' });
+        // ⚠️ L'identifiant interne se capture AVANT de retirer le compte :
+        // les amitiés et les messages privés sont rangés sous lui, et une
+        // fois `U[pseudo]` effacé plus personne ne peut le retrouver. Le
+        // ménage se ferait alors sans rien trouver, en silence.
+        const monId = U[pseudo].id || null;
         delete U[pseudo];
         const efface = supprimerDonneesJoueur(pseudo);
+        try { efface.cles += ctx.amis().effacerLesDonnees(monId); } catch (e) {}
         saveUsers(true);
         log(currentUser(req), 'SUPPRESSION', `${pseudo} (${efface.cles} clés, ${efface.lignes} lignes de classement)`);
         res.json({ ok: true, ...efface });
@@ -1033,7 +1039,8 @@ module.exports = function attachAdmin(app, ctx) {
         const CONNUES = ['mf', 'motus', 'rec', 'voyages', 'pbac', 'yams', 'motusparty',
             'undercover', 'drapeaux', 'chiffres', 'geo', 'sudoku', 'motlong', 'admin', 'titres', 'perudo',
             'capitales', 'carte', 'chrono', 'defi', 'salon', 'comptes', 'classement',
-            'fil',       // fil:* = la conversation du salon et les marques de lecture
+            'fil', 'tfil',   // la conversation du salon, et les fils de table
+            'amis', 'mp',    // amitiés et messages privés — par identifiant interne
             'menage'];   // menage:* = les nettoyages faits une seule fois
         const orphelines = cles.filter(k => !CONNUES.includes(k.split(':')[0]))
             .map(k => { let t = 0; try { t = JSON.stringify(cache[k]).length; } catch (e) {} return { cle: k, octets: t }; })

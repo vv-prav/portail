@@ -47,6 +47,17 @@
 /* L'atlas de quelqu'un : où il en est de la géographie, d'un coup d'œil.
    ⚠️ Pas de légende ici — la bulle est déjà dense, et la phrase au-dessus
    dit l'essentiel. Le détail des cinq teintes est à l'Université. */
+/* Écrire, et l'amitié. ⚠️ Deux gestes séparés : écrire n'exige PAS d'être
+   amis — tout le monde peut déjà se parler dans le fil du salon, et le
+   contraire serait incompréhensible dans un cercle où l'on se connaît. */
+.pv-actions { display:flex; gap:8px; margin:0 0 16px; }
+.pv-actions[hidden] { display:none; }
+.pv-actions button { flex:1; padding:9px; border-radius:11px; font-size:.8rem; font-weight:700;
+    font-family:inherit; cursor:pointer; background:rgba(255,255,255,.04);
+    border:1px solid rgba(217,169,78,.3); color:#ecca82; }
+.pv-actions button.gris { color:#a08f74; border-color:transparent; cursor:default; }
+.pv-actions button:active:not(.gris) { transform:scale(.98); }
+
 .pv-atlas { margin:0 0 16px; }
 .pv-atlas[hidden] { display:none; }
 .pv-atlas-titre { margin:0 0 6px; font-size:.74rem; color:#a08f74; text-align:left; }
@@ -95,6 +106,7 @@
                 <h2 class="pv-name" id="pv-name-el">—</h2>
                 <p class="pv-meta" id="pv-meta-el">—</p>
                 <p class="pv-rang" id="pv-rang-el" hidden></p>
+                <div class="pv-actions" id="pv-actions-el" hidden></div>
                 <div class="pv-titres" id="pv-titres-el"></div>
                 <div class="pv-h2h" id="pv-h2h-el" hidden></div>
                 <div class="pv-atlas" id="pv-atlas-el" hidden>
@@ -184,6 +196,49 @@
         return chargementCarte;
     }
 
+    // ---------------------------------------------------------------
+    //  ÉCRIRE, ET L'AMITIÉ
+    //  ⚠️ La bulle de profil s'ouvre sur CHAQUE pseudo de l'app — c'est
+    //  déjà le geste « je m'intéresse à cette personne ». C'est donc le
+    //  point d'entrée naturel, et il n'y a aucune page à créer ni aucune
+    //  tuile à rajouter sur un accueil qu'on vient de ramener à deux.
+    //
+    //  ⚠️ Rien ne s'affiche si la bulle des conversations n'est pas sur
+    //  cette page (`window.Fil`) : proposer d'écrire pour ouvrir le vide
+    //  se lirait comme une panne.
+    // ---------------------------------------------------------------
+    function montrerActions(el, data) {
+        const box = el.querySelector('#pv-actions-el');
+        if (!data.id || !data.amitie || !window.Fil) return;   // soi-même, ou pas de bulle ici
+        const ETAT = {
+            ami: '<button type="button" class="gris">✓ Ami</button>',
+            'demande-envoyee': '<button type="button" class="gris">Demande envoyée</button>',
+            'demande-recue': '<button type="button" data-accepter>Accepter sa demande</button>',
+            rien: '<button type="button" data-ajouter>+ Ami</button>',
+        };
+        box.innerHTML = `<button type="button" data-ecrire>✉️ Écrire</button>` + (ETAT[data.amitie] || '');
+        box.hidden = false;
+        const b = (sel) => box.querySelector(sel);
+        b('[data-ecrire]').addEventListener('click', () => {
+            close();
+            Fil.ecrireA(data.id, data.pseudo);
+        });
+        if (b('[data-ajouter]')) b('[data-ajouter]').addEventListener('click', async (e) => {
+            await fetch('/api/amis/demander', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: data.id }),
+            });
+            e.target.outerHTML = '<button type="button" class="gris">Demande envoyée</button>';
+        });
+        if (b('[data-accepter]')) b('[data-accepter]').addEventListener('click', async (e) => {
+            await fetch('/api/amis/accepter', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: data.id }),
+            });
+            e.target.outerHTML = '<button type="button" class="gris">✓ Ami</button>';
+        });
+    }
+
     let atlasRendu = null;
     async function montrerAtlas(el, data) {
         const a = data.atlas;
@@ -224,6 +279,7 @@
         el.querySelector('#pv-name-el').textContent = pseudo;
         el.querySelector('#pv-meta-el').textContent = 'Chargement…';
         el.querySelector('#pv-rang-el').hidden = true;
+        el.querySelector('#pv-actions-el').hidden = true;
         el.querySelector('#pv-titres-el').innerHTML = '';
         el.querySelector('#pv-h2h-el').hidden = true;
         el.querySelector('#pv-atlas-el').hidden = true;
@@ -260,6 +316,7 @@
             const texte = texteFaceAface(data.faceAface, data.pseudo);
             if (texte) { h2h.innerHTML = texte; h2h.hidden = false; }
 
+            montrerActions(el, data);
             montrerAtlas(el, data);
 
             const hote = el.querySelector('#pv-stats-el');

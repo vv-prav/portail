@@ -940,6 +940,10 @@ function onState(s) {
     $('ym-sub').textContent = s.status === 'playing' ? 'Partie en cours' : (s.status === 'ended' ? 'Partie terminée' : `Table de ${s.host}`);
     // Le bouton d'invitation n'a de sens que dans la salle d'attente.
     if (s.status === 'lobby') Invitation.definirTable(s.id); else Invitation.effacer();
+    // ⚠️ Le bouton « Inviter » ne vaut QUE dans la salle d'attente, le fil de
+    // table vaut tant qu'on est à la table — jusqu'à la fin de la partie.
+    // Les deux ne se déduisent donc pas l'un de l'autre.
+    if (window.Fil) Fil.table(s.id || null);
     if (s.status === 'lobby') { showView('v-waiting'); renderWaiting(s); $('ym-turn-tag').hidden = true; }
     else if (s.status === 'playing') {
         showView('v-game');

@@ -135,6 +135,10 @@ function rendreAttente(s) {
         $('btn-start').disabled = total < 2;
     }
     if (window.Invitation) Invitation.definirTable(s.id);
+    // ⚠️ Le bouton « Inviter » ne vaut QUE dans la salle d'attente, le fil de
+    // table vaut tant qu'on est à la table — jusqu'à la fin de la partie.
+    // Les deux ne se déduisent donc pas l'un de l'autre.
+    if (window.Fil) Fil.table(s.id || null);
 }
 function bullesDe(box, pseudos) {
     if (!window.PortailProfile || !pseudos.length) return;

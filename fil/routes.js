@@ -116,6 +116,51 @@ module.exports = function monterLeFil(app, io, deps) {
         res.json({ ok: true, messages: liste.slice(-PAGE) });
     });
 
+    // ---------------------------------------------------------------------
+    //  LE FIL D'UNE TABLE — parler pendant la partie
+    //
+    //  ⚠️ IL NE VIT QUE LE TEMPS DE LA TABLE. Clé `tfil:<jeu>:<id>`, jamais
+    //  relue ailleurs, ramassée par `mfPurge` : ce qui se dit pendant une
+    //  partie de Yams n'a aucune raison de survivre à la partie, et un
+    //  historique de table qu'on pourrait rouvrir six mois plus tard ne
+    //  servirait à personne tout en pesant en base.
+    //
+    //  ⚠️ C'est le SEUL des trois fils qui s'identifie par le pseudo, et
+    //  c'est voulu : une table est éphémère, personne ne se renomme au
+    //  milieu d'une partie, et le jeu qui l'héberge raisonne déjà en
+    //  pseudos de bout en bout. Y mettre des identifiants obligerait à les
+    //  résoudre à chaque message pour afficher un nom que le jeu connaît
+    //  déjà.
+    // ---------------------------------------------------------------------
+    const kTable = (jeu, id) => `tfil:${String(jeu).replace(/[^a-z]/g, '')}:${String(id).slice(0, 40)}`;
+    const salleTable = (jeu, id) => `tfil_${jeu}_${id}`;
+
+    app.get('/api/fil/table', requireAuthApi, (req, res) => {
+        const cle = kTable(req.query.jeu, req.query.id);
+        res.json({ messages: (mfGet(cle) || []).slice(-PAGE), moi: currentUser(req) });
+    });
+
+    app.post('/api/fil/table', requireAuthApi, (req, res) => {
+        const pseudo = currentUser(req);
+        const { jeu, id } = req.body || {};
+        if (!jeu || !id) return res.status(400).json({ error: 'Table inconnue.' });
+        const txt = String((req.body || {}).text || '').trim().slice(0, MAX_CARACTERES);
+        if (!txt) return res.status(400).json({ error: 'Message vide.' });
+
+        const cle = kTable(jeu, id);
+        const liste = (mfGet(cle) || []).slice();
+        const sien = liste.filter(m => m && m.u === pseudo).slice(-1)[0];
+        if (sien && Date.now() - sien.ts < ANTI_FLOOD_MS) {
+            return res.status(429).json({ error: 'Doucement !' });
+        }
+        const msg = { u: pseudo, t: escapeHtml(txt), ts: Date.now(), creeA: Date.now() };
+        liste.push(msg);
+        if (liste.length > GARDE) liste.splice(0, liste.length - GARDE);
+        mfSet(cle, liste);
+        try { io.to(salleTable(jeu, id)).emit('tfil_message', msg); } catch (e) {}
+        res.json({ ok: true, messages: liste.slice(-PAGE) });
+    });
+
     // Retirer un message. Réservé à l'admin, qui monte sa propre route :
     // on expose la mécanique, pas l'autorisation.
     function supprimer(ts) {

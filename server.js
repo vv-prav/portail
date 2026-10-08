@@ -179,6 +179,54 @@ function makeRecoveryCode() { return tirerDesCaracteres(6); }
 // porte, là où le code ne sert qu'à en choisir un nouveau.
 function motDePasseProvisoire() { return tirerDesCaracteres(9); }
 
+// ---------------------------------------------------------------------
+//  L'IDENTIFIANT INTERNE D'UN COMPTE
+//
+//  ⚠️ C'est la dette n°1 du salon : le pseudo sert d'identifiant partout —
+//  stats, classements, progressions — et c'est ce qui rend le renommage
+//  fragile et la fusion de comptes pénible. On ne migre PAS tout d'un coup :
+//  quarante familles de clés, tous les jeux, le classement, les titres et
+//  l'admin, sur une base qui porte de vraies données. Un big-bang ici se
+//  paierait par une perte, et on ne saurait même pas laquelle.
+//
+//  La règle est donc : **tout ce qui est neuf s'identifie par l'id, tout ce
+//  qui existe garde le pseudo.** Les amis, les messages privés et le tchat
+//  de table sont immunisés au renommage dès leur premier jour, sans que rien
+//  d'existant ne bouge. Les anciennes familles migreront une par une, ou
+//  jamais — dans les deux cas il n'y aura rien à refaire ici.
+//
+//  ⚠️ L'id vit sur l'OBJET COMPTE, pas dans une clé du cache : `rename`
+//  déplace l'objet (`user.pseudo = nouveau`), donc l'id suit tout seul et
+//  aucune migration ne le concerne jamais. C'est tout l'intérêt.
+// ---------------------------------------------------------------------
+function nouvelIdentifiant() {
+    // Assez long pour qu'une collision soit hors de question, assez court
+    // pour tenir dans une clé lisible : `mp:k3f9…|m2a7…`.
+    return 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+// Les deux sens, construits à la demande. À trente-deux comptes, parcourir
+// la liste coûte moins cher que tenir un index à jour — et un index qu'on
+// oublie de rafraîchir après un renommage est exactement le genre de bug
+// que cet identifiant est censé supprimer.
+function idDe(pseudo) {
+    const u = registeredUsers[pseudo];
+    return u ? u.id || null : null;
+}
+function pseudoDe(id) {
+    if (!id) return null;
+    for (const u of Object.values(registeredUsers)) if (u && u.id === id) return u.pseudo;
+    return null;
+}
+// Les comptes d'avant portent un identifiant à partir du premier démarrage.
+// Sans drapeau : poser un id à qui n'en a pas est idempotent par nature.
+function donnerLesIdentifiants() {
+    let poses = 0;
+    for (const u of Object.values(registeredUsers)) {
+        if (u && !u.id) { u.id = nouvelIdentifiant(); poses++; }
+    }
+    if (poses) { saveUsers(true); console.log(`🆔 ${poses} identifiant(s) interne(s) posé(s).`); }
+}
+
 // Échappement HTML (messages du forum, etc.)
 function escapeHtml(str) {
     return String(str).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -281,7 +329,10 @@ app.post('/api/register', (req, res) => {
     if (password.length < MIN_PASSWORD) return res.status(400).json({ error: `Mot de passe trop court (${MIN_PASSWORD} caractères minimum).` });
     if (registeredUsers[pseudo]) return res.status(409).json({ error: 'Ce nom est déjà pris. Connecte-toi.' });
     const code = makeRecoveryCode();
-    registeredUsers[pseudo] = { pseudo, passwordHash: hashPassword(password), recoveryHash: hashPassword(code), created: Date.now() };
+    registeredUsers[pseudo] = {
+        pseudo, id: nouvelIdentifiant(),
+        passwordHash: hashPassword(password), recoveryHash: hashPassword(code), created: Date.now(),
+    };
     saveUsers(true);
     setSessionCookie(res, pseudo);
     res.json({ ok: true, user: { pseudo }, recoveryCode: code });
@@ -579,6 +630,19 @@ function mfPurge() {
             if (parts[1] === 'joueurs' && defisMorts.has(parts[2])) { mfDel(k); removed++; }
             else if (parts[1] === 'prog' && defisMorts.has(parts[2])) { mfDel(k); removed++; }
         }
+    }
+
+    // ⚠️ Les fils de table ne survivent pas à la table. Leur clé ne porte pas
+    // de date : on regarde l'horodatage du dernier message. Deux jours, et
+    // c'est généreux — une partie dure une heure. Ce qui se dit pendant un
+    // Yams n'a aucune raison d'être relisible six mois plus tard, et un
+    // historique par table pèserait en base pour ne servir à personne.
+    const limiteTable = Date.now() - 2 * 864e5;
+    for (const k of Object.keys(mfCache)) {
+        if (!k.startsWith('tfil:')) continue;
+        const l = mfCache[k];
+        const dernier = Array.isArray(l) && l.length ? l[l.length - 1].ts : 0;
+        if (!dernier || dernier < limiteTable) { mfDel(k); removed++; }
     }
 
     // les séries de jours ne sont pas datées : on borne leur taille
@@ -1268,6 +1332,17 @@ const filApi = require('./fil/routes')(app, io, {
     requireAuthApi, currentUser, mfGet, mfSet, escapeHtml, salle: SALLE_FIL,
 });
 
+// Les amis et les messages privés. ⚠️ Tout y est identifié par l'identifiant
+// interne : ce module est le premier du salon à ne dépendre d'aucun pseudo,
+// et `comptes/renommage.js` n'a donc rien à en savoir.
+const sallePerso = (id) => `perso:${id}`;
+const amisApi = require('./amis/routes')(app, io, {
+    requireAuthApi, currentUser, mfGet, mfSet, mfDel, escapeHtml,
+    cache: () => mfCache,
+    comptes: () => registeredUsers,
+    idDe, pseudoDe, salle: sallePerso,
+});
+
 // Les noms dont se sert le reste du fichier, inchangés.
 const mChiffres = chiffresApi.moteur, chiffresDonne = chiffresApi.donne, kChiffresDonne = chiffresApi.kDonne, chiffresJeu = chiffresApi.jeu;
 const mGeo = geoApi.moteur, geoDuJour = geoApi.duJour, kGeoPays = geoApi.kPays, GEO_MODES = geoApi.MODES, GEO_NOMS = geoApi.NOMS, geoJeu = geoApi.jeu;
@@ -1927,6 +2002,10 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
         // accessible depuis une page qui n'affiche pas la bulle : zéro requête
         // de plus, et on sait qu'il y a quelque chose à lire.
         fil: filApi.nonLus(user),
+        // Les amis : non-lus privés et demandes en attente. Même logique que
+        // le fil — le pouls les porte, donc l'accueil n'a rien à demander de
+        // plus pour allumer son point rouge.
+        amis: amisApi.nonLus(user),
     });
 });
 
@@ -3192,6 +3271,19 @@ app.get('/api/public-profile', requireAuthApi, (req, res) => {
         // n'envoie que les niveaux, jamais les dates de révision : l'état
         // complet du modèle d'apprentissage ne regarde que lui.
         atlas: apprendreApi.niveauxDe(pseudo),
+        // ⚠️ L'identifiant interne sort ICI et nulle part ailleurs du côté
+        // public : c'est ce qui permet au bouton « Écrire » de la bulle
+        // d'ouvrir la bonne conversation sans que le navigateur ait à
+        // deviner quoi que ce soit. Il ne dit rien de plus qu'un pseudo —
+        // les deux désignent la même personne — et il est stable, lui.
+        id: idDe(pseudo),
+        amitie: (() => {
+            const a = idDe(moi), b = idDe(pseudo);
+            if (!a || !b || a === b) return null;
+            return amisApi.estAmi(a, b) ? 'ami'
+                : amisApi.demandeDe(b, a) ? 'demande-envoyee'
+                : amisApi.demandeDe(a, b) ? 'demande-recue' : 'rien';
+        })(),
     });
 });
 
@@ -3277,6 +3369,10 @@ require('./admin/routes')(app, {
     // Le fil du salon : lire et retirer une ligne. À trente-deux personnes qui
     // se connaissent, retirer un message est toute la modération nécessaire.
     fil: () => filApi,
+    // ⚠️ `amis` n'expose QUE le ménage. Il n'y a volontairement aucune route
+    // d'admin pour lire ou supprimer un message privé : c'est la seule partie
+    // du salon que l'administration ne voit pas, et c'est une décision.
+    amis: () => amisApi,
     pbac: () => pbacApi,
     undercover: () => undercoverApi,
     yams: () => yamsApi,
@@ -3393,6 +3489,16 @@ io.on('connection', (socket) => {
         signaler();
         const minuterie = setInterval(signaler, 60 * 1000);
         socket.on('disconnect', () => { clearInterval(minuterie); signaler(); });
+
+        // ⚠️ LA SALLE PERSONNELLE, REJOINTE PAR LE SERVEUR ET NON PAR LE
+        // CLIENT. Un message privé n'y est adressé qu'à son destinataire —
+        // le diffuser dans une salle commune le rendrait justement public.
+        // Le cookie du handshake dit déjà qui est là : laisser le navigateur
+        // demander sa propre salle, c'est le laisser demander celle d'un
+        // autre. Elle porte l'identifiant interne, donc un renommage en
+        // cours de session ne la fait pas changer de nom.
+        const monId = idDe(pseudo);
+        if (monId) socket.join(sallePerso(monId));
     }
 
     // Salle Motus : uniquement les personnes réellement sur la page reçoivent
@@ -3409,6 +3515,17 @@ io.on('connection', (socket) => {
     // personnes qui se trouvent là en même temps.
     socket.on('fil_join', () => { socket.join(SALLE_FIL); });
     socket.on('fil_leave', () => { socket.leave(SALLE_FIL); });
+
+    // Le fil d'une table : seuls ceux qui y sont le reçoivent. Le nom de la
+    // salle se dérive du jeu et de l'identifiant de table, donc rejoindre
+    // celle d'une autre table ne révèlerait qu'une conversation qu'on
+    // pourrait de toute façon lire en rejoignant la table elle-même.
+    socket.on('tfil_join', (d) => {
+        if (d && d.jeu && d.id) socket.join(`tfil_${String(d.jeu).replace(/[^a-z]/g, '')}_${String(d.id).slice(0, 40)}`);
+    });
+    socket.on('tfil_leave', (d) => {
+        if (d && d.jeu && d.id) socket.leave(`tfil_${String(d.jeu).replace(/[^a-z]/g, '')}_${String(d.id).slice(0, 40)}`);
+    });
 });
 
 // Filet de sécurité : aucune erreur ne doit faire tomber le serveur
@@ -3422,6 +3539,7 @@ process.on('unhandledRejection', (e) => console.error('Promesse rejetée :', e &
 
 const PORT = process.env.PORT || 3000;
 Promise.all([loadUsers(), loadMf()]).then(async () => {
+    donnerLesIdentifiants();
     await reprendreLesProfilsPerudo();
     effacerLeMotJuste();
     // L'index de Motus Party n'existait pas : on le complète avec les fiches

@@ -169,7 +169,14 @@ async function loadPulse() {
     // Le fil : son compteur voyage avec le pouls, donc sans une requête de
     // plus. ⚠️ `window.Fil` peut ne pas exister — une page qui ne déclare pas
     // `data-fil` n'a pas de bulle, et ce n'est pas une erreur.
-    if (window.Fil && data.fil) Fil.compteur(data.fil.nonLus);
+    // ⚠️ Le point additionne les trois sources, comme dans la bulle : le fil
+    // du salon, les messages privés non lus, et les demandes d'ami en
+    // attente. En oublier une laisserait une demande en souffrance sans que
+    // rien ne le signale.
+    if (window.Fil && data.fil) {
+        const a = data.amis || {};
+        Fil.compteur((data.fil.nonLus || 0) + (a.nonLus || 0) + (a.demandes || 0), a.demandes || 0);
+    }
     const st = $('me-streak');
     if (data.mf && data.mf.streak > 0) { st.innerHTML = '🔥 <b>' + data.mf.streak + '</b>'; st.hidden = false; }
     else st.hidden = true;

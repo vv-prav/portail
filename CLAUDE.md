@@ -718,13 +718,18 @@ Une seule conversation, continue, qui ne recommence pas à minuit.
 Une page **demande** la bulle, elle ne la subit pas :
 
 ```html
-<body data-fil>            → toujours (l'accueil, /jouer/)
-<body data-fil="attente">  → seulement dans #v-lobby / #v-waiting
+<body data-fil>         → toujours (l'accueil, /jouer/)
+<body data-fil="jeu">   → les pages de jeu : hall, salle d'attente ET
+                          partie en cours
 ```
+
+⚠️ `"jeu"` a remplacé `"attente"`, qui masquait la bulle pendant la partie. C'était la bonne règle tant qu'il n'y avait qu'un fil commun — on ne coupe pas quelqu'un qui joue. **Le fil de table change justement ça** : parler pendant la partie est tout son intérêt.
 
 C'est le mécanisme de `data-jeu` pour `style.js`. ⚠️ **Le coin bas-droite est déjà occupé** : `.geo-carte-zoom` y pose ses trois boutons à 8 px dans les cinq jeux de géographie — qui ne déclarent donc pas `data-fil`. Et le salon s'est fait prendre deux fois sur ce motif : le toast à z-index 1200 se posait sur « Lancer les dés » du Yams, la célébration avalait les clics. **Jamais pendant une manche** : le clavier natif occupe le bas de l'écran au Motus et aux Mots Fléchés, et on ne coupe pas quelqu'un qui joue.
 
-Le mode `attente` suit les vues avec un `MutationObserver` sur l'attribut `hidden` de `#v-lobby`/`#v-waiting` — les six jeux les basculent ainsi (vérifié), donc aucune app n'a quoi que ce soit à appeler.
+Le mode `jeu` suit les vues avec un `MutationObserver` sur l'attribut `hidden` — les six jeux les basculent ainsi (vérifié), donc aucune app n'a quoi que ce soit à appeler.
+
+⚠️ **PENDANT LA PARTIE, LA BULLE NE FLOTTE PLUS : elle entre dans l'en-tête du jeu.** Mesuré au Yams, `#btn-roll` (« Lancer les dés ») occupe **toute la largeur** en bas de l'écran — aucun coin n'est libre, et la bulle se posait exactement dessus. C'est le piège déjà payé deux fois sur ce même bouton (le toast, puis la célébration qui avalait les clics). Un seul élément, deux maisons : flottant dans le hall et la salle d'attente, ancré dès que la partie commence. L'en-tête se trouve par `[class$="-head"]` — les six jeux nomment le leur `ym-head`, `pb-head`, `uc-head`, `pe-head`, `qz-head`, `mp-head` : c'est un motif, pas une classe commune, mais il est fiable et évite de toucher six fichiers HTML.
 
 ### Les clés, et le piège de leur nom
 
@@ -743,6 +748,64 @@ Le mode `attente` suit les vues avec un `MutationObserver` sur l'attribut `hidde
 - ⚠️ **L'accueil ne charge pas socket.io**, et c'est justement la page où la bulle est le plus présente. Faute de socket, un sondage de 5 s tourne **uniquement tant que la feuille est ouverte**. Sans lui, on aurait une conversation ouverte qui ne bouge pas pendant qu'on vous écrit.
 
 **Aucune notification** : pas de son, pas de vibration, pas de titre d'onglet qui clignote. Le salon n'a pas vocation à réclamer l'attention ; la pastille attend qu'on passe. Modération : l'admin retire une ligne (`/api/admin/fil/supprimer`), comme pour l'historique des parties — à trente-deux personnes qui se connaissent, c'est tout ce qu'il faut.
+
+## L'identifiant interne (`user.id`)
+
+⚠️ **C'est la dette n°1 du salon, et elle commence à se rembourser — mais PAS d'un coup.** Le pseudo sert d'identifiant partout : stats, classements, progressions, quarante familles de clés. Un big-bang sur une base qui porte de vraies données se paierait par une perte dont on ne saurait même pas laquelle.
+
+La règle est donc : **tout ce qui est neuf s'identifie par l'id, tout ce qui existe garde le pseudo.** Les amis, les messages privés et le tchat de table sont immunisés au renommage dès leur premier jour, sans que rien d'existant ne bouge. Les anciennes familles migreront une par une, ou jamais — dans les deux cas il n'y aura rien à refaire.
+
+- `nouvelIdentifiant()` → `u` + base 36 du temps + 6 caractères au hasard. Assez long pour qu'une collision soit hors de question, assez court pour tenir dans une clé lisible.
+- ⚠️ **L'id vit sur l'OBJET COMPTE, pas dans une clé du cache.** `rename` déplace l'objet (`user.pseudo = nouveau`), donc l'id suit tout seul et **aucune migration ne le concerne jamais**. C'est tout l'intérêt, et c'est vérifié : après un renommage, l'amitié et la conversation sont intactes des deux côtés, et le correspondant voit le nouveau nom sans qu'une seule clé ait bougé.
+- `idDe(pseudo)` / `pseudoDe(id)` parcourent les comptes à la demande : à trente-deux, c'est moins cher qu'un index — et un index qu'on oublie de rafraîchir après un renommage est exactement le bug que cet identifiant supprime.
+- `donnerLesIdentifiants()` au démarrage en pose un à qui n'en a pas. Pas de drapeau : l'opération est idempotente par nature.
+
+## Les amis et les messages privés (`amis/routes.js`)
+
+⚠️ **TOUT S'Y IDENTIFIE PAR L'IDENTIFIANT INTERNE, JAMAIS PAR LE PSEUDO.** C'est la première partie du salon à le faire. `comptes/renommage.js` n'a pas une ligne à connaître de ce module et n'en aura jamais.
+
+| Clé | Quoi |
+|---|---|
+| `amis:<id>` | ses amis — **réciproque**, écrite des deux côtés |
+| `amis:dem:<id>` | les demandes **reçues** : `[{de, quand}]` |
+| `mp:<idA>\|<idB>` | la conversation, identifiants **triés** |
+| `mp:lu:<id>:<autre>` | où il en est de sa lecture |
+
+### Les décisions, et elles ont toutes été prises explicitement
+
+- ⚠️ **L'ADMINISTRATION NE PEUT PAS LIRE LES MESSAGES PRIVÉS.** Aucune route ne les sert, aucune ne les supprime. Conséquence assumée : zéro modération sur cette partie-là, là où le fil du salon reste modérable. Effet de bord heureux de l'identifiant interne — même le **nom** d'une clé (`mp:u3f9…|u2a7…`) ne dit plus qui parle à qui dans le relevé du poids des données.
+- **L'amitié se demande et s'accepte**, mais ⚠️ **écrire ne l'exige pas** : tout le monde peut écrire à tout le monde, comme dans le fil du salon. L'amitié sert à se faire une courte liste parmi les trente-deux, pas à ouvrir une porte.
+- ⚠️ **Deux demandes qui se croisent valent acceptation.** Si l'autre m'a déjà demandé, demander à mon tour nous rend amis — sans quoi on aurait deux demandes en attente que personne ne saurait plus dénouer.
+- ⚠️ **Un refus n'est pas annoncé.** Dans un cercle où tout le monde se voit en vrai, annoncer un refus coûte cher et n'apporte rien : la demande disparaît, et elle peut être reposée.
+- **Retirer quelqu'un n'efface pas la conversation** : ce qu'on s'est dit ne disparaît pas parce qu'on se retire d'une liste.
+- **Pas de blocage**, décision explicite pour cette version.
+- ⚠️ **Les demandes envoyées se DÉDUISENT**, elles ne se stockent pas : une seconde liste à tenir à jour est une seconde occasion de la laisser diverger.
+
+### Deux pièges qui ne se voient pas
+
+⚠️ **`supprimerDonneesJoueur()` ne trouve PAS ces clés** : il efface celles dont `seg[2]` est le pseudo, or elles portent des identifiants. `amis/routes.js` expose `effacerLesDonnees(id)`, que l'admin appelle en plus. Et ⚠️ **elle prend l'identifiant, pas le pseudo** : la route d'admin retire le compte de `registeredUsers` **avant** de nettoyer, donc `idDe(pseudo)` y renverrait `null` et le ménage ne ferait rien — en silence. L'id se capture pendant que le compte existe encore.
+
+⚠️ **La salle socket personnelle est rejointe par le SERVEUR, pas par le client.** Le cookie du handshake dit déjà qui est là ; laisser le navigateur demander sa propre salle, c'est le laisser demander celle d'un autre — et un message privé diffusé dans une salle commune ne serait plus privé.
+
+## Le fil d'une table (`tfil:<jeu>:<id>`)
+
+Parler **pendant** la partie, dans la même bulle, sous un troisième onglet qui n'apparaît que lorsqu'on est à une table.
+
+- ⚠️ **Il ne vit que le temps de la table.** `mfPurge()` le ramasse deux jours après le dernier message — sa clé ne porte pas de date, on regarde l'horodatage. Ce qui se dit pendant un Yams n'a aucune raison d'être relisible six mois plus tard.
+- ⚠️ **C'est le seul des trois fils qui s'identifie par le PSEUDO**, et c'est voulu : une table est éphémère, personne ne se renomme au milieu d'une partie, et le jeu qui l'héberge raisonne déjà en pseudos de bout en bout.
+- **Les six jeux déclarent leur table d'une ligne** (`Fil.table(s.id || null)`), posée là où ils appellent déjà `Invitation`. ⚠️ Les deux ne se déduisent pas l'un de l'autre : le bouton « Inviter » ne vaut que dans la salle d'attente, le fil de table vaut **jusqu'à la fin de la partie** — cinq jeux appellent justement `Invitation.effacer()` au moment où la partie commence.
+
+## Où tout cela se lit — un seul endroit
+
+⚠️ **UNE SEULE BULLE, TROIS ONGLETS, UN SEUL POINT ROUGE.** Une seconde bulle ou une page séparée pour les messages privés donnerait deux endroits à surveiller, et on en oublierait un.
+
+| `Le salon` | `Amis` | `La table` |
+|---|---|---|
+| la conversation commune | demandes, amis, conversations, tout le salon | seulement à une table |
+
+Le point de la bulle **additionne les trois sources** — fil du salon, messages privés non lus, demandes d'ami en attente — et l'onglet Amis porte son propre point. Le point dit « il y a quelque chose », l'onglet dit quoi. En oublier une laisserait une demande en souffrance sans que rien ne le signale.
+
+**Le point d'entrée est la bulle de profil**, qui s'ouvre déjà sur chaque pseudo de l'app : elle gagne `✉️ Écrire` et le bouton d'amitié. Aucune page créée, aucune tuile ajoutée à un accueil qu'on vient de ramener à deux. ⚠️ Rien ne s'y affiche si `window.Fil` n'est pas sur la page : proposer d'écrire pour ouvrir le vide se lirait comme une panne.
 
 ## Le classement du Salon — la V2 des points
 
