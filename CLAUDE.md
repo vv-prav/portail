@@ -1,4 +1,8 @@
-# CLAUDE.md — Le Salon
+# CLAUDE.md — Purple Game
+
+⚠️ **L'application s'appelle « Purple Game »** (manifeste, `<title>`, écran d'entrée, et le méta `apple-mobile-web-app-title` qu'iOS lit pour nommer l'icône sur l'écran d'accueil — sans lui, elle restait « Le Salon » chez ceux qui l'avaient déjà installée). **« Le salon » reste le nom commun du lieu** dans tous les textes : « le fil du salon », « le classement du Salon », « les gens du salon ». Les remplacer donnerait « le fil du Purple Game » — 146 des 275 occurrences sont dans ce cas. On renomme le produit, pas la langue.
+
+**L'icône** (`icon-192.png`, `icon-512.png`) est l'hermine bretonne noire sur violet plat `#6D28D9`, composée depuis `logo-bretagne.svg`. Le logo occupe 58 % de la largeur : l'icône est déclarée `maskable`, donc le dessin doit tenir dans les 80 % centraux qu'Android ne rogne pas. ⚠️ Aucun convertisseur SVG→PNG sur la machine : la composition s'est faite dans un canvas de navigateur. Pour la refaire, reprendre la même méthode plutôt que de transférer le PNG en base64 à la main — un transfert tronqué de 84 octets donne une image qui s'ouvre quand même, à 95 % noire.
 
 Ce fichier donne à Claude Code tout le contexte nécessaire pour reprendre ce projet sans avoir à le redécouvrir. Il a été écrit après une très longue session de développement conversationnel (Claude.ai) portant sur ce dépôt — tout ce qui suit a été vérifié directement dans les fichiers au moment de l'écriture, pas seulement recopié de mémoire.
 
@@ -837,6 +841,16 @@ La conciliation : **`sw-push.js` n'a AUCUN gestionnaire `fetch` et aucun cache.*
 ⚠️ **En changer invalide TOUS les abonnements d'un coup**, et personne ne comprendrait pourquoi les notifications se sont tues. `VAPID_PUBLIC` / `VAPID_PRIVATE` en variables d'environnement est la bonne place ; à défaut le serveur en fabrique une paire **une fois** et la range dans `push:vapid`, ce qui survit sur Render grâce à Redis. Le journal affiche alors les clés à recopier en variables d'environnement.
 
 `web-push` est la seule dépendance ajoutée depuis longtemps, et elle se justifie : le chiffrement d'une charge utile (ECDH + aes128gcm) et la signature VAPID font environ cent cinquante lignes de cryptographie qu'il n'y a aucune raison d'écrire à la main.
+
+### La nouvelle journée
+
+⚠️ **ELLE NE PART PAS À MINUIT, ET CE N'EST PAS UN CHOIX.** Sur Render, le service est mis **en veille** au bout de quelques minutes d'inactivité : à minuit il dort, et un `setInterval` calé sur 00h00 ne se réveillerait jamais. C'est le même piège qui avait fait croire que « les données se réinitialisent une heure après avoir joué ».
+
+L'annonce part donc à la **première activité qui suit le changement de date** — en pratique, quand la première personne ouvre l'appli le matin. Effet de bord heureux : personne n'est réveillé à minuit. Si le serveur se trouve éveillé à 00h00, elle part à 00h00, et celui-là est debout de toute façon.
+
+- ⚠️ **Le garde-fou est une clé (`push:dernierjour`), pas une variable** : le serveur redémarre à chaque déploiement, et une variable en mémoire laisserait l'annonce repartir une seconde fois dans la journée.
+- ⚠️ **Le garde-fou se pose AVANT d'envoyer** : l'envoi prend un aller-retour par appareil, et deux tours de minuterie passeraient tous les deux si on attendait la fin.
+- **Son propre interrupteur** (`push:quotidien:<id>`, actif par défaut). Sans lui, quelqu'un que seuls les messages privés intéressent couperait tout pour s'en débarrasser — et ne recevrait plus rien.
 
 ### Ce qui reste à vérifier sur un vrai téléphone
 

@@ -28,7 +28,7 @@ self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 self.addEventListener('push', (e) => {
     let d = {};
     try { d = e.data ? e.data.json() : {}; } catch (err) {}
-    const titre = d.titre || 'Le Salon';
+    const titre = d.titre || 'Purple Game';
     e.waitUntil(self.registration.showNotification(titre, {
         body: d.corps || '',
         icon: '/icon-192.png',

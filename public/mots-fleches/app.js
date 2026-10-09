@@ -480,7 +480,7 @@ function texteDePartage() {
     const tps = fmt(seconds);
     const bonus = penalty ? ` (dont ${fmt(penalty)} d'indices)` : ' sans aucun indice';
     const etat = solved ? `résolue en ${tps}${bonus}` : 'abandonnée';
-    return `Le Salon · Mots Fléchés ${date} · ${niveau} — ${etat}`;
+    return `Purple Game · Mots Fléchés ${date} · ${niveau} — ${etat}`;
 }
 async function partagerResultat() {
     const texte = texteDePartage();

@@ -4,7 +4,11 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, interactive-widget=resizes-content">
     <meta name="theme-color" content="#14100b">
-    <title>Le Salon</title>
+    <title>Purple Game</title>
+    <!-- ⚠️ iOS lit CE méta pour nommer l'icône sur l'écran d'accueil, pas le
+         <title> ni le manifeste. Sans lui, l'icône s'appelait « Le Salon »
+         chez ceux qui l'avaient déjà installée. -->
+    <meta name="apple-mobile-web-app-title" content="Purple Game">
     <link rel="manifest" href="/manifest.json">
     <link rel="apple-touch-icon" href="/icon-192.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -21,7 +25,7 @@
     <main class="entry" id="entry">
         <form class="entry-card" id="entry-form" autocomplete="on" novalidate>
             <div class="crest"><img src="/logo-bretagne.svg" alt="Erquy" class="crest-logo"></div>
-            <h1 class="entry-title">Le Salon</h1>
+            <h1 class="entry-title">Purple Game</h1>
             <p class="entry-sub" data-i="entry_sub">Un nom, un mot de passe, et la porte s'ouvre.</p>
             <input class="ds-input" id="pseudo" type="text" data-ph="ph_name" placeholder="Ton nom" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="20" aria-label="Ton nom">
             <input class="ds-input" id="password" type="password" data-ph="ph_pass" placeholder="Ton mot de passe" autocomplete="current-password" aria-label="Ton mot de passe">

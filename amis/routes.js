@@ -130,7 +130,7 @@ module.exports = function monterLesAmis(app, io, deps) {
         mfSet(kDem(cible), liste);
         prevenirSocket(cible);
         prevenir(cible, {
-            titre: 'Le Salon',
+            titre: 'Purple Game',
             corps: `${pseudoDe(moi)} aimerait être ton ami`,
             // ⚠️ Le tag porte l'ÉMETTEUR, pas le type : avec un tag fixe,
             // la demande de Chloé remplaçait celle de Bo sur l'écran et on
@@ -261,7 +261,7 @@ module.exports = function monterLesAmis(app, io, deps) {
         // un écran verrouillé, à la vue de n'importe qui. Un message privé
         // qui s'annonce en clair n'est plus privé.
         prevenir(autre, {
-            titre: pseudoDe(moi) || 'Le Salon',
+            titre: pseudoDe(moi) || 'Purple Game',
             corps: 't\u2019a écrit',
             url: '/', tag: 'mp:' + moi,
         });

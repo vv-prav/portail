@@ -547,6 +547,29 @@ async function rendrePush() {
         }
         rendrePush();
     });
+
+    // ⚠️ La nouvelle journée a son PROPRE interrupteur. Sans lui, quelqu'un
+    // que seuls les messages privés intéressent couperait tout pour s'en
+    // débarrasser — et ne recevrait plus rien du tout.
+    if (!e.actif) return;
+    hote.insertAdjacentHTML('beforeend', `
+        <button type="button" class="pr-action" id="act-push-jour">
+            <span class="pr-action-ico">${n.quotidien ? '🌅' : '🌙'}</span>
+            <span class="pr-action-body">
+                <b>La nouvelle journée</b>
+                <em>${n.quotidien
+                    ? 'Tu es prévenu quand les jeux du jour changent'
+                    : 'Tu n’es pas prévenu du changement de journée'}</em>
+            </span>
+            <span class="pr-action-go">${n.quotidien ? 'Couper' : 'Activer'}</span>
+        </button>`);
+    $('act-push-jour').addEventListener('click', async () => {
+        await fetch('/api/push/quotidien', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ veut: !n.quotidien }),
+        });
+        rendrePush();
+    });
 }
 rendrePush();
 

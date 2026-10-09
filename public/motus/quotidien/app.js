@@ -368,7 +368,7 @@ function texteDePartage() {
     const trouve = guesses.length && guesses[guesses.length - 1].marks.every(m => m === 'correct');
     const score = trouve ? guesses.length + '/' + MAX_TRIES : 'X/' + MAX_TRIES;
     const grille = guesses.map(g => g.marks.map(m => CARRES[m] || '⬛').join('')).join('\n');
-    return `Le Salon · Motus ${date} — ${score}\n\n${grille}`;
+    return `Purple Game · Motus ${date} — ${score}\n\n${grille}`;
 }
 async function partagerResultat() {
     const texte = texteDePartage();

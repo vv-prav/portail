@@ -311,7 +311,7 @@ function pageMaintenance(m) {
     const message = String(m.message || 'Le salon est fermé quelques minutes, le temps d’une mise à jour.')
         .replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     return `<!doctype html><html lang="fr"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Le Salon — fermé un instant</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Purple Game — fermé un instant</title>
 <style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#14100b;color:#efe4cf;
 font-family:system-ui,-apple-system,sans-serif;text-align:center;padding:24px}
 h1{font-size:1.3rem;margin:0 0 10px;color:#ecca82}p{color:#a08f74;line-height:1.6;max-width:340px;margin:0}
@@ -2590,6 +2590,20 @@ function fermerLesTablesFantomes() {
 }
 setInterval(fermerLesTablesFantomes, 60 * 1000);
 
+// ⚠️ LA NOUVELLE JOURNÉE SE SIGNALE À LA PREMIÈRE ACTIVITÉ, PAS À MINUIT.
+// Sur Render, le service dort à minuit : un minuteur calé sur 00h00 ne se
+// réveillerait pas, et l'annonce ne partirait jamais. On compare donc le
+// jour en cours à chaque minute tant que le serveur tourne, et le premier
+// tour qui suit le changement de date l'envoie — en pratique, quand la
+// première personne ouvre l'appli le matin. Personne n'est réveillé à
+// minuit, et c'est tant mieux.
+setInterval(() => {
+    try {
+        pushApi.annoncerLeJour(mfTodayId(),
+            Object.values(registeredUsers).map(u => u && u.id).filter(Boolean));
+    } catch (e) {}
+}, 60 * 1000);
+
 // ---------------------------------------------------------------------
 //  LES RENDEZ-VOUS
 //
@@ -3562,5 +3576,5 @@ Promise.all([loadUsers(), loadMf()]).then(async () => {
     // L'index de Motus Party n'existait pas : on le complète avec les fiches
     // déjà en base, pour que le classement montre aussi les parties d'avant.
     try { motusPartyApi.reconstruireIndex(Object.keys(mfCache)); } catch (e) {}
-    server.listen(PORT, () => console.log(`🏛️  Le Salon tourne sur le port ${PORT}`));
+    server.listen(PORT, () => console.log(`🟣 Purple Game tourne sur le port ${PORT}`));
 });
