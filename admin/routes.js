@@ -394,6 +394,7 @@ module.exports = function attachAdmin(app, ctx) {
         delete U[pseudo];
         const efface = supprimerDonneesJoueur(pseudo);
         try { efface.cles += ctx.amis().effacerLesDonnees(monId); } catch (e) {}
+        try { efface.cles += ctx.push().effacerLesDonnees(monId); } catch (e) {}
         saveUsers(true);
         log(currentUser(req), 'SUPPRESSION', `${pseudo} (${efface.cles} clés, ${efface.lignes} lignes de classement)`);
         res.json({ ok: true, ...efface });
@@ -1041,6 +1042,7 @@ module.exports = function attachAdmin(app, ctx) {
             'capitales', 'carte', 'chrono', 'defi', 'salon', 'comptes', 'classement',
             'fil', 'tfil',   // la conversation du salon, et les fils de table
             'amis', 'mp',    // amitiés et messages privés — par identifiant interne
+            'push',          // abonnements aux notifications
             'menage'];   // menage:* = les nettoyages faits une seule fois
         const orphelines = cles.filter(k => !CONNUES.includes(k.split(':')[0]))
             .map(k => { let t = 0; try { t = JSON.stringify(cache[k]).length; } catch (e) {} return { cle: k, octets: t }; })

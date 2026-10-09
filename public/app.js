@@ -716,8 +716,20 @@ applyI18n();
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(regs => {
         let foundStray = false;
+        // ⚠️ DEUX PORTÉES LÉGITIMES, ET DEUX SEULEMENT.
+        //  · /voyages/monts-arree/ — le cache hors-ligne de Voyages ;
+        //  · la racine, MAIS uniquement `sw-push.js`, qui n'a aucun
+        //    gestionnaire `fetch` et ne peut donc servir aucune page.
+        // C'est ce qui permet au push d'exister sans ressusciter le bug qui
+        // faisait servir le contenu de Petit Bac sur Voyages. Un service
+        // worker racine qui intercepterait les requêtes doit continuer à
+        // être désenregistré sans pitié.
+        const legitime = (reg) => reg.scope === location.origin + '/voyages/monts-arree/'
+            || (reg.active && reg.active.scriptURL.endsWith('/sw-push.js'))
+            || (reg.installing && reg.installing.scriptURL.endsWith('/sw-push.js'))
+            || (reg.waiting && reg.waiting.scriptURL.endsWith('/sw-push.js'));
         regs.forEach(reg => {
-            if (reg.scope !== location.origin + '/voyages/monts-arree/') { reg.unregister(); foundStray = true; }
+            if (!legitime(reg)) { reg.unregister(); foundStray = true; }
         });
         if (foundStray && !sessionStorage.getItem('erquy_sw_cleaned')) {
             sessionStorage.setItem('erquy_sw_cleaned', '1');

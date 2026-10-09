@@ -807,6 +807,41 @@ Le point de la bulle **additionne les trois sources** — fil du salon, messages
 
 **Le point d'entrée est la bulle de profil**, qui s'ouvre déjà sur chaque pseudo de l'app : elle gagne `✉️ Écrire` et le bouton d'amitié. Aucune page créée, aucune tuile ajoutée à un accueil qu'on vient de ramener à deux. ⚠️ Rien ne s'y affiche si `window.Fil` n'est pas sur la page : proposer d'écrire pour ouvrir le vide se lirait comme une panne.
 
+## Les notifications push (`push/routes.js`, `public/sw-push.js`, `public/push.js`)
+
+⚠️ **CE QUI EST ADRESSÉ À UNE PERSONNE, ET RIEN D'AUTRE.** La règle « aucune notification » reste vraie pour le fil commun : trente-deux personnes réveillées à chaque message, c'est le meilleur moyen de faire désinstaller la webapp. Ce que les amis changent, c'est qu'il existe désormais des messages **adressés** — un privé, une demande d'ami, une invitation à une partie. Ceux-là peuvent sonner, parce qu'ils attendent la réponse de quelqu'un en particulier.
+
+Ce qui ne notifie **jamais**, et doit le rester : le fil du salon, un défi lancé à tout le monde, l'activité ambiante.
+
+### ⚠️ Le piège central : deux service workers, et un seul a le droit d'intercepter
+
+Le push **exige** un service worker à la racine. Or `public/app.js` désenregistre tout ce qui n'est pas limité à `/voyages/monts-arree/` — c'est le nettoyage posé après le bug qui faisait servir le contenu de Petit Bac sur Voyages.
+
+La conciliation : **`sw-push.js` n'a AUCUN gestionnaire `fetch` et aucun cache.** Sans gestionnaire `fetch`, il ne peut servir aucune réponse — il lui est donc structurellement impossible de reproduire le bug. **Lui ajouter un cache « tant qu'on y est » le ressusciterait aussitôt.** Le nettoyage de `public/app.js` connaît cette exception par le nom du script, pas par la portée ; les deux fichiers se tiennent, et se relisent ensemble.
+
+### Les décisions
+
+- ⚠️ **Le contenu d'un message privé n'est PAS envoyé** dans la notification : il s'afficherait sur un écran verrouillé, à la vue de n'importe qui. On envoie « Alix t'a écrit », et c'est tout.
+- ⚠️ **Un `tag` par conversation** : trois messages d'affilée de la même personne remplacent la notification précédente au lieu d'en empiler trois.
+- **Un retrait d'ami ne notifie pas** — l'annoncer serait blessant pour rien.
+- ⚠️ **La permission se demande depuis un GESTE**, jamais au chargement : un navigateur à qui l'on a dit non une fois ne le redemande plus. Une demande automatique à l'ouverture brûlerait l'autorisation de tout le salon en une après-midi.
+- **Envoyer ne doit jamais faire échouer l'action qui l'a déclenchée** : `prevenir()` ne jette pas. Écrire un message marche même si le service de push est en panne.
+- ⚠️ **404 et 410 veulent dire que l'abonnement est MORT** (webapp désinstallée, autorisation révoquée) : on le retire. Toute autre erreur — réseau, 5xx — n'est pas une preuve de mort et on garde l'abonnement. Sans ce ménage, la liste grossirait pour toujours.
+
+### iOS
+
+⚠️ **iOS ne délivre qu'à une webapp INSTALLÉE sur l'écran d'accueil** (16.4 et au-delà). Dans Safari, l'abonnement échoue, et c'est normal. `public/push.js` le dit en clair — « Ajoute d'abord le salon à ton écran d'accueil » est une consigne, un bouton mort est une panne. Le `manifest.json` est déjà en `display: standalone` avec ses icônes : la condition est remplie.
+
+### Les clés VAPID
+
+⚠️ **En changer invalide TOUS les abonnements d'un coup**, et personne ne comprendrait pourquoi les notifications se sont tues. `VAPID_PUBLIC` / `VAPID_PRIVATE` en variables d'environnement est la bonne place ; à défaut le serveur en fabrique une paire **une fois** et la range dans `push:vapid`, ce qui survit sur Render grâce à Redis. Le journal affiche alors les clés à recopier en variables d'environnement.
+
+`web-push` est la seule dépendance ajoutée depuis longtemps, et elle se justifie : le chiffrement d'une charge utile (ECDH + aes128gcm) et la signature VAPID font environ cent cinquante lignes de cryptographie qu'il n'y a aucune raison d'écrire à la main.
+
+### Ce qui reste à vérifier sur un vrai téléphone
+
+⚠️ **La chaîne complète — abonnement puis notification reçue — n'a PAS pu être testée ici** : le panneau de navigation automatisé refuse tout enregistrement de service worker, y compris celui de Voyages qui existait avant. Le serveur, lui, est vérifié de bout en bout : VAPID, chiffrement, acceptation (201) et ménage des abonnements morts (410).
+
 ## Le classement du Salon — la V2 des points
 
 `comptes/classement.js` calcule un score transversal à tous les jeux, exposé par `GET /api/salon/classement?periode=…` et affiché replié en bas de l'accueil. **Il ne stocke rien** : tout est recalculé à la demande depuis les clés existantes, donc changer le barème ne demande aucune migration.

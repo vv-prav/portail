@@ -95,6 +95,13 @@
 
         <!-- ================= RÉGLAGES ================= -->
         <section class="pr-pane" id="pane-reglages" hidden>
+            <!-- ⚠️ Les notifications ne préviennent QUE de ce qui t'est
+                 adressé : un message privé, une demande d'ami, une
+                 invitation. Jamais le fil du salon. -->
+            <section class="pr-section">
+                <h2 class="pr-section-title">Être prévenu</h2>
+                <div class="pr-actions" id="pr-push"></div>
+            </section>
             <section class="pr-section">
                 <h2 class="pr-section-title">Mon compte</h2>
                 <div class="pr-actions">
@@ -238,6 +245,7 @@
     <!-- La carte du monde et le socle de géographie, pour l'atlas. -->
     <script src="/carte/monde.js"></script>
     <script src="/geo-commun.js"></script>
+    <script src="/push.js"></script>
     <script src="/vues.js"></script>
     <script src="app.js"></script>
 </body>

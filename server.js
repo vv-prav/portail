@@ -1336,11 +1336,18 @@ const filApi = require('./fil/routes')(app, io, {
 // interne : ce module est le premier du salon à ne dépendre d'aucun pseudo,
 // et `comptes/renommage.js` n'a donc rien à en savoir.
 const sallePerso = (id) => `perso:${id}`;
+// Les notifications push. ⚠️ Montées AVANT les amis : ceux-ci s'en servent
+// pour prévenir d'un message privé ou d'une demande.
+const pushApi = require('./push/routes')(app, {
+    requireAuthApi, currentUser, mfGet, mfSet, mfDel, idDe,
+});
+
 const amisApi = require('./amis/routes')(app, io, {
     requireAuthApi, currentUser, mfGet, mfSet, mfDel, escapeHtml,
     cache: () => mfCache,
     comptes: () => registeredUsers,
     idDe, pseudoDe, salle: sallePerso,
+    prevenir: pushApi.prevenir,
 });
 
 // Les noms dont se sert le reste du fichier, inchangés.
@@ -2762,6 +2769,15 @@ app.post('/api/salon/inviter', requireAuthApi, (req, res) => {
     liste.push({ id: 'inv' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
                  de: moi, a, jeu, quand: Date.now() });
     mfSet(K_INVIT, liste);
+    // ⚠️ Une invitation ne vit que quinze minutes : si elle n'arrive pas
+    // tout de suite, elle n'arrive jamais. C'est le cas où la notification
+    // sert le plus — quelqu'un attend une réponse, maintenant.
+    const j = jeuMulti(jeu);
+    pushApi.prevenir(idDe(a), {
+        titre: moi,
+        corps: `te propose une partie de ${(j && j.nom) || jeu}`,
+        url: '/', tag: 'invit',
+    });
     res.json({ ok: true });
 });
 
@@ -3373,6 +3389,7 @@ require('./admin/routes')(app, {
     // d'admin pour lire ou supprimer un message privé : c'est la seule partie
     // du salon que l'administration ne voit pas, et c'est une décision.
     amis: () => amisApi,
+    push: () => pushApi,
     pbac: () => pbacApi,
     undercover: () => undercoverApi,
     yams: () => yamsApi,

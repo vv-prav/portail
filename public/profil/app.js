@@ -515,6 +515,41 @@ $('pwd-submit').addEventListener('click', async () => {
     toast('Mot de passe changé.');
 });
 
+// ---------- Être prévenu ----------
+// ⚠️ Un interrupteur qui ne marche pas se lit comme une panne. Sur un
+// iPhone dont la webapp n'est pas sur l'écran d'accueil, le push est
+// simplement impossible : on affiche la consigne au lieu du bouton.
+async function rendrePush() {
+    const hote = $('pr-push');
+    if (!hote || !window.Push) return;
+    const e = await Push.etat();
+    if (!e.possible) {
+        hote.innerHTML = `<p class="pr-vide">${esc(e.raison)}</p>`;
+        return;
+    }
+    const n = await (await fetch('/api/push/etat')).json().catch(() => ({ appareils: 0 }));
+    hote.innerHTML = `
+        <button type="button" class="pr-action" id="act-push">
+            <span class="pr-action-ico">${e.actif ? '🔔' : '🔕'}</span>
+            <span class="pr-action-body">
+                <b>${e.actif ? 'Tu es prévenu sur cet appareil' : 'Être prévenu sur cet appareil'}</b>
+                <em>${e.actif
+                    ? `Messages privés, demandes d'ami et invitations${n.appareils > 1 ? ` · ${n.appareils} appareils` : ''}`
+                    : 'Seulement ce qui t’est adressé — jamais le fil du salon'}</em>
+            </span>
+            <span class="pr-action-go">${e.actif ? 'Couper' : '›'}</span>
+        </button>`;
+    $('act-push').addEventListener('click', async () => {
+        if (e.actif) { await Push.couper(); toast('Tu ne seras plus prévenu ici.'); }
+        else {
+            const r = await Push.activer();
+            toast(r.ok ? 'C’est activé ✓' : (r.erreur || 'Impossible.'));
+        }
+        rendrePush();
+    });
+}
+rendrePush();
+
 // ---------- Nouveau code de récupération ----------
 $('act-recovery').addEventListener('click', async () => {
     const { ok, data } = await api('/api/new-code', {});

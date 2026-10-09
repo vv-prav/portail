@@ -31,6 +31,10 @@
 module.exports = function monterLesAmis(app, io, deps) {
     const { requireAuthApi, currentUser, mfGet, mfSet, mfDel, escapeHtml,
             comptes, idDe, pseudoDe, salle } = deps;
+    // ⚠️ Ne notifie que ce qui est ADRESSÉ à quelqu'un : un privé, une
+    // demande d'ami. Jamais le fil du salon — trente-deux personnes
+    // réveillées à chaque message feraient désinstaller la webapp.
+    const prevenir = deps.prevenir || (() => {});
 
     const GARDE = 200;
     const PAGE = 60;
@@ -124,7 +128,12 @@ module.exports = function monterLesAmis(app, io, deps) {
         if (liste.some(d => d && d.de === moi)) return res.json({ ok: true, deja: true });
         liste.push({ de: moi, quand: Date.now() });
         mfSet(kDem(cible), liste);
-        prevenir(cible);
+        prevenirSocket(cible);
+        prevenir(cible, {
+            titre: 'Le Salon',
+            corps: `${pseudoDe(moi)} aimerait être ton ami`,
+            url: '/', tag: 'ami',
+        });
         res.json({ ok: true });
     });
 
@@ -136,7 +145,7 @@ module.exports = function monterLesAmis(app, io, deps) {
             const l = amisDe(a);
             if (!l.includes(b)) mfSet(kAmis(a), l.concat(b));
         }
-        prevenir(autre);
+        prevenirSocket(autre);
         if (res) res.json({ ok: true });
     }
 
@@ -168,7 +177,10 @@ module.exports = function monterLesAmis(app, io, deps) {
         }
         // ⚠️ La conversation, elle, n'est PAS effacée : ce qu'on s'est dit ne
         // disparaît pas parce qu'on se retire d'une liste.
-        prevenir(autre);
+        // Et on ne NOTIFIE pas un retrait : l'annoncer serait blessant pour
+        // rien, dans un cercle où l'on se voit en vrai. La liste de l'autre
+        // se met à jour en silence.
+        prevenirSocket(autre);
         res.json({ ok: true });
     });
 
@@ -236,11 +248,24 @@ module.exports = function monterLesAmis(app, io, deps) {
         // une salle commune : un message privé diffusé à tout le monde ne
         // serait plus privé du tout.
         try { io.to(salle(autre)).emit('mp_message', { avec: moi, msg }); } catch (e) {}
+
+        // ⚠️ Le `tag` porte la conversation : trois messages d'affilée de la
+        // même personne remplacent la notification précédente au lieu d'en
+        // empiler trois. C'est la différence entre « on te parle » et « cette
+        // appli me harcèle ».
+        // ⚠️ Et le CONTENU du message n'est PAS envoyé : il s'afficherait sur
+        // un écran verrouillé, à la vue de n'importe qui. Un message privé
+        // qui s'annonce en clair n'est plus privé.
+        prevenir(autre, {
+            titre: pseudoDe(moi) || 'Le Salon',
+            corps: 't\u2019a écrit',
+            url: '/', tag: 'mp:' + moi,
+        });
         res.json({ ok: true, messages: liste.slice(-PAGE) });
     });
 
-    // Prévenir quelqu'un que sa liste a changé (demande, acceptation, retrait).
-    function prevenir(id) {
+    // Prévenir quelqu'un, par socket, que sa liste a changé.
+    function prevenirSocket(id) {
         try { io.to(salle(id)).emit('amis_bouge'); } catch (e) {}
     }
 
