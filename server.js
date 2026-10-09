@@ -2776,7 +2776,7 @@ app.post('/api/salon/inviter', requireAuthApi, (req, res) => {
     pushApi.prevenir(idDe(a), {
         titre: moi,
         corps: `te propose une partie de ${(j && j.nom) || jeu}`,
-        url: '/', tag: 'invit',
+        url: '/', tag: 'invit:' + moi,
     });
     res.json({ ok: true });
 });

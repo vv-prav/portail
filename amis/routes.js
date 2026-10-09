@@ -132,7 +132,11 @@ module.exports = function monterLesAmis(app, io, deps) {
         prevenir(cible, {
             titre: 'Le Salon',
             corps: `${pseudoDe(moi)} aimerait être ton ami`,
-            url: '/', tag: 'ami',
+            // ⚠️ Le tag porte l'ÉMETTEUR, pas le type : avec un tag fixe,
+            // la demande de Chloé remplaçait celle de Bo sur l'écran et on
+            // en perdait une. Grouper deux messages d'une même personne est
+            // une politesse ; grouper deux personnes est une perte.
+            url: '/', tag: 'ami:' + moi,
         });
         res.json({ ok: true });
     });
