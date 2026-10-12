@@ -785,11 +785,14 @@ module.exports = function attachAdmin(app, ctx) {
         });
     });
 
-    // Aperçu des mots à venir (pas encore figés)
+    // Aperçu des mots à venir (pas encore figés). ⚠️ L'horizon est réglable
+    // (`?jours=`) : sept jours suffisent au quotidien, mais avant une absence
+    // on veut vérifier que le vivier tient sur deux mois sans se répéter.
     G('/motus/upcoming', (req, res) => {
         const today = mf.today();
+        const jours = Math.min(120, Math.max(1, Number(req.query.jours) || 7));
         const out = [];
-        for (let i = 1; i <= 7; i++) {
+        for (let i = 1; i <= jours; i++) {
             const date = mf.shift(today, i);
             out.push({ date, word: motus.wordPreview(date) });
         }
