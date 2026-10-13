@@ -152,6 +152,30 @@ function rejouer(nombres, etapes) {
     return { dispo, dernier: dispo.length ? dispo[dispo.length - 1] : null };
 }
 
+// ⚠️ LE NOMBRE ATTEINT EST LE PLUS PROCHE DE LA CIBLE PARMI LES PLAQUES
+// ENCORE SUR LE TAPIS — PAS LE DERNIER CALCULÉ.
+//
+// La route retenait `dernier`, c'est-à-dire le résultat de la dernière
+// opération, alors que la page annonce en permanence le plus proche de la
+// cible (« À 3 de la cible », « 🎯 Le compte est bon ! »). Les deux
+// divergeaient dès qu'on tombait juste puis qu'on touchait à deux autres
+// plaques : mesuré sur 50+50=100 puis 3+4=7 avec 100 pour cible, l'écran
+// affichait 🎯 et la validation rendait « à 93 de la cible », 0 point.
+//
+// C'est l'écran qui a raison : un nombre fabriqué et laissé sur le tapis
+// reste une réponse qu'on peut annoncer. Un nombre consommé par une
+// opération suivante, lui, n'est plus là — d'où « parmi les plaques
+// encore disponibles », et non parmi tout ce qu'on a calculé.
+//
+// ⚠️ La même règle est écrite dans `public/chiffres/app.js`
+// (`meilleurAtteint`) parce que le navigateur n'a pas accès à ce module :
+// si l'une des deux change, l'autre doit suivre, sinon l'écran se remet à
+// promettre ce que le serveur ne donnera pas.
+function meilleurAtteint(dispo, cible) {
+    if (!dispo || !dispo.length) return null;
+    return dispo.reduce((m, v) => (Math.abs(v - cible) < Math.abs(m - cible) ? v : m), dispo[0]);
+}
+
 // Le score : 10 points pour le compte juste, puis de moins en moins à mesure
 // qu'on s'éloigne. Au-delà de 10 d'écart, la manche ne rapporte rien — c'est
 // le barème de l'émission, et il a le mérite d'être connu.
@@ -163,4 +187,4 @@ function score(ecart) {
     return 0;
 }
 
-module.exports = { tirage, resoudre, resoudreCourt, rejouer, appliquer, score, PETITES, GRANDES };
+module.exports = { tirage, resoudre, resoudreCourt, rejouer, meilleurAtteint, appliquer, score, PETITES, GRANDES };

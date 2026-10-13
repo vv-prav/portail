@@ -27,7 +27,11 @@ async function api(path, body) {
 
 let P = null;              // la donne du jour
 let plaques = [];          // { id, valeur, utilisee }
-let etapes = [];           // { a, op, b, r }
+let etapes = [];           // { a, op, b, r, ids: { a, b, r } }
+// ⚠️ Les identifiants de résultat ne sont PAS dérivés de `etapes.length` :
+// après une annulation le compteur reculerait, et une nouvelle opération
+// porterait l'identifiant d'une plaque annulée. Celui-ci ne redescend jamais.
+let compteurResultats = 0;
 let choixA = null, choixOp = null;
 let commence = false, fini = false;
 let debutA = 0, chronoTimer = null;
@@ -88,39 +92,63 @@ function appliquer(idA, op, idB) {
     // Le jeu interdit les négatifs et les fractions : plutôt que de refuser en
     // silence, on l'explique, sinon le joueur croit à un bug.
     let a = A.valeur, b = B.valeur;
+    let pa = A, pb = B;
     let r = calcul(a, op, b);
     if (r === null && (op === '−' || op === '÷')) {
         // L'ordre inverse marche peut-être : 3 puis − puis 8 veut sans doute
-        // dire 8 − 3. On l'accepte plutôt que d'exiger de retaper.
+        // dire 8 − 3. On l'accepte plutôt que d'exiger de retaper. Les deux
+        // plaques suivent l'échange, pour que `ids.a` désigne bien celle qui
+        // porte la valeur `a` écrite dans l'étape.
         const r2 = calcul(b, op, a);
-        if (r2 !== null) { r = r2; const t = a; a = b; b = t; }
+        if (r2 !== null) { r = r2; const t = a; a = b; b = t; const tp = pa; pa = pb; pb = tp; }
     }
     if (r === null) {
         DS.toast(op === '−' ? 'Pas de nombre négatif.' : 'Pas de virgule : la division doit tomber juste.');
         choixOp = null; majEcran(); return;
     }
     A.utilisee = true; B.utilisee = true;
-    plaques.push({ id: 'r' + etapes.length, valeur: r, utilisee: false, issue: true });
-    etapes.push({ a, op, b, r });
+    const idR = 'r' + (compteurResultats++);
+    plaques.push({ id: idR, valeur: r, utilisee: false, issue: true });
+    // ⚠️ L'étape note QUELLES PLAQUES elle a consommées et produite. Sans ça,
+    // l'annulation ne peut que deviner — et elle devinait mal (voir plus bas).
+    etapes.push({ a, op, b, r, ids: { a: pa.id, b: pb.id, r: idR } });
     choixA = null; choixOp = null;
     majEcran();
-    const derniere = $('ch-plaques').querySelector('.ch-plaque.issue:last-of-type');
-    if (derniere) { derniere.classList.add('arrive'); setTimeout(() => derniere.classList.remove('arrive'), 400); }
+    const nouvelle = $('ch-plaques').querySelector(`.ch-plaque[data-id="${idR}"]`);
+    if (nouvelle) { nouvelle.classList.add('arrive'); setTimeout(() => nouvelle.classList.remove('arrive'), 400); }
 }
 
+// ⚠️ ON DÉFAIT UNE ÉTAPE PAR SES IDENTIFIANTS, JAMAIS PAR POSITION.
+//
+// L'ancienne version retirait la dernière plaque du tableau, puis rendait
+// disponibles « les deux dernières marquées utilisées » — calculées par
+// `plaques.filter(p => p.utilisee).slice(-2)`. Or ce filtre rend les plaques
+// dans l'ordre du TABLEAU, pas dans l'ordre où elles ont été consommées :
+// les deux dernières du tableau ne sont pas celles de la dernière opération.
+//
+// Mesuré sur 1 2 3 4 5 6 : « 5 + 6 = 11 » puis « 1 + 2 = 3 », on annule la
+// seconde — et on récupérait 5 et 6, qui appartenaient à la PREMIÈRE et sont
+// déjà dans le 11, pendant que le 1 et le 2 disparaissaient pour de bon. Le
+// tapis affichait « 3 4 5 6 11 » au lieu de « 3 4 11 » : deux nombres sortis
+// de nulle part, deux perdus, et plus aucun moyen de revenir en arrière.
 function annuler() {
     if (fini || !etapes.length) return;
-    etapes.pop();
-    plaques.pop();                       // le résultat produit par l'étape annulée
-    // Les deux plaques consommées redeviennent disponibles : ce sont les deux
-    // dernières marquées utilisées.
-    const util = plaques.filter(p => p.utilisee);
-    util.slice(-2).forEach(p => { p.utilisee = false; });
+    const e = etapes.pop();
+    plaques = plaques.filter(p => p.id !== e.ids.r);     // le résultat s'en va
+    for (const id of [e.ids.a, e.ids.b]) {               // ses deux plaques reviennent
+        const p = plaques.find(x => x.id === id);
+        if (p) p.utilisee = false;
+    }
     choixA = null; choixOp = null;
     majEcran();
 }
 
 // ---------- L'écran ----------
+// ⚠️ LA MÊME RÈGLE QUE `meilleurAtteint` DANS `chiffres/jeu.js`, et elle doit
+// le rester : le serveur retenait le DERNIER résultat calculé pendant que cet
+// écran annonçait le plus proche de la cible. On pouvait donc lire « 🎯 Le
+// compte est bon ! » et récolter 0 point à la validation. Le navigateur n'a
+// pas accès au module du serveur — si l'une des deux change, l'autre suit.
 function meilleurAtteint() {
     const libres = dispo();
     if (!libres.length) return null;
@@ -131,8 +159,8 @@ function majEcran() {
     renderPlaques();
     $('ch-ops').querySelectorAll('.ch-op').forEach(b =>
         b.classList.toggle('on', choixOp === b.dataset.op));
-    $('ch-etapes').innerHTML = etapes.map((e, i) =>
-        `<div class="ch-etape"><span>${e.a} ${e.op} ${e.b}</span><b>${e.r}</b>${i === etapes.length - 1 ? '' : ''}</div>`).join('');
+    $('ch-etapes').innerHTML = etapes.map((e) =>
+        `<div class="ch-etape"><span>${e.a} ${e.op} ${e.b}</span><b>${e.r}</b></div>`).join('');
 
     const meilleur = meilleurAtteint();
     const ecart = meilleur === null ? null : Math.abs(meilleur - P.cible);
@@ -241,7 +269,10 @@ $('ch-fin-close').addEventListener('click', () => { $('ch-fin').hidden = true; }
 $('ch-valider').addEventListener('click', async () => {
     if (fini || !etapes.length) return;
     $('ch-valider').disabled = true;
-    const { ok, data } = await api('/api/chiffres/valider', { date: P.date, etapes });
+    // Les identifiants de plaques ne regardent que cet écran : le serveur
+    // rejoue les étapes avec ses propres règles et n'en a aucun besoin.
+    const aEnvoyer = etapes.map(({ a, op, b, r }) => ({ a, op, b, r }));
+    const { ok, data } = await api('/api/chiffres/valider', { date: P.date, etapes: aEnvoyer });
     if (!ok) { DS.toast((data && data.error) || 'Impossible de valider.'); $('ch-valider').disabled = false; return; }
     montrerFin(data);
 });
@@ -272,13 +303,20 @@ async function charger() {
         // Manche déjà jouée : on rejoue ses étapes pour montrer sa grille.
         commence = true; fini = true;
         $('ch-start').hidden = true; $('ch-jeu').hidden = false;
+        // On rejoue ses étapes pour remontrer son tapis. ⚠️ On prend la
+        // PREMIÈRE plaque libre de cette valeur, dans l'ordre du tableau :
+        // c'est exactement ce que fait `rejouer()` côté serveur avec son
+        // `indexOf`, donc les deux aboutissent au même tapis. Les étapes
+        // enregistrées ne portent pas d'identifiants — c'est voulu, ils ne
+        // concernent que l'écran.
         (prog.etapes || []).forEach(e => {
             const A = plaques.find(p => !p.utilisee && p.valeur === e.a);
             if (A) A.utilisee = true;
             const B = plaques.find(p => !p.utilisee && p.valeur === e.b);
             if (B) B.utilisee = true;
-            plaques.push({ id: 'r' + etapes.length, valeur: e.r, utilisee: false, issue: true });
-            etapes.push(e);
+            const idR = 'r' + (compteurResultats++);
+            plaques.push({ id: idR, valeur: e.r, utilisee: false, issue: true });
+            etapes.push({ ...e, ids: { a: A ? A.id : null, b: B ? B.id : null, r: idR } });
         });
         majEcran();
         const { data: cl } = await api('/api/chiffres/classement?date=' + encodeURIComponent(P.date));

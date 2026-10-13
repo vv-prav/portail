@@ -67,7 +67,11 @@ module.exports = function monterChiffres(app, deps) {
         const etapes = Array.isArray(b.etapes) ? b.etapes.slice(0, 5) : [];
         const rejeu = chiffresJeu.rejouer(donne.nombres, etapes);
         if (rejeu.erreur) return res.status(400).json({ error: rejeu.erreur });
-        const atteint = rejeu.dernier;
+        // ⚠️ Le plus proche de la cible parmi les plaques restantes, et non le
+        // dernier calculé : c'est ce que la page annonce pendant toute la
+        // manche, et les deux ne doivent pas se contredire au moment de
+        // compter les points. Voir le commentaire de `meilleurAtteint`.
+        const atteint = chiffresJeu.meilleurAtteint(rejeu.dispo, donne.cible);
         if (atteint === null) return res.status(400).json({ error: 'Aucun résultat.' });
 
         const ecart = Math.abs(atteint - donne.cible);
