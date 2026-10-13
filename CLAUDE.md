@@ -70,7 +70,7 @@ La liste est désormais **inversée** : on charge `redis.keys('*')` moins les de
   - ⚠️ **Six caractères ne tiennent QUE grâce au comptage des tentatives.** Un milliard de possibilités, et `/api/recover` a **deux** verrous : un par adresse IP, un **par compte** (`compte|recover:<pseudo>`), cinq essais puis quinze minutes. Sans le second, changer d'adresse suffirait à essayer des codes sans fin. Ne jamais raccourcir le code, ni retirer un verrou, sans refaire ce calcul. Contrepartie assumée : on peut bloquer l'écran de récupération d'un pseudo connu pendant quinze minutes — ça n'empêche pas son propriétaire de se connecter normalement.
   - Le mot de passe provisoire, lui, garde neuf caractères (`motDePasseProvisoire()`) : il ouvre directement la porte, là où le code ne sert qu'à en choisir un nouveau.
 - `requireAuth` (pages) et `requireAuthApi` (API) sont les deux middlewares de garde ; ils mettent aussi à jour discrètement `user.lastSeen` (respectivement toutes les ~5 min pour les pages, ~30s pour les appels API) — c'est ce qui alimente le statut « en ligne » du salon.
-- `requireAdmin` protège tout `/admin` et `/api/admin/*`.
+- `requireAdmin` protège tout `/admin` et `/api/admin/*` ; `requireEditeur` protège `/entraide` et `/api/entraide/*` (voir la section « Le rôle éditeur »).
 - **Quand le code de récupération est perdu lui aussi.** Il n'est montré qu'une fois, à l'inscription, et presque personne ne le garde : « Mot de passe oublié » était alors un cul-de-sac. Le chemin de secours s'appuie sur le fait que tout le monde se connaît ici — c'est un humain qui reconnaît la personne, pas un courriel (aucune adresse n'est collectée).
   1. `POST /api/aide-connexion` dépose une demande dans `comptes:demandes` (une seule en attente par personne). Un nom inconnu est **signalé franchement** : les pseudos s'affichent déjà dans tous les classements, donc les cacher ne protège rien, alors qu'une faute de frappe avalée en silence produirait une demande que personne ne verrait.
   2. L'administrateur voit la demande **dès l'ouverture de l'admin** : carte en tête de la vue d'ensemble (avec le message tel qu'il a été écrit, en pleine largeur — coincé entre un pseudo et deux boutons il tombait à un mot par ligne) et pastille comptée sur la tuile Comptes. Elle vivait auparavant dans le seul onglet Comptes : il fallait penser à aller la chercher.
@@ -90,7 +90,9 @@ portail/
 ├── comptes/renommage.js       ← migration des données au changement de pseudo
 ├── comptes/classement.js      ← le classement transversal du Salon
 ├── comptes/titres.js          ← les titres et badges des joueurs
+├── comptes/depannage.js       ← les deux gestes du dépannage, écrits UNE fois
 ├── admin/routes.js            ← toutes les routes /api/admin/*
+├── entraide/routes.js         ← la page des éditeurs (/api/entraide/*)
 ├── motsfleches/{dict,generator,words,words-extra}.js
 ├── motlong/{jeu,mots,routes}.js ← le Mot le plus long ; mots.js est GÉNÉRÉ
 ├── sudoku/{jeu,routes}.js     ← générateur, solveur, vérification
@@ -130,6 +132,7 @@ portail/
     ├── carnet/                              ← les sorties et les recettes réunies
     ├── sw.js                                ← service worker (cache hors-ligne)
     ├── admin/
+    ├── entraide/                            ← la page du rôle éditeur
     ├── defis/                              ← les défis (Motus + quiz, une seule page)
     ├── chance/
     ├── mots-fleches/
@@ -375,6 +378,30 @@ Total actuel : **11 249 mots tirables uniques** (4 lettres : 1025, 5 : 3595, 6 :
 Une petite liste de mots vulgaires est écartée du **tirage** seulement — ils restent acceptés si quelqu'un les propose.
 
 ⚠️ Une note antérieure annonçait 10932 mots et une dizaine de fichiers de vocabulaire. C'était faux : 7 fichiers (`words4-extra`, `words5-extra2`, `words6-extra2`, `words6-extra3`, `words7-extra`, `words7-extra2`, `words7-extra3`) étaient importés par `server.js` mais **n'ont jamais existé dans le dépôt** — ils bloquaient le démarrage du serveur (`MODULE_NOT_FOUND`) et donc tout déploiement. Ils ont été retirés. S'ils réapparaissent un jour, il suffit de les rajouter dans `MOTUS_EXTRA`.
+
+### Le rôle éditeur (`entraide/routes.js`, `public/entraide/`)
+
+Le salon n'avait qu'un rôle, et il donnait tout : les comptes, les données, la maintenance, la suppression. Or **le seul geste qu'on ait régulièrement besoin de déléguer est le dépannage** — quelqu'un a perdu son mot de passe *et* son code, et il faut le remettre dedans. Promouvoir administrateur pour ça, c'est donner les clés de la maison pour laisser entrer un ami.
+
+Un **éditeur** voit UNE page (`/entraide/`) et y fait DEUX choses : donner un code de récupération, ou poser un mot de passe provisoire. Rien d'autre — ni données, ni suppression, ni classement, ni (surtout) les messages privés, que même l'administration ne peut pas lire.
+
+- ⚠️ **UN ÉDITEUR NE PEUT PAS DÉPANNER UN ADMINISTRATEUR NI UN AUTRE ÉDITEUR.** Sans cette règle le rôle serait une montée en privilège déguisée : réinitialiser le mot de passe d'un administrateur, c'en devenir un. `peutDepanner(qui, cible)` vit dans `server.js`, et **chaque route la revérifie** — jamais seulement un bouton caché dans l'interface. Les comptes protégés s'affichent grisés avec la raison écrite : masquer la ligne ferait croire à une faute de frappe, des boutons muets se liraient comme une panne.
+- ⚠️ **Un administrateur EST éditeur d'office.** Le contraire obligerait à se donner les deux rôles pour voir la page. Ils figurent donc grisés dans la liste des éditeurs, sans bouton — sinon on les y nomme « au cas où ».
+- ⚠️ **Le rôle se range PAR IDENTIFIANT INTERNE** (`mf:editeurs`), pas par pseudo — contrairement à `mf:admins`, qui oblige `comptes/renommage.js` à y penser. Un rôle survit donc au renommage tout seul, et un identifiant orphelin (compte supprimé) ne correspond plus à personne : **les deux ménages n'existent pas**. Vérifié : après renommage le rôle suit, après suppression il disparaît de la liste.
+- ⚠️ **Les deux gestes vivent dans `comptes/depannage.js`**, que l'admin appelle aussi. Les quatre règles du provisoire — 24 h (`tempExpire`), changement obligatoire (`doitChanger`), sessions fermées (`sessionEpoch`), demande marquée traitée — ne doivent pas dépendre de la porte par laquelle on est entré. Recopiées dans les deux interfaces, elles auraient divergé dans l'une des deux, et on ne le découvre que le jour où quelqu'un est bloqué dehors.
+- ⚠️ **Un seul journal, écrit par un seul endroit.** `admin/routes.js` tenait `mf:adminlog` pour lui ; deux écrivains qui relisent puis réécrivent les 300 dernières lignes se seraient effacés l'un l'autre. `journaliser()` est dans `server.js`, et le `log()` de l'admin n'en est plus qu'un alias. **L'administrateur lit donc au retour tout ce que les éditeurs ont fait.**
+- **Une demande d'aide prévient par push** tous les administrateurs et éditeurs (`url: '/entraide/'`). C'est exactement le message *adressé* que le push sert : quelqu'un est enfermé dehors et attend qu'une personne agisse. Sans ça la demande attend qu'un administrateur ouvre l'admin de lui-même — ce qui peut prendre des semaines, et c'est toute la raison d'être du rôle. La tuile le dit aussi (pouls → `entraide`), parce qu'une notification se rate.
+- **La tuile « L'entraide » n'apparaît que pour un éditeur qui n'est PAS administrateur** : l'admin porte déjà les demandes en tête de sa vue d'ensemble, et deux portes vers la même chose sur un accueil ramené à trois tuiles, c'est une tuile de trop.
+- ⚠️ `/entraide/` **n'est pas dans la liste de préchargement du service worker** : `cache.addAll()` est tout ou rien, et une page à rôle répondrait 403 pour la plupart des gens — ce qui casserait **tout** le mode hors-ligne, en silence. C'est le piège déjà payé une fois avec l'ancien chemin du Motus.
+
+### Les flammes, et le bouton qui les rallume
+
+⚠️ **Une flamme n'est pas un nombre rangé quelque part** : elle se déduit de `<jeu>:days:<pseudo>`, la liste des jours joués (`serieDepuisJours`). Une journée sans réseau — en voyage, en panne — casse la chaîne, et c'est **le seul endroit du salon où une circonstance extérieure efface du travail réel**. D'où `diagnostiqueDesFlammes()` / `rendreLesFlammes()` (server.js) et le bouton « Rallumer la flamme… » de la fiche de compte.
+
+- ⚠️ **Cela ne donne AUCUN point.** Le classement du Salon se calcule sur `<jeu>:prog:…:<date>`, jamais sur `:days:`. Ce qui bouge : la flamme affichée, le calendrier d'assiduité, et les titres de série. **En revanche le calendrier mentira** — les jours ajoutés y apparaîtront comme joués. C'est le prix, il est assumé, et c'est pourquoi l'opération passe au journal avec le nom de qui l'a faite.
+- ⚠️ **ON MARQUE JUSQU'À HIER, JAMAIS AUJOURD'HUI.** `serieDepuisJours` compte depuis aujourd'hui s'il est joué, sinon depuis hier : s'arrêter à hier rend exactement le nombre demandé, et la partie du jour ajoutera la suivante normalement. Marquer aujourd'hui offrirait la journée en cours.
+- ⚠️ **CE QU'IL AURA N'EST PAS CE QU'IL AVAIT, et l'interface doit le dire.** Recoller un trou rebranche la chaîne qui continue **derrière** : quelqu'un à 12 flammes qui a manqué 4 jours repart à **16**, pas à 12 — les 12 anciens jours sont toujours là et les 4 jours bouchés les prolongent. D'où `apresRecollage` dans le diagnostic, et une étiquette qui annonce le résultat (« Motus — 4 jour(s) manqué(s) → 16 🔥 ») au lieu de promettre un nombre faux. C'est un test qui l'a révélé, pas une relecture.
+- L'opération est **idempotente** : la relancer n'ajoute rien (mesuré).
 
 ### Autres
 

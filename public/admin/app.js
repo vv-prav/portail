@@ -56,7 +56,7 @@ function switchTab(tab) {
     if (tab === 'titres') loadTitres();
     if (tab === 'classement') loadClassement();
     if (tab === 'sante') { loadSante(); loadFrequentation(); }
-    if (tab === 'system') { loadOverview(); loadAdmins(); }
+    if (tab === 'system') { loadOverview(); loadAdmins(); loadEditeurs(); }
     window.scrollTo(0, 0);
 }
 document.querySelectorAll('.ad-tile').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
@@ -254,12 +254,58 @@ async function loadAccounts() {
         <button class="ds-row" data-p="${esc(u.pseudo)}">
             <span class="acc-avatar-bubble">${u.avatarPhoto ? `<img src="${u.avatarPhoto}" alt="">` : esc(u.avatar || '✦')}</span>
             <span class="ds-row-main">
-                <span class="ds-row-name">${esc(u.pseudo)}${u.online ? ' <i class="badge online">🟢 en ligne</i>' : ''}${u.admin ? ' <i class="badge adm">admin</i>' : ''}${u.banned ? ' <i class="badge ban">suspendu</i>' : ''}</span>
+                <span class="ds-row-name">${esc(u.pseudo)}${u.online ? ' <i class="badge online">🟢 en ligne</i>' : ''}${u.admin ? ' <i class="badge adm">admin</i>' : ''}${u.editeur ? ' <i class="badge adm">éditeur</i>' : ''}${u.banned ? ' <i class="badge ban">suspendu</i>' : ''}</span>
                 <span class="ds-row-sub">inscrit ${fmtDate(u.created)} · vu ${fmtAgo(u.lastSeen)}</span>
             </span>
             <span class="ds-row-go">›</span>
         </button>`).join('') : '<p class="empty">Aucun compte trouvé.</p>';
     $('acc-list').querySelectorAll('.ds-row').forEach(b => b.addEventListener('click', () => openAccount(b.dataset.p)));
+}
+
+// ---------- Les flammes ----------
+// Une flamme n'est pas un nombre rangé quelque part : elle se déduit de la
+// liste des jours joués. Une journée sans réseau — en voyage, en panne — la
+// casse, et c'est le seul endroit du salon où une circonstance extérieure
+// efface du travail réel. D'où ce bouton.
+function flammeTexte(flammes) {
+    const l = (flammes || []).slice().sort((a, b) => b.serie - a.serie);
+    if (!l.length) return 'aucun jeu du jour joué';
+    const haut = l[0];
+    if (haut.serie > 0) return `${haut.serie} 🔥 (${haut.nom})`;
+    // Éteinte : on dit ce qu'il avait et depuis quand, puisque c'est
+    // exactement ce qu'on va lui proposer de rendre.
+    const casse = l.slice().sort((a, b) => b.apresRecollage - a.apresRecollage)[0];
+    return casse && casse.serieAlors
+        ? `éteinte — ${casse.serieAlors} 🔥 au ${casse.dernier} (${casse.nom}), ${casse.trou} jour(s) manqué(s)`
+        : 'éteinte';
+}
+
+function demanderLesFlammes(pseudo, f) {
+    // Un `prompt` plutôt qu'un champ dans la popup : c'est déjà le choix fait
+    // pour le renommage, et un nombre de jours à taper ne justifie pas un
+    // overlay de plus. Ce qu'on demande, c'est un NOMBRE DE JOURS à marquer
+    // en remontant depuis hier — pas un nombre de flammes, puisque les deux
+    // ne coïncident que si la chaîne ne continue pas derrière.
+    const defaut = f.trou || f.serieAlors || 1;
+    const saisi = prompt(
+        `Combien de jours marquer comme joués pour ${pseudo} sur « ${f.nom} » ?\n\n`
+        + (f.dernier ? `Dernier jour joué : ${f.dernier} (il avait ${f.serieAlors} 🔥 ce jour-là).\n` : '')
+        + (f.trou ? `${f.trou} jour(s) manqué(s) depuis. Les boucher donne ${f.apresRecollage} 🔥.\n` : '')
+        + `\nOn remonte depuis hier. Aujourd'hui n'est jamais marqué : sa partie du jour ajoutera la flamme suivante normalement.`,
+        String(defaut));
+    if (saisi === null) return;
+    const jours = Math.floor(Number(saisi));
+    if (!(jours >= 1)) return toast('Nombre invalide.');
+    ask('🔥', 'Confirmer ?',
+        `Les ${jours} jours qui s'achèvent hier seront marqués comme joués pour ${pseudo} sur « ${f.nom} ». Aucun point n'est donné ; le calendrier d'assiduité montrera ces jours comme joués.`,
+        [{ label: `Marquer ${jours} jour(s)`, run: async () => {
+            const r = await api('/api/admin/account/flamme', { pseudo, jeu: f.jeu, jours });
+            if (!r.ok) return toast((r.data && r.data.error) || 'Erreur');
+            // Le vrai résultat, mesuré après coup : c'est la seule valeur
+            // qu'on ait le droit d'annoncer.
+            toast(`${r.data.ajoutes} jour(s) ajouté(s) · ${r.data.serieDuSalon} 🔥`);
+            openAccount(pseudo);
+        } }]);
 }
 
 async function openAccount(pseudo) {
@@ -269,7 +315,11 @@ async function openAccount(pseudo) {
     const mfs = data.motsfleches || {};
     const mo = data.motus || {};
     const rows = [
-        ['Statut', data.admin ? 'Administrateur' : (data.banned ? `Suspendu${data.bannedAt ? ' le ' + fmtDate(data.bannedAt) : ''}` : 'Actif')],
+        ['Statut', data.admin ? 'Administrateur' : (data.editeur ? 'Éditeur' : (data.banned ? `Suspendu${data.bannedAt ? ' le ' + fmtDate(data.bannedAt) : ''}` : 'Actif'))],
+        // La flamme du salon est le maximum des séries, tous jeux du jour
+        // confondus : c'est ce nombre-là que le joueur voit, donc c'est
+        // celui qu'il faut montrer ici avant d'y toucher.
+        ['Flamme', flammeTexte(data.flammes)],
         ['Inscrit le', fmtDate(data.created)],
         ['Dernière présence', (data.online ? '🟢 en ligne maintenant · ' : '') + fmtAgo(data.lastSeen)],
         ['Code de récupération', data.hasRecovery ? 'défini' : 'aucun'],
@@ -348,6 +398,38 @@ async function openAccount(pseudo) {
                 loadDemandes();   // la demande correspondante vient d'être traitée
             }
             else toast(r.data.error || 'Erreur');
+        } }]));
+    // ⚠️ Rendre des flammes ne rapporte AUCUN point : le classement du Salon
+    // se calcule sur les parties jouées (`<jeu>:prog:…`), jamais sur les jours
+    // (`<jeu>:days:…`). Ce qui bouge, c'est la flamme affichée, le calendrier
+    // d'assiduité et les titres de série. C'est écrit dans la popup, parce
+    // qu'on ne doit pas avoir à le deviner.
+    add('Rallumer la flamme…', () => {
+        const cassees = (data.flammes || []).filter(f => f.trou > 0 && f.serieAlors > 0);
+        const liste = (cassees.length ? cassees : (data.flammes || []))
+            .slice().sort((a, b) => b.apresRecollage - a.apresRecollage);
+        if (!liste.length) return toast('Ce joueur n’a jamais joué à un jeu du jour.');
+        ask('🔥', 'Sur quel jeu ?',
+            `Les jours manqués seront marqués comme joués, ce qui recolle la chaîne. Aucun point n'est donné : le classement ne compte que les parties réellement jouées. En revanche le calendrier d'assiduité montrera ces jours comme joués.`,
+            liste.map(f => ({
+                // ⚠️ L'étiquette annonce le RÉSULTAT, pas ce qu'il avait :
+                // recoller le trou rebranche la chaîne qui continue derrière,
+                // donc 12 flammes et 4 jours manqués font 16, pas 12.
+                label: f.trou
+                    ? `${f.nom} — ${f.trou} jour(s) manqué(s) → ${f.apresRecollage} 🔥`
+                    : `${f.nom} — intacte (${f.serie} 🔥)`,
+                run: () => demanderLesFlammes(data.pseudo, f),
+            })));
+    });
+    if (!data.admin) add(data.editeur ? 'Retirer le rôle éditeur' : 'Nommer éditeur', () => ask('🤝',
+        data.editeur ? 'Retirer le rôle ?' : 'Nommer éditeur ?',
+        data.editeur
+            ? `${data.pseudo} n'aura plus accès à la page L'entraide.`
+            : `${data.pseudo} pourra voir les demandes d'aide à la connexion, donner un code de récupération et poser un mot de passe provisoire — à tout le monde sauf aux administrateurs et aux autres éditeurs. Rien d'autre : ni données, ni suppression, ni messages.`,
+        [{ label: 'Confirmer', danger: !!data.editeur, run: async () => {
+            const r = await api('/api/admin/editeurs/' + (data.editeur ? 'remove' : 'add'), { pseudo: data.pseudo });
+            toast(r.ok ? (data.editeur ? 'Rôle retiré.' : 'Éditeur nommé.') : ((r.data && r.data.error) || 'Erreur'));
+            if (r.ok) openAccount(data.pseudo);
         } }]));
     add('Renommer', () => {
         const to = prompt('Nouveau pseudo pour ' + data.pseudo + ' :', data.pseudo);
@@ -745,6 +827,40 @@ $('adm-add').addEventListener('click', async () => {
     const { ok, data } = await api('/api/admin/admins/add', { pseudo });
     if (!ok) return toast(data.error || 'Erreur');
     $('adm-new').value = ''; toast('Administrateur ajouté.'); loadAdmins();
+});
+
+// ---------- Éditeurs ----------
+// ⚠️ Les administrateurs sont éditeurs d'office et figurent dans la liste en
+// grisé, sans bouton : sans eux on les chercherait, et on finirait par les
+// nommer éditeurs « au cas où » — ce qui ne change rien et ajoute une ligne
+// de plus à défaire.
+async function loadEditeurs() {
+    const { data } = await api('/api/admin/editeurs');
+    if (!data || !data.editeurs) return;
+    const nommes = data.editeurs, admins = data.admins || [];
+    $('sys-editeurs').innerHTML = [
+        ...admins.map(p => `<div class="ds-row static off">
+            <span class="ds-row-main"><span class="ds-row-name">${esc(p)} <i class="badge adm">admin</i></span>
+            <span class="ds-row-sub">éditeur d'office</span></span></div>`),
+        ...nommes.map(p => `<div class="ds-row static">
+            <span class="ds-row-main"><span class="ds-row-name">${esc(p)}</span></span>
+            <button class="mini danger" data-rmedi="${esc(p)}" type="button">Retirer</button>
+        </div>`),
+    ].join('') || '<p class="empty">Personne pour l’instant.</p>';
+    $('sys-editeurs').querySelectorAll('[data-rmedi]').forEach(b => b.addEventListener('click', () => {
+        ask('🤝', 'Retirer le rôle ?', `${b.dataset.rmedi} n'aura plus accès à la page L'entraide.`, [
+            { label: 'Confirmer', danger: true, run: async () => {
+                const r = await api('/api/admin/editeurs/remove', { pseudo: b.dataset.rmedi });
+                toast(r.ok ? 'Rôle retiré.' : (r.data.error || 'Erreur')); loadEditeurs();
+            } }]);
+    }));
+}
+$('edi-add').addEventListener('click', async () => {
+    const pseudo = $('edi-new').value.trim();
+    if (!pseudo) return;
+    const { ok, data } = await api('/api/admin/editeurs/add', { pseudo });
+    if (!ok) return toast(data.error || 'Erreur');
+    $('edi-new').value = ''; toast('Éditeur nommé.'); loadEditeurs();
 });
 
 

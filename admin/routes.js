@@ -10,14 +10,15 @@ module.exports = function attachAdmin(app, ctx) {
     const { requireAdmin, currentUser, isAdmin, users, saveUsers,
             hashPassword, makeRecoveryCode, motDePasseProvisoire, mf, redis, motus, pbac } = ctx;
 
-    // --- Journal des actions (mémoire + persistance légère) ---
+    // --- Journal des actions ---
+    // ⚠️ IL N'EST PLUS ÉCRIT ICI. Le dépannage d'un compte se fait maintenant
+    // depuis deux interfaces (l'admin et `/entraide/`), et deux écrivains sur
+    // `mf:adminlog` — chacun relisant les 300 dernières lignes pour les
+    // réécrire — se seraient effacés l'un l'autre. `journaliser` vit dans
+    // `server.js` et reste le seul chemin ; cette fonction n'est qu'un alias
+    // qui épargne de réécrire les cent appels du fichier.
     const LOG_KEY = 'mf:adminlog';
-    function log(who, action, target, detail) {
-        const list = (mf.get(LOG_KEY) || []).slice();
-        list.push({ who, action, target: target || '', detail: detail || '', ts: Date.now() });
-        if (list.length > 300) list.splice(0, list.length - 300);
-        mf.set(LOG_KEY, list);
-    }
+    const log = (who, action, target, detail) => ctx.journaliser(who, action, target, detail);
 
     const CH = () => ctx.chiffres;
     const GE = () => ctx.geo;
@@ -166,6 +167,7 @@ module.exports = function attachAdmin(app, ctx) {
                 online: !!(u.lastSeen && Date.now() - u.lastSeen < 90 * 1000),
                 banned: !!u.banned,
                 admin: isAdmin(u.pseudo),
+                editeur: ctx.editeurs().includes(u.pseudo),
                 hasRecovery: !!u.recoveryHash,
                 avatar: u.avatar || '', avatarPhoto: u.avatarPhoto || '',
             })),
@@ -238,8 +240,13 @@ module.exports = function attachAdmin(app, ctx) {
             banned: !!u.banned,
             bannedAt: u.bannedAt || 0,
             admin: isAdmin(u.pseudo),
+            editeur: ctx.editeurs().includes(u.pseudo),
             hasRecovery: !!u.recoveryHash,
             avatar: u.avatar || '', avatarPhoto: u.avatarPhoto || '',
+            // Le diagnostic des flammes voyage avec la fiche : la réparation
+            // n'a de sens qu'avec le nombre qu'il avait sous les yeux, et une
+            // seconde requête pour l'obtenir aurait fini par être oubliée.
+            flammes: ctx.flammes.diagnostic(pseudo),
             motsfleches: { ...mfStats, daysPlayed: days.length },
             perudo, motus, yams, motusparty,
             pbac, undercover, drapeaux, chiffres, geo, sudoku, motlong,
@@ -270,44 +277,21 @@ module.exports = function attachAdmin(app, ctx) {
         res.json({ ok: true });
     });
 
+    // ⚠️ LES DEUX GESTES DU DÉPANNAGE VIVENT DANS `comptes/depannage.js`.
+    // L'éditeur fait exactement les mêmes depuis `/entraide/` : les quatre
+    // règles du provisoire (24 h, changement obligatoire, sessions fermées,
+    // demande marquée traitée) ne doivent pas dépendre de la porte par
+    // laquelle on est entré. Recopiées ici, elles auraient divergé.
     A('/account/password', (req, res) => {
-        const pseudo = String(req.body.pseudo || '');
-        const u = users()[pseudo];
-        if (!u) return res.status(404).json({ error: 'Compte introuvable.' });
-        const temp = motDePasseProvisoire();                   // mot de passe temporaire lisible
-        u.passwordHash = hashPassword(temp);
-        u.sessionEpoch = Date.now();                            // déconnecte les sessions existantes
-        // Deux garde-fous, sans lesquels la manœuvre perd son sens : ce mot de
-        // passe a été lu par quelqu'un d'autre, donc il ne vaut qu'un jour, et
-        // le joueur doit en choisir un vrai dès son arrivée.
-        u.doitChanger = true;
-        u.tempExpire = Date.now() + 24 * 3600 * 1000;
-        saveUsers(true);
-        // La demande d'aide correspondante est marquée traitée : sinon elle
-        // resterait en attente dans l'admin alors que c'est fait.
-        const liste = (mf.get('comptes:demandes') || []).map(d =>
-            (d.pseudo === pseudo && !d.traitee ? { ...d, traitee: true, traiteeLe: Date.now(), par: currentUser(req) } : d));
-        mf.set('comptes:demandes', liste);
-        log(currentUser(req), 'mot de passe provisoire', pseudo);
-        res.json({ ok: true, tempPassword: temp, expireDans: '24 heures' });
+        const r = ctx.depannage.poserUnProvisoire(String(req.body.pseudo || ''), currentUser(req));
+        if (r.error) return res.status(404).json(r);
+        res.json({ ok: true, ...r });
     });
 
     A('/account/recovery', (req, res) => {
-        const pseudo = String(req.body.pseudo || '');
-        const u = users()[pseudo];
-        if (!u) return res.status(404).json({ error: 'Compte introuvable.' });
-        const code = makeRecoveryCode();
-        u.recoveryHash = hashPassword(code);
-        saveUsers(true);
-        // ⚠️ La demande d'aide correspondante est marquée traitée, exactement
-        // comme pour le mot de passe provisoire : c'est l'autre façon de
-        // dépanner quelqu'un, et elle laissait la demande en attente pour
-        // toujours — on la croyait oubliée alors qu'elle était réglée.
-        const liste = (mf.get('comptes:demandes') || []).map(d =>
-            (d.pseudo === pseudo && !d.traitee ? { ...d, traitee: true, traiteeLe: Date.now(), par: currentUser(req) } : d));
-        mf.set('comptes:demandes', liste);
-        log(currentUser(req), 'nouveau code', pseudo);
-        res.json({ ok: true, recoveryCode: code });
+        const r = ctx.depannage.donnerUnCode(String(req.body.pseudo || ''), currentUser(req));
+        if (r.error) return res.status(404).json(r);
+        res.json({ ok: true, ...r });
     });
 
     A('/account/ban', (req, res) => {
@@ -533,6 +517,69 @@ module.exports = function attachAdmin(app, ctx) {
         mf.set('mf:admins', list);
         log(currentUser(req), 'admin retiré', pseudo);
         res.json({ ok: true });
+    });
+
+    // =================================================================
+    //  LES ÉDITEURS
+    //
+    //  Le seul geste qu'on ait régulièrement besoin de déléguer est celui
+    //  du dépannage. Promouvoir administrateur pour ça, c'est donner les
+    //  clés de la maison pour laisser entrer un ami : l'éditeur ne voit
+    //  qu'une page (`/entraide/`) et n'y fait que deux choses.
+    //
+    //  ⚠️ Un administrateur EST éditeur sans figurer dans la liste : la
+    //  liste ne porte que le rôle DONNÉ, ce qui permet de le retirer
+    //  sans toucher au statut d'administrateur.
+    // =================================================================
+    G('/editeurs', (req, res) => {
+        res.json({
+            editeurs: ctx.editeurs(),
+            admins: ctx.allAdmins(),      // éditeurs d'office, à ne pas proposer
+            you: currentUser(req),
+            enAttente: ctx.depannage.enAttente(),
+        });
+    });
+    A('/editeurs/add', (req, res) => {
+        const pseudo = String(req.body.pseudo || '').trim();
+        const erreur = ctx.donnerLeRoleEditeur(pseudo, true);
+        if (erreur) return res.status(409).json({ error: erreur });
+        log(currentUser(req), 'éditeur ajouté', pseudo);
+        res.json({ ok: true });
+    });
+    A('/editeurs/remove', (req, res) => {
+        const pseudo = String(req.body.pseudo || '').trim();
+        const erreur = ctx.donnerLeRoleEditeur(pseudo, false);
+        if (erreur) return res.status(404).json({ error: erreur });
+        log(currentUser(req), 'éditeur retiré', pseudo);
+        res.json({ ok: true });
+    });
+
+    // =================================================================
+    //  LES FLAMMES
+    //
+    //  Une flamme se déduit de `<jeu>:days:<pseudo>` : une journée sans
+    //  réseau — en voyage, en panne — casse la chaîne, et c'est le seul
+    //  endroit du salon où une circonstance extérieure efface du travail
+    //  réel. Le diagnostic voyage avec la fiche du compte (voir
+    //  `/account`) ; ici on ne fait que réparer.
+    //
+    //  ⚠️ CELA NE DONNE AUCUN POINT : le classement du Salon se calcule
+    //  sur les clés `<jeu>:prog:…:<date>`, jamais sur `:days:`. Ce qui
+    //  bouge, c'est la flamme, le calendrier d'assiduité et les titres de
+    //  série. Le calendrier affichera donc des jours joués qui ne l'ont
+    //  pas été : c'est le prix, et c'est pourquoi l'opération est au
+    //  journal avec le nom de qui l'a faite.
+    // =================================================================
+    A('/account/flamme', (req, res) => {
+        const pseudo = String(req.body.pseudo || '').trim();
+        const jeu = String(req.body.jeu || '').trim();
+        const jours = Number(req.body.jours || 0);
+        if (!users()[pseudo]) return res.status(404).json({ error: 'Compte introuvable.' });
+        if (!(jours >= 1)) return res.status(400).json({ error: 'Indique un nombre de flammes.' });
+        const r = ctx.flammes.rendre(pseudo, jeu, jours);
+        if (r.error) return res.status(400).json(r);
+        log(currentUser(req), 'flammes rendues', pseudo, `${jeu} · ${jours} (${r.ajoutes} jour(s) ajouté(s))`);
+        res.json(r);
     });
 
     // =================================================================
@@ -1081,21 +1128,9 @@ module.exports = function attachAdmin(app, ctx) {
     // de le signaler. Ces demandes arrivent ici ; l'administrateur reconnaît
     // la personne hors de l'application et lui pose un mot de passe
     // provisoire, ce qui marque la demande traitée.
-    G('/demandes', (req, res) => {
-        const liste = (mf.get('comptes:demandes') || []).slice().reverse();
-        res.json({
-            enAttente: liste.filter(d => !d.traitee),
-            traitees: liste.filter(d => d.traitee).slice(0, 20),
-        });
-    });
-    A('/demandes/ignorer', (req, res) => {
-        const pseudo = String(req.body.pseudo || '');
-        const liste = (mf.get('comptes:demandes') || []).map(d =>
-            (d.pseudo === pseudo && !d.traitee ? { ...d, traitee: true, ignoree: true, traiteeLe: Date.now() } : d));
-        mf.set('comptes:demandes', liste);
-        log(currentUser(req), 'demande d’aide ignorée', pseudo);
-        res.json({ ok: true });
-    });
+    G('/demandes', (req, res) => res.json(ctx.depannage.demandes(20)));
+    A('/demandes/ignorer', (req, res) =>
+        res.json(ctx.depannage.ignorer(String(req.body.pseudo || ''), currentUser(req))));
 
     // =================================================================
     //  MODÉRATION DES STATISTIQUES MULTIJOUEUR

@@ -417,6 +417,15 @@
                 <input class="ds-input" id="adm-new" placeholder="Pseudo à promouvoir…" autocapitalize="off" style="margin-top:10px" aria-label="Pseudo à promouvoir administrateur">
                 <button class="ds-btn" id="adm-add" type="button">Ajouter cet administrateur</button>
             </div>
+            <!-- Le rôle éditeur : déléguer le dépannage sans donner la maison.
+                 Il ouvre /entraide/ et rien d'autre. -->
+            <div class="card">
+                <h2 class="card-title">Éditeurs</h2>
+                <p class="card-sub">Ils voient la page <b>L'entraide</b> et peuvent y donner un code de récupération ou un mot de passe provisoire. Rien d'autre : ni données, ni suppression, ni messages. Un éditeur ne peut pas dépanner un administrateur ni un autre éditeur.</p>
+                <div class="list" id="sys-editeurs"></div>
+                <input class="ds-input" id="edi-new" placeholder="Pseudo à nommer éditeur…" autocapitalize="off" style="margin-top:10px" aria-label="Pseudo à nommer éditeur">
+                <button class="ds-btn" id="edi-add" type="button">Nommer cet éditeur</button>
+            </div>
             <div class="card">
                 <h2 class="card-title">État du serveur</h2>
                 <div class="kv" id="sys-info"></div>

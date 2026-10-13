@@ -1,0 +1,86 @@
+/* =====================================================================
+   L'ENTRAIDE — la page du rôle éditeur.
+   Volontairement petite : une liste de demandes, une recherche, deux
+   boutons. Ce n'est pas un tableau de bord, et ça ne doit pas en avoir
+   l'air — sinon on s'attend à pouvoir y faire autre chose.
+   ===================================================================== */
+body {
+    min-height: 100dvh; overflow-x: hidden;
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color: var(--parchment);
+    background: radial-gradient(130% 70% at 50% -8%, #2a2113 0%, transparent 55%), var(--ink);
+    background-attachment: fixed; -webkit-font-smoothing: antialiased;
+}
+
+.en-wrap { max-width: 640px; margin: 0 auto;
+    padding: max(18px, env(safe-area-inset-top)) 18px calc(28px + env(safe-area-inset-bottom)); }
+
+.en-head { padding-top: 6px; margin-bottom: 22px; text-align: center; }
+.en-title { font-size: 1.6rem; margin: 0 0 4px; color: var(--brass-soft); }
+.en-sub { margin: 0; font-size: .8rem; color: var(--muted); }
+
+.en-section { margin-bottom: 26px; }
+.en-section-title { font-size: .72rem; letter-spacing: 1px; text-transform: uppercase;
+    color: var(--muted); font-weight: 700; margin: 0 0 10px; }
+
+.en-vide { margin: 0; padding: 18px 14px; text-align: center;
+    font-size: .82rem; color: var(--muted);
+    border: 1px dashed rgba(255, 255, 255, .12); border-radius: 12px; }
+
+/* ---- Une demande ---- */
+.en-carte { margin-bottom: 12px; padding: 14px;
+    background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .09);
+    border-left: 3px solid var(--brass); border-radius: 12px; }
+.en-carte.off { border-left-color: rgba(255, 255, 255, .14); opacity: .72; }
+.en-carte-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+/* Le pseudo ouvre la bulle de profil : reconnaître la personne est tout le
+   travail, et son avatar ou ses parties aident parfois plus que son nom. */
+.en-nom { background: transparent; appearance: none; border: none; padding: 0;
+    font: inherit; font-weight: 700; font-size: .98rem;
+    color: var(--parchment); text-align: left; cursor: pointer; }
+.en-quand { font-size: .72rem; color: var(--muted); white-space: nowrap; }
+.en-mot { margin: 8px 0 12px; font-size: .86rem; line-height: 1.45; color: var(--parchment); }
+.en-mot.vide { color: var(--muted); font-style: italic; }
+
+.en-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.en-actions .ds-btn { flex: 1 1 auto; margin: 0; }
+
+.en-protege { margin: 0; font-size: .78rem; line-height: 1.4; color: var(--muted); }
+
+.en-ignorer { display: block; margin: 10px 0 0; padding: 6px 0;
+    background: transparent; appearance: none; border: none;
+    font: inherit; font-size: .74rem; color: var(--muted);
+    text-decoration: underline; cursor: pointer; }
+
+/* ---- La recherche ---- */
+.en-liste { margin-top: 10px; }
+.en-ligne, .en-compte { padding: 10px 12px; margin-bottom: 8px;
+    background: rgba(255, 255, 255, .03); border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 11px; }
+.en-ligne.off, .en-compte.off { opacity: .6; }
+.en-ligne { display: flex; flex-direction: column; gap: 2px; }
+
+.en-compte > summary { display: flex; align-items: center; gap: 10px;
+    cursor: pointer; list-style: none; }
+.en-compte > summary::-webkit-details-marker { display: none; }
+.en-compte[open] > summary { margin-bottom: 10px; }
+.en-compte-txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.en-bulle { flex: 0 0 auto; width: 32px; height: 32px; border-radius: 50%;
+    display: grid; place-items: center; overflow: hidden;
+    background: rgba(255, 255, 255, .07); font-size: .95rem; }
+.en-bulle img { width: 100%; height: 100%; object-fit: cover; }
+
+.en-ligne-nom { font-weight: 600; font-size: .9rem; }
+.en-ligne-sub { font-size: .72rem; color: var(--muted); }
+.en-role { font-style: normal; font-size: .62rem; text-transform: uppercase;
+    letter-spacing: .5px; padding: 1px 5px; border-radius: 5px;
+    background: rgba(217, 169, 78, .18); color: var(--brass-soft); }
+.en-role.ban { background: rgba(201, 111, 111, .2); color: #e39b9b; }
+
+/* ---- Le mode d'emploi ---- */
+.en-aide { margin-top: 10px; padding: 12px 14px;
+    background: rgba(255, 255, 255, .03); border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 12px; }
+.en-aide > summary { cursor: pointer; font-size: .8rem; color: var(--brass-soft); }
+.en-aide p { margin: 10px 0 0; font-size: .78rem; line-height: 1.5; color: var(--muted); }
+.en-aide b { color: var(--parchment); }

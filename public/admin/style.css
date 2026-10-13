@@ -69,6 +69,10 @@ body {
 .badge.ban { background:rgba(224,122,95,.25); color:#ffb4a0; }
 .badge.online { background:rgba(90,168,122,.22); color:#9ec9ad; }
 .empty { color:var(--muted); font-size:.84rem; text-align:center; padding:18px 0; margin:0; }
+/* Une ligne présente mais sans action possible : les administrateurs dans la
+   liste des éditeurs, qu'ils sont d'office. Les montrer grisés évite qu'on
+   les y nomme « au cas où ». */
+.ds-row.static.off { opacity:.6; }
 
 /* Paires clé/valeur */
 .kv { display:flex; flex-direction:column; gap:1px; }

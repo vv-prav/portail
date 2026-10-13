@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, interactive-widget=resizes-content">
+    <meta name="theme-color" content="#14100b">
+    <title>L'entraide</title>
+    <link rel="icon" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="stylesheet" href="/design-system.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <a class="ds-back" href="/" aria-label="Retour au salon">←</a>
+
+    <div class="en-wrap">
+        <header class="en-head">
+            <h1 class="en-title">L'entraide</h1>
+            <p class="en-sub">Remettre dedans ceux qui sont restés dehors.</p>
+        </header>
+
+        <!-- LES DEMANDES
+             En tête, et seules à l'être : c'est la raison pour laquelle on
+             ouvre cette page. La recherche est en dessous, pour les fois où
+             on se fait appeler directement. -->
+        <section class="en-section">
+            <h2 class="en-section-title">Les demandes</h2>
+            <div id="en-demandes"></div>
+        </section>
+
+        <section class="en-section">
+            <h2 class="en-section-title">Chercher quelqu'un</h2>
+            <input class="ds-input" id="en-q" type="search" placeholder="Son pseudo…"
+                   autocapitalize="off" autocomplete="off" aria-label="Chercher un compte par son pseudo">
+            <div class="en-liste" id="en-comptes"></div>
+        </section>
+
+        <section class="en-section" id="en-sec-faites" hidden>
+            <h2 class="en-section-title">Déjà réglées</h2>
+            <div class="en-liste" id="en-faites"></div>
+        </section>
+
+        <!-- Le mode d'emploi en bas : on le lit une fois, pas tous les jours. -->
+        <details class="en-aide">
+            <summary>Comment on dépanne quelqu'un</summary>
+            <p><b>Le geste normal : un code de récupération.</b> Tu lui envoies le
+            code par message. Sur l'écran de connexion, il touche « Mot de passe
+            oublié ? », met son pseudo et ce code, et choisit lui-même son nouveau
+            mot de passe. Rien n'expire, et tu ne connais pas son mot de passe.</p>
+            <p><b>Le raccourci : un mot de passe provisoire.</b> Quand il faut aller
+            vite, ou qu'il n'arrive pas à se servir du code. Il ne vaut que 24 heures,
+            il déconnecte ses appareils, et l'appli lui demandera d'en choisir un vrai
+            dès son arrivée. À n'utiliser qu'en second recours : tu lis son mot de
+            passe, lui aussi.</p>
+            <p><b>Reconnais la personne avant.</b> Un message, un appel, un
+            « on s'est vus samedi » — n'importe quoi qui vienne d'ailleurs que de
+            l'appli. C'est tout ce qui protège un compte ici.</p>
+        </details>
+    </div>
+
+    <script src="/design-system.js"></script>
+    <script src="/profile-viewer.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

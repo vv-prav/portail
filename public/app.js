@@ -77,7 +77,13 @@ const OTHER_APPS = [
 const ECOLE = { id: 'apprendre', name: 'Université des papillons', emoji: '🦋',
                 href: '/apprendre', accent: '#4f9a8f' };
 const ADMIN_APP = { id: 'admin', name: 'Administration', dKey: 'app_admin_d', emoji: '🛡️', href: '/admin', accent: '#c96f6f', status: 'open' };
+// ⚠️ L'entraide n'apparaît QUE pour un éditeur qui n'est pas
+// administrateur : l'admin porte déjà les demandes d'aide en tête de sa vue
+// d'ensemble, et deux portes vers la même chose sur un accueil ramené à
+// trois tuiles, c'est une tuile de trop.
+const ENTRAIDE_APP = { id: 'entraide', name: 'L’entraide', emoji: '🤝', href: '/entraide/', accent: '#6f9ac9', status: 'open' };
 let isAdminUser = false;
+let isEditeurUser = false;
 let pulse = null;
 
 async function api(path, body) {
@@ -99,6 +105,13 @@ function setState(state) { document.body.className = 'is-' + state; }
 // ⚠️ Le compteur de recettes cherchait une tuile « recettes » qui n'existe
 // plus depuis leur réunion dans le carnet : il ne s'affichait jamais.
 function tileBadge(app) {
+    // Une demande d'aide en attente est la seule chose urgente de cette page :
+    // quelqu'un est enfermé dehors et ne peut rien faire tout seul.
+    if (app.id === 'entraide') {
+        const n = (pulse && pulse.entraide) || 0;
+        return n ? `<span class="tile-badge new">✋ ${n} demande${n > 1 ? 's' : ''}</span>`
+                 : `<span class="tile-desc">Dépanner ceux qui n’arrivent plus à se connecter.</span>`;
+    }
     if (app.id === 'carnet' && pulse && pulse.rec) {
         if (pulse.rec.fresh > 0) return `<span class="tile-badge new">✨ ${pulse.rec.fresh} ${t('b_rec_new')}</span>`;
         if (pulse.rec.count > 0) return `<span class="tile-badge part">${pulse.rec.count} ${t('b_rec_count')}</span>`;
@@ -134,7 +147,9 @@ function renderTile(a) {
 // Le mode « Réorganiser » a été retiré : il reste trois tuiles, dont l'admin
 // qui ferme toujours la marche — il n'y avait plus rien à réorganiser.
 function renderTiles() {
-    const all = [...GAME_APPS, ...OTHER_APPS, ...(isAdminUser ? [ADMIN_APP] : [])];
+    const all = [...GAME_APPS, ...OTHER_APPS,
+        ...(isEditeurUser && !isAdminUser ? [ENTRAIDE_APP] : []),
+        ...(isAdminUser ? [ADMIN_APP] : [])];
     $('tiles').innerHTML = all.map(renderTile).join('') + renderEcole();
 }
 // La carte de l'Université : sur les deux colonnes, après les tuiles. Elle
@@ -553,8 +568,9 @@ async function loadAnnounce() {
     else box.hidden = true;
 }
 
-function enterHub(pseudo, admin) {
+function enterHub(pseudo, admin, editeur) {
     if (admin !== undefined) isAdminUser = !!admin;
+    if (editeur !== undefined) isEditeurUser = !!editeur;
     $('hub-name').textContent = pseudo;
     renderTiles();
     setState('hub');
@@ -599,8 +615,8 @@ async function auth(kind) {
     if (data.recoveryCode) { showCode(data.recoveryCode, data.user.pseudo); return; }
     // Un mot de passe provisoire posé par un administrateur : on ne laisse pas
     // entrer sans en choisir un vrai, puisque quelqu'un d'autre l'a lu.
-    if (data.doitChanger) { enterHub(data.user.pseudo, data.user.isAdmin); exigerNouveauMotDePasse(); return; }
-    enterHub(data.user.pseudo, data.user.isAdmin);
+    if (data.doitChanger) { enterHub(data.user.pseudo, data.user.isAdmin, data.user.isEditeur); exigerNouveauMotDePasse(); return; }
+    enterHub(data.user.pseudo, data.user.isAdmin, data.user.isEditeur);
 }
 $('entry-form').addEventListener('submit', (e) => { e.preventDefault(); auth('login'); });
 $('btn-register').addEventListener('click', () => auth('register'));
@@ -699,7 +715,7 @@ applyI18n();
 (async function boot() {
     const { ok, data } = await api('/api/me');
     if (ok && data.user) {
-        enterHub(data.user.pseudo, data.user.isAdmin);
+        enterHub(data.user.pseudo, data.user.isAdmin, data.user.isEditeur);
         // Recharger la page ne doit pas faire oublier le changement exigé.
         if (data.doitChanger) exigerNouveauMotDePasse();
     }

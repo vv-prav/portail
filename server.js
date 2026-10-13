@@ -68,6 +68,69 @@ function extraAdmins() { const l = mfGet('mf:admins'); return Array.isArray(l) ?
 function allAdmins() { return [...new Set([...ROOT_ADMINS, ...extraAdmins()])]; }
 function isRootAdmin(p) { return ROOT_ADMINS.includes(p); }
 function isAdmin(pseudo) { return ROOT_ADMINS.includes(pseudo) || extraAdmins().includes(pseudo); }
+
+// ---------------------------------------------------------------------
+//  LE RÔLE « ÉDITEUR » — dépanner les comptes, et rien d'autre
+//
+//  Le salon n'avait qu'un rôle, et il donnait tout : les comptes, les
+//  données, la maintenance, la suppression. Or le seul geste qu'on ait
+//  régulièrement besoin de déléguer est celui du dépannage — quelqu'un
+//  a perdu son mot de passe et son code, et il faut le remettre dedans.
+//  Promouvoir administrateur pour ça, c'est donner les clés de la maison
+//  pour laisser entrer un ami.
+//
+//  Un éditeur voit donc UNE page (`/entraide/`) et peut y faire DEUX
+//  choses : donner un code de récupération, ou poser un mot de passe
+//  provisoire. Rien d'autre — pas de données, pas de suppression, pas de
+//  classement, et surtout pas de messages privés.
+//
+//  ⚠️ UN ÉDITEUR NE PEUT PAS DÉPANNER UN ADMINISTRATEUR, NI UN AUTRE
+//  ÉDITEUR. Sans cette règle, le rôle serait une montée en privilège
+//  déguisée : il suffirait de réinitialiser le mot de passe d'un
+//  administrateur pour devenir administrateur. Les administrateurs, eux,
+//  gardent le droit de dépanner tout le monde.
+//
+//  ⚠️ Un administrateur EST éditeur. Le contraire serait absurde, et
+//  obligerait à se donner les deux rôles pour voir la page d'entraide.
+// ---------------------------------------------------------------------
+// ⚠️ LE RÔLE SE RANGE PAR IDENTIFIANT INTERNE, PAS PAR PSEUDO. C'est la
+// règle de tout ce qui est neuf (voir `amis/routes.js`), et elle se paie ici
+// en une ligne de traduction : `mf:admins`, qui garde des pseudos, oblige
+// `comptes/renommage.js` à y penser — sinon un éditeur renommé perdrait son
+// rôle en silence, et un compte supprimé laisserait son nom dans la liste,
+// prêt à redonner le rôle à qui reprendrait ce pseudo. Avec des identifiants,
+// un rôle survit au renommage tout seul, et un identifiant disparu ne
+// correspond plus à personne : les deux problèmes n'existent pas.
+const K_EDITEURS = 'mf:editeurs';
+function idsEditeurs() { const l = mfGet(K_EDITEURS); return Array.isArray(l) ? l : []; }
+// Les pseudos actuels de ceux qui ont le rôle. Les identifiants orphelins
+// (compte supprimé) tombent d'eux-mêmes, sans ménage à écrire.
+function editeurs() { return idsEditeurs().map(pseudoDe).filter(Boolean); }
+function isEditeur(pseudo) {
+    if (isAdmin(pseudo)) return true;
+    const id = idDe(pseudo);
+    return !!id && idsEditeurs().includes(id);
+}
+/** Donner ou retirer le rôle. Retourne une erreur lisible, ou `null`. */
+function donnerLeRoleEditeur(pseudo, oui) {
+    const id = idDe(pseudo);
+    if (!id) return 'Ce compte n’existe pas.';
+    const liste = idsEditeurs();
+    if (oui) {
+        if (isAdmin(pseudo)) return 'Administrateur : il peut déjà tout faire.';
+        if (liste.includes(id)) return 'Déjà éditeur.';
+        mfSet(K_EDITEURS, [...liste, id]);
+    } else {
+        mfSet(K_EDITEURS, liste.filter(x => x !== id));
+    }
+    return null;
+}
+// Qui a le droit de dépanner qui. Un administrateur n'a aucune limite.
+function peutDepanner(qui, cible) {
+    if (isAdmin(qui)) return true;
+    if (!isEditeur(qui)) return false;
+    return !isEditeur(cible);
+}
 const IS_PROD = process.env.NODE_ENV === 'production';
 
 // ---------------------------------------------------------------------
@@ -441,6 +504,21 @@ app.post('/api/aide-connexion', (req, res) => {
     }
     liste.push({ pseudo, message: mot, ts: Date.now(), traitee: false });
     mfSet(DEMANDES_CLE, liste.slice(-60));
+    // ⚠️ ON PRÉVIENT CEUX QUI PEUVENT DÉPANNER. C'est exactement le genre de
+    // message ADRESSÉ que les notifications push servent : quelqu'un est
+    // enfermé dehors et attend qu'une personne en particulier agisse. Sans
+    // ça, la demande attend qu'un administrateur ouvre l'admin de lui-même —
+    // ce qui peut prendre des semaines, et c'est la raison d'être du rôle
+    // d'éditeur. Le nom du demandeur est dedans : il n'a rien de secret,
+    // il s'affiche déjà dans tous les classements.
+    for (const p of [...allAdmins(), ...editeurs()]) {
+        if (p === pseudo) continue;
+        pushApi.prevenir(idDe(p), {
+            titre: 'Purple Game',
+            corps: `${pseudo} n’arrive plus à se connecter`,
+            url: '/entraide/', tag: 'aide',
+        });
+    }
     res.json({ ok: true });
 });
 
@@ -452,7 +530,7 @@ app.post('/api/logout', (req, res) => {
 app.get('/api/me', (req, res) => {
     const pseudo = currentUser(req);
     if (!pseudo) return res.status(401).json({ error: 'Non connecté.' });
-    res.json({ user: { pseudo, isAdmin: isAdmin(pseudo) }, doitChanger: !!(registeredUsers[pseudo] && registeredUsers[pseudo].doitChanger) });
+    res.json({ user: { pseudo, isAdmin: isAdmin(pseudo), isEditeur: isEditeur(pseudo) }, doitChanger: !!(registeredUsers[pseudo] && registeredUsers[pseudo].doitChanger) });
 });
 
 // ---------------------------------------------------------------------
@@ -2013,6 +2091,11 @@ app.get('/api/salon/pulse', requireAuthApi, (req, res) => {
         // le fil — le pouls les porte, donc l'accueil n'a rien à demander de
         // plus pour allumer son point rouge.
         amis: amisApi.nonLus(user),
+        // Les demandes d'aide en attente, pour qui peut les traiter. Elles ne
+        // servent à rien si personne ne les voit : la notification push part
+        // au dépôt de la demande, mais une notification se rate — la tuile,
+        // elle, le dit à chaque ouverture du salon.
+        entraide: isEditeur(user) ? depannage.enAttente() : 0,
     });
 });
 
@@ -2498,6 +2581,91 @@ function serieDepuisJours(jours) {
     if (!set.has(d)) d = mfShiftDay(d, -1);
     while (set.has(d)) { n++; d = mfShiftDay(d, -1); }
     return n;
+}
+
+// ---------------------------------------------------------------------
+//  LES FLAMMES — le diagnostic, et la réparation
+//
+//  Une flamme n'est pas un nombre rangé quelque part : elle se DÉDUIT de
+//  `<jeu>:days:<pseudo>`, la liste des jours joués. Une journée sans
+//  réseau — en voyage, en panne, en hôpital — casse la chaîne, et il n'y
+//  a aucun moyen de la reprendre : c'est le seul endroit du salon où une
+//  circonstance extérieure efface du travail réel.
+//
+//  ⚠️ CE QUE RÉPARER UNE FLAMME NE DONNE PAS : des points. Le classement
+//  du Salon se calcule sur les clés `<jeu>:prog:…:<date>`, jamais sur
+//  `:days:` — remettre des jours ne rapporte donc pas un point et ne
+//  déplace personne au classement. Ce qui bouge : la flamme affichée, le
+//  calendrier d'assiduité, et les titres de série. C'est ce qu'on veut
+//  rendre, et rien de plus.
+//
+//  ⚠️ EN REVANCHE, LE CALENDRIER MENTIRA : les jours ajoutés y
+//  apparaîtront comme joués. C'est le prix, il est assumé, et c'est
+//  pourquoi l'opération passe au journal avec le nom de qui l'a faite.
+// ---------------------------------------------------------------------
+const NOM_DU_JOUR = {
+    motus: 'Motus', mf: 'Mots Fléchés', chiffres: 'Le compte est bon',
+    geo: 'Géographie', sudoku: 'Sudoku', motlong: 'Le mot le plus long',
+    capitales: 'Les capitales', carte: 'La carte', chrono: 'Le chrono',
+};
+
+/**
+ * Pour chaque jeu du jour : la série en cours, le dernier jour joué, la
+ * série qu'il avait CE jour-là, et le trou depuis. C'est cette dernière
+ * valeur qu'on propose de rendre — « le plus haut la dernière fois ».
+ */
+function diagnostiqueDesFlammes(pseudo) {
+    const aujourdhui = mfTodayId();
+    return PREFIXES_DU_JOUR.map(jeu => {
+        const jours = mfGet(`${jeu}:days:${pseudo}`) || [];
+        const set = new Set(jours);
+        // Le dernier jour joué, aujourd'hui compris. On remonte au lieu de
+        // trier : la liste n'est pas garantie ordonnée, et 400 pas suffisent
+        // largement (c'est le plafond que `mfPurge` lui impose).
+        let dernier = null, d = aujourdhui;
+        for (let i = 0; i < 400 && !dernier; i++) { if (set.has(d)) dernier = d; else d = mfShiftDay(d, -1); }
+        if (!dernier) return { jeu, nom: NOM_DU_JOUR[jeu] || jeu, jours: 0, serie: 0, dernier: null, serieAlors: 0, trou: 0 };
+        // La série telle qu'elle était le dernier jour joué.
+        let serieAlors = 0, c = dernier;
+        while (set.has(c)) { serieAlors++; c = mfShiftDay(c, -1); }
+        // Le trou : les jours manquants entre ce dernier jour et hier inclus.
+        let trou = 0, j = mfShiftDay(aujourdhui, -1);
+        while (j > dernier && trou < 400) { trou++; j = mfShiftDay(j, -1); }
+        return {
+            jeu, nom: NOM_DU_JOUR[jeu] || jeu, jours: set.size,
+            serie: serieDepuisJours(jours), dernier, serieAlors, trou,
+            // ⚠️ CE QU'IL AURA APRÈS RÉPARATION N'EST PAS CE QU'IL AVAIT, et
+            // il faut le dire : recoller le trou rebranche la chaîne qui
+            // continue DERRIÈRE. Quelqu'un à 12 flammes qui a manqué 4 jours
+            // repart à 16, pas à 12 — les 12 anciens jours sont toujours là,
+            // et les 4 jours bouchés les prolongent. L'interface annonce donc
+            // ce nombre-ci, parce que promettre « 12 » serait faux.
+            apresRecollage: serieAlors + trou,
+        };
+    }).filter(f => f.jours > 0);
+}
+
+/**
+ * Rendre `nb` flammes sur un jeu du jour : on marque joués les `nb` jours
+ * qui s'achèvent HIER.
+ *
+ * ⚠️ Hier, et pas aujourd'hui, et c'est tout l'art du calcul : la série
+ * se compte à partir d'aujourd'hui s'il est joué, sinon à partir d'hier.
+ * S'arrêter à hier rend donc exactement `nb` flammes — et la partie du
+ * jour, quand elle sera jouée, en ajoutera une comme n'importe quel
+ * autre jour. Marquer aujourd'hui aurait offert la journée en cours.
+ */
+function rendreLesFlammes(pseudo, jeu, nb) {
+    if (!PREFIXES_DU_JOUR.includes(jeu)) return { error: 'Ce jeu n’est pas un jeu du jour.' };
+    const n = Math.max(1, Math.min(400, Math.floor(Number(nb) || 0)));
+    const cle = `${jeu}:days:${pseudo}`;
+    const avant = mfGet(cle) || [];
+    const set = new Set(avant);
+    let ajoutes = 0, d = mfShiftDay(mfTodayId(), -1);
+    for (let i = 0; i < n; i++) { if (!set.has(d)) { set.add(d); ajoutes++; } d = mfShiftDay(d, -1); }
+    const liste = [...set].sort();
+    mfSet(cle, liste.slice(-400));
+    return { ok: true, ajoutes, serie: serieDepuisJours(liste), serieDuSalon: serieDuSalon(pseudo) };
 }
 
 // ---------------------------------------------------------------------
@@ -3122,6 +3290,7 @@ app.get('/api/salon/profile', requireAuthApi, (req, res) => {
         pseudo, avatar: user.avatar || '', avatarPhoto: user.avatarPhoto || '',
         created: user.created || 0, prevLogin: user.prevLogin || 0,
         isAdmin: isAdmin(pseudo),
+        isEditeur: isEditeur(pseudo),
         mf: { solved, best, streak: mfStreak, days: mfDays.size },
         perudo, motus, yams, motusparty,
         avatars: SALON_AVATARS,
@@ -3379,9 +3548,48 @@ function requireAdmin(req, res, next) {
     if (req.path.startsWith('/api/')) return res.status(403).json({ error: 'Accès réservé.' });
     return res.redirect('/');
 }
+// Les éditeurs — et les administrateurs, qui le sont tous.
+function requireEditeur(req, res, next) {
+    const u = currentUser(req);
+    if (u && isEditeur(u)) return next();
+    if (req.path.startsWith('/api/')) return res.status(403).json({ error: 'Accès réservé.' });
+    return res.redirect('/');
+}
+
+// ⚠️ UN SEUL JOURNAL, ÉCRIT PAR UN SEUL ENDROIT. `admin/routes.js` tenait
+// `mf:adminlog` pour lui seul ; le dépannage se fait maintenant depuis deux
+// interfaces, et deux écrivains sur la même clé auraient fini par se
+// marcher dessus (les 300 dernières lignes, relues puis réécrites). Un
+// administrateur doit pouvoir lire, au retour, tout ce qui a été fait — y
+// compris par les éditeurs.
+const K_JOURNAL = 'mf:adminlog';
+function journaliser(qui, action, cible, detail) {
+    const liste = (mfGet(K_JOURNAL) || []).slice();
+    liste.push({ who: qui, action, target: cible || '', detail: detail || '', ts: Date.now() });
+    if (liste.length > 300) liste.splice(0, liste.length - 300);
+    mfSet(K_JOURNAL, liste);
+}
+
+// Les deux gestes du dépannage, écrits une seule fois (voir le module).
+const depannage = require('./comptes/depannage')({
+    users: () => registeredUsers,
+    saveUsers, hashPassword, makeRecoveryCode, motDePasseProvisoire,
+    mfGet, mfSet, journaliser,
+});
+
 app.use('/admin', requireAdmin, express.static(__dirname + '/public/admin'));
+app.use('/entraide', requireEditeur, express.static(__dirname + '/public/entraide'));
+require('./entraide/routes')(app, {
+    requireEditeur, currentUser, isAdmin, isEditeur, peutDepanner,
+    users: () => registeredUsers, depannage,
+});
 require('./admin/routes')(app, {
     requireAdmin, currentUser, isAdmin, isRootAdmin, allAdmins, rootAdmins: ROOT_ADMINS,
+    // Le rôle éditeur : l'admin le donne et le retire, mais ne l'exerce pas
+    // différemment — il peut déjà tout ce qu'un éditeur peut.
+    editeurs, isEditeur, donnerLeRoleEditeur, journaliser, depannage,
+    // Les flammes : le diagnostic, et la réparation.
+    flammes: { diagnostic: diagnostiqueDesFlammes, rendre: rendreLesFlammes },
     users: () => registeredUsers,
     saveUsers, hashPassword, makeRecoveryCode, motDePasseProvisoire,
     mf: { get: mfGet, set: mfSet, del: mfDel, cache: () => mfCache, purge: mfPurge, levels: MF_LEVELS, today: mfTodayId, shift: mfShiftDay },
